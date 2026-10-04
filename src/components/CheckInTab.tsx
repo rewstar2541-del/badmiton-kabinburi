@@ -123,7 +123,16 @@ function PlayerTile({ p, on, signed }: { p: Player; on: boolean; signed: boolean
   return (
     <li>
       <button
-        onClick={() => dispatch({ type: on ? "undoCheckIn" : "checkIn", date, playerId: p.id })}
+        onClick={() => {
+          if (!on) return dispatch({ type: "checkIn", date, playerId: p.id });
+          const day = state.days.find((d) => d.date === date);
+          if (day?.checkIns.find((c) => c.playerId === p.id)?.paidAt)
+            return alert(t("{name} จ่ายเงินแล้ว ต้องกดยกเลิกการจ่ายในหน้าคิดเงินก่อน", { name: p.name }));
+          const games = day?.games.filter((g) => g.playerIds.includes(p.id)).length ?? 0;
+          if (games > 0 && !confirm(t("{name} เล่นไปแล้ว {n} เกม ยกเลิกเช็คอินแล้วจะไม่คิดค่าสนาม ยืนยันไหม?", { name: p.name, n: games })))
+            return;
+          dispatch({ type: "undoCheckIn", date, playerId: p.id });
+        }}
         className={`relative flex w-full flex-col items-center gap-2 rounded-3xl px-3 pt-4 pb-3 text-center transition active:scale-[0.97] ${
           on ? "bg-ink text-white shadow-lg shadow-ink/20" : "bg-white shadow-[0_8px_24px_-14px_rgba(11,18,32,0.25)]"
         }`}

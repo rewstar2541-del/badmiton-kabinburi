@@ -72,6 +72,7 @@ export function MyBillTab() {
         {editing && (
           <>
             {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+            <PlanSwitch player={player} bare />
             <PlayerForm
               self
               initial={player}
@@ -145,7 +146,6 @@ export function MyBillTab() {
       <MonthCard player={player} />
       <BadgesCard player={player} />
       <PartnerPrefs key={(player.prefer ?? []).join() + "|" + (player.avoid ?? []).join()} player={player} />
-      <PlanSwitch player={player} />
     </div>
   );
 }

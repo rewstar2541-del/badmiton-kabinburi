@@ -33,6 +33,17 @@ describe("แขก", () => {
     expect(s.days[0].checkIns.every((c) => !c.paidAt)).toBe(true);
   });
 
+  it("ยกเลิกจ่ายแล้วยอดค้างวันก่อนกลับมาด้วย แต่วันที่จ่ายไปแล้วก่อนหน้าไม่ถูกเปิด", () => {
+    const P = "2026-10-01", Q = "2026-10-02";
+    let s: State = { ...EMPTY_STATE, players: [{ id: "h", name: "โฮสต์", level: 3 }] };
+    for (const d of [P, Q, D]) s = reducer(s, prepare({ type: "checkIn", date: d, playerId: "h" }, 1));
+    s = reducer(s, prepare({ type: "markPaid", date: P, playerId: "h" }, 5));
+    s = reducer(s, prepare({ type: "markPaid", date: D, playerId: "h" }, 9));
+    s = reducer(s, prepare({ type: "unmarkPaid", date: D, playerId: "h" }));
+    const paid = (d: string) => s.days.find((x) => x.date === d)!.checkIns[0].paidAt;
+    expect([paid(P), paid(Q), paid(D)]).toEqual([5, undefined, undefined]);
+  });
+
   it("จ่ายรายเดือนเองแล้วไม่คิดค่าสนามวันนี้", () => {
     let s = setup();
     s = reducer(s, prepare({ type: "setMonthlyPaid", month: "2026-10", playerId: "h", paid: true }, 5));

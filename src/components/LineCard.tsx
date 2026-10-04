@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getLineSettings, supabase, testLine, updateLineSettings, type LineSettings } from "@/lib/remote";
+import { getLineSettings, newLineLinkCode, supabase, testLine, updateLineSettings, type LineSettings } from "@/lib/remote";
 import { useStore } from "@/lib/store";
 import { Button, Card } from "./ui";
 import { t } from "@/lib/i18n";
@@ -12,6 +12,7 @@ export function LineCard() {
   const [s, setS] = useState<LineSettings | null>(null);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [code, setCode] = useState("");
 
   useEffect(() => {
     if (!supabase || !auth.isAdmin) return;
@@ -43,8 +44,27 @@ export function LineCard() {
       ) : (
         <>
           <p className={`rounded-2xl px-3 py-2.5 text-sm font-medium ${s?.group_id ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-900"}`}>
-            {s?.group_id ? t("เชื่อมกลุ่ม LINE แล้ว") : t("ยังไม่ได้เชื่อมกลุ่ม: เชิญบอทของก๊วนเข้ากลุ่ม LINE แล้วพิมพ์ \"เชื่อมแอพก๊วน\"")}
+            {s?.group_id ? t("เชื่อมกลุ่ม LINE แล้ว") : t("ยังไม่ได้เชื่อมกลุ่ม: เชิญบอทของก๊วนเข้ากลุ่ม LINE แล้วกดขอรหัสด้านล่าง")}
           </p>
+          {code ? (
+            <p className="rounded-2xl bg-sky-50 px-3 py-2.5 text-sm text-sky-900">
+              {t("พิมพ์ในกลุ่ม LINE ภายใน 15 นาที:")} <span className="font-mono font-bold select-all">เชื่อมแอพก๊วน {code}</span>
+            </p>
+          ) : (
+            <button
+              className="text-sm font-semibold text-sky-700 underline"
+              onClick={async () => {
+                if (!supabase) return;
+                try {
+                  setCode(await newLineLinkCode(supabase));
+                } catch (e) {
+                  setMsg(String(e instanceof Error ? e.message : e));
+                }
+              }}
+            >
+              {s?.group_id ? t("เปลี่ยนกลุ่ม LINE (ขอรหัสเชื่อม)") : t("ขอรหัสเชื่อมกลุ่ม")}
+            </button>
+          )}
           {s &&
             (
               [

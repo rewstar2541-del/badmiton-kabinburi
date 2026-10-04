@@ -127,11 +127,6 @@ export function PlayerForm({
         </label>
       </div>
 
-      <div className="space-y-1.5 text-sm font-medium">
-        {t("เพศ")}
-        <Segmented options={GENDERS} value={gender} onChange={setGender} cols={3} />
-      </div>
-
       {self && photo?.startsWith("data:") && (
         <button type="button" className="text-xs font-semibold text-sky-700 underline" onClick={() => setPhoto(undefined)}>
           {t("ใช้รูปจาก LINE แทน (อัปเดตตอนเข้าสู่ระบบครั้งถัดไป)")}
@@ -150,6 +145,11 @@ export function PlayerForm({
           />
         </label>
       )}
+
+      <div className="space-y-1.5 text-sm font-medium">
+        {t("เพศ")}
+        <Segmented options={GENDERS} value={gender} onChange={setGender} cols={3} />
+      </div>
 
       <div className="space-y-1.5 text-sm font-medium">
         {t("ระดับมือ")}

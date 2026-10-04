@@ -63,11 +63,27 @@ Deno.serve(async (req) => {
     const events = (JSON.parse(body).events ?? []) as LineEvent[];
     for (const e of events) {
       const groupId = e.source?.type === "group" ? e.source.groupId : undefined;
-      const linkCmd = e.type === "message" && e.message?.text?.trim() === "เชื่อมแอพก๊วน";
-      if (groupId && (e.type === "join" || linkCmd)) {
-        await db.from("line_settings").update({ group_id: groupId }).eq("id", 1);
-        if (e.replyToken) await reply(e.replyToken, "เชื่อมกลุ่มนี้กับแอพก๊วนแบดแล้ว 🏸 จะแจ้งเตือนเมื่อมีคนลงชื่อและเมื่อถึงคิวลงสนาม");
+      if (!groupId || !e.replyToken) continue;
+      if (e.type === "join") {
+        await reply(e.replyToken, "สวัสดีครับ 🏸 ให้แอดมินกดขอรหัสในแอพ (ตั้งค่า > แจ้งเตือน LINE) แล้วพิมพ์ \"เชื่อมแอพก๊วน รหัส\" ในกลุ่มนี้");
+        continue;
       }
+      // เชื่อมกลุ่มได้เฉพาะเมื่อพิมพ์รหัสที่แอดมินขอจากแอพ (ใช้ได้ครั้งเดียว 15 นาที) กันคนอื่นดึงการแจ้งเตือนไปกลุ่มตัวเอง
+      const m = e.type === "message" ? e.message?.text?.trim().match(/^เชื่อมแอพก๊วน\s*(\d{6})$/) : null;
+      if (!m) continue;
+      const { data } = await db
+        .from("line_settings")
+        .update({ group_id: groupId, link_code: null, link_code_expires: null })
+        .eq("id", 1)
+        .eq("link_code", m[1])
+        .gt("link_code_expires", new Date().toISOString())
+        .select("id");
+      await reply(
+        e.replyToken,
+        data?.length
+          ? "เชื่อมกลุ่มนี้กับแอพก๊วนแบดแล้ว 🏸 จะแจ้งเตือนเมื่อมีคนลงชื่อและเมื่อถึงคิวลงสนาม"
+          : "รหัสไม่ถูกต้องหรือหมดอายุ ให้แอดมินกดขอรหัสใหม่ในแอพ",
+      );
     }
     return json({ ok: true });
   }

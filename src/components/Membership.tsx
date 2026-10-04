@@ -131,11 +131,12 @@ export function MonthlyDueCard({ player }: { player: Player }) {
 }
 
 /** เปลี่ยนแบบสมาชิก */
-export function PlanSwitch({ player }: { player: Player }) {
+export function PlanSwitch({ player, bare }: { player: Player; bare?: boolean }) {
   const { busy, error, choose } = usePlan(player);
   if (player.guestOf || !player.plan) return null;
+  const Box = bare ? "div" : Card;
   return (
-    <Card className="space-y-2">
+    <Box className="space-y-2">
       <div className="flex items-center gap-3">
         <span className="min-w-0 flex-1 text-sm font-semibold">{t("แบบสมาชิก")}</span>
         <div className="flex shrink-0 rounded-full bg-zinc-100 p-0.5">
@@ -152,7 +153,7 @@ export function PlanSwitch({ player }: { player: Player }) {
         </div>
       </div>
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
-    </Card>
+    </Box>
   );
 }
 

@@ -8,6 +8,13 @@ export interface State {
   monthly: MonthlyPayments;
   /** วันงดเล่น (YYYY-MM-DD) -> เหตุผล */
   closed: Record<string, string>;
+  /** ค่ารายเดือนที่จ่ายจริง เดือน -> ผู้เล่น -> บาท (ไม่มี = ราคาปัจจุบัน) */
+  monthlyAmounts?: Record<string, Record<string, number>>;
+}
+
+/** ค่ารายเดือนที่คนนี้จ่ายในเดือนนั้น ใช้ราคาตอนจ่าย ไม่ใช่ราคาปัจจุบัน */
+export function monthlyAmount(state: State, month: string, playerId: string): number {
+  return state.monthlyAmounts?.[month]?.[playerId] ?? state.settings.monthlyFee;
 }
 
 /**
@@ -54,6 +61,22 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K>
 export type Intent = DistributiveOmit<Action, "_id" | "_at">;
 
 export const EMPTY_STATE: State = { players: [], settings: DEFAULT_SETTINGS, days: [], monthly: {}, closed: {} };
+
+/** ไฟล์สำรองรุ่นเก่าอาจไม่มีบางช่อง เติมค่าเริ่มต้นให้ครบก่อนนำเข้า */
+export function normalizeBackup(raw: unknown): State {
+  const data = raw as Partial<State> | null;
+  if (!data || !Array.isArray(data.players) || !Array.isArray(data.days)) throw new Error("invalid backup");
+  return {
+    players: data.players.filter((p) => p && p.id && p.name).map((p) => ({ ...p, level: p.level ?? 3 })),
+    settings: { ...DEFAULT_SETTINGS, ...(data.settings ?? {}) },
+    days: data.days
+      .filter((d) => d && typeof d.date === "string")
+      .map((d) => ({ ...d, checkIns: d.checkIns ?? [], games: d.games ?? [], drinks: d.drinks ?? [] })),
+    monthly: data.monthly ?? {},
+    closed: data.closed ?? {},
+    monthlyAmounts: data.monthlyAmounts ?? {},
+  };
+}
 
 export function newId(): string {
   return crypto.randomUUID();
@@ -165,17 +188,34 @@ export function reducer(state: State, a: Action): State {
       // จ่ายรวมของแขกที่พามาด้วย
       return { ...state, days: markPaid(state.days, a.date, withGuests(state, a.playerId), a._at) };
     case "unmarkPaid": {
+      // ย้อนเฉพาะที่ปิดไปพร้อมกันตอนกดจ่าย (วันนี้และยอดค้างวันก่อนๆ มีเวลาจ่ายเดียวกัน)
       const ids = new Set(withGuests(state, a.playerId));
-      return withDay(state, a.date, (d) => ({
-        ...d,
-        checkIns: d.checkIns.map((c) => (ids.has(c.playerId) ? { ...c, paidAt: undefined } : c)),
-      }));
+      const stamp = state.days.find((d) => d.date === a.date)?.checkIns.find((c) => c.playerId === a.playerId)?.paidAt;
+      if (!stamp) return state;
+      return {
+        ...state,
+        days: state.days.map((d) =>
+          d.date > a.date
+            ? d
+            : { ...d, checkIns: d.checkIns.map((c) => (ids.has(c.playerId) && c.paidAt === stamp ? { ...c, paidAt: undefined } : c)) },
+        ),
+      };
     }
     case "setMonthlyPaid": {
       const month = { ...state.monthly[a.month] };
-      if (a.paid) month[a.playerId] = a._at;
-      else delete month[a.playerId];
-      return { ...state, monthly: { ...state.monthly, [a.month]: month } };
+      const amounts = { ...state.monthlyAmounts?.[a.month] };
+      if (a.paid) {
+        if (!month[a.playerId]) amounts[a.playerId] = state.settings.monthlyFee;
+        month[a.playerId] = a._at;
+      } else {
+        delete month[a.playerId];
+        delete amounts[a.playerId];
+      }
+      return {
+        ...state,
+        monthly: { ...state.monthly, [a.month]: month },
+        monthlyAmounts: { ...state.monthlyAmounts, [a.month]: amounts },
+      };
     }
     case "updateSettings": {
       const f = a.freeze;

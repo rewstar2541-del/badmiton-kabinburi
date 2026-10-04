@@ -1,5 +1,5 @@
 import { dayAmount } from "./billing";
-import type { State } from "./state";
+import { monthlyAmount, type State } from "./state";
 import { monthOf } from "./types";
 
 export interface DayRow {
@@ -90,7 +90,7 @@ export function monthReport(state: State, month: string): MonthReport {
   }
 
   const monthlyFees = Object.entries(state.monthly[month] ?? {})
-    .map(([id, paidAt]) => ({ name: byId.get(id)?.name ?? id, paidAt, amount: state.settings.monthlyFee }))
+    .map(([id, paidAt]) => ({ name: byId.get(id)?.name ?? id, paidAt, amount: monthlyAmount(state, month, id) }))
     .sort((a, b) => a.paidAt - b.paidAt);
 
   const sum = (k: keyof DayRow) => days.reduce((s, r) => s + (r[k] as number), 0);
