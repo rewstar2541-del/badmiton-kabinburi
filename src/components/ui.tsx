@@ -75,6 +75,7 @@ function levelColor(level: Level): string {
     "bg-amber-100 text-amber-800",
     "bg-orange-100 text-orange-700",
     "bg-rose-100 text-rose-700",
+    "bg-lime/40 text-emerald-800",
   ][level];
 }
 

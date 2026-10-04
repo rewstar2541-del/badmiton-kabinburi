@@ -2,6 +2,7 @@
 
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { isValidPromptPayId, promptPayPayload } from "@/lib/promptpay";
 import { t } from "@/lib/i18n";
 import { Button } from "./ui";
@@ -9,6 +10,8 @@ import { Button } from "./ui";
 export function PayQr({ promptPayId, amount }: { promptPayId: string; amount: number }) {
   const [src, setSrc] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // แอพ LINE (และแอพอื่นที่เปิดเว็บข้างใน) ไม่ให้ดาวน์โหลดไฟล์ เปิดรูปเต็มจอให้กดค้างเพื่อบันทึกแทน
+  const [preview, setPreview] = useState<string | null>(null);
   const valid = isValidPromptPayId(promptPayId);
 
   useEffect(() => {
@@ -34,7 +37,8 @@ export function PayQr({ promptPayId, amount }: { promptPayId: string; amount: nu
         onClick={async () => {
           setSaving(true);
           try {
-            await saveQr(promptPayId, amount);
+            const url = await saveQr(promptPayId, amount);
+            if (url) setPreview(url);
           } finally {
             setSaving(false);
           }
@@ -43,6 +47,18 @@ export function PayQr({ promptPayId, amount }: { promptPayId: string; amount: nu
         {t("บันทึกรูป QR")}
       </Button>
       <p className="text-center text-xs text-zinc-500">{t("บันทึกลงเครื่อง แล้วเปิดแอพธนาคาร เลือกสแกนจากรูปในเครื่อง")}</p>
+      {preview &&
+        createPortal(
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-black p-4" onClick={() => setPreview(null)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={preview} alt="PromptPay QR" className="max-h-[70vh] max-w-full rounded-xl" onClick={(e) => e.stopPropagation()} />
+          <p className="max-w-xs text-center text-sm text-white">{t("กดค้างที่รูป แล้วเลือก \"บันทึกรูปภาพ\" (หรือแคปหน้าจอ)")}</p>
+          <button className="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white" onClick={() => setPreview(null)}>
+            {t("ปิด")}
+          </button>
+        </div>,
+          document.body,
+        )}
     </div>
   );
 }
@@ -68,16 +84,23 @@ async function qrImage(promptPayId: string, amount: number): Promise<Blob> {
   return new Promise((ok, fail) => c.toBlob((b) => (b ? ok(b) : fail(new Error("toBlob"))), "image/png"));
 }
 
-async function saveQr(promptPayId: string, amount: number) {
+/** เว็บที่เปิดในแอพ LINE / Facebook / Instagram ดาวน์โหลดไฟล์ไม่ได้ */
+function inAppBrowser() {
+  return /\bLine\/|FBAN|FBAV|Instagram/i.test(navigator.userAgent);
+}
+
+/** บันทึกรูป QR: แชร์/ดาวน์โหลด หรือคืนรูป (data URL) ให้แสดงเต็มจอเมื่อบันทึกเองไม่ได้ */
+async function saveQr(promptPayId: string, amount: number): Promise<string | null> {
   const blob = await qrImage(promptPayId, amount);
+  if (inAppBrowser()) return blobToDataUrl(blob);
   const file = new File([blob], `promptpay-${amount}.png`, { type: "image/png" });
   // มือถือ (โดยเฉพาะ iPhone) ใช้เมนูแชร์ แล้วกด "บันทึกรูปภาพ"
   if (navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file] });
-      return;
+      return null;
     } catch (e) {
-      if ((e as Error).name === "AbortError") return;
+      if ((e as Error).name === "AbortError") return null;
     }
   }
   const url = URL.createObjectURL(blob);
@@ -88,4 +111,14 @@ async function saveQr(promptPayId: string, amount: number) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
+  return null;
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((ok, fail) => {
+    const r = new FileReader();
+    r.onload = () => ok(r.result as string);
+    r.onerror = () => fail(r.error);
+    r.readAsDataURL(blob);
+  });
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { billFor, markPaid, shuttleFee } from "../billing";
+import { billFor, datesToFreeze, markPaid, shuttleFee } from "../billing";
+import { prepare, reducer, EMPTY_STATE, type State } from "../state";
 import { DEFAULT_SETTINGS as S, type Day, type Game, type MonthlyPayments, type Player } from "../types";
 
 const daily: Player = { id: "d", name: "รายวัน", level: 3 };
@@ -73,5 +74,57 @@ describe("billing", () => {
   it("แอดมินยกเลิกสถานะรายเดือน ระบบกลับมาคิดค่าสนาม", () => {
     const d = day("2026-10-04", []);
     expect(billFor([d], d, monthly, S, { "2026-10": {} }).courtFee).toBe(40);
+  });
+});
+
+describe("แก้ราคา", () => {
+  it("เปลี่ยนราคาแล้ว บิลวันก่อนๆ คงราคาเดิม วันนี้ใช้ราคาใหม่", () => {
+    const old = day("2026-10-03", [game("g1", 2)]);
+    const now = day("2026-10-04", [game("g2", 2)]);
+    let st = { ...EMPTY_STATE, players: [daily, monthly], days: [old, now] };
+    expect(datesToFreeze(st.days, "2026-10-04")).toEqual(["2026-10-03"]);
+    const next = { ...S, courtFee: 50, firstShuttleFee: 40, nextShuttleFee: 30 };
+    st = reducer(st, prepare({ type: "updateSettings", settings: next, freeze: { dates: ["2026-10-03"], prices: S } }));
+    const [d3, d4] = st.days;
+    // 40 + 30 + 25 + 15
+    expect(billFor([d3], d3, daily, st.settings, {}).total).toBe(110);
+    // 50 + 40 + 30 + 15
+    expect(billFor([d4], d4, daily, st.settings, {}).total).toBe(135);
+  });
+
+  it("แอดมินแก้ค่าสนาม / ค่าลูกของคนเดียว แล้วคืนค่าปกติได้", () => {
+    const d = day("2026-10-04", [game("g1", 2)]);
+    let st = { ...EMPTY_STATE, players: [daily, monthly], days: [d] };
+    st = reducer(st, prepare({ type: "setBillFees", date: d.date, playerId: "d", courtFee: 0, shuttleFee: 20 }));
+    let b = billFor(st.days, st.days[0], daily, S, {});
+    expect([b.courtFee, b.shuttleFee, b.total, b.shuttleAdjusted]).toEqual([0, 20, 35, true]);
+    // คนอื่นไม่เปลี่ยน
+    expect(billFor(st.days, st.days[0], monthly, S, M).shuttleFee).toBe(55);
+    st = reducer(st, prepare({ type: "setBillFees", date: d.date, playerId: "d", courtFee: null, shuttleFee: null }));
+    b = billFor(st.days, st.days[0], daily, S, {});
+    expect([b.courtFee, b.shuttleFee, b.courtAdjusted]).toEqual([40, 55, false]);
+  });
+
+  it("แก้ราคาค่าน้ำ และลบสลิป", () => {
+    const d = { ...day("2026-10-04", []), slips: [{ id: "s1", playerId: "d", amount: 55, at: 1 }] };
+    let st: State = { ...EMPTY_STATE, players: [daily], days: [d] };
+    st = reducer(st, prepare({ type: "editDrink", date: d.date, drinkId: "w", amount: 20, note: "น้ำ" }));
+    expect(st.days[0].drinks[0].amount).toBe(20);
+    st = reducer(st, prepare({ type: "removeSlip", date: d.date, slipId: "s1" }));
+    expect(st.days[0].slips).toEqual([]);
+  });
+});
+
+describe("ล้างประวัติ", () => {
+  it("ลบกิจกรรมทั้งหมด เก็บผู้เล่น ตั้งค่า วันงดเล่น และวันจัดก๊วนหลังวันนี้", () => {
+    const guest: Player = { id: "g", name: "แขก", level: 1, guestOf: "d" };
+    const past = { ...day("2026-10-04", [game("g1", 2)]), announcement: "วันนี้" };
+    const future = { date: "2026-10-10", checkIns: [], games: [], drinks: [], announcement: "", signups: [{ playerId: "d", at: 1 }] };
+    let st: State = { ...EMPTY_STATE, players: [daily, monthly, guest], days: [past, future], monthly: M, closed: { "2026-10-11": "ปิด" } };
+    st = reducer(st, prepare({ type: "clearHistory", today: "2026-10-04" }));
+    expect(st.players.map((p) => p.id)).toEqual(["d", "m"]);
+    expect(st.monthly).toEqual({});
+    expect(st.closed).toEqual({ "2026-10-11": "ปิด" });
+    expect(st.days).toEqual([{ date: "2026-10-10", checkIns: [], games: [], drinks: [], announcement: "" }]);
   });
 });

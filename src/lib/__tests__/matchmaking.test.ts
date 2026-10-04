@@ -71,3 +71,12 @@ describe("matchmaking", () => {
     expect(teamOf("a")).toBe(teamOf("c"));
   });
 });
+
+describe("ระดับ NB", () => {
+  it("NB อยู่ระหว่าง BG กับ N ทั้งลำดับและฝีมือ", async () => {
+    const { LEVELS, strength } = await import("../types");
+    expect(LEVELS.map((l) => l.code)).toEqual(["New", "BG", "NB", "N", "S", "P"]);
+    expect(strength(2)).toBeLessThan(strength(6));
+    expect(strength(6)).toBeLessThan(strength(3));
+  });
+});

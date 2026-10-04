@@ -25,7 +25,8 @@ function minutes(ms: number) {
 
 function CourtSide({ ids, byId, team }: { ids: string[]; byId: Map<string, Player>; team: Team }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-2 py-3">
+    // basis-0 + min-w-0: แต่ละฝั่งกว้างครึ่งสนามพอดี ชื่อยาวไม่ล้นข้ามเส้นกลาง
+    <div className="flex min-w-0 flex-1 basis-0 flex-col items-center justify-center gap-2 py-3">
       <span
         className={`rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide ${
           team === "A" ? "bg-lime text-ink" : "bg-sky-300 text-ink"
@@ -38,8 +39,14 @@ function CourtSide({ ids, byId, team }: { ids: string[]; byId: Map<string, Playe
         return (
           <div key={id} className="flex w-full items-center gap-2 rounded-2xl bg-black/20 px-2 py-1.5 backdrop-blur-sm">
             <Avatar name={p?.name ?? "?"} photo={p?.photo} size={28} ring />
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">{p?.name ?? "?"}</span>
-            {p && <LevelBadge level={p.level} />}
+            <span className="line-clamp-2 min-w-0 flex-1 text-sm leading-tight font-semibold [overflow-wrap:anywhere] text-white" title={p?.name}>
+              {p?.name ?? "?"}
+            </span>
+            {p && (
+              <span className="shrink-0">
+                <LevelBadge level={p.level} />
+              </span>
+            )}
           </div>
         );
       })}

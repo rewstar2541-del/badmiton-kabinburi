@@ -13,11 +13,12 @@ function time(at: number) {
 
 /** ผู้เล่นแนบรูปสลิปหลังโอน ให้แอดมินตรวจ */
 export function SlipUpload({ playerId, amount }: { playerId: string; amount: number }) {
-  const { sendSlip } = useStore();
+  const { sendSlip, removeSlip } = useStore();
   const { day } = useToday();
   const pin = savedPin.get();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [removing, setRemoving] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const mine = (day.slips ?? []).filter((s) => s.playerId === playerId);
 
@@ -31,6 +32,37 @@ export function SlipUpload({ playerId, amount }: { playerId: string; amount: num
           </span>
         </div>
       )}
+      {mine.map((x, i) => (
+        <div key={x.id} className="flex items-center gap-2 rounded-2xl bg-zinc-50 px-3 py-2 text-sm">
+          <span className="min-w-0 flex-1">
+            {t("สลิปที่ {n}", { n: i + 1 })} · {time(x.at)}
+          </span>
+          {removing === x.id ? (
+            <>
+              <button
+                className="rounded-full bg-red-500 px-3 py-1 text-xs font-semibold text-white"
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  const err = await removeSlip(playerId, pin, x.id);
+                  setError(err ? t(err) : "");
+                  setRemoving(null);
+                  setBusy(false);
+                }}
+              >
+                {t("ยืนยันลบ")}
+              </button>
+              <button className="text-xs text-zinc-500" onClick={() => setRemoving(null)}>
+                {t("ไม่ลบ")}
+              </button>
+            </>
+          ) : (
+            <button className="text-xs font-semibold text-red-500" onClick={() => setRemoving(x.id)}>
+              {t("ลบสลิปนี้ (แนบผิด)")}
+            </button>
+          )}
+        </div>
+      ))}
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
       <Button
         variant={mine.length ? "secondary" : "primary"}
@@ -68,8 +100,9 @@ export function SlipUpload({ playerId, amount }: { playerId: string; amount: num
 
 /** แอดมินดูสลิปที่ผู้เล่นส่งมาวันนี้ */
 export function SlipReview({ playerId }: { playerId: string }) {
-  const { slipImage } = useStore();
-  const { day } = useToday();
+  const { slipImage, dispatch } = useStore();
+  const { date, day } = useToday();
+  const [removing, setRemoving] = useState<string | null>(null);
   const [images, setImages] = useState<Record<string, string | null>>({});
   const [error, setError] = useState("");
   const slips = (day.slips ?? []).filter((s) => s.playerId === playerId);
@@ -94,11 +127,28 @@ export function SlipReview({ playerId }: { playerId: string }) {
             <span>
               {time(s.at)} · {t("ยอดตอนส่ง {amount}", { amount: baht(s.amount) })}
             </span>
-            {!(s.id in images) && (
-              <button className="font-semibold text-sky-700 underline" onClick={() => show(s.id)}>
-                {t("ดูสลิป")}
-              </button>
-            )}
+            <span className="flex items-center gap-3">
+              {!(s.id in images) && (
+                <button className="font-semibold text-sky-700 underline" onClick={() => show(s.id)}>
+                  {t("ดูสลิป")}
+                </button>
+              )}
+              {removing === s.id ? (
+                <button
+                  className="rounded-full bg-red-500 px-3 py-1 text-xs font-semibold text-white"
+                  onClick={() => {
+                    dispatch({ type: "removeSlip", date, slipId: s.id });
+                    setRemoving(null);
+                  }}
+                >
+                  {t("ยืนยันลบ")}
+                </button>
+              ) : (
+                <button className="text-xs font-semibold text-red-500" onClick={() => setRemoving(s.id)}>
+                  {t("ลบ")}
+                </button>
+              )}
+            </span>
           </div>
           {images[s.id] && (
             // eslint-disable-next-line @next/next/no-img-element

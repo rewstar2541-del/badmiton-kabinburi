@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "@/lib/remote";
 import { today, useStore } from "@/lib/store";
 import { resizePhoto } from "@/lib/image";
@@ -147,8 +148,9 @@ export function EventPhotos() {
         </div>
       ))}
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-black/90 p-3" onClick={() => setOpen(null)}>
+      {open &&
+        createPortal(
+        <div className="fixed inset-0 z-[100] flex flex-col bg-black p-3" onClick={() => setOpen(null)}>
           <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
             {auth.isAdmin && (
               <button className="rounded-full bg-red-500/80 px-3 py-1.5 text-sm font-semibold text-white" onClick={() => remove(open)}>
@@ -164,8 +166,9 @@ export function EventPhotos() {
             <img src={open.url} alt={open.caption ?? ""} className="max-h-full max-w-full rounded-xl object-contain" />
           </div>
           {open.caption && <p className="py-2 text-center text-sm text-white"><Auto text={open.caption} /></p>}
-        </div>
-      )}
+        </div>,
+          document.body,
+        )}
     </div>
   );
 }

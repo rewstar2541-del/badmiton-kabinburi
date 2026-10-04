@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { hasAvoid, nextMatch, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
-import type { Game, Player } from "@/lib/types";
+import { strength, type Game, type Player } from "@/lib/types";
 import { Avatar, Button, Icon, LevelBadge, Sheet } from "./ui";
 import { t } from "@/lib/i18n";
 
@@ -45,7 +45,10 @@ export function MatchBuilder({ court, onClose }: { court: number; onClose: () =>
   const full = slots.every(Boolean);
   const chosen = slots.map((id) => (id ? byId.get(id) : undefined)).filter((p) => p !== undefined);
   const clash = hasAvoid(chosen);
-  const teamSum = (ids: Slots) => ids.reduce((n, id) => n + (id ? (byId.get(id)?.level ?? 0) : 0), 0);
+  const teamSum = (ids: Slots) => ids.reduce((n, id) => {
+      const p = id ? byId.get(id) : undefined;
+      return n + (p ? strength(p.level) : 0);
+    }, 0);
 
   const slot = (i: number) => {
     const p: Player | undefined = slots[i] ? byId.get(slots[i]!) : undefined;
@@ -75,7 +78,7 @@ export function MatchBuilder({ court, onClose }: { court: number; onClose: () =>
     <Sheet onClose={onClose} title={<h3 className="font-display text-lg font-semibold">{t("จัดคู่ สนาม {n}", { n: court })}</h3>}>
       <div className="court-surface flex gap-1 rounded-2xl px-2 py-3">
         {(["A", "B"] as const).map((team, ti) => (
-          <div key={team} className="flex flex-1 flex-col items-center gap-2">
+          <div key={team} className="flex min-w-0 flex-1 basis-0 flex-col items-center gap-2">
             <span
               className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${team === "A" ? "bg-lime text-ink" : "bg-sky-300 text-ink"}`}
             >

@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { billFor, type Bill } from "@/lib/billing";
+import { billFor, shuttleFormula, type Bill } from "@/lib/billing";
 import { locale, t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
-import { monthOf, type Player } from "@/lib/types";
+import { monthOf, type Drink, type Player } from "@/lib/types";
 import { ExportReport } from "./ExportReport";
 import { PayQr } from "./PayQr";
 import { SlipReview } from "./Slips";
@@ -18,6 +18,123 @@ function Row({ label, value }: { label: string; value: string }) {
       <span className="text-zinc-500">{label}</span>
       <span className="font-medium">{value}</span>
     </div>
+  );
+}
+
+/** แก้ราคาค่าน้ำรายการเดียว */
+function DrinkRow({ drink, date }: { drink: Drink; date: string }) {
+  const { dispatch } = useStore();
+  const [editing, setEditing] = useState(false);
+  const [amount, setAmount] = useState(String(drink.amount));
+  if (editing)
+    return (
+      <form
+        className="flex items-center gap-2 rounded-2xl bg-zinc-50 px-3 py-2 text-sm"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const n = Number(amount);
+          if (!(n > 0)) return;
+          dispatch({ type: "editDrink", date, drinkId: drink.id, amount: n, note: drink.note });
+          setEditing(false);
+        }}
+      >
+        <span className="min-w-0 flex-1 truncate">
+          <Auto text={drink.note} />
+        </span>
+        <input
+          className={`${inputClass} w-20 py-1.5`}
+          inputMode="numeric"
+          autoFocus
+          aria-label={t("บาท")}
+          value={amount}
+          onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
+        />
+        <Button type="submit">{t("บันทึก")}</Button>
+      </form>
+    );
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-2xl bg-zinc-50 px-3 py-2 text-sm">
+      <span className="min-w-0 flex-1">
+        <Auto text={drink.note} /> · {baht(drink.amount)}
+      </span>
+      <button className="text-xs font-semibold text-sky-700" onClick={() => setEditing(true)}>
+        {t("แก้ราคา")}
+      </button>
+      <button className="text-xs text-red-500" onClick={() => dispatch({ type: "removeDrink", date, drinkId: drink.id })}>
+        {t("ลบ")}
+      </button>
+    </div>
+  );
+}
+
+/** แอดมินแก้ค่าสนาม / ค่าลูกของคนนี้วันนี้ (เช่น ลดให้ หรือคิดผิด) */
+function FeeEditor({ player, bill }: { player: Player; bill: Bill }) {
+  const { dispatch } = useStore();
+  const { date, day } = useToday();
+  const [open, setOpen] = useState(false);
+  const [court, setCourt] = useState(String(bill.courtFee));
+  const [shuttle, setShuttle] = useState(String(bill.shuttleFee));
+  if (!day.checkIns.some((c) => c.playerId === player.id)) return null;
+  const adjusted = bill.courtAdjusted || bill.shuttleAdjusted;
+  const num = (v: string) => Math.max(0, Number(v) || 0);
+  const clean = (v: string) => v.replace(/[^\d.]/g, "");
+
+  if (!open)
+    return (
+      <button className="w-full rounded-2xl border border-dashed border-zinc-300 px-3 py-2.5 text-sm font-medium text-zinc-600" onClick={() => setOpen(true)}>
+        {adjusted ? t("แก้ยอดค่าสนาม / ค่าลูกแล้ว (กดเพื่อดู)") : t("แก้ยอดค่าสนาม / ค่าลูก ของคนนี้วันนี้")}
+      </button>
+    );
+  return (
+    <form
+      className="space-y-2 rounded-3xl bg-zinc-50 p-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        // เก็บเฉพาะช่องที่แก้ ช่องที่ไม่ได้แตะยังคิดตามราคาปกติ
+        const keep = (v: string, now: number, adjusted: boolean) => (adjusted || num(v) !== now ? num(v) : null);
+        dispatch({
+          type: "setBillFees",
+          date,
+          playerId: player.id,
+          courtFee: keep(court, bill.courtFee, bill.courtAdjusted),
+          shuttleFee: keep(shuttle, bill.shuttleFee, bill.shuttleAdjusted),
+        });
+        setOpen(false);
+      }}
+    >
+      <div className="text-sm font-semibold">{t("แก้ยอดของคนนี้วันนี้")}</div>
+      <div className="flex gap-2">
+        <label className="min-w-0 flex-1 text-xs text-zinc-500">
+          {t("ค่าสนาม")}
+          <input className={inputClass} inputMode="numeric" value={court} onChange={(e) => setCourt(clean(e.target.value))} />
+        </label>
+        <label className="min-w-0 flex-1 text-xs text-zinc-500">
+          {t("ค่าลูกรวม")}
+          <input className={inputClass} inputMode="numeric" value={shuttle} onChange={(e) => setShuttle(clean(e.target.value))} />
+        </label>
+      </div>
+      <p className="text-xs text-zinc-500">{t("ใช้เฉพาะบิลของคนนี้วันนี้ ราคาปกติแก้ที่แท็บตั้งค่า")}</p>
+      <div className="flex gap-2">
+        <Button type="submit" variant="primary" className="flex-1">
+          {t("บันทึก")}
+        </Button>
+        {adjusted ? (
+          <Button
+            type="button"
+            onClick={() => {
+              dispatch({ type: "setBillFees", date, playerId: player.id, courtFee: null, shuttleFee: null });
+              setOpen(false);
+            }}
+          >
+            {t("คิดตามราคาปกติ")}
+          </Button>
+        ) : (
+          <Button type="button" onClick={() => setOpen(false)}>
+            {t("ยกเลิก")}
+          </Button>
+        )}
+      </div>
+    </form>
   );
 }
 
@@ -44,11 +161,12 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
       }
     >
       <div className="space-y-2 rounded-3xl bg-zinc-50 p-4">
-        <Row label={bill.monthlyMember ? t("ค่าสนาม (จ่ายรายเดือนแล้ว)") : t("ค่าสนาม")} value={baht(bill.courtFee)} />
+        <Row label={(bill.monthlyMember ? t("ค่าสนาม (จ่ายรายเดือนแล้ว)") : t("ค่าสนาม")) + (bill.courtAdjusted ? ` (${t("แอดมินแก้ยอด")})` : "")} value={baht(bill.courtFee)} />
         <Row
           label={
             t("ค่าลูก {n} ลูก", { n: bill.shuttleCount }) +
-            (bill.shuttleCount > 0 ? ` (${s.firstShuttleFee} + ${s.nextShuttleFee}×${bill.shuttleCount - 1})` : "")
+            shuttleFormula(bill) +
+            (bill.shuttleAdjusted ? ` (${t("แอดมินแก้ยอด")})` : "")
           }
           value={baht(bill.shuttleFee)}
         />
@@ -66,14 +184,7 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
       <div className="space-y-2">
         <div className="text-sm font-semibold">{t("ค่าน้ำ")}</div>
         {drinks.map((d) => (
-          <div key={d.id} className="flex items-center justify-between rounded-2xl bg-zinc-50 px-3 py-2 text-sm">
-            <span>
-              <Auto text={d.note} /> · {baht(d.amount)}
-            </span>
-            <button className="text-xs text-red-500" onClick={() => dispatch({ type: "removeDrink", date, drinkId: d.id })}>
-              {t("ลบ")}
-            </button>
-          </div>
+          <DrinkRow key={d.id} drink={d} date={date} />
         ))}
         <form
           className="flex gap-2"
@@ -96,6 +207,8 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
           <Button type="submit">{t("เพิ่ม")}</Button>
         </form>
       </div>
+
+      <FeeEditor key={`${bill.courtFee}|${bill.shuttleFee}`} player={player} bill={bill} />
 
       <SlipReview playerId={player.id} />
 

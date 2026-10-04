@@ -1,4 +1,4 @@
-import { isMonthlyPaid, type Day, type MonthlyPayments, type Player, type Settings } from "./types";
+import { isMonthlyPaid, type Day, type DayPrices, type MonthlyPayments, type Player, type Settings } from "./types";
 
 export interface Bill {
   playerId: string;
@@ -8,6 +8,11 @@ export interface Bill {
   shuttleCount: number;
   shuttleFee: number;
   drinkFee: number;
+  /** ราคาที่ใช้คิดของวันนั้น */
+  prices: DayPrices;
+  /** แอดมินแก้ค่าสนาม / ค่าลูกของคนนี้วันนี้เอง */
+  courtAdjusted: boolean;
+  shuttleAdjusted: boolean;
   /** ยอดค้างจ่ายจากวันก่อนๆ */
   carriedOver: number;
   /** ยอดของแขกที่พามา (วันนี้ + ค้าง) รวมอยู่ใน total แล้ว */
@@ -23,9 +28,25 @@ export function shuttleCountFor(day: Day, playerId: string): number {
 }
 
 /** ลูกแรกของวันคิด firstShuttleFee ลูกต่อไปคิด nextShuttleFee ต่อลูก */
-export function shuttleFee(count: number, s: Settings): number {
+export function shuttleFee(count: number, s: DayPrices): number {
   if (count <= 0) return 0;
   return s.firstShuttleFee + (count - 1) * s.nextShuttleFee;
+}
+
+/** ราคาที่ใช้กับวันนั้น: ราคาที่เก็บไว้ของวันนั้น หรือราคาปัจจุบัน */
+export function pricesFor(day: Day, s: Settings): DayPrices {
+  return day.prices ?? s;
+}
+
+/** ราคาเดิมยังไม่ได้เก็บไว้กับวันไหนบ้าง (วันก่อนวันนี้ที่มีคนเช็คอิน) ใช้ตอนแอดมินเปลี่ยนราคา */
+export function datesToFreeze(days: Day[], today: string): string[] {
+  return days.filter((d) => d.date < today && !d.prices && d.checkIns.length > 0).map((d) => d.date);
+}
+
+/** วิธีคิดค่าลูก เช่น " (30 + 25×2)" ว่างถ้าไม่มีลูก หรือแอดมินแก้ยอดเอง */
+export function shuttleFormula(b: Pick<Bill, "shuttleCount" | "prices" | "shuttleAdjusted">): string {
+  if (b.shuttleAdjusted || b.shuttleCount <= 0) return "";
+  return ` (${b.prices.firstShuttleFee} + ${b.prices.nextShuttleFee}×${b.shuttleCount - 1})`;
 }
 
 /** ยอดของวันนั้นวันเดียว ไม่รวมยอดค้าง */
@@ -36,9 +57,11 @@ export function dayAmount(
   monthly: MonthlyPayments,
 ): Omit<Bill, "carriedOver" | "guests" | "total" | "paid"> & { amount: number } {
   const monthlyMember = isMonthlyPaid(monthly, day.date, player.id);
-  const courtFee = monthlyMember ? 0 : s.courtFee;
+  const p = pricesFor(day, s);
+  const ci = day.checkIns.find((c) => c.playerId === player.id);
+  const courtFee = ci?.courtFee ?? (monthlyMember ? 0 : p.courtFee);
   const shuttleCount = shuttleCountFor(day, player.id);
-  const sFee = shuttleFee(shuttleCount, s);
+  const sFee = ci?.shuttleFee ?? shuttleFee(shuttleCount, p);
   const drinkFee = day.drinks
     .filter((d) => d.playerId === player.id)
     .reduce((sum, d) => sum + d.amount, 0);
@@ -49,6 +72,9 @@ export function dayAmount(
     shuttleCount,
     shuttleFee: sFee,
     drinkFee,
+    prices: p,
+    courtAdjusted: ci?.courtFee !== undefined,
+    shuttleAdjusted: ci?.shuttleFee !== undefined,
     amount: courtFee + sFee + drinkFee,
   };
 }

@@ -22,7 +22,16 @@ export interface Rows {
     guest_of?: string | null;
     pending?: boolean | null;
   }[];
-  checkins: { date: string; player_id: string; at: string; paid_at: string | null; resting?: boolean }[];
+  checkins: {
+    date: string;
+    player_id: string;
+    at: string;
+    paid_at: string | null;
+    resting?: boolean;
+    court_fee?: number | null;
+    shuttle_fee?: number | null;
+  }[];
+  prices: { date: string; court_fee: number; first_shuttle_fee: number; next_shuttle_fee: number }[];
   games: {
     id: string;
     date: string;
@@ -79,7 +88,15 @@ export function rowsToState(r: Rows): State {
       at: ms(c.at),
       paidAt: c.paid_at ? ms(c.paid_at) : undefined,
       ...(c.resting ? { resting: true } : {}),
+      ...(c.court_fee != null ? { courtFee: Number(c.court_fee) } : {}),
+      ...(c.shuttle_fee != null ? { shuttleFee: Number(c.shuttle_fee) } : {}),
     });
+  for (const x of r.prices ?? [])
+    day(x.date).prices = {
+      courtFee: Number(x.court_fee),
+      firstShuttleFee: Number(x.first_shuttle_fee),
+      nextShuttleFee: Number(x.next_shuttle_fee),
+    };
   for (const g of r.games)
     day(g.date).games.push({
       id: g.id,
@@ -164,13 +181,14 @@ export const TABLE_OF: Record<string, TableKey> = {
   signups: "signups",
   slips: "slips",
   closed_days: "closed",
+  day_prices: "prices",
 };
 
 export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iterable<TableKey>, prev?: Rows): Promise<Rows> {
   const since = isAdmin ? "2000-01-01" : sinceDate(PLAYER_HISTORY_DAYS);
   const fetchers: { [K in TableKey]: () => Promise<Rows[K]> } = {
     players: () => all(() => db.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of,pending").order("id")),
-    checkins: () => all(() => db.from("checkins").select("date,player_id,at,paid_at,resting").gte("date", since).order("date").order("player_id")),
+    checkins: () => all(() => db.from("checkins").select("date,player_id,at,paid_at,resting,court_fee,shuttle_fee").gte("date", since).order("date").order("player_id")),
     games: () => all(() => db.from("games").select("id,date,court,player_ids,started_at,ended_at,shuttles,winner").gte("date", since).order("id")),
     // ค่าน้ำ ค่ารายเดือน และสลิป ผู้เล่นทั่วไปอ่านไม่ได้ (โหลดของตัวเองแยกผ่าน my_private)
     drinks: async () => (isAdmin ? all(() => db.from("drinks").select("id,date,player_id,amount,note").order("id")) : []),
@@ -183,8 +201,9 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
     },
     announcements: () => all(() => db.from("announcements").select("date,message").gte("date", since).order("date")),
     signups: () => all(() => db.from("signups").select("date,player_id,at").gte("date", since).order("date").order("player_id")),
-    slips: async () => (isAdmin ? all(() => db.from("slips").select("id,date,player_id,amount,created_at").order("id")) : []),
+    slips: async () => (isAdmin ? all(() => db.from("slips").select("id,date,player_id,amount,created_at").is("removed_at", null).order("id")) : []),
     closed: () => all(() => db.from("closed_days").select("date,reason").order("date")),
+    prices: () => all(() => db.from("day_prices").select("date,court_fee,first_shuttle_fee,next_shuttle_fee").gte("date", since).order("date")),
   };
   const want = new Set<TableKey>(keys ?? (Object.keys(fetchers) as TableKey[]));
   const rows = { ...(prev ?? ({} as Rows)) } as Record<TableKey, unknown>;
@@ -263,6 +282,18 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       );
     case "removeDrink":
       return check(await db.from("drinks").delete().eq("id", a.drinkId));
+    case "editDrink":
+      return check(await db.from("drinks").update({ amount: a.amount, note: a.note }).eq("id", a.drinkId));
+    case "setBillFees":
+      return check(
+        await db
+          .from("checkins")
+          .update({ court_fee: a.courtFee, shuttle_fee: a.shuttleFee })
+          .eq("date", a.date)
+          .eq("player_id", a.playerId),
+      );
+    case "removeSlip":
+      return check(await db.from("slips").delete().eq("id", a.slipId));
     case "markPaid":
       // ปิดยอดวันนี้และยอดค้างทั้งหมดก่อนหน้า
       return check(
@@ -281,6 +312,20 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
         : check(await db.from("monthly_payments").delete().eq("month", a.month).eq("player_id", a.playerId));
     case "updateSettings": {
       const s = a.settings;
+      if (a.freeze?.dates.length) {
+        const p = a.freeze.prices;
+        check(
+          await db.from("day_prices").upsert(
+            a.freeze.dates.map((date) => ({
+              date,
+              court_fee: p.courtFee,
+              first_shuttle_fee: p.firstShuttleFee,
+              next_shuttle_fee: p.nextShuttleFee,
+            })),
+            { ignoreDuplicates: true },
+          ),
+        );
+      }
       return check(
         await db.from("settings").upsert({
           id: 1,
@@ -309,6 +354,14 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       return check(await db.from("signups").delete().eq("date", a.date).eq("player_id", a.playerId));
     case "addSlip":
       return; // ออนไลน์ใช้ submitSlip
+    case "clearHistory": {
+      // ลบตามลำดับ (เกมและค่าใช้จ่ายก่อนเช็คอิน แขกลบท้ายสุด)
+      for (const table of ["games", "drinks", "slips", "signups", "checkins", "day_prices"])
+        check(await db.from(table).delete().gte("date", "1900-01-01"));
+      check(await db.from("monthly_payments").delete().neq("month", ""));
+      check(await db.from("announcements").delete().lte("date", a.today));
+      return check(await db.from("players").delete().not("guest_of", "is", null));
+    }
     case "replace":
       return importState(db, a.state);
   }
@@ -321,6 +374,8 @@ async function importState(db: SupabaseClient, s: State) {
   const checkins = days.flatMap((d) =>
     d.checkIns.map((c) => ({ date: d.date, player_id: c.playerId, at: iso(c.at), paid_at: c.paidAt ? iso(c.paidAt) : null,
       resting: Boolean(c.resting),
+      court_fee: c.courtFee ?? null,
+      shuttle_fee: c.shuttleFee ?? null,
     })),
   );
   const games = days.flatMap((d) =>
@@ -367,6 +422,13 @@ export async function signUpDay(db: SupabaseClient, playerId: string, pin: strin
 
 export async function submitSlip(db: SupabaseClient, playerId: string, pin: string, amount: number, image: string) {
   const { data, error } = await db.rpc("submit_slip", { p_player: playerId, p_pin: pin, p_amount: amount, p_image: image });
+  if (error) return error.message;
+  return (data as string | null) ?? null;
+}
+
+/** ผู้เล่นลบสลิปของตัวเองที่ส่งผิด (เฉพาะที่ส่งวันนี้) */
+export async function removeMySlip(db: SupabaseClient, playerId: string, pin: string, slipId: string) {
+  const { data, error } = await db.rpc("remove_my_slip", { p_player: playerId, p_pin: pin, p_slip: slipId });
   if (error) return error.message;
   return (data as string | null) ?? null;
 }

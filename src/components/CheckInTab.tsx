@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useStore, useToday } from "@/lib/store";
-import { isMonthlyPaid } from "@/lib/types";
+import { LEVELS, isMonthlyPaid, type Player } from "@/lib/types";
 import { AnnounceCard } from "./AnnounceCard";
 import { AdminAddGuest } from "./Guests";
 import { PlayerForm } from "./PlayersTab";
@@ -12,7 +12,7 @@ import { nameMatch } from "@/lib/roster";
 
 export function CheckInTab() {
   const { state, dispatch } = useStore();
-  const { date, day } = useToday();
+  const { day } = useToday();
   const [q, setQ] = useState("");
   const [adding, setAdding] = useState(false);
   const [addingGuest, setAddingGuest] = useState(false);
@@ -24,11 +24,19 @@ export function CheckInTab() {
   const rank = (id: string) => (checked.has(id) ? 2 : signed.has(id) ? 0 : 1);
   // แขกที่ไม่ได้มาวันนี้ และคนที่ยังรออนุมัติ ไม่ต้องแสดง
   const roster = state.players.filter((p) => !p.pending && (!p.guestOf || checked.has(p.id)));
-  // แสดงเฉพาะคนที่ลงชื่อวันนี้ (และคนที่เช็คอินแล้ว) คนมาโดยไม่ลงชื่อพิมพ์ชื่อค้นหา
-  const list = (q.trim() ? roster.filter((p) => nameMatch(p, q)) : roster.filter((p) => signed.has(p.id) || checked.has(p.id))).sort(
+  // แสดงทุกคนที่ลงทะเบียนแล้ว แบ่งโซนตามระดับมือ ในแต่ละโซนคนที่ลงชื่อวันนี้ขึ้นก่อน
+  const list = (q.trim() ? roster.filter((p) => nameMatch(p, q)) : roster).sort(
     (a, b) => rank(a.id) - rank(b.id) || a.name.localeCompare(b.name, "th"),
   );
-  const hidden = !q.trim() && list.length < roster.length;
+  const groups = LEVELS.map((l) => ({ level: l, players: list.filter((p) => p.level === l.value) })).filter((g) => g.players.length);
+  const [closed, setClosed] = useState<Set<number>>(new Set());
+  const toggle = (v: number) =>
+    setClosed((c) => {
+      const n = new Set(c);
+      if (n.has(v)) n.delete(v);
+      else n.add(v);
+      return n;
+    });
   const members = state.players.filter((p) => !p.pending && !p.guestOf).length;
 
   return (
@@ -71,51 +79,73 @@ export function CheckInTab() {
         </Card>
       )}
 
-      <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-        {list.map((p) => {
-          const on = checked.has(p.id);
-          return (
-            <li key={p.id}>
-              <button
-                onClick={() => dispatch({ type: on ? "undoCheckIn" : "checkIn", date, playerId: p.id })}
-                className={`relative flex w-full flex-col items-center gap-2 rounded-3xl px-3 pt-4 pb-3 text-center transition active:scale-[0.97] ${
-                  on ? "bg-ink text-white shadow-lg shadow-ink/20" : "bg-white shadow-[0_8px_24px_-14px_rgba(11,18,32,0.25)]"
-                }`}
-              >
-                <span
-                  className={`absolute top-2.5 right-2.5 grid size-6 place-items-center rounded-full transition ${
-                    on ? "bg-lime text-ink" : "bg-zinc-100 text-transparent"
-                  }`}
-                >
-                  <Icon.Check width={14} height={14} strokeWidth={3} />
-                </span>
-                <Avatar name={p.name} photo={p.photo} size={52} />
-                <span className="w-full truncate font-semibold">{p.name}</span>
-                <span className="flex items-center gap-1.5">
-                  <LevelBadge level={p.level} />
-                  {p.guestOf && <span className={`text-[11px] font-medium ${on ? "text-amber-300" : "text-amber-600"}`}>{t("แขก")}</span>}
-                  {signed.has(p.id) && !on && <span className="text-[11px] font-medium text-sky-600">{t("ลงชื่อ")}</span>}
-                  {isMonthlyPaid(state.monthly, date, p.id) && (
-                    <span className={`text-[11px] font-medium ${on ? "text-lime" : "text-emerald-600"}`}>{t("รายเดือน")}</span>
-                  )}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-      {hidden && (
-        <p className="px-1 text-center text-sm text-zinc-500">
-          {list.length === 0
-            ? t("ยังไม่มีใครลงชื่อหรือเช็คอินวันนี้ พิมพ์ชื่อด้านบนเพื่อเช็คอินให้")
-            : t("แสดงเฉพาะคนที่ลงชื่อวันนี้ คนที่มาโดยไม่ได้ลงชื่อ พิมพ์ชื่อค้นหาแล้วเช็คอินให้")}
-        </p>
-      )}
-      {!hidden && list.length === 0 && (
+      {groups.map(({ level, players }) => {
+        const open = q.trim() !== "" || !closed.has(level.value);
+        const inCount = players.filter((p) => checked.has(p.id)).length;
+        const signedCount = players.filter((p) => signed.has(p.id) && !checked.has(p.id)).length;
+        return (
+          <section key={level.value} className="space-y-2.5">
+            <button
+              className="flex w-full items-center gap-2 rounded-2xl bg-zinc-100 px-3 py-2.5 text-left"
+              onClick={() => toggle(level.value)}
+              aria-expanded={open}
+            >
+              <LevelBadge level={level.value} />
+              <span className="min-w-0 flex-1 truncate font-semibold">{t(level.label)}</span>
+              <span className="shrink-0 text-xs text-zinc-500">
+                {t("มาแล้ว {a}/{b}", { a: inCount, b: players.length })}
+                {signedCount > 0 && ` · ${t("ลงชื่อ {n}", { n: signedCount })}`}
+              </span>
+              <span className="shrink-0 text-sm text-zinc-400">{open ? "▲" : "▼"}</span>
+            </button>
+            {open && (
+              <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                {players.map((p) => (
+                  <PlayerTile key={p.id} p={p} on={checked.has(p.id)} signed={signed.has(p.id)} />
+                ))}
+              </ul>
+            )}
+          </section>
+        );
+      })}
+      {list.length === 0 && (
         <Card className="py-10 text-center text-sm text-zinc-500">
           {state.players.length === 0 ? t("ยังไม่มีผู้เล่น กดปุ่ม + เพื่อลงทะเบียน") : t("ไม่พบชื่อที่ค้นหา")}
         </Card>
       )}
     </div>
+  );
+}
+
+function PlayerTile({ p, on, signed }: { p: Player; on: boolean; signed: boolean }) {
+  const { state, dispatch } = useStore();
+  const { date } = useToday();
+  return (
+    <li>
+      <button
+        onClick={() => dispatch({ type: on ? "undoCheckIn" : "checkIn", date, playerId: p.id })}
+        className={`relative flex w-full flex-col items-center gap-2 rounded-3xl px-3 pt-4 pb-3 text-center transition active:scale-[0.97] ${
+          on ? "bg-ink text-white shadow-lg shadow-ink/20" : "bg-white shadow-[0_8px_24px_-14px_rgba(11,18,32,0.25)]"
+        }`}
+      >
+        <span
+          className={`absolute top-2.5 right-2.5 grid size-6 place-items-center rounded-full transition ${
+            on ? "bg-lime text-ink" : "bg-zinc-100 text-transparent"
+          }`}
+        >
+          <Icon.Check width={14} height={14} strokeWidth={3} />
+        </span>
+        <Avatar name={p.name} photo={p.photo} size={52} />
+        <span className="w-full truncate font-semibold">{p.name}</span>
+        <span className="flex items-center gap-1.5">
+          <LevelBadge level={p.level} />
+          {p.guestOf && <span className={`text-[11px] font-medium ${on ? "text-amber-300" : "text-amber-600"}`}>{t("แขก")}</span>}
+          {signed && !on && <span className="text-[11px] font-medium text-sky-600">{t("ลงชื่อ")}</span>}
+          {isMonthlyPaid(state.monthly, date, p.id) && (
+            <span className={`text-[11px] font-medium ${on ? "text-lime" : "text-emerald-600"}`}>{t("รายเดือน")}</span>
+          )}
+        </span>
+      </button>
+    </li>
   );
 }
