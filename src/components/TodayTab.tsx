@@ -11,6 +11,7 @@ import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle } from "./ui";
 import { t } from "@/lib/i18n";
 import { RestButton } from "./RestButton";
 import { Auto } from "@/lib/autoTranslate";
+import { EventPhotos } from "./EventPhotos";
 
 /** ประกาศจัดก๊วนวันนี้ (ใช้ทั้งหน้าผู้เล่นและแอดมิน) */
 export function AnnouncementBanner({ message }: { message: string }) {
@@ -87,6 +88,7 @@ export function TodayTab() {
           </Card>
         )}
         <ClubCalendar />
+        <EventPhotos />
       </div>
     );
 
@@ -159,6 +161,7 @@ export function TodayTab() {
       {checkedIn && status !== "home" && !player.guestOf && <BringGuest player={player} pin={pin} />}
       <SignupCount />
       <ClubCalendar />
+      <EventPhotos />
     </div>
   );
 }

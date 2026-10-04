@@ -245,7 +245,7 @@ export function CourtsTab() {
   );
 }
 
-/** หน้าสนามของผู้เล่น: เห็นแค่สนามและคิวของตัวเอง สนามอื่นแสดงแค่ว่าว่างหรือไม่ ไม่แสดงชื่อคนอื่น */
+/** หน้าสนามของผู้เล่น: สนามและคิวของตัวเองด้านบน แล้วทุกสนามและคิวแบบเดียวกับแอดมิน (ดูอย่างเดียว เหมือนจอทีวี) */
 function PlayerCourts() {
   const { state } = useStore();
   const { day } = useToday();
@@ -303,20 +303,55 @@ function PlayerCourts() {
       <MyRestCard />
 
       <SectionTitle right={t("ว่าง {n} สนาม", { n: courts.length - active.size })}>{t("สนามทั้งหมด")}</SectionTitle>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         {courts.map((c) => {
           const g = active.get(c);
           return (
-            <Card key={c} className="py-3">
-              <div className="font-semibold">{t("สนาม {n}", { n: c })}</div>
-              <div className={`text-xs ${g ? "text-emerald-700" : "text-zinc-500"}`}>
-                {g ? t("กำลังเล่น {n} นาที", { n: minutes(now - g.startedAt) }) : t("ว่าง")}
+            <Card key={c}>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="font-display text-lg font-semibold">{t("สนาม {n}", { n: c })}</h3>
+                <span
+                  className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+                    g ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"
+                  }`}
+                >
+                  <span className={`size-1.5 rounded-full ${g ? "animate-pulse bg-emerald-500" : "bg-zinc-400"}`} />
+                  {g ? t("กำลังเล่น") : t("ว่าง")}
+                </span>
               </div>
+              {g ? (
+                <ActiveCourt game={g} byId={byId} date={day.date} now={now} />
+              ) : (
+                <div className="court-surface flex h-24 items-center justify-center rounded-2xl text-sm font-semibold text-white/80">
+                  {t("ว่าง")}
+                </div>
+              )}
             </Card>
           );
         })}
       </div>
-      <p className="px-1 text-xs text-zinc-500">{t("รอคิวทั้งหมด {n} คน", { n: queue.length })}</p>
+
+      <SectionTitle right={t("{n} คน", { n: queue.length })}>{t("คิวรอลงสนาม")}</SectionTitle>
+      <Card className="p-2">
+        <ol>
+          {queue.map((e, i) => (
+            <li key={e.player.id} className={`flex items-center gap-3 rounded-2xl px-2 py-2 ${e.player.id === player.id ? "bg-lime/30" : ""}`}>
+              <span
+                className={`grid size-6 place-items-center rounded-full text-[11px] font-bold ${
+                  i < 4 ? "bg-lime text-ink" : "bg-zinc-100 text-zinc-500"
+                }`}
+              >
+                {i + 1}
+              </span>
+              <Avatar name={e.player.name} photo={e.player.photo} size={32} />
+              <span className="min-w-0 flex-1 truncate font-medium">{e.player.name}</span>
+              <LevelBadge level={e.player.level} />
+              <span className="w-20 text-right text-[11px] leading-tight text-zinc-500">{t("รอ {n} นาที", { n: minutes(now - e.waitingSince) })}</span>
+            </li>
+          ))}
+          {queue.length === 0 && <li className="py-6 text-center text-sm text-zinc-500">{t("ไม่มีคนรอ")}</li>}
+        </ol>
+      </Card>
     </div>
   );
 }
