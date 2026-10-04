@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useReducer, useRef, 
 import { isDemo, demoState } from "./demo";
 import { randomToken, readSession, writeSession } from "./session";
 import { clearLineTicket, handleLineCallback, readLineTicket } from "./lineLogin";
-import { addGuest, claimPlayer, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, supabase } from "./remote";
+import { addGuest, claimPlayer, signUpDay, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, supabase } from "./remote";
 import { EMPTY_STATE, guestCheck, prepare, reducer, today, type Intent, type SelfAction, type State } from "./state";
 import { DEFAULT_SETTINGS, monthOf, type Level, type Player } from "./types";
 import { t } from "@/lib/i18n";
@@ -43,8 +43,8 @@ export interface Auth {
 interface Ctx {
   state: State;
   dispatch: (i: Intent) => void;
-  /** ผู้เล่นลงชื่อ/ยกเลิก/เช็คอินเองสำหรับวันนี้ คืนข้อความผิดพลาด หรือ null */
-  self: (action: SelfAction, playerId: string, pin: string) => Promise<string | null>;
+  /** ผู้เล่นลงชื่อ/ยกเลิก/เช็คอินเองสำหรับวันนี้ (ลงชื่อ/ยกเลิกล่วงหน้าได้ด้วย date) คืนข้อความผิดพลาด หรือ null */
+  self: (action: SelfAction, playerId: string, pin: string, date?: string) => Promise<string | null>;
   /** ผู้เล่นส่งรูปสลิปโอนเงิน คืนข้อความผิดพลาด หรือ null */
   sendSlip: (playerId: string, pin: string, amount: number, image: string) => Promise<string | null>;
   /** ผู้เล่นตั้งคนที่อยากจับคู่/ไม่อยากเจอ คืนข้อความผิดพลาด หรือ null */
@@ -96,9 +96,9 @@ function LocalProvider({ children }: { children: ReactNode }) {
 
   const dispatch = useCallback((i: Intent) => apply(prepare(i)), []);
   const self = useCallback(
-    async (action: SelfAction, playerId: string) => {
+    async (action: SelfAction, playerId: string, _pin?: string, on?: string) => {
       if (state.players.find((p) => p.id === playerId)?.pending) return "รอแอดมินอนุมัติก่อน";
-      const date = today();
+      const date = on ?? today();
       if (action === "rest" || action === "unrest") dispatch({ type: "setResting", date, playerId, resting: action === "rest" });
       else if (action === "pay") dispatch({ type: "markPaid", date, playerId });
       else if (action === "payMonth") dispatch({ type: "setMonthlyPaid", month: monthOf(date), playerId, paid: true });
@@ -280,8 +280,9 @@ function RemoteProvider({ children }: { children: ReactNode }) {
   );
 
   const self = useCallback(
-    async (action: SelfAction, playerId: string, pin: string) => {
-      const err = await selfService(db, action, playerId, pin);
+    async (action: SelfAction, playerId: string, pin: string, date?: string) => {
+      const ahead = date && date !== today() && (action === "signUp" || action === "cancelSignUp");
+      const err = ahead ? await signUpDay(db, playerId, pin, date, action === "signUp") : await selfService(db, action, playerId, pin);
       if (!err) await reload();
       return err;
     },

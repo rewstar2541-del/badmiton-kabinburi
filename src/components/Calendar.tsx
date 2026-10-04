@@ -5,13 +5,22 @@ import { locale, t } from "@/lib/i18n";
 import { today, useStore } from "@/lib/store";
 import { Button, Card, Icon, SectionTitle, inputClass } from "./ui";
 import { Auto, useAuto } from "@/lib/autoTranslate";
+import { savedPin, useMe } from "./PickMe";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const ymd = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;
 
-/** ปฏิทินก๊วน: วันงดเล่น และวันที่มีประกาศจัดก๊วน แอดมินแตะวันเพื่อตั้งวันงดเล่น */
+/**
+ * ปฏิทินก๊วน: วันจัดก๊วน และวันงดเล่น
+ * แอดมินแตะวันเพื่อตั้งเป็นวันจัดก๊วน (ตั้งล่วงหน้าได้ เปิดให้ลงชื่อ) หรือวันงดเล่น
+ * ผู้เล่นแตะวันจัดก๊วนที่ยังไม่ถึง เพื่อลงชื่อล่วงหน้า
+ */
 export function ClubCalendar() {
-  const { state, dispatch, auth } = useStore();
+  const { state, dispatch, auth, self } = useStore();
+  const [me] = useMe();
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const now = today();
   const [view, setView] = useState(() => {
     const [y, m] = now.split("-").map(Number);
@@ -20,6 +29,7 @@ export function ClubCalendar() {
   const [picked, setPicked] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const closedReason = useAuto((picked && state.closed[picked]) || "");
+  const pickedDay = picked ? state.days.find((d) => d.date === picked) : undefined;
 
   const first = new Date(view.y, view.m, 1);
   const daysIn = new Date(view.y, view.m + 1, 0).getDate();
@@ -38,6 +48,22 @@ export function ClubCalendar() {
     .filter(([d]) => d >= now)
     .sort(([a], [b]) => a.localeCompare(b))
     .slice(0, 3);
+  const nextSessions = [...sessions].filter((d) => d >= now && !(d in state.closed)).sort().slice(0, 3);
+  const dayLabel = (d: string) => new Date(d + "T00:00").toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" });
+  const signups = pickedDay?.signups ?? [];
+  const mine = Boolean(me && signups.some((x) => x.playerId === me));
+  const setSession = (date: string, message: string | null) => {
+    if (message !== null && date in state.closed) dispatch({ type: "setClosed", date, reason: null });
+    dispatch({ type: "setAnnouncement", date, message });
+    setPicked(null);
+  };
+  const signUp = async (date: string, on: boolean) => {
+    if (!me) return;
+    setBusy(true);
+    const err = await self(on ? "signUp" : "cancelSignUp", me, savedPin.get(), date);
+    setBusy(false);
+    setError(err ? t(err) : "");
+  };
 
   return (
     <>
@@ -71,6 +97,8 @@ export function ClubCalendar() {
                 onClick={() => {
                   setPicked(picked === date ? null : date);
                   setReason(state.closed[date] ?? "");
+                  setNote(state.days.find((x) => x.date === date)?.announcement ?? "");
+                  setError("");
                 }}
                 className={`relative grid aspect-square place-items-center rounded-xl text-sm tabular-nums ${
                   closed ? "bg-red-50 font-semibold text-red-600 line-through" : session ? "bg-lime/40 font-semibold" : "bg-zinc-50"
@@ -95,49 +123,110 @@ export function ClubCalendar() {
             <div className="text-sm font-semibold">
               {new Date(picked + "T00:00").toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" })}
             </div>
+            {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
             {auth.isAdmin ? (
               <>
-                <input
-                  className={inputClass}
-                  placeholder={t("เหตุผล เช่น สนามปิด, วันหยุดยาว")}
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                />
-                <div className="flex gap-2">
-                  <Button
-                    variant="danger"
-                    className="flex-1"
-                    onClick={() => {
-                      dispatch({ type: "setClosed", date: picked, reason: reason.trim() });
-                      setPicked(null);
-                    }}
-                  >
-                    {picked in state.closed ? t("บันทึกวันงดเล่น") : t("ตั้งเป็นวันงดเล่น")}
-                  </Button>
-                  {picked in state.closed && (
+                <div className="space-y-2">
+                  <input
+                    className={inputClass}
+                    placeholder={t("ข้อความประกาศ เช่น 1 ทุ่ม ถึง 4 ทุ่ม (ไม่ใส่ก็ได้)")}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <Button variant="accent" className="flex-1" onClick={() => setSession(picked, note.trim())}>
+                      {sessions.has(picked) ? t("บันทึกวันจัดก๊วน") : t("ตั้งเป็นวันจัดก๊วน")}
+                    </Button>
+                    {sessions.has(picked) && (
+                      <Button
+                        onClick={() => {
+                          if (confirm(t("ยกเลิกวันจัดก๊วนนี้? คนที่ลงชื่อไว้จะไม่เห็นวันนี้แล้ว"))) setSession(picked, null);
+                        }}
+                      >
+                        {t("ยกเลิกจัดก๊วน")}
+                      </Button>
+                    )}
+                  </div>
+                  {sessions.has(picked) && <p className="text-xs text-zinc-500">{t("ลงชื่อแล้ว {n} คน", { n: signups.length })}</p>}
+                </div>
+                <div className="space-y-2 border-t border-zinc-200 pt-2">
+                  <input
+                    className={inputClass}
+                    placeholder={t("เหตุผล เช่น สนามปิด, วันหยุดยาว")}
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                  />
+                  <div className="flex gap-2">
                     <Button
+                      variant="danger"
+                      className="flex-1"
                       onClick={() => {
-                        dispatch({ type: "setClosed", date: picked, reason: null });
+                        if (sessions.has(picked)) dispatch({ type: "setAnnouncement", date: picked, message: null });
+                        dispatch({ type: "setClosed", date: picked, reason: reason.trim() });
                         setPicked(null);
                       }}
                     >
-                      {t("เปิดเล่นตามปกติ")}
+                      {picked in state.closed ? t("บันทึกวันงดเล่น") : t("ตั้งเป็นวันงดเล่น")}
                     </Button>
-                  )}
+                    {picked in state.closed && (
+                      <Button
+                        onClick={() => {
+                          dispatch({ type: "setClosed", date: picked, reason: null });
+                          setPicked(null);
+                        }}
+                      >
+                        {t("เปิดเล่นตามปกติ")}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </>
+            ) : picked in state.closed ? (
+              <p className="text-sm text-zinc-600">{t("งดเล่น") + (closedReason ? `: ${closedReason}` : "")}</p>
+            ) : sessions.has(picked) ? (
+              <>
+                <p className="text-sm text-zinc-600">
+                  {t("มีจัดก๊วน")}
+                  {pickedDay?.announcement ? <> · <Auto text={pickedDay.announcement} /></> : null}
+                </p>
+                <p className="text-xs text-zinc-500">{t("ลงชื่อแล้ว {n} คน", { n: signups.length })}</p>
+                {me && picked >= now && (
+                  <Button variant={mine ? "ghost" : "primary"} className="w-full" disabled={busy} onClick={() => signUp(picked, !mine)}>
+                    {mine ? t("ยกเลิกลงชื่อ") : t("ลงชื่อว่าจะมา")}
+                  </Button>
+                )}
+              </>
             ) : (
-              <p className="text-sm text-zinc-600">
-                {picked in state.closed
-                  ? t("งดเล่น") + (closedReason ? `: ${closedReason}` : "")
-                  : sessions.has(picked)
-                    ? t("มีจัดก๊วน")
-                    : t("ยังไม่มีประกาศ")}
-              </p>
+              <p className="text-sm text-zinc-600">{t("ยังไม่มีประกาศ")}</p>
             )}
           </div>
         )}
 
+        {nextSessions.length > 0 && (
+          <ul className="space-y-1 text-sm">
+            {nextSessions.map((d) => {
+              const signed = me && state.days.find((x) => x.date === d)?.signups?.some((x) => x.playerId === me);
+              return (
+                <li key={d}>
+                  <button
+                    className="flex w-full items-center gap-2 text-left text-emerald-700"
+                    onClick={() => {
+                      setPicked(d);
+                      setNote(state.days.find((x) => x.date === d)?.announcement ?? "");
+                      setReason("");
+                      setError("");
+                    }}
+                  >
+                    <Icon.Check width={14} height={14} />
+                    <span className="font-semibold">{d === now ? t("วันนี้") : dayLabel(d)}</span>
+                    <span className="min-w-0 truncate text-zinc-500">{t("มีจัดก๊วน")}</span>
+                    {signed && <span className="ml-auto shrink-0 text-xs font-semibold">{t("ลงชื่อแล้ว")}</span>}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
         {upcoming.length > 0 && (
           <ul className="space-y-1 text-sm">
             {upcoming.map(([d, r]) => (

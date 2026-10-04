@@ -358,6 +358,13 @@ export async function selfService(db: SupabaseClient, action: SelfAction, player
 }
 
 /** ผู้เล่นส่งรูปสลิปโอนเงินของวันนี้ คืนข้อความผิดพลาด หรือ null */
+/** ลงชื่อ/ยกเลิกล่วงหน้าสำหรับวันจัดก๊วนที่แอดมินตั้งไว้ในปฏิทิน */
+export async function signUpDay(db: SupabaseClient, playerId: string, pin: string, date: string, on: boolean) {
+  const { data, error } = await db.rpc("sign_up_day", { p_player: playerId, p_pin: pin, p_date: date, p_on: on });
+  if (error) return error.message;
+  return (data as string | null) ?? null;
+}
+
 export async function submitSlip(db: SupabaseClient, playerId: string, pin: string, amount: number, image: string) {
   const { data, error } = await db.rpc("submit_slip", { p_player: playerId, p_pin: pin, p_amount: amount, p_image: image });
   if (error) return error.message;

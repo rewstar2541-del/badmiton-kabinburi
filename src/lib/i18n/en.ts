@@ -447,4 +447,12 @@ export const en: Record<string, string> = {
   "เลือกได้ครั้งละหลายรูป (สูงสุด 10) ระบบย่อรูปให้อัตโนมัติ": "Pick several at once (up to 10). Photos are resized automatically",
   "อัปโหลดไม่สำเร็จ": "Upload failed",
   "ลบรูปนี้?": "Delete this photo?",
+  "ข้อความประกาศ เช่น 1 ทุ่ม ถึง 4 ทุ่ม (ไม่ใส่ก็ได้)": "Announcement, e.g. 7pm to 10pm (optional)",
+  "บันทึกวันจัดก๊วน": "Save play day",
+  "ตั้งเป็นวันจัดก๊วน": "Set as play day",
+  "ยกเลิกวันจัดก๊วนนี้? คนที่ลงชื่อไว้จะไม่เห็นวันนี้แล้ว": "Cancel this play day? People who signed up will no longer see it",
+  "ยกเลิกจัดก๊วน": "Cancel play day",
+  "ลงชื่อแล้ว {n} คน": "{n} signed up",
+  "ลงชื่อแล้ว": "Signed up",
+  "ลงชื่อล่วงหน้าได้ไม่เกิน 90 วัน": "You can sign up at most 90 days ahead",
 };
