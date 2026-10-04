@@ -19,6 +19,7 @@ export interface Rows {
     level: number;
     prefer?: string[] | null;
     avoid?: string[] | null;
+    guest_of?: string | null;
   }[];
   contacts: { player_id: string; phone: string }[];
   checkins: { date: string; player_id: string; at: string; paid_at: string | null; resting?: boolean }[];
@@ -64,6 +65,7 @@ export function rowsToState(r: Rows): State {
     phone: phones.get(p.id),
     ...(p.prefer?.length ? { prefer: p.prefer } : {}),
     ...(p.avoid?.length ? { avoid: p.avoid } : {}),
+    ...(p.guest_of ? { guestOf: p.guest_of } : {}),
   }));
 
   const days = new Map<string, Day>();
@@ -136,7 +138,7 @@ async function all<T>(q: PromiseLike<{ data: T[] | null; error: { message: strin
 
 export async function loadRemote(db: SupabaseClient, isAdmin: boolean): Promise<State> {
   const [players, contacts, checkins, games, drinks, monthly, settings, announcements, signups, slips, closed] = await Promise.all([
-    all<Rows["players"][number]>(db.from("players").select("id,name,photo,gender,level,prefer,avoid").order("name")),
+    all<Rows["players"][number]>(db.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of").order("name")),
     // เบอร์โทรเห็นเฉพาะแอดมิน
     isAdmin ? all<Rows["contacts"][number]>(db.from("player_contacts").select("player_id,phone")) : Promise.resolve([]),
     all<Rows["checkins"][number]>(db.from("checkins").select("date,player_id,at,paid_at,resting")),
@@ -179,6 +181,7 @@ function playerRow(p: Omit<Player, "id"> & { id: string }) {
     level: p.level,
     prefer: p.prefer ?? [],
     avoid: p.avoid ?? [],
+    guest_of: p.guestOf ?? null,
   };
 }
 
@@ -188,7 +191,9 @@ async function saveContact(db: SupabaseClient, playerId: string, phone?: string)
 }
 
 /** บันทึกการเปลี่ยนแปลงหนึ่งครั้งลง Supabase (ต้องเป็นแอดมิน) */
-export async function persist(db: SupabaseClient, a: Action): Promise<void> {
+/** players ใช้หาแขกของคนที่จ่ายเงิน เพื่อปิดยอดของแขกไปพร้อมกัน */
+export async function persist(db: SupabaseClient, a: Action, players: Player[] = []): Promise<void> {
+  const withGuests = (id: string) => [id, ...players.filter((p) => p.guestOf === id).map((p) => p.id)];
   switch (a.type) {
     case "addPlayer":
       check(await db.from("players").insert(playerRow({ ...a.player, id: a._id })));
@@ -234,12 +239,12 @@ export async function persist(db: SupabaseClient, a: Action): Promise<void> {
         await db
           .from("checkins")
           .update({ paid_at: iso(a._at) })
-          .eq("player_id", a.playerId)
+          .in("player_id", withGuests(a.playerId))
           .lte("date", a.date)
           .is("paid_at", null),
       );
     case "unmarkPaid":
-      return check(await db.from("checkins").update({ paid_at: null }).eq("date", a.date).eq("player_id", a.playerId));
+      return check(await db.from("checkins").update({ paid_at: null }).eq("date", a.date).in("player_id", withGuests(a.playerId)));
     case "setMonthlyPaid":
       return a.paid
         ? check(await db.from("monthly_payments").upsert({ month: a.month, player_id: a.playerId, paid_at: iso(a._at) }))
@@ -339,6 +344,13 @@ export async function slipImage(db: SupabaseClient, slipId: string): Promise<str
 }
 
 /** ผู้เล่นตั้งคนที่อยากจับคู่/ไม่อยากเจอ คืนข้อความผิดพลาด หรือ null */
+/** สมาชิกพาเพื่อนมา: สร้างแขกและเช็คอินวันนี้ให้ คืนข้อความผิดพลาด หรือ null */
+export async function addGuest(db: SupabaseClient, hostId: string, pin: string, name: string, level: number) {
+  const { data, error } = await db.rpc("add_guest", { p_host: hostId, p_pin: pin, p_name: name, p_level: level });
+  if (error) return error.message;
+  return (data as string | null) ?? null;
+}
+
 export async function setPartnerPrefs(db: SupabaseClient, playerId: string, pin: string, prefer: string[], avoid: string[]) {
   const { data, error } = await db.rpc("set_partner_prefs", { p_player: playerId, p_pin: pin, p_prefer: prefer, p_avoid: avoid });
   if (error) return error.message;

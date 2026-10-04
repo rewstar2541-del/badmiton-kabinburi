@@ -1,4 +1,4 @@
-import { markPaid } from "./billing";
+import { guestsOf, markPaid } from "./billing";
 import { DEFAULT_SETTINGS, type Day, type Game, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
 
 export interface State {
@@ -57,7 +57,27 @@ export function today(): string {
 }
 
 /** สิ่งที่ผู้เล่นทำเองได้โดยไม่ต้องเป็นแอดมิน */
-export type SelfAction = "signUp" | "cancelSignUp" | "checkIn" | "rest" | "unrest";
+export type SelfAction = "signUp" | "cancelSignUp" | "checkIn" | "rest" | "unrest" | "pay" | "payMonth";
+
+/** พาแขกได้ไม่เกินกี่คนต่อวัน */
+export const MAX_GUESTS = 3;
+
+/** ตรวจก่อนเพิ่มแขกแบบผู้เล่นทำเอง (กติกาเดียวกับ add_guest ในฐานข้อมูล) คืนข้อความผิดพลาด หรือ null */
+export function guestCheck(state: State, date: string, hostId: string, name: string): string | null {
+  const host = state.players.find((p) => p.id === hostId);
+  if (!host || host.guestOf) return "คำสั่งไม่ถูกต้อง";
+  const day = state.days.find((d) => d.date === date);
+  if (!day?.announcement) return "วันนี้ยังไม่มีประกาศจัดก๊วน";
+  if (!name.trim()) return "กรุณาใส่ชื่อเล่น";
+  const guests = new Set(guestsOf(state.players, hostId).map((g) => g.id));
+  if (day.checkIns.filter((c) => guests.has(c.playerId)).length >= MAX_GUESTS) return "พาแขกได้ไม่เกิน 3 คนต่อวัน";
+  return null;
+}
+
+/** ผู้เล่นและแขกที่ผู้เล่นพามา */
+export function withGuests(state: State, playerId: string): string[] {
+  return [playerId, ...guestsOf(state.players, playerId).map((g) => g.id)];
+}
 
 export function prepare(i: Intent, now = Date.now(), id = newId): Action {
   return { ...i, _id: id(), _at: now } as Action;
@@ -118,12 +138,15 @@ export function reducer(state: State, a: Action): State {
     case "removeDrink":
       return withDay(state, a.date, (d) => ({ ...d, drinks: d.drinks.filter((x) => x.id !== a.drinkId) }));
     case "markPaid":
-      return { ...state, days: markPaid(state.days, a.date, a.playerId, a._at) };
-    case "unmarkPaid":
+      // จ่ายรวมของแขกที่พามาด้วย
+      return { ...state, days: markPaid(state.days, a.date, withGuests(state, a.playerId), a._at) };
+    case "unmarkPaid": {
+      const ids = new Set(withGuests(state, a.playerId));
       return withDay(state, a.date, (d) => ({
         ...d,
-        checkIns: d.checkIns.map((c) => (c.playerId === a.playerId ? { ...c, paidAt: undefined } : c)),
+        checkIns: d.checkIns.map((c) => (ids.has(c.playerId) ? { ...c, paidAt: undefined } : c)),
       }));
+    }
     case "setMonthlyPaid": {
       const month = { ...state.monthly[a.month] };
       if (a.paid) month[a.playerId] = a._at;
