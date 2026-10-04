@@ -6,7 +6,7 @@ import { presence } from "@/lib/matchmaking";
 import { BringGuest } from "./Guests";
 import type { SelfAction } from "@/lib/state";
 import { ClosedBanner, ClubCalendar } from "./Calendar";
-import { PickMe, savedPin, useMe } from "./PickMe";
+import { PendingNotice, PickMe, savedPin, useMe } from "./PickMe";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
 
@@ -97,6 +97,14 @@ export function TodayTab() {
         <AnnouncementBanner message={day.announcement ?? ""} />
         <PickMe onPick={setMe} hint={t("เลือกชื่อของคุณเพื่อลงชื่อและเช็คอิน เครื่องนี้จะจำไว้ให้")} />
         <ClubCalendar />
+      </div>
+    );
+
+  if (player.pending)
+    return (
+      <div className="space-y-4">
+        <AnnouncementBanner message={day.announcement ?? ""} />
+        <PendingNotice name={player.name} onNotMe={() => setMe(null)} />
       </div>
     );
 

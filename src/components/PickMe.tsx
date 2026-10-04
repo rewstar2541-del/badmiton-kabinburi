@@ -2,7 +2,8 @@
 
 import { useCallback, useState } from "react";
 import { useStore } from "@/lib/store";
-import { Avatar, Icon, SectionTitle, inputClass } from "./ui";
+import { PlayerForm } from "./PlayersTab";
+import { Avatar, Button, Card, Icon, SectionTitle, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
 
 const ME_KEY = "badminton-kabinburi:me";
@@ -45,7 +46,10 @@ export const savedPin = {
 export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: string }) {
   const { state } = useStore();
   const [q, setQ] = useState("");
-  const list = state.players.filter((p) => !p.guestOf && p.name.toLowerCase().includes(q.trim().toLowerCase()));
+  const [registering, setRegistering] = useState(false);
+  const list = state.players.filter((p) => !p.guestOf && !p.pending && p.name.toLowerCase().includes(q.trim().toLowerCase()));
+  if (registering) return <Register onDone={onPick} onCancel={() => setRegistering(false)} />;
+
   return (
     <div className="space-y-4">
       <SectionTitle>{t("คุณคือใคร?")}</SectionTitle>
@@ -67,7 +71,54 @@ export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: s
           </li>
         ))}
       </ul>
-      {state.players.length === 0 && <p className="text-center text-sm text-zinc-500">{t("ยังไม่มีรายชื่อ ให้แอดมินลงทะเบียนให้ก่อน")}</p>}
+      <Button variant="primary" className="w-full" onClick={() => setRegistering(true)}>
+        {t("มาครั้งแรก ยังไม่มีชื่อ? สมัครเลย")}
+      </Button>
     </div>
+  );
+}
+
+/** ผู้เล่นสมัครเองครั้งแรก แอดมินต้องกดอนุมัติก่อนจึงลงชื่อ/เช็คอินได้ */
+function Register({ onDone, onCancel }: { onDone: (id: string) => void; onCancel: () => void }) {
+  const { register } = useStore();
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="space-y-4">
+      <SectionTitle>{t("สมัครสมาชิกก๊วน")}</SectionTitle>
+      <p className="px-1 text-sm text-zinc-500">{t("กรอกข้อมูลของคุณ แอดมินจะตรวจและกดอนุมัติ จากนั้นลงชื่อและเช็คอินได้ เลข 4 ตัวท้ายเบอร์โทรใช้ยืนยันตัวตน")}</p>
+      <Card>
+        {error && <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+        <PlayerForm
+          requirePhone
+          submitLabel={busy ? t("กำลังส่ง...") : t("ส่งใบสมัคร")}
+          onCancel={onCancel}
+          onSave={async (p) => {
+            if (busy) return;
+            setBusy(true);
+            const r = await register(p);
+            setBusy(false);
+            if (r.id) {
+              if (p.phone) savedPin.set(p.phone.slice(-4));
+              onDone(r.id);
+            } else setError(t(r.error ?? "บันทึกไม่สำเร็จ"));
+          }}
+        />
+      </Card>
+    </div>
+  );
+}
+
+/** แสดงแทนหน้าของผู้เล่นที่ยังรออนุมัติ */
+export function PendingNotice({ name, onNotMe }: { name: string; onNotMe: () => void }) {
+  return (
+    <Card className="space-y-2 py-8 text-center">
+      <Icon.Clock className="mx-auto text-amber-500" width={32} height={32} />
+      <p className="font-semibold">{t("{name} สมัครแล้ว รอแอดมินอนุมัติ", { name })}</p>
+      <p className="text-sm text-zinc-500">{t("เมื่ออนุมัติแล้ว หน้านี้จะลงชื่อและเช็คอินได้เอง")}</p>
+      <button className="text-xs text-zinc-500 underline" onClick={onNotMe}>
+        {t("ไม่ใช่ฉัน")}
+      </button>
+    </Card>
   );
 }

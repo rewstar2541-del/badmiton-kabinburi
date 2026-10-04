@@ -219,7 +219,7 @@ function MonthlyView() {
   const paid = state.monthly[month] ?? {};
   const fee = state.settings.monthlyFee;
 
-  const players = state.players.filter((p) => !p.guestOf).sort(
+  const players = state.players.filter((p) => !p.guestOf && !p.pending).sort(
     (a, b) => Number(Boolean(paid[b.id])) - Number(Boolean(paid[a.id])) || a.name.localeCompare(b.name, "th"),
   );
   const count = players.filter((p) => paid[p.id]).length;

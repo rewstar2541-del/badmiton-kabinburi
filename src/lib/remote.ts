@@ -20,6 +20,7 @@ export interface Rows {
     prefer?: string[] | null;
     avoid?: string[] | null;
     guest_of?: string | null;
+    pending?: boolean | null;
   }[];
   contacts: { player_id: string; phone: string }[];
   checkins: { date: string; player_id: string; at: string; paid_at: string | null; resting?: boolean }[];
@@ -66,6 +67,7 @@ export function rowsToState(r: Rows): State {
     ...(p.prefer?.length ? { prefer: p.prefer } : {}),
     ...(p.avoid?.length ? { avoid: p.avoid } : {}),
     ...(p.guest_of ? { guestOf: p.guest_of } : {}),
+    ...(p.pending ? { pending: true } : {}),
   }));
 
   const days = new Map<string, Day>();
@@ -138,7 +140,7 @@ async function all<T>(q: PromiseLike<{ data: T[] | null; error: { message: strin
 
 export async function loadRemote(db: SupabaseClient, isAdmin: boolean): Promise<State> {
   const [players, contacts, checkins, games, drinks, monthly, settings, announcements, signups, slips, closed] = await Promise.all([
-    all<Rows["players"][number]>(db.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of").order("name")),
+    all<Rows["players"][number]>(db.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of,pending").order("name")),
     // เบอร์โทรเห็นเฉพาะแอดมิน
     isAdmin ? all<Rows["contacts"][number]>(db.from("player_contacts").select("player_id,phone")) : Promise.resolve([]),
     all<Rows["checkins"][number]>(db.from("checkins").select("date,player_id,at,paid_at,resting")),
@@ -182,6 +184,7 @@ function playerRow(p: Omit<Player, "id"> & { id: string }) {
     prefer: p.prefer ?? [],
     avoid: p.avoid ?? [],
     guest_of: p.guestOf ?? null,
+    pending: p.pending ?? false,
   };
 }
 
@@ -347,6 +350,19 @@ export async function slipImage(db: SupabaseClient, slipId: string): Promise<str
 }
 
 /** ผู้เล่นตั้งคนที่อยากจับคู่/ไม่อยากเจอ คืนข้อความผิดพลาด หรือ null */
+/** ผู้เล่นสมัครเองครั้งแรก (รอแอดมินอนุมัติ) คืน id หรือข้อความผิดพลาด */
+export async function registerPlayer(db: SupabaseClient, p: Omit<Player, "id">): Promise<{ id?: string; error?: string }> {
+  const { data, error } = await db.rpc("register_player", {
+    p_name: p.name,
+    p_phone: p.phone ?? "",
+    p_gender: p.gender ?? "other",
+    p_level: p.level,
+    p_photo: p.photo ?? "",
+  });
+  if (error) return { error: error.message };
+  return data as { id?: string; error?: string };
+}
+
 /** สมาชิกพาเพื่อนมา: สร้างแขกและเช็คอินวันนี้ให้ คืนข้อความผิดพลาด หรือ null */
 export async function addGuest(db: SupabaseClient, hostId: string, pin: string, name: string, level: number) {
   const { data, error } = await db.rpc("add_guest", { p_host: hostId, p_pin: pin, p_name: name, p_level: level });

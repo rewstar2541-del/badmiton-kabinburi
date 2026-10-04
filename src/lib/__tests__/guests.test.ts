@@ -48,3 +48,12 @@ describe("แขก", () => {
     expect(guestCheck(s, "2026-10-05", "h", "4")).toBe("วันนี้ยังไม่มีประกาศจัดก๊วน");
   });
 });
+
+describe("สมัครเอง", () => {
+  it("แอดมินอนุมัติแล้วไม่ค้างสถานะรอ", () => {
+    let s = reducer(EMPTY_STATE, prepare({ type: "addPlayer", player: { name: "ใหม่", level: 1, pending: true } }, 1, () => "n"));
+    expect(s.players[0].pending).toBe(true);
+    s = reducer(s, prepare({ type: "updatePlayer", player: { ...s.players[0], level: 3, pending: false } }));
+    expect(s.players[0]).toMatchObject({ level: 3, pending: false });
+  });
+});

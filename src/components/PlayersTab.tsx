@@ -52,7 +52,11 @@ export function PlayerForm({
   initial,
   onSave,
   onCancel,
+  requirePhone,
+  submitLabel,
 }: {
+  requirePhone?: boolean;
+  submitLabel?: string;
   initial?: Player;
   onSave: (p: PlayerInput) => void;
   onCancel?: () => void;
@@ -81,7 +85,7 @@ export function PlayerForm({
       onSubmit={(e) => {
         e.preventDefault();
         if (!name.trim()) return setError(t("กรุณาใส่ชื่อเล่น"));
-        if (phoneDigits && phoneDigits.length !== 10) return setError(t("เบอร์โทรต้องมี 10 หลัก"));
+        if ((phoneDigits || requirePhone) && phoneDigits.length !== 10) return setError(t("เบอร์โทรต้องมี 10 หลัก"));
         if (!gender) return setError(t("กรุณาเลือกเพศ"));
         setError("");
         onSave({ name: name.trim(), photo, phone: phoneDigits || undefined, gender, level });
@@ -149,7 +153,7 @@ export function PlayerForm({
 
       <div className="flex gap-2">
         <Button variant="primary" type="submit" className="flex-1">
-          {initial ? t("บันทึก") : t("ลงทะเบียน")}
+          {submitLabel ?? (initial ? t("บันทึก") : t("ลงทะเบียน"))}
         </Button>
         {onCancel && (
           <Button type="button" onClick={onCancel}>
@@ -165,10 +169,12 @@ export function PlayersTab() {
   const { state, dispatch } = useStore();
   const [editing, setEditing] = useState<string | null>(null);
   const date = today();
-  const players = [...state.players].sort((a, b) => a.name.localeCompare(b.name, "th"));
+  const pending = state.players.filter((p) => p.pending);
+  const players = state.players.filter((p) => !p.pending).sort((a, b) => a.name.localeCompare(b.name, "th"));
 
   return (
     <div className="space-y-4">
+      {pending.length > 0 && <PendingList players={pending} />}
       <SectionTitle>{t("ลงทะเบียนผู้เล่นใหม่")}</SectionTitle>
       <Card>
         <PlayerForm onSave={(player) => dispatch({ type: "addPlayer", player })} />
@@ -238,5 +244,59 @@ export function PlayersTab() {
         ))}
       </ul>
     </div>
+  );
+}
+
+const GENDER_LABEL: Record<Gender, string> = { male: "ชาย", female: "หญิง", other: "ไม่ระบุ" };
+
+/** คนที่สมัครเอง รอแอดมินอนุมัติ ปรับระดับมือได้ก่อนกดอนุมัติ */
+function PendingList({ players }: { players: Player[] }) {
+  const { dispatch } = useStore();
+  const [levels, setLevels] = useState<Record<string, Level>>({});
+  return (
+    <>
+      <SectionTitle right={t("{n} คน", { n: players.length })}>{t("รออนุมัติ")}</SectionTitle>
+      <ul className="space-y-2">
+        {players.map((p) => {
+          const level = levels[p.id] ?? p.level;
+          return (
+            <li key={p.id}>
+              <Card className="space-y-3 ring-2 ring-amber-300">
+                <div className="flex items-center gap-3">
+                  <Avatar name={p.name} photo={p.photo} size={48} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold">{p.name}</span>
+                    <span className="block text-xs text-zinc-500">
+                      {[p.phone, p.gender && t(GENDER_LABEL[p.gender])].filter(Boolean).join(" · ")}
+                    </span>
+                  </span>
+                </div>
+                <div className="space-y-1.5 text-sm font-medium">
+                  {t("ระดับมือ (ปรับได้ก่อนอนุมัติ)")}
+                  <Segmented
+                    options={LEVELS.map((l) => ({ value: l.value, label: l.code, sub: l.label }))}
+                    value={level}
+                    onChange={(v) => setLevels({ ...levels, [p.id]: v })}
+                    cols={5}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="accent" onClick={() => dispatch({ type: "updatePlayer", player: { ...p, level, pending: false } })}>
+                    {t("อนุมัติ")}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (confirm(t("ไม่อนุมัติและลบ {name}?", { name: p.name }))) dispatch({ type: "removePlayer", playerId: p.id });
+                    }}
+                  >
+                    {t("ไม่อนุมัติ")}
+                  </Button>
+                </div>
+              </Card>
+            </li>
+          );
+        })}
+      </ul>
+    </>
   );
 }

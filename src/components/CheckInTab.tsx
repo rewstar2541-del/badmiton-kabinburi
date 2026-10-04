@@ -16,19 +16,25 @@ export function CheckInTab() {
   const [adding, setAdding] = useState(false);
   const [addingGuest, setAddingGuest] = useState(false);
 
+  const waiting = state.players.filter((p) => p.pending).length;
   const checked = new Set(day.checkIns.map((c) => c.playerId));
   const signed = new Set(day.signups?.map((s) => s.playerId));
   // ยังไม่เช็คอินขึ้นก่อน ในนั้นคนที่ลงชื่อไว้ขึ้นก่อน
   const rank = (id: string) => (checked.has(id) ? 2 : signed.has(id) ? 0 : 1);
   const list = state.players
-    // แขกที่ไม่ได้มาวันนี้ไม่ต้องแสดง
-    .filter((p) => !p.guestOf || checked.has(p.id))
+    // แขกที่ไม่ได้มาวันนี้ และคนที่ยังรออนุมัติ ไม่ต้องแสดง
+    .filter((p) => !p.pending && (!p.guestOf || checked.has(p.id)))
     .filter((p) => p.name.toLowerCase().includes(q.trim().toLowerCase()))
     .sort((a, b) => rank(a.id) - rank(b.id) || a.name.localeCompare(b.name, "th"));
 
   return (
     <div className="space-y-4">
       <AnnounceCard />
+      {waiting > 0 && (
+        <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+          {t("มีคนสมัครใหม่รออนุมัติ {n} คน ดูที่หน้าผู้เล่น", { n: waiting })}
+        </p>
+      )}
       <SectionTitle right={t("{a}/{b} คน", { a: checked.size, b: state.players.length }) + (signed.size ? ` · ${t("ลงชื่อ {n}", { n: signed.size })}` : "")}>
         {t("เช็คอินวันนี้")}
       </SectionTitle>

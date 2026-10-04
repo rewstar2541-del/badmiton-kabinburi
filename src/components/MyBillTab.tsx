@@ -4,7 +4,7 @@ import { billFor } from "@/lib/billing";
 import { useStore, useToday } from "@/lib/store";
 import { isMonthlyPaid, monthOf } from "@/lib/types";
 import { PayQr } from "./PayQr";
-import { PickMe, useMe } from "./PickMe";
+import { PendingNotice, PickMe, useMe } from "./PickMe";
 import { BadgesCard, MonthCard, PartnerPrefs } from "./MyExtras";
 import { SelfPay } from "./SelfPay";
 import { SlipUpload } from "./Slips";
@@ -20,6 +20,7 @@ export function MyBillTab() {
   const player = state.players.find((p) => p.id === me);
 
   if (!player) return <PickMe onPick={setMe} hint={t("เลือกชื่อของคุณเพื่อดูยอดที่ต้องจ่าย เครื่องนี้จะจำไว้ให้")} />;
+  if (player.pending) return <PendingNotice name={player.name} onNotMe={() => setMe(null)} />;
 
   const checkedIn = day.checkIns.some((c) => c.playerId === player.id);
   const bill = billFor(state.days, day, player, state.settings, state.monthly, state.players);
