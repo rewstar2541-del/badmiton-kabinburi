@@ -193,14 +193,14 @@ function Header() {
               {new Date().toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" })}
             </p>
           </div>
-          {/* ปุ่มซ้อนกันทางขวา เรียงตามความสำคัญจากบนลงล่าง: โหมดแอดมิน/ผู้เล่น ภาษา คู่มือกับธีม */}
+          {/* ปุ่มซ้อนกันทางขวา จากบนลงล่าง: คู่มือกับธีม ภาษา โหมดแอดมิน/ผู้เล่น */}
           <div className="flex shrink-0 flex-col items-end gap-1.5 self-start">
-            <ModeSwitch />
-            <LangSwitch />
             <div className="flex gap-1.5">
               <GuideButton />
               <ThemeSwitch />
             </div>
+            <LangSwitch />
+            <ModeSwitch />
           </div>
         </div>
         <div className="mt-5 grid grid-cols-4 gap-2">
