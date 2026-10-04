@@ -283,6 +283,7 @@ export const en: Record<string, string> = {
   "บันทึกไม่สำเร็จ: {msg}": "Couldn't save: {msg}",
   "มือใหม่": "Beginner",
   "เริ่มตีได้": "Basic",
+  "เกือบทั่วไป": "Near intermediate",
   "ทั่วไป": "Intermediate",
   "ตีดี": "Strong",
   "เก่ง": "Advanced",

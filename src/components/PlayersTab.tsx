@@ -134,7 +134,7 @@ export function PlayerForm({
           options={LEVELS.map((l) => ({ value: l.value, label: l.code, sub: l.label }))}
           value={level}
           onChange={setLevel}
-          cols={5}
+          cols={3}
         />
       </div>
 
@@ -308,7 +308,7 @@ function PendingList({ players }: { players: Player[] }) {
                     options={LEVELS.map((l) => ({ value: l.value, label: l.code, sub: l.label }))}
                     value={level}
                     onChange={(v) => setLevels({ ...levels, [p.id]: v })}
-                    cols={5}
+                    cols={3}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">

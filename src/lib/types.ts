@@ -1,13 +1,21 @@
 /** ระดับมือของก๊วน เรียงจากอ่อนไปเก่ง: 1 = New ... 5 = P */
-export type Level = 1 | 2 | 3 | 4 | 5;
+/** ค่าที่เก็บในฐานข้อมูล: 1-5 = New BG N S P เพิ่ม 6 = NB ทีหลัง (ไม่เปลี่ยนเลขเดิมของผู้เล่นที่มีอยู่) */
+export type Level = 1 | 2 | 3 | 4 | 5 | 6;
 
-export const LEVELS: { value: Level; code: string; label: string }[] = [
-  { value: 1, code: "New", label: "มือใหม่" },
-  { value: 2, code: "BG", label: "เริ่มตีได้" },
-  { value: 3, code: "N", label: "ทั่วไป" },
-  { value: 4, code: "S", label: "ตีดี" },
-  { value: 5, code: "P", label: "เก่ง" },
+/** เรียงจากอ่อนไปเก่ง (strength ใช้ถ่วงฝีมือตอนจัดคู่) */
+export const LEVELS: { value: Level; code: string; label: string; strength: number }[] = [
+  { value: 1, code: "New", label: "มือใหม่", strength: 1 },
+  { value: 2, code: "BG", label: "เริ่มตีได้", strength: 2 },
+  { value: 6, code: "NB", label: "เกือบทั่วไป", strength: 2.5 },
+  { value: 3, code: "N", label: "ทั่วไป", strength: 3 },
+  { value: 4, code: "S", label: "ตีดี", strength: 4 },
+  { value: 5, code: "P", label: "เก่ง", strength: 5 },
 ];
+
+/** ฝีมือเป็นตัวเลขสำหรับเทียบ/รวม (NB อยู่ระหว่าง BG กับ N) */
+export function strength(level: Level): number {
+  return LEVELS.find((l) => l.value === level)?.strength ?? level;
+}
 
 export const DEFAULT_LEVEL: Level = 3;
 

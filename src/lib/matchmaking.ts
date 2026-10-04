@@ -1,4 +1,4 @@
-import type { Day, Player } from "./types";
+import { strength, type Day, type Player } from "./types";
 
 export interface QueueEntry {
   player: Player;
@@ -76,7 +76,7 @@ export function splitTeams(
   ];
   let best = { teams: options[0].map((p) => p.id) as [string, string, string, string], cost: Infinity };
   for (const [a1, a2, b1, b2] of options) {
-    const gap = Math.abs(a1.level + a2.level - (b1.level + b2.level));
+    const gap = Math.abs(strength(a1.level) + strength(a2.level) - (strength(b1.level) + strength(b2.level)));
     const repeat =
       (partners.get(pairKey(a1.id, a2.id)) ?? 0) + (partners.get(pairKey(b1.id, b2.id)) ?? 0);
     const liked = Number(wants(a1, a2)) + Number(wants(b1, b2));
@@ -107,7 +107,7 @@ export function nextMatch(
     for (let j = i + 1; j < pool.length; j++)
       for (let k = j + 1; k < pool.length; k++) {
         const four = [head, pool[i].p, pool[j].p, pool[k].p];
-        const levels = four.map((p) => p.level);
+        const levels = four.map((p) => strength(p.level));
         const spread = Math.max(...levels) - Math.min(...levels);
         const split = splitTeams(four, partners);
         // ให้น้ำหนักกับลำดับคิว เพื่อไม่ให้คนรอนานถูกข้าม

@@ -29,7 +29,7 @@ function GuestFields({ busy, onSave, onCancel }: { busy?: boolean; onSave: (name
       </label>
       <div className="space-y-1.5 text-sm font-medium">
         {t("ระดับมือ")}
-        <Segmented options={LEVELS.map((l) => ({ value: l.value, label: l.code, sub: l.label }))} value={level} onChange={setLevel} cols={5} />
+        <Segmented options={LEVELS.map((l) => ({ value: l.value, label: l.code, sub: l.label }))} value={level} onChange={setLevel} cols={3} />
       </div>
       <div className="flex gap-2">
         <Button variant="primary" type="submit" className="flex-1" disabled={busy || !name.trim()}>
