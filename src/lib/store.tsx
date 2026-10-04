@@ -1,7 +1,7 @@
 "use client";
 
 import type { Session } from "@supabase/supabase-js";
-import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { isDemo, demoState } from "./demo";
 import { randomToken, readSession, writeSession } from "./session";
 import { clearLineTicket, handleLineCallback, readLineTicket } from "./lineLogin";
@@ -31,7 +31,13 @@ export interface Auth {
   /** โหมดออนไลน์ (Supabase) หรือเก็บในเครื่อง */
   online: boolean;
   email?: string;
+  /** แสดงเมนูแอดมินอยู่ (แอดมินที่สลับเป็นโหมดผู้เล่นจะเป็น false) */
   isAdmin: boolean;
+  /** เป็นแอดมินจริง (ใช้แสดงปุ่มสลับโหมด) */
+  canAdmin?: boolean;
+  /** แอดมินสลับไปดูแบบผู้เล่นธรรมดา (จำไว้ในเครื่อง) */
+  playerMode?: boolean;
+  setPlayerMode?: (on: boolean) => void;
   /** โหมดทดลอง: สลับดูแบบแอดมิน/ผู้เล่นได้ */
   demo?: { setAdmin: (admin: boolean) => void; reset: () => void };
   /** ยังไม่มีแอดมินในระบบเลย (คนที่ล็อคอินอยู่ตั้งตัวเองเป็นแอดมินคนแรกได้) */
@@ -403,10 +409,42 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   return supabase && !DEMO ? <RemoteProvider>{children}</RemoteProvider> : <LocalProvider>{children}</LocalProvider>;
 }
 
+const MODE_KEY = "badminton-kabinburi:player-mode";
+const PlayerModeCtx = createContext<{ on: boolean; set: (on: boolean) => void }>({ on: false, set: () => {} });
+
+/** แอดมินสลับเป็นผู้เล่นธรรมดาได้ (สิทธิ์แอดมินไม่เปลี่ยน แค่ซ่อนเมนูแอดมิน) */
+export function PlayerModeProvider({ children }: { children: ReactNode }) {
+  const [on, setOn] = useState(() => {
+    try {
+      return localStorage.getItem(MODE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const set = useCallback((v: boolean) => {
+    setOn(v);
+    try {
+      if (v) localStorage.setItem(MODE_KEY, "1");
+      else localStorage.removeItem(MODE_KEY);
+    } catch {
+      // ไม่จำก็ได้
+    }
+  }, []);
+  const value = useMemo(() => ({ on, set }), [on, set]);
+  return <PlayerModeCtx.Provider value={value}>{children}</PlayerModeCtx.Provider>;
+}
+
 export function useStore() {
   const v = useContext(StoreCtx);
+  const mode = useContext(PlayerModeCtx);
   if (!v) throw new Error("useStore ต้องอยู่ใน StoreProvider");
-  return v;
+  const real = v.auth.isAdmin;
+  const playerMode = real && mode.on;
+  const auth = useMemo(
+    () => ({ ...v.auth, isAdmin: real && !playerMode, canAdmin: real, playerMode, setPlayerMode: mode.set }),
+    [v.auth, real, playerMode, mode.set],
+  );
+  return useMemo(() => ({ ...v, auth }), [v, auth]);
 }
 
 export function useToday() {

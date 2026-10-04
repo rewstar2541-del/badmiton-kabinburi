@@ -496,4 +496,6 @@ export const en: Record<string, string> = {
   "ผูก LINE ของฉันกับชื่อในก๊วน": "Link my LINE to my name in the group",
   "พิมพ์ชื่อเล่นของคุณแล้วกดเลือก ถ้ายังไม่มีชื่อ ไปเพิ่มชื่อตัวเองที่แท็บผู้เล่นก่อน": "Type your nickname and pick it. If your name isn't there, add yourself in the Players tab first.",
   "ยืนยัน นี่คือฉัน": "Confirm, this is me",
+  "วันนี้ฉันเป็น": "Today I'm",
+  "โหมดผู้เล่นต้องผูก LINE กับชื่อของคุณก่อน: สลับเป็นแอดมิน แล้วไปที่ ตั้งค่า > ผูก LINE ของฉันกับชื่อในก๊วน": "Player mode needs your LINE linked to your name first: switch to Admin, then Settings > Link my LINE to my name in the group.",
 };
