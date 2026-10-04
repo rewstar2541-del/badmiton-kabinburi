@@ -455,4 +455,5 @@ export const en: Record<string, string> = {
   "ลงชื่อแล้ว {n} คน": "{n} signed up",
   "ลงชื่อแล้ว": "Signed up",
   "ลงชื่อล่วงหน้าได้ไม่เกิน 90 วัน": "You can sign up at most 90 days ahead",
+  "กดค้างที่รูป แล้วเลือก \"บันทึกรูปภาพ\" (หรือแคปหน้าจอ)": "Press and hold the image, then choose \"Save image\" (or take a screenshot)",
 };
