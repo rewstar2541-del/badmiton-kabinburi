@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { nextMatch, waitingQueue } from "@/lib/matchmaking";
+import { waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
 import type { Game, Player, Team } from "@/lib/types";
+import { MatchBuilder } from "./MatchBuilder";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle } from "./ui";
 
 function useNow(intervalMs = 15000) {
@@ -117,18 +118,15 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
 }
 
 export function CourtsTab() {
-  const { state, dispatch, auth } = useStore();
+  const { state, auth } = useStore();
   const { date, day } = useToday();
+  const [building, setBuilding] = useState<number | null>(null);
   const now = useNow();
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const queue = waitingQueue(day, state.players);
   const courts = Array.from({ length: state.settings.courtCount }, (_, i) => i + 1);
   const active = new Map(day.games.filter((g) => !g.endedAt).map((g) => [g.court, g]));
 
-  const fill = (court: number) => {
-    const teams = nextMatch(day, state.players);
-    if (teams) dispatch({ type: "startGame", date, court, playerIds: teams });
-  };
 
   return (
     <div className="space-y-4">
@@ -158,7 +156,7 @@ export function CourtsTab() {
               ) : (
                 <button
                   disabled={queue.length < 4}
-                  onClick={() => fill(c)}
+                  onClick={() => setBuilding(c)}
                   className="court-surface flex h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl text-white transition active:scale-[0.99] disabled:opacity-40 disabled:grayscale"
                 >
                   <span className="grid size-10 place-items-center rounded-full bg-lime text-ink shadow-lg">
@@ -173,6 +171,8 @@ export function CourtsTab() {
           );
         })}
       </div>
+
+      {building !== null && <MatchBuilder court={building} onClose={() => setBuilding(null)} />}
 
       <SectionTitle right={`${queue.length} คน`}>คิวรอลงสนาม</SectionTitle>
       <Card className="p-2">
