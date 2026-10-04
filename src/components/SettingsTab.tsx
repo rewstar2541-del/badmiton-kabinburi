@@ -1,5 +1,6 @@
 "use client";
 
+import { InstallApp } from "./InstallApp";
 import { useState } from "react";
 import { isValidPromptPayId } from "@/lib/promptpay";
 import { useStore } from "@/lib/store";
@@ -149,6 +150,7 @@ export function SettingsTab() {
       <ClearHistory />
 
       {auth.online && <LoginTab />}
+      <InstallApp compact />
     </div>
   );
 }

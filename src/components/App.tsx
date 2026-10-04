@@ -1,5 +1,6 @@
 "use client";
 
+import { InstallApp } from "./InstallApp";
 import { Fragment, useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { waitingQueue } from "@/lib/matchmaking";
 import { PlayerModeProvider, StoreProvider, useStore, useToday } from "@/lib/store";
@@ -280,6 +281,11 @@ function Shell() {
         {!auth.isAdmin && (
           <div className="mb-4 empty:hidden">
             <FirstAdminCard />
+          </div>
+        )}
+        {(tab === "today" || tab === "checkin") && (
+          <div className="mb-4 empty:hidden">
+            <InstallApp />
           </div>
         )}
         {tab === "today" && <TodayTab />}
