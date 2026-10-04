@@ -57,7 +57,7 @@ export function useAdmins() {
     [load],
   );
 
-  return { enabled, admins, emailOf, setAdmin, error, busy };
+  return { enabled, admins, emailOf, setAdmin, error, busy, reload: load };
 }
 
 /** รายชื่อแอดมินในหน้าตั้งค่า */

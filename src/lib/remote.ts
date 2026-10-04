@@ -480,6 +480,13 @@ export async function removeAdmin(db: SupabaseClient, email: string) {
   check(await db.from("admins").delete().eq("email", email));
 }
 
+/** แอดมินผูกบัญชี LINE ของตัวเองกับชื่อผู้เล่น (ไม่ต้องรออนุมัติ) คืน token ผู้เล่น */
+export async function adminLinkMe(db: SupabaseClient, playerId: string): Promise<{ token?: string; error?: string }> {
+  const { data, error } = await db.rpc("admin_link_me", { p_player: playerId });
+  if (error) return { error: error.message };
+  return data as { token?: string; error?: string };
+}
+
 /** อีเมลประจำบัญชี LINE ของผู้เล่นที่ผูก LINE แล้ว (แอดมินเท่านั้น) ใช้ตั้ง/ถอดแอดมิน */
 export async function playerLineEmails(db: SupabaseClient): Promise<Map<string, string>> {
   const { data, error } = await db.rpc("player_line_emails");

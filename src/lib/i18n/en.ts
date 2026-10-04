@@ -491,4 +491,9 @@ export const en: Record<string, string> = {
   "กดเพื่อสลับรายวัน/รายเดือน": "Tap to switch daily/monthly",
   "ยังไม่เลือกแบบสมาชิก": "No plan chosen",
   "สมาชิกรายเดือนที่ยังไม่จ่าย": "Monthly members not yet paid",
+  "LINE ของคุณผูกกับชื่อ {name} แล้ว": "Your LINE is linked to {name}",
+  "ผูกไม่สำเร็จ ลองใหม่อีกครั้ง": "Linking failed, please try again",
+  "ผูก LINE ของฉันกับชื่อในก๊วน": "Link my LINE to my name in the group",
+  "พิมพ์ชื่อเล่นของคุณแล้วกดเลือก ถ้ายังไม่มีชื่อ ไปเพิ่มชื่อตัวเองที่แท็บผู้เล่นก่อน": "Type your nickname and pick it. If your name isn't there, add yourself in the Players tab first.",
+  "ยืนยัน นี่คือฉัน": "Confirm, this is me",
 };
