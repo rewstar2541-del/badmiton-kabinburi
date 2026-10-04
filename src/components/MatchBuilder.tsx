@@ -75,7 +75,7 @@ export function MatchBuilder({ court, onClose }: { court: number; onClose: () =>
     <Sheet onClose={onClose} title={<h3 className="font-display text-lg font-semibold">{t("จัดคู่ สนาม {n}", { n: court })}</h3>}>
       <div className="court-surface flex gap-1 rounded-2xl px-2 py-3">
         {(["A", "B"] as const).map((team, ti) => (
-          <div key={team} className="flex flex-1 flex-col items-center gap-2">
+          <div key={team} className="flex min-w-0 flex-1 basis-0 flex-col items-center gap-2">
             <span
               className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${team === "A" ? "bg-lime text-ink" : "bg-sky-300 text-ink"}`}
             >

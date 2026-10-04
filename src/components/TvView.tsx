@@ -22,8 +22,12 @@ function Name({ p, big }: { p?: Player; big?: boolean }) {
   return (
     <div className="flex min-w-0 items-center gap-2">
       <Avatar name={p?.name ?? "?"} photo={p?.photo} size={big ? 40 : 32} ring />
-      <span className={`min-w-0 truncate font-semibold ${big ? "text-2xl" : "text-xl"}`}>{p?.name ?? "?"}</span>
-      {p && <LevelBadge level={p.level} />}
+      <span className={`line-clamp-2 min-w-0 flex-1 leading-tight font-semibold [overflow-wrap:anywhere] ${big ? "text-2xl" : "text-xl"}`}>{p?.name ?? "?"}</span>
+      {p && (
+        <span className="shrink-0">
+          <LevelBadge level={p.level} />
+        </span>
+      )}
     </div>
   );
 }
