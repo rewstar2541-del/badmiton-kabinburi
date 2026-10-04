@@ -32,12 +32,12 @@ export function RestButton() {
           <p className="rounded-2xl bg-amber-50 px-4 py-3 text-center text-sm font-medium text-amber-900">
             {playing ? t("จะพักหลังจบเกมนี้ ระบบจะข้ามคิวให้") : t("พักอยู่ ระบบข้ามคิวให้")}
           </p>
-          <Button variant="accent" disabled={busy} onClick={toggle}>
+          <Button variant="warn" disabled={busy} onClick={toggle} className="flex items-center justify-center gap-1.5">
             {playing ? t("ยกเลิกพัก") : t("พักพอแล้ว กลับเข้าคิว")}
           </Button>
         </>
       ) : (
-        <Button variant="primary" disabled={busy} onClick={toggle} className="flex items-center justify-center gap-1.5">
+        <Button variant="warn" disabled={busy} onClick={toggle} className="flex items-center justify-center gap-1.5">
           <Icon.Clock width={18} height={18} /> {playing ? t("ขอพักหลังจบเกมนี้") : t("ขอพัก (ข้ามคิวไปก่อน)")}
         </Button>
       )}

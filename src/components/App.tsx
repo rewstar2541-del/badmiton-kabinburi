@@ -74,9 +74,12 @@ function ThemeSwitch() {
 /** เปิดคู่มือการใช้งาน (หน้าเว็บแยกใน public/guide) ตามภาษาที่เลือก */
 function GuideButton() {
   const lang = useLang();
+  const { auth } = useStore();
+  // โหมดผู้เล่นเห็นคู่มือฝั่งผู้เล่น โหมดแอดมินเห็นฝั่งแอดมิน
+  const mode = auth.isAdmin ? "admin" : "player";
   return (
     <a
-      href={`/guide/index.html?lang=${lang}`}
+      href={`/guide/index.html?lang=${lang}&mode=${mode}`}
       className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-sm font-bold text-white/80 ring-1 ring-white/10"
       aria-label={t("คู่มือการใช้งาน")}
       title={t("คู่มือการใช้งาน")}
@@ -140,22 +143,19 @@ function ModeSwitch() {
   if (!auth.canAdmin || !auth.setPlayerMode) return null;
   const set = auth.setPlayerMode;
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-[11px] text-white/60">{t("วันนี้ฉันเป็น")}</span>
-      <div className="flex rounded-full bg-white/10 p-0.5 ring-1 ring-white/10">
-        {[false, true].map((player) => (
-          <button
-            key={String(player)}
-            onClick={() => {
-              set(player);
-              window.scrollTo({ top: 0 });
-            }}
-            className={`rounded-full px-3 py-1 text-[11px] font-semibold ${Boolean(auth.playerMode) === player ? "bg-lime text-ink" : "text-white/70"}`}
-          >
-            {player ? t("ผู้เล่น") : t("แอดมิน")}
-          </button>
-        ))}
-      </div>
+    <div className="flex shrink-0 rounded-full bg-white/10 p-0.5 ring-1 ring-white/10" role="group" aria-label={t("วันนี้ฉันเป็น")}>
+      {[false, true].map((player) => (
+        <button
+          key={String(player)}
+          onClick={() => {
+            set(player);
+            window.scrollTo({ top: 0 });
+          }}
+          className={`rounded-full px-2 py-1 text-[11px] font-semibold ${Boolean(auth.playerMode) === player ? "bg-lime text-ink" : "text-white/70"}`}
+        >
+          {player ? t("ผู้เล่น") : t("แอดมิน")}
+        </button>
+      ))}
     </div>
   );
 }
@@ -193,13 +193,12 @@ function Header() {
             </p>
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        {/* เรียงตามความสำคัญจากขวา: โหมดแอดมิน/ผู้เล่น ภาษา คู่มือ ธีม */}
+        <div className="mt-3 flex flex-wrap items-center justify-end gap-1.5">
+          <ThemeSwitch />
+          <GuideButton />
+          <LangSwitch />
           <ModeSwitch />
-          <div className="ml-auto flex items-center gap-2">
-            <GuideButton />
-            <ThemeSwitch />
-            <LangSwitch />
-          </div>
         </div>
         <div className="mt-5 grid grid-cols-4 gap-2">
           {stats.map((s, i) => {

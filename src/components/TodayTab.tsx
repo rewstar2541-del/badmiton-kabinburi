@@ -129,7 +129,7 @@ export function TodayTab() {
               <>
                 <RestButton />
                 <Button
-                  variant="primary"
+                  variant="accent"
                   disabled={busy}
                   onClick={async () => {
                     // เลิกเล่น: พักไว้ไม่ให้ถูกจัดลงสนามอีก แล้วไปหน้าจ่ายเงิน
