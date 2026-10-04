@@ -436,4 +436,6 @@ export const en: Record<string, string> = {
   "ไม่ใช่": "No",
   "ชื่อนี้ผูกกับบัญชี LINE อื่นแล้ว": "This name is already linked to another LINE account",
   "ไม่พบคำขอ": "Request not found",
+  "บันทึกรูป QR": "Save QR image",
+  "บันทึกลงเครื่อง แล้วเปิดแอพธนาคาร เลือกสแกนจากรูปในเครื่อง": "Save it to your phone, then open your banking app and scan from your photos",
 };
