@@ -478,4 +478,5 @@ export const en: Record<string, string> = {
   "ลบแล้วกู้คืนไม่ได้ ควรกด \"ดาวน์โหลดไฟล์สำรอง\" ด้านบนเก็บไว้ก่อน พิมพ์คำว่า {word} เพื่อยืนยัน": "This cannot be undone. Tap \"Download backup\" above first. Type {word} to confirm.",
   "คำยืนยัน": "Confirmation word",
   "ยืนยันล้างประวัติ": "Confirm clear history",
+  "มาแล้ว {a}/{b}": "Checked in {a}/{b}",
 };
