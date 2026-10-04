@@ -533,4 +533,7 @@ export const en: Record<string, string> = {
   "บันทึกไม่ได้? เปิดใน Chrome / Safari": "Can't save? Open in Chrome / Safari",
   "บันทึกแล้ว เปิดแอพธนาคาร เลือกสแกนจากรูปในเครื่อง แล้วกลับไปกด \"ฉันจ่ายแล้ว\" ในแอพก๊วน": "Saved. Open your bank app, scan from your photos, then go back and tap \"I've paid\" in the club app.",
   "ถ้ากดแล้วไม่มีอะไรเกิดขึ้น ให้กดค้างที่รูปแล้วเลือกบันทึกรูปภาพ": "If nothing happens, press and hold the image and choose Save image.",
+  "แบดมินตันกบินทร์บุรี": "Kabinburi Badminton",
+  "สวนน้อมเกล้า": "Suan Nom Klao",
+  "คู่มือการใช้งาน": "User guide",
 };

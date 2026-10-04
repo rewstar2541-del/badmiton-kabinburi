@@ -7,7 +7,8 @@ import { AnnouncementBanner } from "./TodayTab";
 import { Button, Card, Icon, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
 
-const DEFAULT_MESSAGE = () => t("ลงชื่อกันได้เลย มาถึงสนามแล้วกดเช็คอินเองในแอพ");
+const DEFAULT_TH = "ลงชื่อกันได้เลย มาถึงสนามแล้วกดเช็คอินเองในแอพ";
+const DEFAULT_MESSAGE = () => t(DEFAULT_TH);
 
 /** แอดมินประกาศ/แก้/ยกเลิกประกาศจัดก๊วนวันนี้ */
 export function AnnounceCard() {
@@ -63,7 +64,8 @@ export function AnnounceCard() {
           variant="accent"
           className="flex-1"
           onClick={() => {
-            dispatch({ type: "setAnnouncement", date, message: message.trim() });
+            // ข้อความเริ่มต้นเก็บเป็นภาษาไทย ผู้เล่นแต่ละคนจะเห็นตามภาษาที่ตัวเองเลือก
+            dispatch({ type: "setAnnouncement", date, message: message.trim() === DEFAULT_MESSAGE() ? DEFAULT_TH : message.trim() });
             setEditing(false);
           }}
         >

@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>คู่มือแอพก๊วนแบดกบินทร์บุรี</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anuphan:wght@500;600;700&family=Sarabun:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<style>
+/* Layout: a single reading column; each step pairs a phone screenshot with its explanation, stacking on phones */
+:root {
+  --bg: #f3f5f1;
+  --surface: #ffffff;
+  --ink: #0b1220;
+  --muted: #5b6573;
+  --line: #dde3d8;
+  --lime: #c6f432;
+  --lime-ink: #1d2a05;
+  --court: #1f7a55;
+  --warn-bg: #fff6df;
+  --warn-ink: #7a4b00;
+  --font-display: "Anuphan", "Sarabun", system-ui, sans-serif;
+  --font-body: "Sarabun", "Anuphan", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d131c; --surface: #161e2a; --ink: #eef2ea; --muted: #9aa5b3; --line: #273243;
+    --lime: #c6f432; --lime-ink: #1d2a05; --court: #3fa77c; --warn-bg: #2b2412; --warn-ink: #f2cf7a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d131c; --surface: #161e2a; --ink: #eef2ea; --muted: #9aa5b3; --line: #273243;
+  --lime: #c6f432; --lime-ink: #1d2a05; --court: #3fa77c; --warn-bg: #2b2412; --warn-ink: #f2cf7a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 17px; line-height: 1.7; }
+.wrap { max-width: 980px; margin: 0 auto; padding-inline: 18px; padding-block: 28px 80px; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.3; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(30px, 6vw, 46px); font-weight: 700; }
+h2 { font-size: clamp(24px, 4.5vw, 32px); font-weight: 700; }
+h3 { font-size: 20px; font-weight: 600; }
+p { margin: 0; }
+a { color: inherit; }
+
+.hero { display: grid; gap: 14px; padding-block: 8px 24px; border-bottom: 1px solid var(--line); }
+.eyebrow { font-family: var(--font-display); font-size: 13px; letter-spacing: .08em; color: var(--muted); }
+.hero p { color: var(--muted); max-width: 62ch; }
+.review { background: var(--warn-bg); color: var(--warn-ink); border-radius: 14px; padding: 10px 14px; font-size: 15px; max-width: 62ch; }
+
+.toc { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); display: flex; gap: 8px; flex-wrap: wrap; padding-block: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--line); }
+.toc a { text-decoration: none; font-family: var(--font-display); font-weight: 600; font-size: 15px; padding: 6px 14px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); }
+.toc a:hover, .toc a:focus-visible { background: var(--lime); color: var(--lime-ink); border-color: var(--lime); outline: none; }
+
+section { display: grid; gap: 22px; padding-block: 34px; scroll-margin-top: 70px; }
+.lead { color: var(--muted); max-width: 62ch; }
+
+.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
+.feat { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; display: grid; gap: 8px; align-content: start; }
+.feat h3 { font-size: 18px; display: flex; gap: 8px; align-items: center; }
+.tag { font-family: var(--font-display); font-size: 12px; font-weight: 600; padding: 1px 9px; border-radius: 999px; background: var(--lime); color: var(--lime-ink); }
+.tag.admin { background: var(--ink); color: var(--bg); }
+.feat ul { margin: 0; padding-left: 1.1em; font-size: 15.5px; }
+.feat li { margin-block: 2px; }
+
+.prices { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.price { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.price b { font-family: var(--font-display); font-size: 24px; font-variant-numeric: tabular-nums; display: block; }
+.price span { color: var(--muted); font-size: 14px; }
+.levels { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 15px; color: var(--muted); }
+.lv { font-family: var(--font-display); font-weight: 700; font-size: 13px; padding: 2px 10px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
+
+.part-head { display: grid; gap: 8px; padding: 22px; border-radius: 22px; background: var(--ink); color: var(--bg); }
+.part-head p { color: var(--bg); opacity: .78; max-width: 62ch; }
+.part-head .eyebrow { color: var(--lime); opacity: 1; }
+
+.steps { display: grid; gap: 18px; counter-reset: step; }
+.step { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 22px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 18px; }
+.step.wide { grid-template-columns: minmax(0, 1fr); }
+.shot { margin: 0; }
+.shot img { display: block; width: 100%; border-radius: 16px; border: 1px solid var(--line); }
+.shot.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.body { display: grid; gap: 10px; min-width: 0; }
+.body h3::before { counter-increment: step; content: counter(step); display: inline-grid; place-items: center; width: 30px; height: 30px; margin-right: 10px; border-radius: 50%; background: var(--lime); color: var(--lime-ink); font-size: 15px; vertical-align: 2px; }
+.body ul, .body ol { margin: 0; padding-left: 1.2em; }
+.body li { margin-block: 4px; }
+.btn { font-family: var(--font-display); font-weight: 600; font-size: .92em; white-space: nowrap; padding: 0 8px; border-radius: 8px; background: var(--lime); color: var(--lime-ink); }
+.btn.dark { background: var(--ink); color: var(--bg); }
+.note { font-size: 15px; color: var(--muted); border-left: 3px solid var(--court); padding-left: 12px; }
+
+.faq { display: grid; gap: 10px; }
+.faq details { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 16px; }
+.faq summary { font-family: var(--font-display); font-weight: 600; cursor: pointer; }
+.faq details p { margin-top: 6px; color: var(--muted); }
+
+@media (max-width: 680px) {
+  .step { grid-template-columns: minmax(0, 1fr); }
+  .shot:not(.pair) { max-width: 280px; }
+}
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+
+.toc { align-items: center; }
+.langs { margin-left: auto; display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); }
+.langs button { font: 600 14px var(--font-display); border: 0; background: transparent; color: var(--muted); padding: 4px 12px; border-radius: 999px; cursor: pointer; }
+.langs button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.langs button:focus-visible { outline: 2px solid var(--court); outline-offset: 1px; }
+:lang(zh) { --font-display: "Noto Sans SC", "Anuphan", system-ui, sans-serif; --font-body: "Noto Sans SC", "Sarabun", system-ui, sans-serif; }
+.back { background: var(--ink) !important; color: var(--bg) !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="lang-block" data-lang="th" lang="th">
+  <header class="hero">
+    <div class="eyebrow">คู่มือการใช้งาน</div>
+    <h1>แบดมินตันกบินทร์บุรี<br>สวนน้อมเกล้า</h1>
+    <p>แอพจัดก๊วนของเรา ใช้ลงชื่อ เช็คอิน ต่อคิวลงสนาม และจ่ายเงิน เปิดได้ที่ badmiton-kabinburi.vercel.app เข้าด้วย LINE อย่างเดียว ไม่ต้องจำรหัส</p>
+    
+  </header>
+  <nav class="toc" aria-label="สรุปฟีเจอร์">
+    <a href="/" class="back">← กลับแอพ</a><a href="#summary-th">สรุปฟีเจอร์</a><a href="#player-th">สำหรับผู้เล่น</a><a href="#admin-th">สำหรับแอดมิน</a><a href="#faq-th">คำถามที่พบบ่อย</a>
+    <div class="langs" role="group" aria-label="ภาษา">
+      <button type="button" data-set="th">ไทย</button><button type="button" data-set="en">EN</button><button type="button" data-set="zh">中文</button>
+    </div>
+  </nav>
+  <section id="summary-th">
+    <h2>สรุปฟีเจอร์ทั้งหมด</h2>
+    <p class="lead">ทุกฟีเจอร์ในหน้าเดียว ป้ายเขียวคือส่วนที่ผู้เล่นใช้ ป้ายดำคือส่วนของแอดมิน</p>
+    <div class="features"><div class="feat"><h3>เข้าใช้งาน <span class="tag">ผู้เล่น</span></h3><ul><li>เข้าด้วย LINE ชื่อและรูปมาจาก LINE อัตโนมัติ</li><li>คนใหม่สมัครเอง รอแอดมินอนุมัติ</li><li>ชื่อที่แอดมินเพิ่มไว้แล้ว กด &quot;นี่คือฉัน&quot; เพื่อขอผูกบัญชี</li><li>เลือกภาษา ไทย / EN / 中文 และโหมดมืดได้</li></ul></div><div class="feat"><h3>วันนี้ <span class="tag">ผู้เล่น</span></h3><ul><li>ดูประกาศวันเล่น และปฏิทินวันจัด / วันงด</li><li>ลงชื่อว่าจะมา หรือยกเลิกลงชื่อ</li><li>ถึงสนามแล้วกดเช็คอินเอง กดผิดยกเลิกได้</li><li>ขอพัก ข้ามคิวไปก่อน</li><li>พาเพื่อนมาเล่น ค่าใช้จ่ายรวมในบิลเรา</li><li>เลิกเล่นแล้ว กดไปจ่ายเงินได้ทันที</li></ul></div><div class="feat"><h3>สนามและคิว <span class="tag">ผู้เล่น</span></h3><ul><li>ดูว่าตัวเองอยู่คิวที่เท่าไหร่ หรือเล่นสนามไหน</li><li>เห็นทุกสนามว่าใครกำลังเล่น</li><li>จอทีวีที่สนามแสดงคิวพร้อมเสียงเรียก</li></ul></div><div class="feat"><h3>ยอดของฉัน <span class="tag">ผู้เล่น</span></h3><ul><li>ยอดวันนี้แยกค่าสนาม ค่าลูก ค่าน้ำ และยอดค้าง</li><li>สแกน QR พร้อมเพย์ แล้วกด &quot;ฉันจ่ายแล้ว&quot;</li><li>แนบสลิป ลบสลิปที่แนบผิดได้</li><li>สมาชิกรายเดือน จ่ายรายเดือนในหน้าเดียวกัน</li><li>แก้ข้อมูลตัวเอง แบบสมาชิก คู่ที่อยาก / ไม่อยากเล่นด้วย</li><li>สรุปเดือนนี้ ป้ายรางวัล แชร์สรุปได้</li></ul></div><div class="feat"><h3>เช็คอินและจัดสนาม <span class="tag admin">แอดมิน</span></h3><ul><li>ประกาศวันเล่น ปิดวันงด</li><li>เช็คอินให้ผู้เล่น จัดกลุ่มตามระดับมือ</li><li>ระบบแนะนำคู่: คนเล่นน้อยก่อน รอนานก่อน มือสมดุล</li><li>สลับคนเองได้ เริ่มเกม เพิ่ม / ลดลูก บันทึกทีมชนะ</li></ul></div><div class="feat"><h3>คิดเงิน <span class="tag admin">แอดมิน</span></h3><ul><li>ยอดรวมวันนี้ ใครจ่ายแล้ว ใครยังไม่จ่าย</li><li>เพิ่มค่าน้ำ แก้ยอดค่าสนาม / ค่าลูกรายคน</li><li>รับเงินสด ดูสลิป ยกเลิกสถานะจ่ายได้</li><li>รายเดือน: ใครจ่ายแล้ว ใครค้าง และรายงาน Excel</li></ul></div><div class="feat"><h3>ผู้เล่นและตั้งค่า <span class="tag admin">แอดมิน</span></h3><ul><li>เพิ่ม / แก้ / ลบผู้เล่น อนุมัติคนสมัครและคำขอเปลี่ยนระดับมือ</li><li>ตั้ง / ถอดแอดมิน</li><li>ราคา จำนวนสนาม พร้อมเพย์ วันจัดก๊วน รูปกิจกรรม</li><li>แจ้งเตือนกลุ่ม LINE (ปิดไว้ เพราะเกินโควตาจะเสียเงิน)</li><li>สำรองข้อมูล และล้างประวัติช่วงทดลอง</li></ul></div><div class="feat"><h3>สลับโหมด <span class="tag admin">แอดมิน</span></h3><ul><li>&quot;วันนี้ฉันเป็น แอดมิน | ผู้เล่น&quot; ใต้หัวแอพ</li><li>วันไหนมาเล่นเฉยๆ สลับเป็นผู้เล่น ใช้แอพแบบคนอื่น</li></ul></div></div>
+    <h3>ราคาปัจจุบัน (แอดมินแก้ได้ในตั้งค่า)</h3>
+    <div class="prices"><div class="price"><b>40 บาท</b><span>ค่าสนามต่อครั้ง (คนจ่ายรายวัน)</span></div><div class="price"><b>150 บาท</b><span>สมาชิกรายเดือน ไม่ต้องจ่ายค่าสนามรายวัน</span></div><div class="price"><b>30 บาท</b><span>ค่าลูกแรกของวัน</span></div><div class="price"><b>25 บาท</b><span>ค่าลูกถัดไป ลูกละ</span></div><div class="price"><b>ตามจริง</b><span>ค่าน้ำ</span></div></div>
+    <div class="levels">ระดับมือ จากอ่อนไปเก่ง: <span class="lv">New</span><span class="lv">BG</span><span class="lv">NB</span><span class="lv">N</span><span class="lv">S</span><span class="lv">P</span></div>
+  </section>
+  <section id="player-th">
+    <div class="part-head"><div class="eyebrow">ส่วนที่ 1</div><h2>สำหรับผู้เล่น</h2><p>ผู้เล่นเห็น 3 แท็บด้านล่าง: วันนี้ สนาม และยอดของฉัน ด้านบนมีตัวเลข ลงชื่อ มาแล้ว กำลังเล่น รอคิว ของวันนี้</p></div>
+    <div class="steps"><article class="step"><figure class="shot pair"><img src="img/p-login.jpg" alt="เข้าสู่ระบบครั้งแรก" loading="lazy"><img src="img/p-login2.jpg" alt="เข้าสู่ระบบครั้งแรก" loading="lazy"></figure><div class="body"><h3>เข้าสู่ระบบครั้งแรก</h3><ol><li>เปิดลิงก์แอพจากกลุ่ม LINE แล้วกดเข้าสู่ระบบด้วย LINE</li><li>ถ้าแอดมินเพิ่มชื่อเราไว้แล้ว พิมพ์ชื่อเล่น แล้วกด <span class="btn">นี่คือฉัน</span> รอแอดมินอนุมัติ</li><li>ถ้ายังไม่มีชื่อ กด <span class="btn dark">มาครั้งแรก ยังไม่มีชื่อ? สมัครเลย</span></li></ol><p class="note">เข้าครั้งเดียว เครื่องจะจำไว้ ครั้งต่อไปเปิดแอพก็ใช้ได้เลย</p></div></article>
+<article class="step"><figure class="shot"><img src="img/p-plan.jpg" alt="เลือกแบบสมาชิก" loading="lazy"></figure><div class="body"><h3>เลือกแบบสมาชิก</h3><p>ครั้งแรกแอพจะถามว่าจ่ายแบบไหน</p><ul><li><b>รายวัน</b> จ่ายค่าสนาม 40 บาททุกครั้งที่มา</li><li><b>รายเดือน</b> 150 บาทต่อเดือน ไม่ต้องจ่ายค่าสนามรายวัน</li></ul><p class="note">เปลี่ยนทีหลังได้ในหน้ายอดของฉัน กด "แก้ไขข้อมูล"</p></div></article>
+<article class="step"><figure class="shot pair"><img src="img/p-today-none.jpg" alt="ลงชื่อว่าจะมา" loading="lazy"><img src="img/p-today-signed.jpg" alt="ลงชื่อว่าจะมา" loading="lazy"></figure><div class="body"><h3>ลงชื่อว่าจะมา</h3><ul><li>วันที่มีประกาศจัดก๊วน กด <span class="btn dark">ลงชื่อว่าจะมา</span> ให้แอดมินรู้ล่วงหน้า</li><li>ติดธุระ กด <b>ยกเลิกลงชื่อ</b> ได้ตลอด</li><li>ไม่ได้ลงชื่อไว้ก็มาได้ กดเช็คอินตอนถึงสนามเลย</li></ul><p class="note">ด้านล่างมีปฏิทินก๊วน บอกวันที่จัดและวันงด</p></div></article>
+<article class="step"><figure class="shot pair"><img src="img/p-today-checked.jpg" alt="ถึงสนาม: เช็คอินเอง" loading="lazy"><img src="img/p-today-undo.jpg" alt="ถึงสนาม: เช็คอินเอง" loading="lazy"></figure><div class="body"><h3>ถึงสนาม: เช็คอินเอง</h3><ul><li>กด <span class="btn">ถึงสนามแล้ว เช็คอิน</span> ชื่อจะเข้าคิวทันที</li><li><b>ขอพัก (ข้ามคิวไปก่อน)</b> ระบบข้ามเราไป กดอีกครั้งเพื่อกลับมาเล่น</li><li><b>เลิกเล่นแล้ว ไปจ่ายเงิน</b> ออกจากคิว แล้วเปิดหน้ายอดของฉัน</li><li>กดเช็คอินผิด กด <b>กดเช็คอินผิด / ยกเลิก</b> เลือก "ยกเลิกเช็คอิน ยังจะมา" หรือ "ไม่มาแล้ว"</li></ul><p class="note">ถ้าลงเล่นไปแล้วหรือจ่ายเงินแล้ว ยกเลิกเช็คอินเองไม่ได้ ให้แอดมินช่วย</p></div></article>
+<article class="step"><figure class="shot"><img src="img/p-courts.jpg" alt="ดูคิวและสนาม" loading="lazy"></figure><div class="body"><h3>ดูคิวและสนาม</h3><ul><li>แท็บ <b>สนาม</b> บอกว่าเราอยู่คิวที่เท่าไหร่ ถ้าได้ลงแล้วจะบอกว่าสนามไหน</li><li>ด้านล่างเห็นทุกสนามว่าใครเล่นกับใคร</li><li>ใกล้ถึงคิวจะขึ้นข้อความ "คิวของคุณ ใกล้ได้ลงแล้ว"</li></ul><p class="note">ระบบจัดคนเล่นน้อยที่สุดก่อน ถ้าเท่ากันจัดคนที่รอนานกว่า</p></div></article>
+<article class="step"><figure class="shot pair"><img src="img/p-mybill.jpg" alt="จ่ายเงิน" loading="lazy"><img src="img/p-pay.jpg" alt="จ่ายเงิน" loading="lazy"></figure><div class="body"><h3>จ่ายเงิน</h3><ol><li>แท็บ <b>ยอดของฉัน</b> แสดงยอดวันนี้ แยกค่าสนาม ค่าลูก ค่าน้ำ และยอดค้างครั้งก่อน</li><li>สแกน QR พร้อมเพย์ (กด "บันทึกรูป QR" แล้วเปิดแอพธนาคาร) หรือจ่ายเงินสด</li><li>กด <span class="btn">ฉันจ่ายแล้ว</span> นับว่าจ่ายทันที</li><li>อยากให้แอดมินเห็นหลักฐาน กด <span class="btn dark">โอนแล้ว แนบสลิป</span> แนบผิดลบได้</li></ol><p class="note">จ่ายแล้วถือว่ากลับบ้านแล้ว ชื่อจะออกจากคิว ถ้าพาเพื่อนมา จ่ายครั้งเดียวรวมของเพื่อนด้วย</p></div></article>
+<article class="step"><figure class="shot"><img src="img/p-profile.jpg" alt="แก้ข้อมูลตัวเอง" loading="lazy"></figure><div class="body"><h3>แก้ข้อมูลตัวเอง</h3><p>ในหน้ายอดของฉัน กด <b>แก้ไขข้อมูล</b></p><ul><li>เปลี่ยนแบบสมาชิก รายวัน / รายเดือน</li><li>แก้ชื่อเล่น รูป แนะนำตัว เพศ</li><li>ขอเปลี่ยนระดับมือ ต้องรอแอดมินอนุมัติก่อน</li></ul></div></article>
+<article class="step"><figure class="shot"><img src="img/p-partners.jpg" alt="คู่ที่อยากเล่นด้วย / ไม่อยากคู่ด้วย" loading="lazy"></figure><div class="body"><h3>คู่ที่อยากเล่นด้วย / ไม่อยากคู่ด้วย</h3><ol><li>เลื่อนลงล่างสุดของหน้ายอดของฉัน กด <b>แก้ไข</b></li><li>พิมพ์ชื่อ แล้วกด <b>อยากคู่</b> หรือ <b>ไม่อยากคู่</b> (อย่างละไม่เกิน 5 คน) กดซ้ำเพื่อเอาออก</li><li>กด <span class="btn dark">บันทึก</span></li></ol><p class="note">คนที่ไม่อยากคู่ด้วย ระบบจะไม่จัดลงเกมเดียวกัน ถ้าคนรอน้อย อาจต้องจัดรวมกันบ้าง</p></div></article>
+<article class="step"><figure class="shot"><img src="img/p-month.jpg" alt="สรุปเดือนนี้และป้ายรางวัล" loading="lazy"></figure><div class="body"><h3>สรุปเดือนนี้และป้ายรางวัล</h3><ul><li>ดูจำนวนวันที่มา เกมที่เล่น อัตราชนะ ลูกที่ใช้ และค่าใช้จ่ายทั้งเดือน</li><li>กด <b>แชร์สรุป</b> ส่งให้เพื่อนได้</li><li>ป้ายรางวัล เช่น มือใหม่หัดมา ขาประจำ มาราธอน สะสมได้เรื่อยๆ</li></ul></div></article></div>
+  </section>
+  <section id="admin-th">
+    <div class="part-head"><div class="eyebrow">ส่วนที่ 2</div><h2>สำหรับแอดมิน</h2><p>แอดมินเห็น 5 แท็บ: เช็คอิน สนาม คิดเงิน ผู้เล่น ตั้งค่า เมนูแอดมินขึ้นเฉพาะบัญชีที่เป็นแอดมินเท่านั้น</p></div>
+    <div class="steps"><article class="step"><figure class="shot"><img src="img/a-home.jpg" alt="หน้าแรกของแอดมิน" loading="lazy"></figure><div class="body"><h3>หน้าแรกของแอดมิน</h3><ul><li>ตัวเลขด้านบน: <b>ลงชื่อ</b> (กดลงชื่อล่วงหน้า) <b>มาแล้ว</b> (เช็คอินแล้วทั้งหมด) <b>กำลังเล่น</b> และ <b>รอคิว</b></li><li>สวิตช์ <b>วันนี้ฉันเป็น แอดมิน | ผู้เล่น</b> วันที่มาเล่นเฉยๆ สลับเป็นผู้เล่นได้</li><li>การ์ดเขียวคือประกาศวันนี้ กด "แก้ข้อความ" หรือ "ยกเลิกประกาศ" ได้</li></ul><p class="note">ต้องมีประกาศก่อน ผู้เล่นถึงจะลงชื่อและเช็คอินเองได้</p></div></article>
+<article class="step"><figure class="shot"><img src="img/a-checkin.jpg" alt="เช็คอินให้ผู้เล่น" loading="lazy"></figure><div class="body"><h3>เช็คอินให้ผู้เล่น</h3><ul><li>ผู้เล่นทุกคนจัดเป็นกลุ่มตามระดับมือ คนที่ลงชื่อวันนี้ขึ้นก่อนในแต่ละกลุ่ม</li><li>แตะการ์ดเพื่อเช็คอิน การ์ดดำมีเครื่องหมายถูก = มาแล้ว แตะอีกครั้งเพื่อยกเลิก</li><li>ค้นหาชื่อได้ กด <span class="btn">+</span> เพื่อลงทะเบียนคนใหม่ หรือ "เพิ่มแขกที่สมาชิกพามา"</li></ul><p class="note">ยกเลิกเช็คอินคนที่จ่ายแล้วไม่ได้ ต้องยกเลิกการจ่ายก่อน ถ้าเล่นไปแล้วระบบจะถามยืนยัน</p></div></article>
+<article class="step"><figure class="shot pair"><img src="img/a-match.jpg" alt="จัดคู่ลงสนาม" loading="lazy"><img src="img/a-court-playing.jpg" alt="จัดคู่ลงสนาม" loading="lazy"></figure><div class="body"><h3>จัดคู่ลงสนาม</h3><ol><li>แท็บ <b>สนาม</b> กด <span class="btn">จัดคู่ลงสนาม</span> ในสนามที่ว่าง</li><li>ระบบแนะนำ 4 คนให้ ตัวเลขข้างทีมคือผลรวมระดับมือ ใกล้กัน = สูสี</li><li>อยากเปลี่ยนคน แตะช่องในสนาม แล้วแตะชื่อจากคิว หรือกด "แนะนำใหม่"</li><li>กด <span class="btn">เริ่มเกม</span></li><li>ระหว่างเล่นกด <b>+ / −</b> เพื่อนับลูก จบแล้วกด <b>ทีม A ชนะ</b> หรือ <b>ทีม B ชนะ</b></li></ol><p class="note">กด "จบไม่บันทึกผล" ถ้าไม่ได้นับแพ้ชนะ ส่วน "ยกเลิกเกม" ใช้เมื่อกดผิด ลูกจะไม่ถูกคิดเงิน</p></div></article>
+<article class="step"><figure class="shot"><img src="img/a-queue.jpg" alt="คิวรอลงสนาม" loading="lazy"></figure><div class="body"><h3>คิวรอลงสนาม</h3><ul><li>เรียงตามคนเล่นน้อยที่สุดก่อน แล้วตามเวลารอ</li><li>แต่ละคนแสดงจำนวนเกมที่เล่นและเวลารอ</li><li>กด <b>พัก</b> ให้คนที่ขอพัก ระบบจะข้ามไปจนกว่าจะกลับมาเล่น</li></ul></div></article>
+<article class="step"><figure class="shot pair"><img src="img/a-billing.jpg" alt="คิดเงินวันนี้" loading="lazy"><img src="img/a-bill-detail.jpg" alt="คิดเงินวันนี้" loading="lazy"></figure><div class="body"><h3>คิดเงินวันนี้</h3><ul><li>ด้านบนคือยอดรวมวันนี้ เงินที่รับแล้ว และจำนวนลูกที่ใช้</li><li>แตะชื่อเพื่อเปิดบิลรายคน: เพิ่มค่าน้ำ แก้ยอดค่าสนาม / ค่าลูกเฉพาะคนนี้ และแสดง QR ให้สแกน</li><li>ผู้เล่นจ่ายเงินสด กด <b>รับเงิน</b> แทนได้ จ่ายผิดกด "ยกเลิกสถานะจ่ายแล้ว" ยอดค้างเก่าจะกลับมาครบ</li><li>คนที่แนบสลิปจะมีป้าย "มีสลิป" ให้เปิดดูและลบได้</li></ul></div></article>
+<article class="step"><figure class="shot"><img src="img/a-billing-monthly.jpg" alt="รายเดือนและรายงาน" loading="lazy"></figure><div class="body"><h3>รายเดือนและรายงาน</h3><ul><li>สลับไปแท็บ <b>รายเดือน</b> ดูว่าเดือนนี้ใครจ่ายแล้วกี่คน รวมกี่บาท</li><li>มีรายชื่อสมาชิกรายเดือนที่ยังไม่จ่าย แตะเพื่อบันทึกว่าจ่ายแล้ว</li><li>กด <b>ดาวน์โหลดรายงาน Excel เดือนนี้</b> ได้รายรับรายวันและรายคน</li></ul><p class="note">ค่ารายเดือนเก็บตามราคาตอนที่จ่าย ถ้าขึ้นราคาทีหลัง รายงานเดือนเก่าไม่เปลี่ยน</p></div></article>
+<article class="step"><figure class="shot"><img src="img/a-players.jpg" alt="ผู้เล่น" loading="lazy"></figure><div class="body"><h3>ผู้เล่น</h3><ul><li>ลงทะเบียนผู้เล่นใหม่ ใส่ชื่อเล่น เพศ ระดับมือ</li><li>อนุมัติคนที่สมัครเอง คำขอผูกชื่อ และคำขอเปลี่ยนระดับมือ</li><li>แก้ข้อมูล ลบผู้เล่น ตั้ง / ถอดแอดมิน และกำหนดแบบสมาชิกให้</li></ul><p class="note">แอดมินที่อยากมีชื่อในคิว ไปที่ตั้งค่า แล้วผูกชื่อตัวเองกับบัญชี LINE</p></div></article>
+<article class="step"><figure class="shot pair"><img src="img/a-settings.jpg" alt="ตั้งค่าราคาและวันเล่น" loading="lazy"><img src="img/a-calendar.jpg" alt="ตั้งค่าราคาและวันเล่น" loading="lazy"></figure><div class="body"><h3>ตั้งค่าราคาและวันเล่น</h3><ul><li>แก้จำนวนสนาม ค่าสนาม ค่าลูกแรก ค่าลูกถัดไป ค่ารายเดือน และเบอร์พร้อมเพย์</li><li>ราคาใหม่ใช้ตั้งแต่วันนี้ บิลวันก่อนๆ ยังคิดราคาเดิม</li><li>ปฏิทินก๊วน: แตะวันเพื่อประกาศวันจัด หรือปิดเป็นวันงดพร้อมเหตุผล</li><li>รูปกิจกรรม: อัปโหลดรูปพร้อมคำบรรยาย ให้ทุกคนดูในหน้าวันนี้</li></ul></div></article>
+<article class="step"><figure class="shot pair"><img src="img/a-line.jpg" alt="LINE สำรองข้อมูล และล้างประวัติ" loading="lazy"><img src="img/a-clear.jpg" alt="LINE สำรองข้อมูล และล้างประวัติ" loading="lazy"></figure><div class="body"><h3>LINE สำรองข้อมูล และล้างประวัติ</h3><ul><li><b>แจ้งเตือนกลุ่ม LINE</b> ปิดไว้ทั้งหมด ถ้าส่งเกินโควตาฟรีจะเสียเงิน จะเชื่อมกลุ่มต้องกดขอรหัส แล้วพิมพ์ "เชื่อมแอพก๊วน รหัส" ในกลุ่ม</li><li><b>เปิดจอสนาม</b> เปิดหน้าจอทีวีสำหรับตั้งที่สนาม</li><li><b>สำรองข้อมูล</b> ดาวน์โหลดไฟล์เก็บไว้ หรือนำเข้าไฟล์เดิม (รูปสลิปไม่อยู่ในไฟล์)</li><li><b>ล้างประวัติทั้งหมด</b> ใช้ช่วงทดลอง ลบเกม เช็คอิน ยอดเงิน แต่เก็บรายชื่อ แอดมิน และราคาไว้</li></ul></div></article>
+<article class="step wide"><figure class="shot"><img src="img/tv.jpg" alt="จอทีวีที่สนาม" loading="lazy"></figure><div class="body"><h3>จอทีวีที่สนาม</h3><p>เปิดลิงก์แอพต่อท้ายด้วย <b>?tv</b> บนทีวีหรือแท็บเล็ต จะเห็นทุกสนามและคิวถัดไป 4 คน กด <b>เปิดเสียงเรียกคิว</b> ให้แอพประกาศชื่อเมื่อเริ่มเกมใหม่</p></div></article></div>
+  </section>
+  <section id="faq-th">
+    <h2>คำถามที่พบบ่อย</h2>
+    <div class="faq"><details><summary>เปิดในแอพ LINE แล้วบันทึกรูป QR ไม่ได้</summary><p>เบราว์เซอร์ในแอพ LINE ไม่ให้ดาวน์โหลดไฟล์ กด &quot;บันทึกรูป QR&quot; แล้วกดค้างที่รูปเพื่อบันทึก ถ้ายังไม่ได้ กด &quot;บันทึกไม่ได้? เปิดใน Chrome / Safari&quot; แอพจะเปิดหน้ารูป QR ในเบราว์เซอร์ปกติ ซึ่งบันทึกได้</p></details><details><summary>กดจ่ายแล้ว แต่จริงๆ ยังไม่ได้จ่าย</summary><p>บอกแอดมินให้กด &quot;ยกเลิกสถานะจ่ายแล้ว&quot; ในหน้าคิดเงิน ยอดวันนี้และยอดค้างที่ปิดไปพร้อมกันจะกลับมา</p></details><details><summary>พาเพื่อนมาเล่น ต้องทำอย่างไร</summary><p>ในหน้าวันนี้กด &quot;พาเพื่อนมาเล่น&quot; ใส่ชื่อและระดับมือ เพื่อนเข้าคิวทันที ค่าใช้จ่ายของเพื่อนรวมในบิลเรา (สูงสุด 3 คน)</p></details></div>
+  </section>
+</div>
+<div class="lang-block" data-lang="en" lang="en" hidden>
+  <header class="hero">
+    <div class="eyebrow">User guide</div>
+    <h1>Kabinburi Badminton<br>Suan Nom Klao</h1>
+    <p>Our club app for signing up, checking in, queueing for a court and paying. Open badmiton-kabinburi.vercel.app and sign in with LINE. There is no password to remember.</p>
+    
+  </header>
+  <nav class="toc" aria-label="Features">
+    <a href="/" class="back">← Back to app</a><a href="#summary-en">Features</a><a href="#player-en">For players</a><a href="#admin-en">For admins</a><a href="#faq-en">FAQ</a>
+    <div class="langs" role="group" aria-label="Language">
+      <button type="button" data-set="th">ไทย</button><button type="button" data-set="en">EN</button><button type="button" data-set="zh">中文</button>
+    </div>
+  </nav>
+  <section id="summary-en">
+    <h2>All features at a glance</h2>
+    <p class="lead">Every feature on one page. Green tags are what players use; dark tags are admin tools.</p>
+    <div class="features"><div class="feat"><h3>Getting in <span class="tag">Player</span></h3><ul><li>Sign in with LINE; your name and photo come from LINE</li><li>New players sign up and wait for an admin to approve</li><li>If an admin already added your name, tap &quot;This is me&quot; to link it</li><li>Switch language (ไทย / EN / 中文) and dark mode</li></ul></div><div class="feat"><h3>Today <span class="tag">Player</span></h3><ul><li>See the play-day announcement and the club calendar</li><li>Sign up to play, or cancel your sign-up</li><li>Check yourself in at the court; undo it if you tapped by mistake</li><li>Take a break to skip the queue for a while</li><li>Bring a friend; their costs go on your bill</li><li>Done playing? One tap takes you to pay</li></ul></div><div class="feat"><h3>Courts and queue <span class="tag">Player</span></h3><ul><li>See your place in the queue or which court you&#x27;re on</li><li>See who is playing on every court</li><li>The TV screen at the hall shows the queue and calls names</li></ul></div><div class="feat"><h3>My bill <span class="tag">Player</span></h3><ul><li>Today&#x27;s total split into court, shuttles, drinks and anything unpaid</li><li>Scan the PromptPay QR, then tap &quot;I&#x27;ve paid&quot;</li><li>Attach a transfer slip, and delete a wrong one</li><li>Monthly members pay the monthly fee on the same page</li><li>Edit your profile, membership type, and preferred / avoided partners</li><li>Monthly summary and badges you can share</li></ul></div><div class="feat"><h3>Check-in and courts <span class="tag admin">Admin</span></h3><ul><li>Announce play days and mark closed days</li><li>Check players in, grouped by skill level</li><li>Match suggestions: fewest games first, longest wait next, balanced teams</li><li>Swap players, start games, add / remove shuttles, record the winner</li></ul></div><div class="feat"><h3>Billing <span class="tag admin">Admin</span></h3><ul><li>Today&#x27;s total, who has paid and who hasn&#x27;t</li><li>Add drinks and adjust one person&#x27;s court / shuttle fee</li><li>Collect cash, view slips, undo a payment</li><li>Monthly: who has paid, who owes, and an Excel report</li></ul></div><div class="feat"><h3>Players and settings <span class="tag admin">Admin</span></h3><ul><li>Add, edit or remove players; approve sign-ups and level changes</li><li>Make or remove admins</li><li>Prices, number of courts, PromptPay, play days, event photos</li><li>LINE group notifications (off by default: going over the free quota costs money)</li><li>Backups, and clearing history during the trial</li></ul></div><div class="feat"><h3>Mode switch <span class="tag admin">Admin</span></h3><ul><li>&quot;Today I&#x27;m Admin | Players&quot; under the header</li><li>On days you just play, switch to player mode and use the app like everyone else</li></ul></div></div>
+    <h3>Current prices (admins can change them in Settings)</h3>
+    <div class="prices"><div class="price"><b>40 THB</b><span>Court fee per visit (daily players)</span></div><div class="price"><b>150 THB</b><span>Monthly membership, no daily court fee</span></div><div class="price"><b>30 THB</b><span>First shuttle of the day</span></div><div class="price"><b>25 THB</b><span>Each shuttle after that</span></div><div class="price"><b>As charged</b><span>Drinks</span></div></div>
+    <div class="levels">Skill levels, from beginner to strong: <span class="lv">New</span><span class="lv">BG</span><span class="lv">NB</span><span class="lv">N</span><span class="lv">S</span><span class="lv">P</span></div>
+  </section>
+  <section id="player-en">
+    <div class="part-head"><div class="eyebrow">Part 1</div><h2>For players</h2><p>Players see three tabs at the bottom: Today, Courts and My bill. The header shows today's Signed up, Arrived, Playing and Waiting counts.</p></div>
+    <div class="steps"><article class="step"><figure class="shot pair"><img src="img/p-login.en.jpg" alt="Signing in the first time" loading="lazy"><img src="img/p-login2.en.jpg" alt="Signing in the first time" loading="lazy"></figure><div class="body"><h3>Signing in the first time</h3><ol><li>Open the app link from the LINE group and sign in with LINE</li><li>If an admin already added your name, type your nickname and tap <span class="btn">This is me</span>, then wait for approval</li><li>If your name isn't there, tap <span class="btn dark">First time here? Sign up</span></li></ol><p class="note">You only sign in once. The phone remembers you next time.</p></div></article>
+<article class="step"><figure class="shot"><img src="img/p-plan.en.jpg" alt="Choose a membership" loading="lazy"></figure><div class="body"><h3>Choose a membership</h3><p>The first time, the app asks how you want to pay.</p><ul><li><b>Daily</b>: pay the 40 THB court fee each visit</li><li><b>Monthly</b>: 150 THB a month, no daily court fee</li></ul><p class="note">You can change it later in My bill under "Edit profile".</p></div></article>
+<article class="step"><figure class="shot pair"><img src="img/p-today-none.en.jpg" alt="Sign up to play" loading="lazy"><img src="img/p-today-signed.en.jpg" alt="Sign up to play" loading="lazy"></figure><div class="body"><h3>Sign up to play</h3><ul><li>On a play day, tap <span class="btn dark">Sign up to play</span> so admins know you're coming</li><li>Something came up? Tap <b>Cancel sign-up</b> any time</li><li>You can still come without signing up; just check in when you arrive</li></ul><p class="note">The club calendar further down shows play days and closed days.</p></div></article>
+<article class="step"><figure class="shot pair"><img src="img/p-today-checked.en.jpg" alt="At the court: check yourself in" loading="lazy"><img src="img/p-today-undo.en.jpg" alt="At the court: check yourself in" loading="lazy"></figure><div class="body"><h3>At the court: check yourself in</h3><ul><li>Tap <span class="btn">I'm here, check in</span> and you join the queue straight away</li><li><b>Take a break (skip the queue)</b> skips you until you tap it again</li><li><b>Done playing, go pay</b> takes you out of the queue and opens My bill</li><li>Checked in by mistake? Tap <b>Checked in by mistake / cancel</b>, then choose "Undo check-in, still coming" or "Not coming"</li></ul><p class="note">Once you have played or paid, you can't undo the check-in yourself. Ask an admin.</p></div></article>
+<article class="step"><figure class="shot"><img src="img/p-courts.en.jpg" alt="Queue and courts" loading="lazy"></figure><div class="body"><h3>Queue and courts</h3><ul><li>The <b>Courts</b> tab shows your place in the queue, or which court you're on</li><li>Below that you can see who is playing on every court</li><li>When you're nearly up, it says "You're up soon"</li></ul><p class="note">The queue puts whoever has played the fewest games first, then whoever has waited longest.</p></div></article>
+<article class="step"><figure class="shot pair"><img src="img/p-mybill.en.jpg" alt="Paying" loading="lazy"><img src="img/p-pay.en.jpg" alt="Paying" loading="lazy"></figure><div class="body"><h3>Paying</h3><ol><li><b>My bill</b> shows today's total: court fee, shuttles, drinks and anything left unpaid</li><li>Scan the PromptPay QR (tap "Save QR image" and open your bank app), or pay cash</li><li>Tap <span class="btn">I've paid</span>; it counts straight away</li><li>To show the admins proof, tap <span class="btn dark">Paid? Attach slip</span>. You can delete a wrong slip.</li></ol><p class="note">Paying means you've gone home, so you leave the queue. If you brought friends, one payment covers them too.</p></div></article>
+<article class="step"><figure class="shot"><img src="img/p-profile.en.jpg" alt="Edit your profile" loading="lazy"></figure><div class="body"><h3>Edit your profile</h3><p>In My bill, tap <b>Edit profile</b>.</p><ul><li>Switch between daily and monthly membership</li><li>Change your nickname, photo, about me and gender</li><li>Ask for a new skill level; an admin has to approve it</li></ul></div></article>
+<article class="step"><figure class="shot"><img src="img/p-partners.en.jpg" alt="Preferred and avoided partners" loading="lazy"></figure><div class="body"><h3>Preferred and avoided partners</h3><ol><li>Scroll to the bottom of My bill and tap <b>Edit</b></li><li>Type a name, then tap <b>Partner</b> or <b>Avoid</b> (up to 5 each). Tap again to remove.</li><li>Tap <span class="btn dark">Save</span></li></ol><p class="note">People you avoid won't be put in the same game. If very few people are waiting, it may not always be possible.</p></div></article>
+<article class="step"><figure class="shot"><img src="img/p-month.en.jpg" alt="This month and badges" loading="lazy"></figure><div class="body"><h3>This month and badges</h3><ul><li>See days played, games, win rate, shuttles and what you spent this month</li><li>Tap <b>Share summary</b> to send it to friends</li><li>Collect badges such as Beginner, Regular and Marathon</li></ul></div></article></div>
+  </section>
+  <section id="admin-en">
+    <div class="part-head"><div class="eyebrow">Part 2</div><h2>For admins</h2><p>Admins see five tabs: Check-in, Courts, Billing, Players and Settings. These only appear for admin accounts.</p></div>
+    <div class="steps"><article class="step"><figure class="shot"><img src="img/a-home.en.jpg" alt="The admin home screen" loading="lazy"></figure><div class="body"><h3>The admin home screen</h3><ul><li>The counts at the top: <b>Signed up</b> (signed up in advance), <b>Arrived</b> (everyone checked in), <b>Playing</b> and <b>Waiting</b></li><li>The <b>Today I'm Admin | Players</b> switch: on days you just play, switch to player mode</li><li>The green card is today's announcement; tap "Edit message" or "Cancel announcement"</li></ul><p class="note">Players can only sign up and check themselves in once there is an announcement.</p></div></article>
+<article class="step"><figure class="shot"><img src="img/a-checkin.en.jpg" alt="Check players in" loading="lazy"></figure><div class="body"><h3>Check players in</h3><ul><li>Every player is grouped by skill level, with today's sign-ups first in each group</li><li>Tap a card to check someone in. A dark card with a tick means they're here; tap again to undo.</li><li>Search by name, tap <span class="btn">+</span> to register someone new, or add a guest a member brought</li></ul><p class="note">You can't undo the check-in of someone who has paid; undo the payment first. If they have already played, the app asks you to confirm.</p></div></article>
+<article class="step"><figure class="shot pair"><img src="img/a-match.en.jpg" alt="Set up a match" loading="lazy"><img src="img/a-court-playing.en.jpg" alt="Set up a match" loading="lazy"></figure><div class="body"><h3>Set up a match</h3><ol><li>On the <b>Courts</b> tab, tap <span class="btn">Set up a match</span> on a free court</li><li>The app suggests four players. The number beside each team is its total skill level; close numbers mean an even game.</li><li>To swap someone, tap their slot, then a name from the queue, or tap "Suggest again"</li><li>Tap <span class="btn">Start game</span></li><li>During the game tap <b>+ / −</b> to count shuttles; at the end tap the winning team</li></ol><p class="note">Use "End without result" if nobody kept score. "Cancel game" is for mistakes, and its shuttles are not charged.</p></div></article>
+<article class="step"><figure class="shot"><img src="img/a-queue.en.jpg" alt="The queue" loading="lazy"></figure><div class="body"><h3>The queue</h3><ul><li>Sorted by fewest games played, then by waiting time</li><li>Each person shows games played and how long they've waited</li><li>Tap <b>Break</b> for someone who wants a rest; they're skipped until they come back</li></ul></div></article>
+<article class="step"><figure class="shot pair"><img src="img/a-billing.en.jpg" alt="Today&#x27;s billing" loading="lazy"><img src="img/a-bill-detail.en.jpg" alt="Today&#x27;s billing" loading="lazy"></figure><div class="body"><h3>Today's billing</h3><ul><li>The top shows today's total, money collected and shuttles used</li><li>Tap a name for their bill: add drinks, adjust this person's court / shuttle fee, and show the QR to scan</li><li>If someone pays cash, tap <b>Collect</b> for them. "Undo paid" reverses a mistake and brings back older unpaid days too.</li><li>People who sent a slip get a "Slip sent" tag; you can view or delete it</li></ul></div></article>
+<article class="step"><figure class="shot"><img src="img/a-billing-monthly.en.jpg" alt="Monthly fees and reports" loading="lazy"></figure><div class="body"><h3>Monthly fees and reports</h3><ul><li>Switch to the <b>Monthly</b> tab to see who paid this month and the total</li><li>Monthly members who haven't paid are listed; tap to record a payment</li><li>Tap <b>Download this month's Excel report</b> for income by day and by player</li></ul><p class="note">Monthly fees are stored at the price paid, so a later price change won't alter old reports.</p></div></article>
+<article class="step"><figure class="shot"><img src="img/a-players.en.jpg" alt="Players" loading="lazy"></figure><div class="body"><h3>Players</h3><ul><li>Register a new player with nickname, gender and skill level</li><li>Approve self sign-ups, name-link requests and level changes</li><li>Edit or remove players, make or remove admins, and set their membership</li></ul><p class="note">Admins who want to be in the queue can link their own name to their LINE account in Settings.</p></div></article>
+<article class="step"><figure class="shot pair"><img src="img/a-settings.en.jpg" alt="Prices and play days" loading="lazy"><img src="img/a-calendar.en.jpg" alt="Prices and play days" loading="lazy"></figure><div class="body"><h3>Prices and play days</h3><ul><li>Set the number of courts, court fee, first and later shuttle prices, monthly fee and PromptPay number</li><li>New prices apply from today; earlier bills keep the old price</li><li>Club calendar: tap a day to announce play or mark it closed with a reason</li><li>Event photos: upload photos with a caption for everyone to see on Today</li></ul></div></article>
+<article class="step"><figure class="shot pair"><img src="img/a-line.en.jpg" alt="LINE, backups and clearing history" loading="lazy"><img src="img/a-clear.en.jpg" alt="LINE, backups and clearing history" loading="lazy"></figure><div class="body"><h3>LINE, backups and clearing history</h3><ul><li><b>LINE group notifications</b> are all off, because going over the free quota costs money. To link a group, get a code here and type "เชื่อมแอพก๊วน code" in the group.</li><li><b>Open court screen</b> opens the TV view for the hall</li><li><b>Backup</b>: download a file, or import one back (slip images are not included)</li><li><b>Clear all history</b> is for the trial: it removes games, check-ins and payments but keeps players, admins and prices</li></ul></div></article>
+<article class="step wide"><figure class="shot"><img src="img/tv.en.jpg" alt="The TV screen at the hall" loading="lazy"></figure><div class="body"><h3>The TV screen at the hall</h3><p>Open the app link with <b>?tv</b> on the end on a TV or tablet. It shows every court and the next four in the queue. Tap <b>Turn on queue calls</b> to have names read out when a game starts.</p></div></article></div>
+  </section>
+  <section id="faq-en">
+    <h2>Frequently asked questions</h2>
+    <div class="faq"><details><summary>I can&#x27;t save the QR image inside LINE</summary><p>LINE&#x27;s built-in browser blocks downloads. Tap &quot;Save QR image&quot;, then press and hold the image to save it. If that doesn&#x27;t work, tap &quot;Can&#x27;t save? Open in Chrome / Safari&quot; to open the QR page in your normal browser, where saving works.</p></details><details><summary>I tapped &quot;I&#x27;ve paid&quot; but haven&#x27;t actually paid</summary><p>Ask an admin to tap &quot;Undo paid&quot; on the Billing page. Today&#x27;s amount and any older days closed with it come back.</p></details><details><summary>How do I bring a friend?</summary><p>On Today, tap &quot;Bring a friend&quot; and enter their name and skill level. They join the queue straight away, and their costs go on your bill (up to 3 friends).</p></details></div>
+  </section>
+</div>
+<div class="lang-block" data-lang="zh" lang="zh" hidden>
+  <header class="hero">
+    <div class="eyebrow">使用指南</div>
+    <h1>甲民武里羽毛球<br>侬告公园</h1>
+    <p>我们球队的应用，用来报名、签到、排队上场和付款。打开 badmiton-kabinburi.vercel.app，用 LINE 登录即可，不需要记密码。</p>
+    
+  </header>
+  <nav class="toc" aria-label="功能总览">
+    <a href="/" class="back">← 返回应用</a><a href="#summary-zh">功能总览</a><a href="#player-zh">球员指南</a><a href="#admin-zh">管理员指南</a><a href="#faq-zh">常见问题</a>
+    <div class="langs" role="group" aria-label="语言">
+      <button type="button" data-set="th">ไทย</button><button type="button" data-set="en">EN</button><button type="button" data-set="zh">中文</button>
+    </div>
+  </nav>
+  <section id="summary-zh">
+    <h2>全部功能总览</h2>
+    <p class="lead">所有功能集中在一页。绿色标签是球员使用的功能，深色标签是管理员功能。</p>
+    <div class="features"><div class="feat"><h3>登录使用 <span class="tag">球员</span></h3><ul><li>用 LINE 登录，名字和头像自动来自 LINE</li><li>新球员自行报名，等管理员批准</li><li>管理员已添加你的名字时，点“这是我”来关联账号</li><li>可切换语言（ไทย / EN / 中文）和深色模式</li></ul></div><div class="feat"><h3>今天 <span class="tag">球员</span></h3><ul><li>查看打球公告和活动日历</li><li>报名参加，或取消报名</li><li>到场后自己签到，误签可撤销</li><li>休息一下，暂时跳过排队</li><li>带朋友来打球，费用记在你的账单上</li><li>打完了，一键去付款</li></ul></div><div class="feat"><h3>场地和排队 <span class="tag">球员</span></h3><ul><li>查看自己排第几，或在哪个场地</li><li>看到每个场地谁在打</li><li>场馆大屏显示排队并语音叫号</li></ul></div><div class="feat"><h3>我的账单 <span class="tag">球员</span></h3><ul><li>今天的费用分为场地费、羽毛球费、饮料和欠款</li><li>扫 PromptPay 二维码后点“我已支付”</li><li>上传转账凭证，传错可删除</li><li>月费会员在同一页支付月费</li><li>编辑个人资料、会员类型、想 / 不想搭档的人</li><li>本月总结和徽章，可以分享</li></ul></div><div class="feat"><h3>签到和排场 <span class="tag admin">管理员</span></h3><ul><li>发布打球日，设置休息日</li><li>为球员签到，按水平分组</li><li>系统推荐对阵：打得少的优先，等得久的其次，双方实力均衡</li><li>可手动换人，开始比赛，加 / 减球，记录胜方</li></ul></div><div class="feat"><h3>结账 <span class="tag admin">管理员</span></h3><ul><li>今天总额，谁已付谁未付</li><li>添加饮料，单独调整某人的场地 / 球费</li><li>收现金，查看凭证，撤销已付</li><li>月费：谁已付、谁欠费，以及 Excel 报表</li></ul></div><div class="feat"><h3>球员和设置 <span class="tag admin">管理员</span></h3><ul><li>添加 / 编辑 / 删除球员，批准报名和水平变更</li><li>设置 / 取消管理员</li><li>价格、场地数量、PromptPay、活动日、活动照片</li><li>LINE 群通知（默认关闭，超出免费额度会收费）</li><li>数据备份，以及试用期清除记录</li></ul></div><div class="feat"><h3>切换模式 <span class="tag admin">管理员</span></h3><ul><li>页头下方的“今天我是 管理员 | 球员”</li><li>只来打球的日子切换成球员，和大家一样使用</li></ul></div></div>
+    <h3>当前价格（管理员可在设置中修改）</h3>
+    <div class="prices"><div class="price"><b>40 泰铢</b><span>每次场地费（按次付费）</span></div><div class="price"><b>150 泰铢</b><span>月费会员，免每次场地费</span></div><div class="price"><b>30 泰铢</b><span>当天第一个球</span></div><div class="price"><b>25 泰铢</b><span>之后每个球</span></div><div class="price"><b>按实际</b><span>饮料</span></div></div>
+    <div class="levels">水平等级，从新手到高手： <span class="lv">New</span><span class="lv">BG</span><span class="lv">NB</span><span class="lv">N</span><span class="lv">S</span><span class="lv">P</span></div>
+  </section>
+  <section id="player-zh">
+    <div class="part-head"><div class="eyebrow">第 1 部分</div><h2>球员指南</h2><p>球员在底部看到 3 个标签：今天、场地、我的账单。页头显示今天的已报名、已到、比赛中、排队中人数。</p></div>
+    <div class="steps"><article class="step"><figure class="shot pair"><img src="img/p-login.zh.jpg" alt="第一次登录" loading="lazy"><img src="img/p-login2.zh.jpg" alt="第一次登录" loading="lazy"></figure><div class="body"><h3>第一次登录</h3><ol><li>从 LINE 群打开应用链接，用 LINE 登录</li><li>如果管理员已添加你的名字，输入昵称并点 <span class="btn">这是我</span>，等待管理员批准</li><li>如果还没有名字，点 <span class="btn dark">第一次来？立即报名</span></li></ol><p class="note">只需登录一次，手机会记住你，下次打开即可使用。</p></div></article>
+<article class="step"><figure class="shot"><img src="img/p-plan.zh.jpg" alt="选择会员类型" loading="lazy"></figure><div class="body"><h3>选择会员类型</h3><p>第一次使用时，应用会询问付费方式。</p><ul><li><b>每日</b>：每次来付 40 泰铢场地费</li><li><b>月费</b>：每月 150 泰铢，免每次场地费</li></ul><p class="note">之后可在“我的账单”点“编辑资料”更改。</p></div></article>
+<article class="step"><figure class="shot pair"><img src="img/p-today-none.zh.jpg" alt="报名参加" loading="lazy"><img src="img/p-today-signed.zh.jpg" alt="报名参加" loading="lazy"></figure><div class="body"><h3>报名参加</h3><ul><li>有打球公告的日子，点 <span class="btn dark">报名参加</span>，让管理员提前知道</li><li>有事来不了，随时点 <b>取消报名</b></li><li>没报名也可以来，到场后直接签到</li></ul><p class="note">下方的活动日历显示打球日和休息日。</p></div></article>
+<article class="step"><figure class="shot pair"><img src="img/p-today-checked.zh.jpg" alt="到场：自己签到" loading="lazy"><img src="img/p-today-undo.zh.jpg" alt="到场：自己签到" loading="lazy"></figure><div class="body"><h3>到场：自己签到</h3><ul><li>点 <span class="btn">我到了，签到</span>，立即进入排队</li><li><b>休息一下（暂时跳过）</b>：系统先跳过你，再点一次恢复</li><li><b>打完了，去付款</b>：离开排队并打开“我的账单”</li><li>误签到？点 <b>误签到 / 取消</b>，选择“取消签到，仍会来”或“不来了”</li></ul><p class="note">已经上场或已经付款后，不能自己取消签到，请找管理员。</p></div></article>
+<article class="step"><figure class="shot"><img src="img/p-courts.zh.jpg" alt="查看排队和场地" loading="lazy"></figure><div class="body"><h3>查看排队和场地</h3><ul><li><b>场地</b> 标签显示你排第几，上场后显示在哪个场地</li><li>下方可以看到每个场地谁在打</li><li>快轮到你时会显示“快轮到你了”</li></ul><p class="note">系统优先安排打得最少的人，相同时安排等得最久的人。</p></div></article>
+<article class="step"><figure class="shot pair"><img src="img/p-mybill.zh.jpg" alt="付款" loading="lazy"><img src="img/p-pay.zh.jpg" alt="付款" loading="lazy"></figure><div class="body"><h3>付款</h3><ol><li><b>我的账单</b> 显示今天的费用：场地费、球费、饮料和之前的欠款</li><li>扫 PromptPay 二维码（点“保存二维码图片”后打开银行应用），或付现金</li><li>点 <span class="btn">我已支付</span>，立即算作已付</li><li>想让管理员看到凭证，点 <span class="btn dark">已转账，上传凭证</span>，传错可删除</li></ol><p class="note">付款即视为回家，你会离开排队。带朋友来的话，一次付款包含朋友的费用。</p></div></article>
+<article class="step"><figure class="shot"><img src="img/p-profile.zh.jpg" alt="编辑个人资料" loading="lazy"></figure><div class="body"><h3>编辑个人资料</h3><p>在“我的账单”点 <b>编辑资料</b>。</p><ul><li>切换每日 / 月费会员</li><li>修改昵称、头像、自我介绍、性别</li><li>申请更改水平等级，需要管理员批准</li></ul></div></article>
+<article class="step"><figure class="shot"><img src="img/p-partners.zh.jpg" alt="想搭档 / 不想搭档的人" loading="lazy"></figure><div class="body"><h3>想搭档 / 不想搭档的人</h3><ol><li>滑到“我的账单”最下方，点 <b>编辑</b></li><li>输入名字，点 <b>想搭档</b> 或 <b>不想搭档</b>（各最多 5 人），再点一次可取消</li><li>点 <span class="btn dark">保存</span></li></ol><p class="note">不想搭档的人不会被排在同一局。排队人数很少时可能无法完全避开。</p></div></article>
+<article class="step"><figure class="shot"><img src="img/p-month.zh.jpg" alt="本月总结和徽章" loading="lazy"></figure><div class="body"><h3>本月总结和徽章</h3><ul><li>查看本月来的天数、比赛数、胜率、用球数和花费</li><li>点 <b>分享总结</b> 发给朋友</li><li>收集徽章，例如新手、常客、马拉松</li></ul></div></article></div>
+  </section>
+  <section id="admin-zh">
+    <div class="part-head"><div class="eyebrow">第 2 部分</div><h2>管理员指南</h2><p>管理员看到 5 个标签：签到、场地、结账、球员、设置。只有管理员账号才会显示。</p></div>
+    <div class="steps"><article class="step"><figure class="shot"><img src="img/a-home.zh.jpg" alt="管理员首页" loading="lazy"></figure><div class="body"><h3>管理员首页</h3><ul><li>顶部数字：<b>已报名</b>（提前报名）、<b>已到</b>（所有已签到）、<b>比赛中</b>、<b>排队中</b></li><li><b>今天我是 管理员 | 球员</b> 开关：只来打球的日子可切换为球员</li><li>绿色卡片是今天的公告，可点“编辑内容”或“取消公告”</li></ul><p class="note">必须先发布公告，球员才能自己报名和签到。</p></div></article>
+<article class="step"><figure class="shot"><img src="img/a-checkin.zh.jpg" alt="为球员签到" loading="lazy"></figure><div class="body"><h3>为球员签到</h3><ul><li>所有球员按水平分组，今天报名的人排在各组前面</li><li>点卡片签到，深色卡片带勾表示已到，再点一次可撤销</li><li>可搜索名字，点 <span class="btn">+</span> 登记新球员，或添加会员带来的客人</li></ul><p class="note">已付款的人不能撤销签到，需先撤销付款。已经上场的会要求确认。</p></div></article>
+<article class="step"><figure class="shot pair"><img src="img/a-match.zh.jpg" alt="安排上场" loading="lazy"><img src="img/a-court-playing.zh.jpg" alt="安排上场" loading="lazy"></figure><div class="body"><h3>安排上场</h3><ol><li>在 <b>场地</b> 标签，空场点 <span class="btn">安排上场</span></li><li>系统推荐 4 人，队伍旁的数字是水平总和，接近表示势均力敌</li><li>想换人，点场上的位置，再点排队中的名字，或点“重新推荐”</li><li>点 <span class="btn">开始比赛</span></li><li>比赛中点 <b>+ / −</b> 计球数，结束后点获胜的队伍</li></ol><p class="note">没记比分点“结束不记结果”。“取消比赛”用于误操作，所用的球不计费。</p></div></article>
+<article class="step"><figure class="shot"><img src="img/a-queue.zh.jpg" alt="排队名单" loading="lazy"></figure><div class="body"><h3>排队名单</h3><ul><li>按打得最少优先，再按等待时间排序</li><li>每人显示已打局数和等待时间</li><li>有人想休息，点 <b>休息</b>，系统会跳过他直到回来</li></ul></div></article>
+<article class="step"><figure class="shot pair"><img src="img/a-billing.zh.jpg" alt="今天结账" loading="lazy"><img src="img/a-bill-detail.zh.jpg" alt="今天结账" loading="lazy"></figure><div class="body"><h3>今天结账</h3><ul><li>顶部是今天总额、已收金额和用球数</li><li>点名字打开个人账单：添加饮料、单独调整此人的场地 / 球费，并显示二维码</li><li>球员付现金时点 <b>收款</b>。点错可“撤销已付”，之前的欠款也会恢复</li><li>上传了凭证的人有“有转账凭证”标签，可查看或删除</li></ul></div></article>
+<article class="step"><figure class="shot"><img src="img/a-billing-monthly.zh.jpg" alt="月费和报表" loading="lazy"></figure><div class="body"><h3>月费和报表</h3><ul><li>切换到 <b>月费</b> 标签，查看本月谁已付、共多少钱</li><li>列出尚未付款的月费会员，点一下记录已付</li><li>点 <b>下载本月 Excel 报表</b>，获得每日和每人收入</li></ul><p class="note">月费按付款时的价格记录，之后涨价不会改变旧报表。</p></div></article>
+<article class="step"><figure class="shot"><img src="img/a-players.zh.jpg" alt="球员" loading="lazy"></figure><div class="body"><h3>球员</h3><ul><li>登记新球员：昵称、性别、水平</li><li>批准自行报名、名字关联申请和水平变更</li><li>编辑或删除球员，设置 / 取消管理员，设定会员类型</li></ul><p class="note">想进入排队的管理员，可在设置中把自己的名字关联到 LINE 账号。</p></div></article>
+<article class="step"><figure class="shot pair"><img src="img/a-settings.zh.jpg" alt="价格和打球日" loading="lazy"><img src="img/a-calendar.zh.jpg" alt="价格和打球日" loading="lazy"></figure><div class="body"><h3>价格和打球日</h3><ul><li>设置场地数量、场地费、第一个球和之后的球价、月费、PromptPay 号码</li><li>新价格从今天起生效，之前的账单仍按旧价</li><li>活动日历：点日期发布打球日，或设为休息日并注明原因</li><li>活动照片：上传照片和说明，大家在“今天”页面可以看到</li></ul></div></article>
+<article class="step"><figure class="shot pair"><img src="img/a-line.zh.jpg" alt="LINE、备份和清除记录" loading="lazy"><img src="img/a-clear.zh.jpg" alt="LINE、备份和清除记录" loading="lazy"></figure><div class="body"><h3>LINE、备份和清除记录</h3><ul><li><b>LINE 群通知</b> 默认全部关闭，超出免费额度会收费。要连接群组，先在这里获取连接码，再在群里输入“เชื่อมแอพก๊วน 连接码”</li><li><b>打开大屏</b>：打开放在场馆的电视画面</li><li><b>数据备份</b>：下载文件保存，或导入旧文件（不含凭证图片）</li><li><b>清除全部记录</b>：试用期使用，删除比赛、签到和付款，保留球员、管理员和价格</li></ul></div></article>
+<article class="step wide"><figure class="shot"><img src="img/tv.zh.jpg" alt="场馆大屏" loading="lazy"></figure><div class="body"><h3>场馆大屏</h3><p>在电视或平板上打开应用链接并在末尾加 <b>?tv</b>，可看到所有场地和接下来 4 位排队的人。点 <b>开启叫号语音</b>，新比赛开始时会播报名字。</p></div></article></div>
+  </section>
+  <section id="faq-zh">
+    <h2>常见问题</h2>
+    <div class="faq"><details><summary>在 LINE 里无法保存二维码</summary><p>LINE 内置浏览器禁止下载。点“保存二维码图片”后长按图片保存。如果还不行，点“无法保存？用 Chrome / Safari 打开”，在普通浏览器中打开二维码页面即可保存。</p></details><details><summary>点了“我已支付”，但其实还没付</summary><p>请管理员在结账页点“撤销已付”，今天的金额和一起结清的旧欠款都会恢复。</p></details><details><summary>怎么带朋友来打球？</summary><p>在“今天”页面点“带朋友来打球”，输入名字和水平，朋友立即进入排队，费用记在你的账单上（最多 3 人）。</p></details></div>
+  </section>
+</div>
+</div>
+<script>
+(function () {
+  var KEY = "badminton-guide:lang";
+  function set(lang) {
+    document.querySelectorAll(".lang-block").forEach(function (b) { b.hidden = b.dataset.lang !== lang; });
+    document.querySelectorAll(".langs button").forEach(function (x) { x.setAttribute("aria-pressed", String(x.dataset.set === lang)); });
+    document.documentElement.lang = lang;
+    try { localStorage.setItem(KEY, lang); } catch (e) {}
+  }
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest(".langs button");
+    if (b) set(b.dataset.set);
+  });
+  var start = "th";
+  try { var q = new URLSearchParams(location.search).get("lang"); if (q === "en" || q === "zh" || q === "th") { set(q); return; } } catch (e) {}
+  try { var v = localStorage.getItem(KEY); if (v === "en" || v === "zh" || v === "th") start = v; } catch (e) {}
+  set(start);
+})();
+</script>
+</body>
+</html>

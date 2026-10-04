@@ -15,7 +15,7 @@ import { SettingsTab } from "./SettingsTab";
 import { TodayTab } from "./TodayTab";
 import { TvView } from "./TvView";
 import { QrOnlyPage } from "./PayQr";
-import { APP_NAME } from "@/lib/brand";
+import { appName } from "@/lib/brand";
 import { Icon } from "./ui";
 import { LANGS, locale, setLang, t, useLang } from "@/lib/i18n";
 import { setTheme, useTheme } from "@/lib/theme";
@@ -68,6 +68,21 @@ function ThemeSwitch() {
         </svg>
       )}
     </button>
+  );
+}
+
+/** เปิดคู่มือการใช้งาน (หน้าเว็บแยกใน public/guide) ตามภาษาที่เลือก */
+function GuideButton() {
+  const lang = useLang();
+  return (
+    <a
+      href={`/guide/index.html?lang=${lang}`}
+      className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-sm font-bold text-white/80 ring-1 ring-white/10"
+      aria-label={t("คู่มือการใช้งาน")}
+      title={t("คู่มือการใช้งาน")}
+    >
+      ?
+    </a>
   );
 }
 
@@ -125,7 +140,7 @@ function ModeSwitch() {
   if (!auth.canAdmin || !auth.setPlayerMode) return null;
   const set = auth.setPlayerMode;
   return (
-    <div className="mt-3 flex items-center justify-end gap-2">
+    <div className="flex items-center gap-2">
       <span className="text-[11px] text-white/60">{t("วันนี้ฉันเป็น")}</span>
       <div className="flex rounded-full bg-white/10 p-0.5 ring-1 ring-white/10">
         {[false, true].map((player) => (
@@ -169,17 +184,22 @@ function Header() {
           </span>
           <div className="min-w-0 flex-1">
             <h1 className="font-display text-base leading-tight font-semibold">
-              {APP_NAME[0]}
-              <span className="block text-sm font-medium text-lime">{APP_NAME[1]}</span>
+              {appName()[0]}
+              <span className="block text-sm font-medium text-lime">{appName()[1]}</span>
             </h1>
             <p className="text-xs text-white/60">
               {new Date().toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" })}
             </p>
           </div>
-          <ThemeSwitch />
-          <LangSwitch />
         </div>
-        <ModeSwitch />
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <ModeSwitch />
+          <div className="ml-auto flex items-center gap-2">
+            <GuideButton />
+            <ThemeSwitch />
+            <LangSwitch />
+          </div>
+        </div>
         <div className="mt-5 grid grid-cols-4 gap-2">
           {stats.map((s) => (
             <div key={s.label} className="rounded-2xl bg-white/[0.07] px-3 py-2.5 ring-1 ring-white/10">

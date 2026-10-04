@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { APP_NAME } from "@/lib/brand";
+import { appName } from "@/lib/brand";
 import { locale, t, useLang } from "@/lib/i18n";
 import { presence, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
@@ -109,7 +109,7 @@ export function TvView() {
           <Icon.Shuttle width={30} height={30} strokeWidth={2.2} />
         </span>
         <h1 className="font-display text-3xl leading-tight font-semibold">
-          {APP_NAME[0]} <span className="text-lime">{APP_NAME[1]}</span>
+          {appName()[0]} <span className="text-lime">{appName()[1]}</span>
         </h1>
         {canSpeak && (
           <button
