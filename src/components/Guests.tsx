@@ -54,7 +54,7 @@ export function useGuestsToday(hostId: string): Player[] {
 }
 
 /** ผู้เล่นพาเพื่อนมา: เพื่อนเข้าคิวได้เลย ค่าใช้จ่ายรวมในบิลของคนพามา */
-export function BringGuest({ player, pin, onPinOk }: { player: Player; pin: string; onPinOk: () => void }) {
+export function BringGuest({ player, pin }: { player: Player; pin: string }) {
   const { addGuest } = useStore();
   const { day } = useToday();
   const guests = useGuestsToday(player.id);
@@ -92,7 +92,6 @@ export function BringGuest({ player, pin, onPinOk }: { player: Player; pin: stri
             setBusy(false);
             setError(err ? t(err) : "");
             if (!err) {
-              onPinOk();
               setOpen(false);
             }
           }}

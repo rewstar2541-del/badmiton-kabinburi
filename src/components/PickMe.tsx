@@ -1,54 +1,37 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { readSession, writeSession } from "@/lib/session";
+import type { Player } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { PlayerForm } from "./PlayersTab";
 import { Avatar, Button, Card, Icon, SectionTitle, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
 
-const ME_KEY = "badminton-kabinburi:me";
-const PIN_KEY = "badminton-kabinburi:pin";
-
-function read(key: string): string | null {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function write(key: string, v: string | null) {
-  try {
-    if (v) localStorage.setItem(key, v);
-    else localStorage.removeItem(key);
-  } catch {
-    // ไม่จำก็ได้
-  }
-}
-
-/** ผู้เล่นที่ใช้เครื่องนี้ (จำไว้ในเครื่อง) */
+/** ผู้เล่นที่ล็อกอินบนเครื่องนี้ (ต้องล็อกอินด้วย PIN ก่อน คนอื่นจึงเปิดดูบัญชีเราไม่ได้) */
 export function useMe() {
-  const [me, setMeState] = useState<string | null>(() => read(ME_KEY));
+  const [me, setMeState] = useState<string | null>(() => readSession()?.playerId ?? null);
   const setMe = useCallback((id: string | null) => {
-    write(ME_KEY, id);
-    if (!id) write(PIN_KEY, null);
+    if (!id) writeSession(null);
     setMeState(id);
   }, []);
   return [me, setMe] as const;
 }
 
-/** เลข 4 ตัวท้ายเบอร์โทรที่ใช้ยืนยันตัว (จำไว้ในเครื่องหลังใช้สำเร็จ) */
+/** token ของการล็อกอิน ใช้แทน PIN เวลาเรียกคำสั่งของผู้เล่น */
 export const savedPin = {
-  get: () => read(PIN_KEY) ?? "",
-  set: (v: string) => write(PIN_KEY, v),
+  get: () => readSession()?.token ?? "",
 };
 
 export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: string }) {
   const { state } = useStore();
   const [q, setQ] = useState("");
   const [registering, setRegistering] = useState(false);
+  const [picked, setPicked] = useState<string | null>(null);
   const list = state.players.filter((p) => !p.guestOf && !p.pending && p.name.toLowerCase().includes(q.trim().toLowerCase()));
-  if (registering) return <Register onDone={onPick} onCancel={() => setRegistering(false)} />;
+  if (registering) return <Register onCancel={() => setRegistering(false)} />;
+  const pickedPlayer = state.players.find((p) => p.id === picked);
+  if (pickedPlayer) return <Login player={pickedPlayer} onDone={() => onPick(pickedPlayer.id)} onCancel={() => setPicked(null)} />;
 
   return (
     <div className="space-y-4">
@@ -62,7 +45,7 @@ export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: s
         {list.map((p) => (
           <li key={p.id}>
             <button
-              onClick={() => onPick(p.id)}
+              onClick={() => setPicked(p.id)}
               className="flex w-full flex-col items-center gap-1.5 rounded-3xl bg-white p-3 shadow-[0_8px_24px_-14px_rgba(11,18,32,0.25)] active:scale-[0.97]"
             >
               <Avatar name={p.name} photo={p.photo} size={44} />
@@ -78,11 +61,92 @@ export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: s
   );
 }
 
-/** ผู้เล่นสมัครเองครั้งแรก แอดมินต้องกดอนุมัติก่อนจึงลงชื่อ/เช็คอินได้ */
-function Register({ onDone, onCancel }: { onDone: (id: string) => void; onCancel: () => void }) {
+/** ล็อกอินด้วย PIN ครั้งเดียวต่อเครื่อง ครั้งแรกใช้ 4 ตัวท้ายเบอร์โทร แล้วตั้ง PIN ของตัวเอง */
+function Login({ player, onDone, onCancel }: { player: Player; onDone: () => void; onCancel: () => void }) {
+  const { login, auth } = useStore();
+  const [pin, setPin] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [needPin, setNeedPin] = useState(false);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    if (needPin && !/^\d{4,6}$/.test(newPin)) return setError(t("PIN ต้องเป็นตัวเลข 4-6 หลัก"));
+    setBusy(true);
+    const r = await login(player.id, pin, needPin ? newPin : undefined);
+    setBusy(false);
+    if (r.need_pin) {
+      setNeedPin(true);
+      setError("");
+    } else if (r.token) onDone();
+    else setError(t(r.error ?? "บันทึกไม่สำเร็จ"));
+  };
+
+  const digits = (v: string) => v.replace(/\D/g, "").slice(0, 6);
+  return (
+    <div className="space-y-4">
+      <Card className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Avatar name={player.name} photo={player.photo} size={52} />
+          <div className="min-w-0 flex-1">
+            <div className="truncate font-display text-lg font-semibold">{player.name}</div>
+            <div className="text-xs text-zinc-500">{t("เข้าสู่ระบบครั้งเดียว เครื่องนี้จะจำไว้ คนอื่นเปิดดูบัญชีคุณไม่ได้")}</div>
+          </div>
+        </div>
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit();
+          }}
+        >
+          {!needPin ? (
+            <label className="block space-y-1.5 text-sm font-medium">
+              {t("PIN ของคุณ (ครั้งแรกใช้ 4 ตัวท้ายเบอร์โทร)")}
+              <input className={inputClass} type="password" inputMode="numeric" autoComplete="current-password" value={pin} onChange={(e) => setPin(digits(e.target.value))} />
+            </label>
+          ) : (
+            <label className="block space-y-1.5 text-sm font-medium">
+              {t("ตั้ง PIN ใหม่ของคุณ (ตัวเลข 4-6 หลัก ใช้ครั้งต่อไป)")}
+              <input className={inputClass} type="password" inputMode="numeric" autoComplete="new-password" value={newPin} onChange={(e) => setNewPin(digits(e.target.value))} />
+            </label>
+          )}
+          {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+          <div className="flex gap-2">
+            <Button variant="primary" type="submit" className="flex-1" disabled={busy}>
+              {needPin ? t("ตั้ง PIN และเข้าสู่ระบบ") : t("เข้าสู่ระบบ")}
+            </Button>
+            <Button type="button" onClick={onCancel}>
+              {t("ยกเลิก")}
+            </Button>
+          </div>
+        </form>
+      </Card>
+      <p className="px-1 text-center text-xs text-zinc-500">{t("ลืม PIN? ให้แอดมินรีเซ็ตให้")}</p>
+      {auth.demo && player.phone && (
+        <p className="px-1 text-center text-xs text-amber-700">{t("โหมดทดลอง: 4 ตัวท้ายเบอร์ของ {name} คือ {pin}", { name: player.name, pin: player.phone.slice(-4) })}</p>
+      )}
+    </div>
+  );
+}
+
+/** ผู้เล่นสมัครเองครั้งแรก แอดมินต้องกดอนุมัติก่อน แล้วจึงเข้าสู่ระบบได้ */
+function Register({ onCancel }: { onCancel: () => void }) {
   const { register } = useStore();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState<string | null>(null);
+  if (sent)
+    return (
+      <Card className="space-y-2 py-8 text-center">
+        <Icon.Clock className="mx-auto text-amber-500" width={32} height={32} />
+        <p className="font-semibold">{t("{name} สมัครแล้ว รอแอดมินอนุมัติ", { name: sent })}</p>
+        <p className="text-sm text-zinc-500">{t("อนุมัติแล้วให้เลือกชื่อของคุณ แล้วเข้าสู่ระบบด้วย 4 ตัวท้ายเบอร์โทร")}</p>
+        <Button className="mx-auto" onClick={onCancel}>
+          {t("กลับ")}
+        </Button>
+      </Card>
+    );
   return (
     <div className="space-y-4">
       <SectionTitle>{t("สมัครสมาชิกก๊วน")}</SectionTitle>
@@ -98,10 +162,8 @@ function Register({ onDone, onCancel }: { onDone: (id: string) => void; onCancel
             setBusy(true);
             const r = await register(p);
             setBusy(false);
-            if (r.id) {
-              if (p.phone) savedPin.set(p.phone.slice(-4));
-              onDone(r.id);
-            } else setError(t(r.error ?? "บันทึกไม่สำเร็จ"));
+            if (r.id) setSent(p.name);
+            else setError(t(r.error ?? "บันทึกไม่สำเร็จ"));
           }}
         />
       </Card>

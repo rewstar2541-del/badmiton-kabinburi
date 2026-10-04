@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { billFor } from "../billing";
-import { rowsToState } from "../remote";
+import { mergePrivate, rowsToState } from "../remote";
 import { prepare, reducer, EMPTY_STATE } from "../state";
 import { DEFAULT_SETTINGS } from "../types";
 
@@ -83,5 +83,21 @@ describe("prepare + reducer", () => {
     s = reducer(s, prepare({ type: "setAnnouncement", date: "2026-10-04", message: null }));
     expect(s.days[0].signups).toEqual([]);
     expect(s.days[0].announcement).toBeUndefined();
+  });
+});
+
+describe("mergePrivate", () => {
+  it("รวมค่าน้ำ ค่ารายเดือน และสลิปของตัวเองเข้าไปโดยไม่ซ้ำ", () => {
+    const base = { ...EMPTY_STATE, days: [{ date: "2026-10-04", checkIns: [], games: [], drinks: [] }] };
+    const rows = {
+      drinks: [{ id: "d1", date: "2026-10-04", player_id: "a", amount: 15, note: "น้ำ" }],
+      monthly: [{ month: "2026-10", player_id: "a", paid_at: "2026-10-01T00:00:00Z" }],
+      slips: [{ id: "s1", date: "2026-10-05", player_id: "a", amount: 70, created_at: "2026-10-05T12:00:00Z" }],
+    };
+    const s = mergePrivate(mergePrivate(base, rows), rows);
+    expect(s.days.map((d) => d.date)).toEqual(["2026-10-04", "2026-10-05"]);
+    expect(s.days[0].drinks).toHaveLength(1);
+    expect(s.days[1].slips).toHaveLength(1);
+    expect(s.monthly["2026-10"].a).toBe(Date.parse("2026-10-01T00:00:00Z"));
   });
 });

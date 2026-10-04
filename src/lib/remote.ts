@@ -415,3 +415,57 @@ export async function testLine(db: SupabaseClient): Promise<string | null> {
   if (error) return error.message;
   return (data as { error?: string })?.error ?? null;
 }
+
+// ---------- ล็อกอินผู้เล่น ----------
+
+export type LoginResult = { token?: string; need_pin?: boolean; error?: string };
+
+/** ล็อกอินด้วย PIN (ครั้งแรกใช้ 4 ตัวท้ายเบอร์ แล้วตั้ง PIN ใหม่) */
+export async function playerLogin(db: SupabaseClient, playerId: string, pin: string, newPin?: string): Promise<LoginResult> {
+  const { data, error } = await db.rpc("player_login", { p_player: playerId, p_pin: pin, p_new_pin: newPin ?? null });
+  if (error) return { error: error.message };
+  return data as LoginResult;
+}
+
+export async function playerLogout(db: SupabaseClient, token: string) {
+  await db.rpc("player_logout", { p_token: token });
+}
+
+type PrivateRows = { error?: string; drinks: Rows["drinks"]; monthly: Rows["monthly"]; slips: Rows["slips"] };
+
+/** ค่าน้ำ ค่ารายเดือน และสลิปของผู้เล่นที่ล็อกอิน (คนอื่นมองไม่เห็น) รวมเข้า state */
+export async function loadPrivate(db: SupabaseClient, state: State, playerId: string, token: string): Promise<State | "expired"> {
+  const { data, error } = await db.rpc("my_private", { p_player: playerId, p_token: token });
+  if (error) throw new Error(error.message);
+  const r = data as PrivateRows;
+  if (r.error) return "expired";
+  return mergePrivate(state, r);
+}
+
+export function mergePrivate(state: State, r: Omit<PrivateRows, "error">): State {
+  const days = new Map(state.days.map((d) => [d.date, { ...d }]));
+  const day = (date: string) => {
+    let d = days.get(date);
+    if (!d) days.set(date, (d = { date, checkIns: [], games: [], drinks: [] }));
+    return d;
+  };
+  for (const x of r.drinks) {
+    const d = day(x.date);
+    if (!d.drinks.some((y) => y.id === x.id)) d.drinks = [...d.drinks, { id: x.id, playerId: x.player_id, amount: x.amount, note: x.note }];
+  }
+  for (const x of r.slips) {
+    const d = day(x.date);
+    if (!d.slips?.some((y) => y.id === x.id))
+      d.slips = [...(d.slips ?? []), { id: x.id, playerId: x.player_id, amount: x.amount, at: ms(x.created_at) }];
+  }
+  const monthly = { ...state.monthly };
+  for (const m of r.monthly) monthly[m.month] = { ...monthly[m.month], [m.player_id]: ms(m.paid_at) };
+  return { ...state, days: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)), monthly };
+}
+
+/** แอดมินรีเซ็ต PIN ของผู้เล่น คืนข้อความผิดพลาด หรือ null */
+export async function adminResetPin(db: SupabaseClient, playerId: string): Promise<string | null> {
+  const { data, error } = await db.rpc("admin_reset_pin", { p_player: playerId });
+  if (error) return error.message;
+  return (data as string | null) ?? null;
+}

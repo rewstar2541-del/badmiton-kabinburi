@@ -7,7 +7,7 @@ import { BringGuest } from "./Guests";
 import type { SelfAction } from "@/lib/state";
 import { ClosedBanner, ClubCalendar } from "./Calendar";
 import { PendingNotice, PickMe, savedPin, useMe } from "./PickMe";
-import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, inputClass } from "./ui";
+import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle } from "./ui";
 import { t } from "@/lib/i18n";
 
 /** ประกาศจัดก๊วนวันนี้ (ใช้ทั้งหน้าผู้เล่นและแอดมิน) */
@@ -65,11 +65,11 @@ export function SignupList() {
 
 /** หน้าแรกของผู้เล่น: ดูประกาศ ลงชื่อ และเช็คอินเองเมื่อถึงสนาม */
 export function TodayTab() {
-  const { state, self, auth } = useStore();
+  const { state, self } = useStore();
   const { date, day } = useToday();
   const [me, setMe] = useMe();
   const closed = state.closed[date];
-  const [pin, setPin] = useState(savedPin.get);
+  const pin = savedPin.get();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const player = state.players.find((p) => p.id === me);
@@ -124,7 +124,6 @@ export function TodayTab() {
     const err = await self(action, player.id, pin);
     setBusy(false);
     setError(err ? t(err) : "");
-    if (!err) savedPin.set(pin);
   };
 
   return (
@@ -147,20 +146,6 @@ export function TodayTab() {
             {t("ไม่ใช่ฉัน")}
           </button>
         </div>
-
-        {status !== "home" && auth.online && (
-          <label className="block space-y-1.5 text-sm font-medium">
-            {t("เลข 4 ตัวท้ายเบอร์โทรของคุณ")}
-            <input
-              className={inputClass}
-              inputMode="numeric"
-              maxLength={4}
-              placeholder={t("ถ้าไม่ได้ลงเบอร์ไว้ ปล่อยว่างได้")}
-              value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-            />
-          </label>
-        )}
 
         {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
 
@@ -198,7 +183,7 @@ export function TodayTab() {
         )}
       </Card>
 
-      {checkedIn && status !== "home" && !player.guestOf && <BringGuest player={player} pin={pin} onPinOk={() => savedPin.set(pin)} />}
+      {checkedIn && status !== "home" && !player.guestOf && <BringGuest player={player} pin={pin} />}
       <SignupList />
       <ClubCalendar />
     </div>

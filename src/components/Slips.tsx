@@ -5,7 +5,7 @@ import { resizeSlip } from "@/lib/image";
 import { locale, t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
 import { savedPin } from "./PickMe";
-import { Button, Icon, baht, inputClass } from "./ui";
+import { Button, Icon, baht } from "./ui";
 
 function time(at: number) {
   return new Date(at).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
@@ -15,7 +15,7 @@ function time(at: number) {
 export function SlipUpload({ playerId, amount }: { playerId: string; amount: number }) {
   const { sendSlip } = useStore();
   const { day } = useToday();
-  const [pin, setPin] = useState(savedPin.get);
+  const pin = savedPin.get();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -31,17 +31,6 @@ export function SlipUpload({ playerId, amount }: { playerId: string; amount: num
           </span>
         </div>
       )}
-      <label className="block space-y-1.5 text-sm font-medium">
-        {t("เลข 4 ตัวท้ายเบอร์โทรของคุณ")}
-        <input
-          className={inputClass}
-          inputMode="numeric"
-          maxLength={4}
-          placeholder={t("ถ้าไม่ได้ลงเบอร์ไว้ ปล่อยว่างได้")}
-          value={pin}
-          onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-        />
-      </label>
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
       <Button
         variant={mine.length ? "secondary" : "primary"}
@@ -66,7 +55,6 @@ export function SlipUpload({ playerId, amount }: { playerId: string; amount: num
           try {
             const err = await sendSlip(playerId, pin, amount, await resizeSlip(f));
             setError(err ? t(err) : "");
-            if (!err) savedPin.set(pin);
           } catch {
             setError(t("อ่านรูปไม่ได้ ลองเลือกรูปใหม่"));
           } finally {

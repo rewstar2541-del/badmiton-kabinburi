@@ -166,7 +166,7 @@ export function PlayerForm({
 }
 
 export function PlayersTab() {
-  const { state, dispatch } = useStore();
+  const { state, dispatch, resetPin } = useStore();
   const [editing, setEditing] = useState<string | null>(null);
   const date = today();
   const pending = state.players.filter((p) => p.pending);
@@ -222,6 +222,19 @@ export function PlayersTab() {
                       }}
                     >
                       {t("เป็นสมาชิก")}
+                    </Button>
+                  )}
+                  {!p.guestOf && (
+                    <Button
+                      variant="ghost"
+                      className="px-2 text-xs text-zinc-500"
+                      onClick={async () => {
+                        if (!confirm(t("รีเซ็ต PIN ของ {name}? ครั้งต่อไปเข้าด้วย 4 ตัวท้ายเบอร์โทร", { name: p.name }))) return;
+                        const err = await resetPin(p.id);
+                        alert(err ? t(err) : t("รีเซ็ต PIN แล้ว"));
+                      }}
+                    >
+                      {t("รีเซ็ต PIN")}
                     </Button>
                   )}
                   <Button variant="ghost" className="px-3" onClick={() => setEditing(p.id)}>

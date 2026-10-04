@@ -7,18 +7,18 @@ import { useStore, useToday } from "@/lib/store";
 import { badgesFor, monthSummary } from "@/lib/stats";
 import { monthOf, type Player } from "@/lib/types";
 import { savedPin } from "./PickMe";
-import { Avatar, Button, Card, Icon, SectionTitle, baht, inputClass } from "./ui";
+import { Avatar, Button, Card, Icon, SectionTitle, baht } from "./ui";
 
 const MAX = 5;
 type Pref = "prefer" | "avoid" | null;
 
 /** ผู้เล่นเลือกคนที่อยากจับคู่ด้วย และคนที่ไม่อยากเจอในเกมเดียวกัน */
 export function PartnerPrefs({ player }: { player: Player }) {
-  const { state, setPrefs, auth } = useStore();
+  const { state, setPrefs } = useStore();
   const [editing, setEditing] = useState(false);
   const [prefer, setPrefer] = useState<string[]>(player.prefer ?? []);
   const [avoid, setAvoid] = useState<string[]>(player.avoid ?? []);
-  const [pin, setPin] = useState(savedPin.get);
+  const pin = savedPin.get();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const byId = new Map(state.players.map((p) => [p.id, p]));
@@ -107,19 +107,6 @@ export function PartnerPrefs({ player }: { player: Player }) {
                 );
               })}
             </ul>
-            {auth.online && (
-              <label className="block space-y-1.5 text-sm font-medium">
-                {t("เลข 4 ตัวท้ายเบอร์โทรของคุณ")}
-                <input
-                  className={inputClass}
-                  inputMode="numeric"
-                  maxLength={4}
-                  placeholder={t("ถ้าไม่ได้ลงเบอร์ไว้ ปล่อยว่างได้")}
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-                />
-              </label>
-            )}
             {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
             <div className="flex gap-2">
               <Button
@@ -131,7 +118,6 @@ export function PartnerPrefs({ player }: { player: Player }) {
                   const err = await setPrefs(player.id, pin, prefer, avoid);
                   setBusy(false);
                   if (err) return setError(t(err));
-                  savedPin.set(pin);
                   setEditing(false);
                 }}
               >
