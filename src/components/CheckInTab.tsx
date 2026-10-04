@@ -8,7 +8,7 @@ import { AdminAddGuest } from "./Guests";
 import { PlayerForm } from "./PlayersTab";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
-import { visibleRoster } from "@/lib/roster";
+import { nameMatch } from "@/lib/roster";
 
 export function CheckInTab() {
   const { state, dispatch } = useStore();
@@ -24,8 +24,8 @@ export function CheckInTab() {
   const rank = (id: string) => (checked.has(id) ? 2 : signed.has(id) ? 0 : 1);
   // แขกที่ไม่ได้มาวันนี้ และคนที่ยังรออนุมัติ ไม่ต้องแสดง
   const roster = state.players.filter((p) => !p.pending && (!p.guestOf || checked.has(p.id)));
-  // ปกติแสดงแค่คนที่ลงชื่อหรือเช็คอินวันนี้ คนอื่นพิมพ์ชื่อค้นหา
-  const list = visibleRoster(roster, q, (p) => checked.has(p.id) || signed.has(p.id)).sort(
+  // แสดงเฉพาะคนที่ลงชื่อวันนี้ (และคนที่เช็คอินแล้ว) คนมาโดยไม่ลงชื่อพิมพ์ชื่อค้นหา
+  const list = (q.trim() ? roster.filter((p) => nameMatch(p, q)) : roster.filter((p) => signed.has(p.id) || checked.has(p.id))).sort(
     (a, b) => rank(a.id) - rank(b.id) || a.name.localeCompare(b.name, "th"),
   );
   const hidden = !q.trim() && list.length < roster.length;
@@ -108,7 +108,7 @@ export function CheckInTab() {
         <p className="px-1 text-center text-sm text-zinc-500">
           {list.length === 0
             ? t("ยังไม่มีใครลงชื่อหรือเช็คอินวันนี้ พิมพ์ชื่อด้านบนเพื่อเช็คอินให้")
-            : t("แสดงเฉพาะคนที่ลงชื่อหรือมาวันนี้ คนอื่นพิมพ์ชื่อค้นหา")}
+            : t("แสดงเฉพาะคนที่ลงชื่อวันนี้ คนที่มาโดยไม่ได้ลงชื่อ พิมพ์ชื่อค้นหาแล้วเช็คอินให้")}
         </p>
       )}
       {!hidden && list.length === 0 && (

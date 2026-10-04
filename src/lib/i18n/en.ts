@@ -379,7 +379,6 @@ export const en: Record<string, string> = {
   "ยังไม่ได้ตั้งค่า LINE Login ใน Supabase": "LINE Login isn't set up in Supabase yet",
   "แสดงเฉพาะคนที่จ่ายแล้วหรือมาเล่นเดือนนี้ อีก {n} คนพิมพ์ชื่อค้นหา": "Showing only people who paid or played this month. Search to find the other {n}",
   "ยังไม่มีใครลงชื่อหรือเช็คอินวันนี้ พิมพ์ชื่อด้านบนเพื่อเช็คอินให้": "No one has signed up or checked in today. Type a name above to check someone in",
-  "แสดงเฉพาะคนที่ลงชื่อหรือมาวันนี้ คนอื่นพิมพ์ชื่อค้นหา": "Showing only today's sign-ups and arrivals. Search to find others",
   "พิมพ์ชื่อของคุณเพื่อค้นหา": "Type your name to find yourself",
   "แสดงคนที่ไม่ได้มาเกิน 60 วัน ({n} คน)": "Show people who haven't come in 60+ days ({n})",
   "จะพักหลังจบเกมนี้ ระบบจะข้ามคิวให้": "You'll rest after this game; the queue will skip you",
@@ -406,4 +405,5 @@ export const en: Record<string, string> = {
   "มาครั้งแรกก็กดปุ่มนี้ แล้วสมัครต่อได้เลย": "New here? Tap this too, then register",
   "ไม่ใช้ LINE? เข้าด้วย PIN": "No LINE? Sign in with PIN",
   "เข้าด้วย PIN": "Sign in with PIN",
+  "แสดงเฉพาะคนที่ลงชื่อวันนี้ คนที่มาโดยไม่ได้ลงชื่อ พิมพ์ชื่อค้นหาแล้วเช็คอินให้": "Showing only today's sign-ups. For someone who came without signing up, search their name and check them in",
 };
