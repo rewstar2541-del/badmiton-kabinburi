@@ -31,6 +31,7 @@ describe("rowsToState", () => {
     monthly: [{ month: "2026-10", player_id: "b", paid_at: "2026-10-01T00:00:00Z" }],
     settings: null,
     announcements: [{ date: "2026-10-05", message: "พรุ่งนี้ 1 ทุ่ม" }],
+    slips: [{ id: "s1", date: "2026-10-04", player_id: "a", amount: 110, created_at: "2026-10-04T14:00:00Z" }],
     signups: [
       { date: "2026-10-05", player_id: "a", at: "2026-10-04T13:00:00Z" },
       { date: "2026-10-05", player_id: "b", at: "2026-10-04T12:00:00Z" },
@@ -53,6 +54,7 @@ describe("rowsToState", () => {
     expect(d.announcement).toBe("พรุ่งนี้ 1 ทุ่ม");
     expect(d.signups?.map((x) => x.playerId)).toEqual(["b", "a"]);
     expect(state.days[0].announcement).toBeUndefined();
+    expect(state.days[0].slips).toEqual([{ id: "s1", playerId: "a", amount: 110, at: Date.parse("2026-10-04T14:00:00Z") }]);
   });
 
   it("คิดเงินจากข้อมูลออนไลน์ได้ถูก", () => {

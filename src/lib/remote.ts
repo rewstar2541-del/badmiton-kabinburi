@@ -28,6 +28,7 @@ export interface Rows {
   monthly: { month: string; player_id: string; paid_at: string }[];
   announcements: { date: string; message: string }[];
   signups: { date: string; player_id: string; at: string }[];
+  slips: { id: string; date: string; player_id: string; amount: number; created_at: string }[];
   settings:
     | {
         court_count: number;
@@ -75,7 +76,10 @@ export function rowsToState(r: Rows): State {
   for (const x of r.drinks) day(x.date).drinks.push({ id: x.id, playerId: x.player_id, amount: x.amount, note: x.note });
   for (const a of r.announcements) day(a.date).announcement = a.message;
   for (const s of r.signups) (day(s.date).signups ??= []).push({ playerId: s.player_id, at: ms(s.at) });
+  for (const x of r.slips)
+    (day(x.date).slips ??= []).push({ id: x.id, playerId: x.player_id, amount: Number(x.amount), at: ms(x.created_at) });
   for (const d of days.values()) {
+    d.slips?.sort((a, b) => a.at - b.at);
     d.signups?.sort((a, b) => a.at - b.at);
     d.checkIns.sort((a, b) => a.at - b.at);
     d.games.sort((a, b) => a.startedAt - b.startedAt);
@@ -111,7 +115,7 @@ async function all<T>(q: PromiseLike<{ data: T[] | null; error: { message: strin
 }
 
 export async function loadRemote(db: SupabaseClient, isAdmin: boolean): Promise<State> {
-  const [players, contacts, checkins, games, drinks, monthly, settings, announcements, signups] = await Promise.all([
+  const [players, contacts, checkins, games, drinks, monthly, settings, announcements, signups, slips] = await Promise.all([
     all<Rows["players"][number]>(db.from("players").select("id,name,photo,gender,level").order("name")),
     // เบอร์โทรเห็นเฉพาะแอดมิน
     isAdmin ? all<Rows["contacts"][number]>(db.from("player_contacts").select("player_id,phone")) : Promise.resolve([]),
@@ -124,6 +128,7 @@ export async function loadRemote(db: SupabaseClient, isAdmin: boolean): Promise<
     ),
     all<Rows["announcements"][number]>(db.from("announcements").select("date,message")),
     all<Rows["signups"][number]>(db.from("signups").select("date,player_id,at")),
+    all<Rows["slips"][number]>(db.from("slips").select("id,date,player_id,amount,created_at")),
   ]);
   return rowsToState({
     players,
@@ -135,6 +140,7 @@ export async function loadRemote(db: SupabaseClient, isAdmin: boolean): Promise<
     settings: settings[0] ?? null,
     announcements,
     signups,
+    slips,
   });
 }
 
@@ -271,6 +277,20 @@ async function importState(db: SupabaseClient, s: State) {
 export async function selfService(db: SupabaseClient, action: SelfAction, playerId: string, pin: string) {
   const { data, error } = await db.rpc("self_service", { p_player: playerId, p_pin: pin, p_action: action });
   if (error) return error.message;
+  return (data as string | null) ?? null;
+}
+
+/** ผู้เล่นส่งรูปสลิปโอนเงินของวันนี้ คืนข้อความผิดพลาด หรือ null */
+export async function submitSlip(db: SupabaseClient, playerId: string, pin: string, amount: number, image: string) {
+  const { data, error } = await db.rpc("submit_slip", { p_player: playerId, p_pin: pin, p_amount: amount, p_image: image });
+  if (error) return error.message;
+  return (data as string | null) ?? null;
+}
+
+/** รูปสลิป (เฉพาะแอดมิน) */
+export async function slipImage(db: SupabaseClient, slipId: string): Promise<string | null> {
+  const { data, error } = await db.rpc("slip_image", { p_id: slipId });
+  if (error) throw new Error(error.message);
   return (data as string | null) ?? null;
 }
 

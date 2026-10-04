@@ -5,6 +5,7 @@ import { useStore, useToday } from "@/lib/store";
 import { isMonthlyPaid, monthOf } from "@/lib/types";
 import { PayQr } from "./PayQr";
 import { PickMe, useMe } from "./PickMe";
+import { SlipUpload } from "./Slips";
 import { Avatar, Card, Icon, LevelBadge, baht } from "./ui";
 
 /** หน้าสำหรับผู้เล่น: เลือกชื่อตัวเอง แล้วดูยอดที่ต้องจ่ายวันนี้ */
@@ -77,7 +78,8 @@ export function MyBillTab() {
             bill.total > 0 && (
               <Card className="flex flex-col items-center gap-2">
                 <PayQr promptPayId={s.promptPayId} amount={bill.total} />
-                <p className="text-center text-xs text-zinc-500">สแกนจ่ายแล้วแจ้งแอดมินที่สนามนะครับ</p>
+                <p className="text-center text-xs text-zinc-500">สแกนจ่ายแล้วแนบสลิปไว้ แอดมินจะตรวจและกดรับเงินให้</p>
+                <SlipUpload playerId={player.id} amount={bill.total} />
               </Card>
             )
           )}

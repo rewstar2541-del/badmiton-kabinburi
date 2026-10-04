@@ -5,6 +5,7 @@ import { billFor, type Bill } from "@/lib/billing";
 import { useStore, useToday } from "@/lib/store";
 import { monthOf, type Player } from "@/lib/types";
 import { PayQr } from "./PayQr";
+import { SlipReview } from "./Slips";
 import { Avatar, Button, Card, Icon, SectionTitle, baht, inputClass } from "./ui";
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -105,6 +106,8 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
         </form>
       </div>
 
+      <SlipReview playerId={player.id} />
+
       {bill.paid ? (
         <div className="space-y-2 rounded-3xl bg-emerald-50 p-4 text-center">
           <p className="flex items-center justify-center gap-1.5 font-semibold text-emerald-700">
@@ -144,6 +147,7 @@ function DailyView() {
   const received = rows.filter((r) => r.bill.paid).reduce((s, r) => s + r.bill.total, 0);
   const shuttlesUsed = day.games.reduce((s, g) => s + g.shuttles, 0);
   const openRow = rows.find((r) => r.player.id === open);
+  const withSlip = new Set(day.slips?.map((s) => s.playerId));
 
   return (
     <>
@@ -175,6 +179,9 @@ function DailyView() {
                   {bill.carriedOver > 0 && ` · ค้าง ${bill.carriedOver}`}
                 </span>
               </span>
+              {!bill.paid && withSlip.has(player.id) && (
+                <span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">มีสลิป</span>
+              )}
               {bill.paid ? (
                 <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">จ่ายแล้ว</span>
               ) : (

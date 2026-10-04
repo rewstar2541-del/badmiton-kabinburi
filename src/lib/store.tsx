@@ -2,7 +2,7 @@
 
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
-import { loadRemote, persist, selfService, supabase } from "./remote";
+import { loadRemote, persist, selfService, submitSlip, supabase } from "./remote";
 import { EMPTY_STATE, prepare, reducer, today, type Intent, type SelfAction, type State } from "./state";
 import { DEFAULT_SETTINGS } from "./types";
 
@@ -36,6 +36,8 @@ interface Ctx {
   dispatch: (i: Intent) => void;
   /** ผู้เล่นลงชื่อ/ยกเลิก/เช็คอินเองสำหรับวันนี้ คืนข้อความผิดพลาด หรือ null */
   self: (action: SelfAction, playerId: string, pin: string) => Promise<string | null>;
+  /** ผู้เล่นส่งรูปสลิปโอนเงิน คืนข้อความผิดพลาด หรือ null */
+  sendSlip: (playerId: string, pin: string, amount: number, image: string) => Promise<string | null>;
   ready: boolean;
   error: string | null;
   auth: Auth;
@@ -60,8 +62,9 @@ function LocalProvider({ children }: { children: ReactNode }) {
     dispatch({ type: action, date: today(), playerId });
     return null;
   }, [dispatch]);
+  const sendSlip = async () => "ส่งสลิปได้เฉพาะเมื่อต่อ Supabase";
   const auth: Auth = { online: false, isAdmin: true, signIn: async () => null, signOut: async () => {} };
-  return <StoreCtx.Provider value={{ state, dispatch, self, ready: true, error: null, auth }}>{children}</StoreCtx.Provider>;
+  return <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, ready: true, error: null, auth }}>{children}</StoreCtx.Provider>;
 }
 
 function RemoteProvider({ children }: { children: ReactNode }) {
@@ -142,6 +145,15 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     [db, reload],
   );
 
+  const sendSlip = useCallback(
+    async (playerId: string, pin: string, amount: number, image: string) => {
+      const err = await submitSlip(db, playerId, pin, amount, image);
+      if (!err) await reload();
+      return err;
+    },
+    [db, reload],
+  );
+
   const auth: Auth = {
     online: true,
     email: session?.user.email,
@@ -158,7 +170,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  return <StoreCtx.Provider value={{ state, dispatch, self, ready, error, auth }}>{children}</StoreCtx.Provider>;
+  return <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, ready, error, auth }}>{children}</StoreCtx.Provider>;
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
