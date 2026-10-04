@@ -1,5 +1,6 @@
 "use client";
 
+import { InstallApp } from "./InstallApp";
 import { Fragment, useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { waitingQueue } from "@/lib/matchmaking";
 import { PlayerModeProvider, StoreProvider, useStore, useToday } from "@/lib/store";
@@ -53,7 +54,7 @@ function ThemeSwitch() {
   return (
     <button
       onClick={() => setTheme(dark ? "light" : "dark")}
-      className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-white/80 ring-1 ring-white/10"
+      className="grid size-7 shrink-0 place-items-center rounded-full bg-white/10 text-white/80 ring-1 ring-white/10"
       aria-label={dark ? t("ธีมสว่าง") : t("ธีมมืด")}
       title={dark ? t("ธีมสว่าง") : t("ธีมมืด")}
     >
@@ -80,7 +81,7 @@ function GuideButton() {
   return (
     <a
       href={`/guide/index.html?lang=${lang}&mode=${mode}`}
-      className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-sm font-bold text-white/80 ring-1 ring-white/10"
+      className="grid size-7 shrink-0 place-items-center rounded-full bg-white/10 text-sm font-bold text-white/80 ring-1 ring-white/10"
       aria-label={t("คู่มือการใช้งาน")}
       title={t("คู่มือการใช้งาน")}
     >
@@ -192,13 +193,15 @@ function Header() {
               {new Date().toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" })}
             </p>
           </div>
-        </div>
-        {/* เรียงตามความสำคัญจากขวา: โหมดแอดมิน/ผู้เล่น ภาษา คู่มือ ธีม */}
-        <div className="mt-3 flex flex-wrap items-center justify-end gap-1.5">
-          <ThemeSwitch />
-          <GuideButton />
-          <LangSwitch />
-          <ModeSwitch />
+          {/* ปุ่มซ้อนกันทางขวา เรียงตามความสำคัญจากบนลงล่าง: โหมดแอดมิน/ผู้เล่น ภาษา คู่มือกับธีม */}
+          <div className="flex shrink-0 flex-col items-end gap-1.5 self-start">
+            <ModeSwitch />
+            <LangSwitch />
+            <div className="flex gap-1.5">
+              <GuideButton />
+              <ThemeSwitch />
+            </div>
+          </div>
         </div>
         <div className="mt-5 grid grid-cols-4 gap-2">
           {stats.map((s, i) => {
@@ -278,6 +281,11 @@ function Shell() {
         {!auth.isAdmin && (
           <div className="mb-4 empty:hidden">
             <FirstAdminCard />
+          </div>
+        )}
+        {(tab === "today" || tab === "checkin") && (
+          <div className="mb-4 empty:hidden">
+            <InstallApp />
           </div>
         )}
         {tab === "today" && <TodayTab />}

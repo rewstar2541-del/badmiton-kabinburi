@@ -6,7 +6,8 @@ import { resizeToSquare } from "@/lib/image";
 import { today, useStore } from "@/lib/store";
 import { DEFAULT_LEVEL, LEVELS, isMonthlyPaid, type Gender, type Level, type Player } from "@/lib/types";
 import { Avatar, Button, Card, Icon, LevelBadge, SearchInput, SectionTitle, inputClass } from "./ui";
-import { cameSince, daysBefore, visibleRoster } from "@/lib/roster";
+import { cameSince, daysBefore, rosterCompare, visibleRoster, visitCounts } from "@/lib/roster";
+import { LevelGroups, RosterSortSwitch, useRosterSort } from "./RosterSort";
 import { t } from "@/lib/i18n";
 import { useAdmins } from "./AdminsCard";
 
@@ -189,26 +190,14 @@ export function PlayersTab() {
   const [showAll, setShowAll] = useState(false);
   // ปกติแสดงคนที่มาเล่นใน 60 วันล่าสุด คนที่หายไปนานซ่อนไว้ ค้นหาหรือกดแสดงทั้งหมดได้
   const recent = cameSince(state.days, daysBefore(date, 60));
-  const players = visibleRoster(all, q, (p) => showAll || recent.has(p.id) || editing === p.id).sort((a, b) =>
-    a.name.localeCompare(b.name, "th"),
+  const [sort, setSort] = useRosterSort();
+  const counts = visitCounts(state.days, daysBefore(date, 30));
+  const players = visibleRoster(all, q, (p) => showAll || recent.has(p.id) || editing === p.id).sort(
+    rosterCompare(sort === "level" ? "name" : sort, counts),
   );
-  const hidden = q.trim() ? 0 : all.length - players.length;
-
-  return (
-    <div className="space-y-4">
-      <LineClaims />
-      <LevelRequests />
-      {pending.length > 0 && <PendingList players={pending} />}
-      <SectionTitle>{t("ลงทะเบียนผู้เล่นใหม่")}</SectionTitle>
-      <Card>
-        <PlayerForm onSave={(player) => dispatch({ type: "addPlayer", player })} />
-      </Card>
-
-      <SectionTitle right={t("{n} คน", { n: all.length })}>{t("ผู้เล่นทั้งหมด")}</SectionTitle>
-      {admin.error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{admin.error}</p>}
-      <SearchInput value={q} onChange={setQ} />
-      <ul className="space-y-2">
-        {players.map((p) => (
+  const rows = (list: Player[]) => (
+    <ul className="space-y-2">
+      {list.map((p) => (
           <li key={p.id}>
             <Card className="py-3">
               {editing === p.id ? (
@@ -234,6 +223,7 @@ export function PlayersTab() {
                     </span>
                     <span className="block text-xs text-zinc-500">
                       {[
+                        sort === "often" && t("มา {n} ครั้ง/30 วัน", { n: counts.get(p.id) ?? 0 }),
                         p.guestOf && t("แขกของ {name}", { name: state.players.find((h) => h.id === p.guestOf)?.name ?? "?" }),
                         admin.enabled && !admin.emailOf.has(p.id) && !p.guestOf && t("ยังไม่ได้ผูก LINE"),
                         isMonthlyPaid(state.monthly, date, p.id) && t("รายเดือนเดือนนี้"),
@@ -302,8 +292,32 @@ export function PlayersTab() {
               )}
             </Card>
           </li>
-        ))}
-      </ul>
+      ))}
+    </ul>
+  );
+  const hidden = q.trim() ? 0 : all.length - players.length;
+
+  return (
+    <div className="space-y-4">
+      <LineClaims />
+      <LevelRequests />
+      {pending.length > 0 && <PendingList players={pending} />}
+      <SectionTitle>{t("ลงทะเบียนผู้เล่นใหม่")}</SectionTitle>
+      <Card>
+        <PlayerForm onSave={(player) => dispatch({ type: "addPlayer", player })} />
+      </Card>
+
+      <SectionTitle right={t("{n} คน", { n: all.length })}>{t("ผู้เล่นทั้งหมด")}</SectionTitle>
+      {admin.error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{admin.error}</p>}
+      <SearchInput value={q} onChange={setQ} />
+      <RosterSortSwitch value={sort} onChange={setSort} />
+      {sort === "level" ? (
+        <LevelGroups players={players} forceOpen={q.trim() !== ""} summary={(list) => t("{n} คน", { n: list.length })}>
+          {(list) => rows(list)}
+        </LevelGroups>
+      ) : (
+        rows(players)
+      )}
       {hidden > 0 && (
         <button className="w-full text-center text-sm font-semibold text-zinc-600 underline" onClick={() => setShowAll(true)}>
           {t("แสดงคนที่ไม่ได้มาเกิน 60 วัน ({n} คน)", { n: hidden })}
