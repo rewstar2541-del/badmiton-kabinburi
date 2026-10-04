@@ -46,7 +46,7 @@ export interface Rows {
     winner: string | null;
   }[];
   drinks: { id: string; date: string; player_id: string; amount: number; note: string }[];
-  monthly: { month: string; player_id: string; paid_at: string }[];
+  monthly: { month: string; player_id: string; paid_at: string; amount?: number | null }[];
   announcements: { date: string; message: string }[];
   signups: { date: string; player_id: string; at: string }[];
   closed: { date: string; reason: string }[];
@@ -126,7 +126,11 @@ export function rowsToState(r: Rows): State {
   }
 
   const monthly: MonthlyPayments = {};
-  for (const m of r.monthly) (monthly[m.month] ??= {})[m.player_id] = ms(m.paid_at);
+  const monthlyAmounts: Record<string, Record<string, number>> = {};
+  for (const m of r.monthly) {
+    (monthly[m.month] ??= {})[m.player_id] = ms(m.paid_at);
+    if (m.amount != null) (monthlyAmounts[m.month] ??= {})[m.player_id] = m.amount;
+  }
 
   const s = r.settings;
   const settings: Settings = s
@@ -149,6 +153,7 @@ export function rowsToState(r: Rows): State {
     closed,
     days: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)),
     monthly,
+    monthlyAmounts,
   };
 }
 
@@ -191,14 +196,19 @@ export const TABLE_OF: Record<string, TableKey> = {
 };
 
 export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iterable<TableKey>, prev?: Rows): Promise<Rows> {
-  const since = isAdmin ? "2000-01-01" : sinceDate(PLAYER_HISTORY_DAYS);
+  let since = isAdmin ? "2000-01-01" : sinceDate(PLAYER_HISTORY_DAYS);
+  if (!isAdmin) {
+    // ยอดค้างที่เก่ากว่าช่วงที่โหลด ต้องโหลดย้อนไปถึงด้วย ไม่งั้นบิลจะไม่เห็นแต่กดจ่ายแล้วถูกปิดไป
+    const { data } = await db.from("checkins").select("date").is("paid_at", null).lt("date", since).order("date").limit(1);
+    if (data?.[0]?.date) since = data[0].date;
+  }
   const fetchers: { [K in TableKey]: () => Promise<Rows[K]> } = {
     players: () => all(() => db.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of,pending,plan,bio,level_request").order("id")),
     checkins: () => all(() => db.from("checkins").select("date,player_id,at,paid_at,resting,court_fee,shuttle_fee").gte("date", since).order("date").order("player_id")),
     games: () => all(() => db.from("games").select("id,date,court,player_ids,started_at,ended_at,shuttles,winner").gte("date", since).order("id")),
     // ค่าน้ำ ค่ารายเดือน และสลิป ผู้เล่นทั่วไปอ่านไม่ได้ (โหลดของตัวเองแยกผ่าน my_private)
     drinks: async () => (isAdmin ? all(() => db.from("drinks").select("id,date,player_id,amount,note").order("id")) : []),
-    monthly: async () => (isAdmin ? all(() => db.from("monthly_payments").select("month,player_id,paid_at").order("month").order("player_id")) : []),
+    monthly: async () => (isAdmin ? all(() => db.from("monthly_payments").select("month,player_id,paid_at,amount").order("month").order("player_id")) : []),
     settings: async () => {
       const r = await all(() =>
         db.from("settings").select("court_count,court_fee,first_shuttle_fee,next_shuttle_fee,monthly_fee,promptpay_id").eq("id", 1),
@@ -313,8 +323,25 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
           .lte("date", a.date)
           .is("paid_at", null),
       );
-    case "unmarkPaid":
-      return check(await db.from("checkins").update({ paid_at: null }).eq("date", a.date).in("player_id", withGuests(a.playerId)));
+    case "unmarkPaid": {
+      // ย้อนเฉพาะแถวที่ปิดไปพร้อมกันตอนกดจ่าย (เวลาจ่ายเดียวกัน) ยอดค้างวันก่อนๆ จะกลับมาด้วย
+      const { data, error } = await db
+        .from("checkins")
+        .select("paid_at")
+        .eq("date", a.date)
+        .eq("player_id", a.playerId)
+        .maybeSingle();
+      check({ error });
+      if (!data?.paid_at) return;
+      return check(
+        await db
+          .from("checkins")
+          .update({ paid_at: null })
+          .in("player_id", withGuests(a.playerId))
+          .lte("date", a.date)
+          .eq("paid_at", data.paid_at),
+      );
+    }
     case "setMonthlyPaid":
       return a.paid
         ? check(await db.from("monthly_payments").upsert({ month: a.month, player_id: a.playerId, paid_at: iso(a._at) }))
@@ -403,12 +430,23 @@ async function importState(db: SupabaseClient, s: State) {
     d.drinks.map((x) => ({ id: x.id, date: d.date, player_id: x.playerId, amount: x.amount, note: x.note })),
   );
   const monthly = Object.entries(s.monthly).flatMap(([month, m]) =>
-    Object.entries(m).map(([player_id, at]) => ({ month, player_id, paid_at: iso(at) })),
+    Object.entries(m).map(([player_id, at]) => ({ month, player_id, paid_at: iso(at), amount: s.monthlyAmounts?.[month]?.[player_id] ?? null })),
   );
   if (checkins.length) check(await db.from("checkins").upsert(checkins));
   if (games.length) check(await db.from("games").upsert(games));
   if (drinks.length) check(await db.from("drinks").upsert(drinks));
   if (monthly.length) check(await db.from("monthly_payments").upsert(monthly));
+  // สลิปไม่อยู่ในไฟล์สำรอง (รูปโหลดแยก) จึงไม่นำเข้า
+  const prices = days.flatMap((d) =>
+    d.prices
+      ? [{ date: d.date, court_fee: d.prices.courtFee, first_shuttle_fee: d.prices.firstShuttleFee, next_shuttle_fee: d.prices.nextShuttleFee }]
+      : [],
+  );
+  const announcements = days.flatMap((d) => (d.announcement != null ? [{ date: d.date, message: d.announcement }] : []));
+  const signups = days.flatMap((d) => (d.signups ?? []).map((x) => ({ date: d.date, player_id: x.playerId, at: iso(x.at) })));
+  if (prices.length) check(await db.from("day_prices").upsert(prices));
+  if (announcements.length) check(await db.from("announcements").upsert(announcements));
+  if (signups.length) check(await db.from("signups").upsert(signups));
   const closed = Object.entries(s.closed ?? {}).map(([date, reason]) => ({ date, reason }));
   if (closed.length) check(await db.from("closed_days").upsert(closed));
   await persist(db, { type: "updateSettings", settings: s.settings });
@@ -541,6 +579,13 @@ export async function updateLineSettings(db: SupabaseClient, s: Partial<LineSett
   check(await db.from("line_settings").update(s).eq("id", 1));
 }
 
+/** รหัส 6 หลักสำหรับพิมพ์ในกลุ่ม LINE เพื่อเชื่อมกลุ่ม (ใช้ได้ครั้งเดียว 15 นาที) */
+export async function newLineLinkCode(db: SupabaseClient): Promise<string> {
+  const { data, error } = await db.rpc("new_line_link_code");
+  if (error) throw new Error(error.message);
+  return data as string;
+}
+
 /** ส่งข้อความทดสอบเข้ากลุ่ม LINE คืนข้อความผิดพลาด หรือ null */
 export async function testLine(db: SupabaseClient): Promise<string | null> {
   const { data, error } = await db.functions.invoke("line", { body: { action: "test" } });
@@ -584,8 +629,12 @@ export function mergePrivate(state: State, r: Omit<PrivateRows, "error">): State
       d.slips = [...(d.slips ?? []), { id: x.id, playerId: x.player_id, amount: x.amount, at: ms(x.created_at) }];
   }
   const monthly = { ...state.monthly };
-  for (const m of r.monthly) monthly[m.month] = { ...monthly[m.month], [m.player_id]: ms(m.paid_at) };
-  return { ...state, days: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)), monthly };
+  const monthlyAmounts = { ...state.monthlyAmounts };
+  for (const m of r.monthly) {
+    monthly[m.month] = { ...monthly[m.month], [m.player_id]: ms(m.paid_at) };
+    if (m.amount != null) monthlyAmounts[m.month] = { ...monthlyAmounts[m.month], [m.player_id]: m.amount };
+  }
+  return { ...state, days: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)), monthly, monthlyAmounts };
 }
 
 // ---------- เข้าสู่ระบบด้วย LINE ----------

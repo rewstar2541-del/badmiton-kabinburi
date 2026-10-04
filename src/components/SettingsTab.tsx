@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { isValidPromptPayId } from "@/lib/promptpay";
-import { useStore, type State } from "@/lib/store";
+import { useStore } from "@/lib/store";
 import type { Settings } from "@/lib/types";
 import { datesToFreeze } from "@/lib/billing";
-import { today } from "@/lib/state";
+import { normalizeBackup, today } from "@/lib/state";
 import { ClubCalendar } from "./Calendar";
 import { EventPhotos } from "./EventPhotos";
 import { LineCard } from "./LineCard";
@@ -38,8 +38,7 @@ export function SettingsTab() {
 
   const importData = async (file: File) => {
     try {
-      const data = JSON.parse(await file.text()) as State;
-      if (!Array.isArray(data.players) || !Array.isArray(data.days)) throw new Error();
+      const data = normalizeBackup(JSON.parse(await file.text()));
       if (confirm(t("นำเข้าข้อมูล {p} คน {d} วัน? ข้อมูลปัจจุบันจะถูกแทนที่", { p: data.players.length, d: data.days.length }))) {
         dispatch({ type: "replace", state: data });
         setS(data.settings);

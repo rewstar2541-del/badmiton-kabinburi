@@ -1,5 +1,5 @@
 import { dayAmount } from "./billing";
-import type { State } from "./state";
+import { monthlyAmount, type State } from "./state";
 import { monthOf, type Player } from "./types";
 
 export interface MonthSummary {
@@ -43,7 +43,7 @@ export function monthSummary(state: State, player: Player, month: string): Month
       }
     }
   }
-  if (state.monthly[month]?.[player.id]) spent += state.settings.monthlyFee;
+  if (state.monthly[month]?.[player.id]) spent += monthlyAmount(state, month, player.id);
   const top = [...partners].sort((a, b) => b[1] - a[1])[0];
   return {
     month,

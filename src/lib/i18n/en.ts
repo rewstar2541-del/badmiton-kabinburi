@@ -519,4 +519,10 @@ export const en: Record<string, string> = {
   "เล่นไปแล้ว ยกเลิกเช็คอินไม่ได้ ให้แอดมินช่วย": "Already played, can't undo check-in. Ask an admin.",
   "จ่ายเงินแล้ว ยกเลิกเช็คอินไม่ได้ ให้แอดมินช่วย": "Already paid, can't undo check-in. Ask an admin.",
   "ยังยกเลิกเช็คอินเองไม่ได้ ให้แอดมินช่วยก่อน": "Undoing check-in isn't available yet. Ask an admin for now.",
+  "{name} จ่ายเงินแล้ว ต้องกดยกเลิกการจ่ายในหน้าคิดเงินก่อน": "{name} has already paid. Cancel the payment on the Billing page first.",
+  "{name} เล่นไปแล้ว {n} เกม ยกเลิกเช็คอินแล้วจะไม่คิดค่าสนาม ยืนยันไหม?": "{name} has played {n} games. Undo check-in and drop the court fee?",
+  "ยังไม่ได้เชื่อมกลุ่ม: เชิญบอทของก๊วนเข้ากลุ่ม LINE แล้วกดขอรหัสด้านล่าง": "Not connected: invite the club bot to the LINE group, then get a code below",
+  "พิมพ์ในกลุ่ม LINE ภายใน 15 นาที:": "Type this in the LINE group within 15 minutes:",
+  "เปลี่ยนกลุ่ม LINE (ขอรหัสเชื่อม)": "Change LINE group (get a link code)",
+  "ขอรหัสเชื่อมกลุ่ม": "Get a group link code",
 };
