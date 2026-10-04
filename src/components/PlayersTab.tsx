@@ -58,7 +58,10 @@ export function PlayerForm({
   submitLabel,
   defaultName,
   defaultPhoto,
+  self,
 }: {
+  /** ผู้เล่นแก้ข้อมูลตัวเอง: มีช่องแนะนำตัว และเปลี่ยนระดับมือต้องรอแอดมินอนุมัติ */
+  self?: boolean;
   /** ค่าตั้งต้นตอนสมัคร (ชื่อและรูปจาก LINE) */
   defaultName?: string;
   defaultPhoto?: string;
@@ -70,7 +73,8 @@ export function PlayerForm({
   const [name, setName] = useState(initial?.name ?? defaultName ?? "");
   const [photo, setPhoto] = useState(initial?.photo ?? defaultPhoto);
   const [gender, setGender] = useState<Gender | undefined>(initial?.gender);
-  const [level, setLevel] = useState<Level>(initial?.level ?? DEFAULT_LEVEL);
+  const [level, setLevel] = useState<Level>((self ? initial?.levelRequest : undefined) ?? initial?.level ?? DEFAULT_LEVEL);
+  const [bio, setBio] = useState(initial?.bio ?? "");
   const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -89,7 +93,7 @@ export function PlayerForm({
         if (!name.trim()) return setError(t("กรุณาใส่ชื่อเล่น"));
         if (!gender) return setError(t("กรุณาเลือกเพศ"));
         setError("");
-        onSave({ name: name.trim(), photo, gender, level });
+        onSave({ name: name.trim(), photo, gender, level, ...(self ? { bio: bio.trim() || undefined } : {}) });
         if (!initial) reset();
       }}
     >
@@ -128,8 +132,28 @@ export function PlayerForm({
         <Segmented options={GENDERS} value={gender} onChange={setGender} cols={3} />
       </div>
 
+      {self && photo?.startsWith("data:") && (
+        <button type="button" className="text-xs font-semibold text-sky-700 underline" onClick={() => setPhoto(undefined)}>
+          {t("ใช้รูปจาก LINE แทน (อัปเดตตอนเข้าสู่ระบบครั้งถัดไป)")}
+        </button>
+      )}
+
+      {self && (
+        <label className="block space-y-1.5 text-sm font-medium">
+          {t("แนะนำตัว (ไม่ใส่ก็ได้)")}
+          <textarea
+            className={`${inputClass} min-h-20`}
+            maxLength={200}
+            placeholder={t("เช่น ตีมา 2 ปี ชอบเล่นหน้าเน็ต")}
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+          />
+        </label>
+      )}
+
       <div className="space-y-1.5 text-sm font-medium">
         {t("ระดับมือ")}
+        {self && <p className="text-xs font-normal text-zinc-500">{t("เปลี่ยนระดับมือแล้วต้องรอแอดมินอนุมัติก่อน")}</p>}
         <Segmented
           options={LEVELS.map((l) => ({ value: l.value, label: l.code, sub: l.label }))}
           value={level}
@@ -173,6 +197,7 @@ export function PlayersTab() {
   return (
     <div className="space-y-4">
       <LineClaims />
+      <LevelRequests />
       {pending.length > 0 && <PendingList players={pending} />}
       <SectionTitle>{t("ลงทะเบียนผู้เล่นใหม่")}</SectionTitle>
       <Card>
@@ -343,6 +368,39 @@ function PendingList({ players }: { players: Player[] }) {
 }
 
 /** คนที่เข้าด้วย LINE แล้วกด "นี่คือฉัน" ที่ชื่อที่แอดมินลงไว้ รอแอดมินยืนยันว่าเป็นคนเดียวกัน */
+/** ผู้เล่นขอเปลี่ยนระดับมือเอง แอดมินอนุมัติก่อน การจับคู่จะได้ยุติธรรม */
+function LevelRequests() {
+  const { state, dispatch } = useStore();
+  const list = state.players.filter((p) => p.levelRequest && p.levelRequest !== p.level);
+  if (!list.length) return null;
+  return (
+    <div className="space-y-2">
+      <SectionTitle right={t("{n} คน", { n: list.length })}>{t("ขอเปลี่ยนระดับมือ")}</SectionTitle>
+      {list.map((p) => (
+        <Card key={p.id} className="flex items-center gap-3">
+          <Avatar name={p.name} photo={p.photo} size={40} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-semibold">{p.name}</span>
+            <span className="flex items-center gap-1.5 text-xs text-zinc-500">
+              <LevelBadge level={p.level} /> → <LevelBadge level={p.levelRequest!} />
+            </span>
+          </span>
+          <Button
+            variant="accent"
+            className="px-3 py-2 text-xs"
+            onClick={() => dispatch({ type: "updatePlayer", player: { ...p, level: p.levelRequest!, levelRequest: undefined } })}
+          >
+            {t("อนุมัติ")}
+          </Button>
+          <Button className="px-3 py-2 text-xs" onClick={() => dispatch({ type: "updatePlayer", player: { ...p, levelRequest: undefined } })}>
+            {t("ไม่อนุมัติ")}
+          </Button>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 function LineClaims() {
   const { state, auth } = useStore();
   const [claims, setClaims] = useState<LineClaim[]>([]);

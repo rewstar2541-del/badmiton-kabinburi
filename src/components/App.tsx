@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { waitingQueue } from "@/lib/matchmaking";
-import { StoreProvider, useStore, useToday } from "@/lib/store";
+import { PlayerModeProvider, StoreProvider, useStore, useToday } from "@/lib/store";
 import { BillingTab } from "./BillingTab";
 import { FirstAdminCard } from "./PickMe";
 import { readSession } from "@/lib/session";
@@ -100,7 +100,7 @@ function DemoBar() {
           <button
             key={String(admin)}
             onClick={() => demo.setAdmin(admin)}
-            className={`rounded-full px-2.5 py-1 font-semibold ${auth.isAdmin === admin ? "bg-ink text-white" : ""}`}
+            className={`rounded-full px-2.5 py-1 font-semibold ${(auth.canAdmin ?? auth.isAdmin) === admin ? "bg-ink text-white" : ""}`}
           >
             {admin ? t("แอดมิน") : t("ผู้เล่น")}
           </button>
@@ -114,6 +114,32 @@ function DemoBar() {
       >
         {t("เริ่มใหม่")}
       </button>
+    </div>
+  );
+}
+
+/** แอดมินสลับ วันนี้เป็นแอดมิน หรือเป็นผู้เล่นธรรมดา */
+function ModeSwitch() {
+  const { auth } = useStore();
+  if (!auth.canAdmin || !auth.setPlayerMode) return null;
+  const set = auth.setPlayerMode;
+  return (
+    <div className="mt-3 flex items-center justify-end gap-2">
+      <span className="text-[11px] text-white/60">{t("วันนี้ฉันเป็น")}</span>
+      <div className="flex rounded-full bg-white/10 p-0.5 ring-1 ring-white/10">
+        {[false, true].map((player) => (
+          <button
+            key={String(player)}
+            onClick={() => {
+              set(player);
+              window.scrollTo({ top: 0 });
+            }}
+            className={`rounded-full px-3 py-1 text-[11px] font-semibold ${Boolean(auth.playerMode) === player ? "bg-lime text-ink" : "text-white/70"}`}
+          >
+            {player ? t("ผู้เล่น") : t("แอดมิน")}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -151,6 +177,7 @@ function Header() {
           <ThemeSwitch />
           <LangSwitch />
         </div>
+        <ModeSwitch />
         <div className="mt-5 grid grid-cols-3 gap-2">
           {stats.map((s) => (
             <div key={s.label} className="rounded-2xl bg-white/[0.07] px-3 py-2.5 ring-1 ring-white/10">
@@ -202,6 +229,11 @@ function Shell() {
       <Header />
       <main className="mx-auto -mt-2 w-full max-w-3xl flex-1 rounded-t-[28px] bg-background px-4 pt-5 pb-32">
         {error && <div className="mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+        {auth.playerMode && auth.online && !readSession() && (
+          <p className="mb-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {t("โหมดผู้เล่นต้องผูก LINE กับชื่อของคุณก่อน: สลับเป็นแอดมิน แล้วไปที่ ตั้งค่า > ผูก LINE ของฉันกับชื่อในก๊วน")}
+          </p>
+        )}
         {!auth.isAdmin && (
           <div className="mb-4 empty:hidden">
             <FirstAdminCard />
@@ -251,5 +283,9 @@ function isTv() {
 }
 
 export function App() {
-  return <StoreProvider>{isTv() ? <TvView /> : <Shell />}</StoreProvider>;
+  return (
+    <StoreProvider>
+      <PlayerModeProvider>{isTv() ? <TvView /> : <Shell />}</PlayerModeProvider>
+    </StoreProvider>
+  );
 }

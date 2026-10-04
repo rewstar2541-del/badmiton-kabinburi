@@ -1,11 +1,11 @@
 "use client";
 
 import type { Session } from "@supabase/supabase-js";
-import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { isDemo, demoState } from "./demo";
 import { randomToken, readSession, writeSession } from "./session";
 import { clearLineTicket, handleLineCallback, readLineTicket } from "./lineLogin";
-import { addGuest, claimPlayer, signUpDay, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, removeMySlip, setMyPlan, supabase } from "./remote";
+import { addGuest, claimPlayer, signUpDay, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, removeMySlip, setMyPlan, updateMyProfile, type ProfileInput, supabase } from "./remote";
 import { EMPTY_STATE, guestCheck, prepare, reducer, today, type Intent, type SelfAction, type State } from "./state";
 import { DEFAULT_SETTINGS, monthOf, type Level, type Plan, type Player } from "./types";
 import { t } from "@/lib/i18n";
@@ -31,7 +31,13 @@ export interface Auth {
   /** โหมดออนไลน์ (Supabase) หรือเก็บในเครื่อง */
   online: boolean;
   email?: string;
+  /** แสดงเมนูแอดมินอยู่ (แอดมินที่สลับเป็นโหมดผู้เล่นจะเป็น false) */
   isAdmin: boolean;
+  /** เป็นแอดมินจริง (ใช้แสดงปุ่มสลับโหมด) */
+  canAdmin?: boolean;
+  /** แอดมินสลับไปดูแบบผู้เล่นธรรมดา (จำไว้ในเครื่อง) */
+  playerMode?: boolean;
+  setPlayerMode?: (on: boolean) => void;
   /** โหมดทดลอง: สลับดูแบบแอดมิน/ผู้เล่นได้ */
   demo?: { setAdmin: (admin: boolean) => void; reset: () => void };
   /** ยังไม่มีแอดมินในระบบเลย (คนที่ล็อคอินอยู่ตั้งตัวเองเป็นแอดมินคนแรกได้) */
@@ -53,6 +59,8 @@ interface Ctx {
   setPrefs: (playerId: string, pin: string, prefer: string[], avoid: string[]) => Promise<string | null>;
   /** ผู้เล่นเลือกสมาชิกรายวัน/รายเดือน คืนข้อความผิดพลาด หรือ null */
   setPlan: (playerId: string, pin: string, plan: Plan) => Promise<string | null>;
+  /** ผู้เล่นแก้ข้อมูลตัวเอง คืนข้อความผิดพลาด หรือ null */
+  updateProfile: (playerId: string, pin: string, p: ProfileInput) => Promise<string | null>;
   /**
    * "นี่คือฉัน" กับชื่อที่แอดมินลงไว้แล้ว: ของจริงส่งคำขอผูก LINE ให้แอดมินยืนยัน (pending)
    * โหมดทดลองเข้าเป็นคนนั้นได้เลย (token)
@@ -127,6 +135,16 @@ function LocalProvider({ children }: { children: ReactNode }) {
     },
     [dispatch, state.players],
   );
+  const updateProfileLocal = useCallback(
+    async (playerId: string, _pin: string, v: ProfileInput) => {
+      const p = state.players.find((x) => x.id === playerId);
+      if (!p) return "ไม่พบผู้เล่น";
+      const { level, ...rest } = v;
+      dispatch({ type: "updatePlayer", player: { ...p, ...rest, levelRequest: level === p.level ? undefined : level } });
+      return null;
+    },
+    [dispatch, state.players],
+  );
   const addGuestLocal = useCallback(
     async (hostId: string, _pin: string, name: string, level: Level) => {
       const date = today();
@@ -184,7 +202,7 @@ function LocalProvider({ children }: { children: ReactNode }) {
       : undefined,
   };
   return (
-    <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, removeSlip: removeSlipLocal, setPrefs, setPlan: setPlanLocal, addGuest: addGuestLocal, register: registerLocal, login: loginLocal, slipImage: getSlip, ready: true, error: null, auth }}>
+    <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, removeSlip: removeSlipLocal, setPrefs, setPlan: setPlanLocal, updateProfile: updateProfileLocal, addGuest: addGuestLocal, register: registerLocal, login: loginLocal, slipImage: getSlip, ready: true, error: null, auth }}>
       {children}
     </StoreCtx.Provider>
   );
@@ -377,6 +395,15 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     [db, reload],
   );
 
+  const updateProfileRemote = useCallback(
+    async (playerId: string, pin: string, v: ProfileInput) => {
+      const err = await updateMyProfile(db, playerId, pin, v);
+      if (!err) await reload();
+      return err;
+    },
+    [db, reload],
+  );
+
   const auth: Auth = {
     online: true,
     email: session?.user.email,
@@ -396,17 +423,49 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  return <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, removeSlip: removeSlipRemote, setPrefs, setPlan: setPlanRemote, addGuest: addGuestRemote, register: registerRemote, login: loginRemote, slipImage: getSlip, ready, error, auth }}>{children}</StoreCtx.Provider>;
+  return <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, removeSlip: removeSlipRemote, setPrefs, setPlan: setPlanRemote, updateProfile: updateProfileRemote, addGuest: addGuestRemote, register: registerRemote, login: loginRemote, slipImage: getSlip, ready, error, auth }}>{children}</StoreCtx.Provider>;
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   return supabase && !DEMO ? <RemoteProvider>{children}</RemoteProvider> : <LocalProvider>{children}</LocalProvider>;
 }
 
+const MODE_KEY = "badminton-kabinburi:player-mode";
+const PlayerModeCtx = createContext<{ on: boolean; set: (on: boolean) => void }>({ on: false, set: () => {} });
+
+/** แอดมินสลับเป็นผู้เล่นธรรมดาได้ (สิทธิ์แอดมินไม่เปลี่ยน แค่ซ่อนเมนูแอดมิน) */
+export function PlayerModeProvider({ children }: { children: ReactNode }) {
+  const [on, setOn] = useState(() => {
+    try {
+      return localStorage.getItem(MODE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const set = useCallback((v: boolean) => {
+    setOn(v);
+    try {
+      if (v) localStorage.setItem(MODE_KEY, "1");
+      else localStorage.removeItem(MODE_KEY);
+    } catch {
+      // ไม่จำก็ได้
+    }
+  }, []);
+  const value = useMemo(() => ({ on, set }), [on, set]);
+  return <PlayerModeCtx.Provider value={value}>{children}</PlayerModeCtx.Provider>;
+}
+
 export function useStore() {
   const v = useContext(StoreCtx);
+  const mode = useContext(PlayerModeCtx);
   if (!v) throw new Error("useStore ต้องอยู่ใน StoreProvider");
-  return v;
+  const real = v.auth.isAdmin;
+  const playerMode = real && mode.on;
+  const auth = useMemo(
+    () => ({ ...v.auth, isAdmin: real && !playerMode, canAdmin: real, playerMode, setPlayerMode: mode.set }),
+    [v.auth, real, playerMode, mode.set],
+  );
+  return useMemo(() => ({ ...v, auth }), [v, auth]);
 }
 
 export function useToday() {
