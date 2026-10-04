@@ -2,7 +2,7 @@
 // รับ code จาก LINE -> ตรวจกับ LINE -> ออก session ของ Supabase Auth (ตัวตนคือ <line user id>@line.kabinburi.app
 // ใช้ตัดสินว่าเป็นแอดมินไหม) แล้ว
 // - ถ้าผูกกับผู้เล่นแล้ว ออก session token ของผู้เล่นให้ด้วย
-// - ถ้ายังไม่ผูก คืน ticket ไว้ให้สมัคร (หรือผูกชื่อเดิม) ในแอพ
+// - ถ้ายังไม่ผูก คืน ticket พร้อมชื่อและรูปจาก LINE ไว้ให้สมัคร (หรือขอผูกชื่อเดิม ให้แอดมินยืนยัน) ในแอพ
 // ต้องตั้ง secrets: LINE_LOGIN_CHANNEL_ID, LINE_LOGIN_CHANNEL_SECRET
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -56,22 +56,31 @@ Deno.serve(async (req) => {
     body: new URLSearchParams({ id_token, client_id: CHANNEL_ID }),
   });
   if (!verify.ok) return json({ error: "เข้าสู่ระบบด้วย LINE ไม่สำเร็จ ลองใหม่อีกครั้ง" });
-  const profile = (await verify.json()) as { sub: string; name?: string };
+  const profile = (await verify.json()) as { sub: string; name?: string; picture?: string };
+  // รูปโปรไฟล์ LINE (รับเฉพาะลิงก์รูปของ LINE)
+  const picture = profile.picture?.startsWith("https://profile.line-scdn.net/") ? profile.picture : null;
 
   const session = await authSession(profile.sub, profile.name ?? "");
   if (!session) return json({ error: "เข้าสู่ระบบด้วย LINE ไม่สำเร็จ ลองใหม่อีกครั้ง" });
 
   const { data: auth } = await db.from("player_auth").select("player_id").eq("line_user_id", profile.sub).maybeSingle();
   if (auth) {
-    const { data: p } = await db.from("players").select("pending").eq("id", auth.player_id).single();
+    const { data: p } = await db.from("players").select("pending,photo").eq("id", auth.player_id).single();
+    // ใช้รูปจาก LINE ถ้ายังไม่มีรูป หรือรูปเดิมมาจาก LINE (อัปเดตตามที่เปลี่ยนใน LINE)
+    if (picture && (!p?.photo || (p.photo.startsWith("https://profile.line-scdn.net/") && p.photo !== picture)))
+      await db.from("players").update({ photo: picture }).eq("id", auth.player_id);
     if (p?.pending) return json({ session, pending: true, player_id: auth.player_id });
     const { data: token, error } = await db.rpc("new_player_session", { p_player: auth.player_id });
     if (error) return json({ error: error.message }, 500);
     return json({ session, token, player_id: auth.player_id });
   }
 
+  // ขอผูกกับชื่อเดิมไว้แล้ว รอแอดมินยืนยัน
+  const { data: claim } = await db.from("line_claims").select("player_id").eq("line_user_id", profile.sub).eq("status", "pending").maybeSingle();
+  if (claim) return json({ session, pending: true, claim: true });
+
   // ยังไม่ผูก: ออก ticket ให้ไปเลือกชื่อหรือสมัครในแอพ
   const ticket = crypto.randomUUID() + crypto.randomUUID();
-  await db.from("line_link_tickets").insert({ ticket_hash: await sha256(ticket), line_user_id: profile.sub, line_name: profile.name ?? null });
-  return json({ session, ticket, name: profile.name ?? "" });
+  await db.from("line_link_tickets").insert({ ticket_hash: await sha256(ticket), line_user_id: profile.sub, line_name: profile.name ?? null, picture });
+  return json({ session, ticket, name: profile.name ?? "", picture });
 });

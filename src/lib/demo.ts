@@ -38,8 +38,8 @@ export function demoState(): State {
     closed: {},
   };
   const run = (i: Parameters<typeof prepare>[0], at = now) => (s = reducer(s, prepare(i, at)));
-  NAMES.forEach(([name, gender, level], i) =>
-    run({ type: "addPlayer", player: { name, gender, level, phone: `08123456${String(i).padStart(2, "0")}` } }),
+  NAMES.forEach(([name, gender, level]) =>
+    run({ type: "addPlayer", player: { name, gender, level } }),
   );
   run({ type: "setAnnouncement", date, message: "วันนี้ 1 ทุ่ม ถึง 4 ทุ่ม" });
   s.players.slice(0, 10).forEach((p, i) => run({ type: "signUp", date, playerId: p.id }, now - (60 - i) * 60000));
