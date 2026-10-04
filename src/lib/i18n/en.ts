@@ -490,4 +490,5 @@ export const en: Record<string, string> = {
   "แบบสมาชิก": "Membership",
   "กดเพื่อสลับรายวัน/รายเดือน": "Tap to switch daily/monthly",
   "ยังไม่เลือกแบบสมาชิก": "No plan chosen",
+  "สมาชิกรายเดือนที่ยังไม่จ่าย": "Monthly members not yet paid",
 };

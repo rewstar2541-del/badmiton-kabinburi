@@ -337,9 +337,11 @@ function MonthlyView() {
 
   const members = state.players.filter((p) => !p.guestOf && !p.pending);
   const count = members.filter((p) => paid[p.id]).length;
+  // สมาชิกรายเดือนที่ยังไม่จ่ายเดือนนี้
+  const owing = members.filter((p) => p.plan === "monthly" && !paid[p.id]).sort((a, b) => a.name.localeCompare(b.name, "th"));
   // แสดงคนที่จ่ายแล้วหรือมาเล่นในเดือนนี้ คนอื่นค้นหาชื่อ
   const came = new Set(state.days.filter((d) => monthOf(d.date) === month).flatMap((d) => d.checkIns.map((c) => c.playerId)));
-  const players = visibleRoster(members, q, (p) => Boolean(paid[p.id]) || came.has(p.id)).sort(
+  const players = visibleRoster(members, q, (p) => Boolean(paid[p.id]) || came.has(p.id) || p.plan === "monthly").sort(
     (a, b) => Number(Boolean(paid[b.id])) - Number(Boolean(paid[a.id])) || a.name.localeCompare(b.name, "th"),
   );
   const hidden = members.length - players.length;
@@ -370,6 +372,27 @@ function MonthlyView() {
           </div>
         </div>
       </div>
+      {owing.length > 0 && (
+        <div className="space-y-2 rounded-3xl bg-amber-50 p-4 ring-1 ring-amber-300">
+          <div className="flex items-baseline justify-between gap-2">
+            <h3 className="font-display font-semibold text-amber-950">{t("สมาชิกรายเดือนที่ยังไม่จ่าย")}</h3>
+            <span className="shrink-0 text-sm text-amber-900">
+              {t("{n} คน", { n: owing.length })} · {baht(owing.length * fee)}
+            </span>
+          </div>
+          <ul className="space-y-1.5">
+            {owing.map((p) => (
+              <li key={p.id} className="flex items-center gap-2.5 rounded-2xl bg-white px-3 py-2">
+                <Avatar name={p.name} photo={p.photo} size={32} />
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold">{p.name}</span>
+                <button className="shrink-0 rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-600" onClick={() => setPayFor(p)}>
+                  {t("รับเงิน")}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <ExportReport month={month} />
       <p className="px-1 text-xs text-zinc-500">
         {t("คนที่จ่ายเดือนนี้แล้ว ระบบไม่คิดค่าสนามรายวันให้อัตโนมัติ ถ้าบันทึกผิด แตะเพื่อแก้ได้เลย")}
