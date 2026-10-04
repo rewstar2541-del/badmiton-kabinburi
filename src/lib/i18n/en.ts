@@ -550,4 +550,8 @@ export const en: Record<string, string> = {
   "แข่งขันในก๊วน": "Club tournament",
   "อื่นๆ": "Other",
   "พิมพ์หัวข้อ เช่น ทำบุญสนาม": "Type a topic, e.g. merit-making at the hall",
+  "เรียงตาม": "Sort",
+  "มาบ่อย": "Most often",
+  "ชื่อ ก-ฮ": "Name A-Z",
+  "มา {n} ครั้ง/30 วัน": "{n} visits / 30 days",
 };

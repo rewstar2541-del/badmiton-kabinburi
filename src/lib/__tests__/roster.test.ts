@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cameSince, daysBefore, visibleRoster } from "../roster";
+import { cameSince, daysBefore, rosterCompare, visibleRoster, visitCounts, type RosterSort } from "../roster";
 import type { Day, Player } from "../types";
 
 const mk = (i: number): Player => ({ id: "p" + i, name: "คน" + i, level: 2 } as Player);
@@ -21,5 +21,26 @@ describe("roster", () => {
     ] as unknown as Day[];
     expect([...cameSince(days, daysBefore("2026-10-04", 30))]).toEqual(["new"]);
     expect(daysBefore("2026-03-01", 1)).toBe("2026-02-28");
+  });
+});
+
+describe("roster sort", () => {
+  const a = { id: "a", name: "ก้อง", level: 5 } as Player;
+  const b = { id: "b", name: "ขวัญ", level: 1 } as Player;
+  const c = { id: "c", name: "คิม", level: 6 } as Player;
+  const days = [
+    { date: "2026-08-01", checkIns: [{ playerId: "a" }], games: [], drinks: [] },
+    { date: "2026-09-20", checkIns: [{ playerId: "b" }, { playerId: "c" }], games: [], drinks: [] },
+    { date: "2026-09-27", checkIns: [{ playerId: "b" }], games: [], drinks: [] },
+  ] as unknown as Day[];
+  const counts = visitCounts(days, "2026-09-04");
+  it("counts visits in the window only", () => {
+    expect([counts.get("a"), counts.get("b"), counts.get("c")]).toEqual([undefined, 2, 1]);
+  });
+  it("sorts by visits, level and name", () => {
+    const ids = (s: RosterSort) => [c, a, b].sort(rosterCompare(s, counts)).map((p) => p.id);
+    expect(ids("often")).toEqual(["b", "c", "a"]);
+    expect(ids("level")).toEqual(["a", "c", "b"]);
+    expect(ids("name")).toEqual(["a", "b", "c"]);
   });
 });

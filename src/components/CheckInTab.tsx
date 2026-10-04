@@ -2,17 +2,18 @@
 
 import { useState } from "react";
 import { useStore, useToday } from "@/lib/store";
-import { LEVELS, isMonthlyPaid, type Player } from "@/lib/types";
+import { isMonthlyPaid, type Player } from "@/lib/types";
 import { AnnounceCard } from "./AnnounceCard";
 import { AdminAddGuest } from "./Guests";
 import { PlayerForm } from "./PlayersTab";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
-import { nameMatch } from "@/lib/roster";
+import { daysBefore, nameMatch, rosterCompare, visitCounts } from "@/lib/roster";
+import { LevelGroups, RosterSortSwitch, useRosterSort } from "./RosterSort";
 
 export function CheckInTab() {
   const { state, dispatch } = useStore();
-  const { day } = useToday();
+  const { day, date } = useToday();
   const [q, setQ] = useState("");
   const [adding, setAdding] = useState(false);
   const [addingGuest, setAddingGuest] = useState(false);
@@ -24,19 +25,19 @@ export function CheckInTab() {
   const rank = (id: string) => (checked.has(id) ? 2 : signed.has(id) ? 0 : 1);
   // แขกที่ไม่ได้มาวันนี้ และคนที่ยังรออนุมัติ ไม่ต้องแสดง
   const roster = state.players.filter((p) => !p.pending && (!p.guestOf || checked.has(p.id)));
-  // แสดงทุกคนที่ลงทะเบียนแล้ว แบ่งโซนตามระดับมือ ในแต่ละโซนคนที่ลงชื่อวันนี้ขึ้นก่อน
-  const list = (q.trim() ? roster.filter((p) => nameMatch(p, q)) : roster).sort(
-    (a, b) => rank(a.id) - rank(b.id) || a.name.localeCompare(b.name, "th"),
+  // แสดงทุกคนที่ลงทะเบียนแล้ว เรียงตามที่เลือก คนที่ลงชื่อวันนี้ขึ้นก่อนเสมอ (ถ้าแบ่งตามระดับมือ ขึ้นก่อนในแต่ละกลุ่ม)
+  const [sort, setSort] = useRosterSort();
+  const counts = visitCounts(state.days, daysBefore(date, 30));
+  const cmp = rosterCompare(sort === "level" ? "name" : sort, counts);
+  const list = (q.trim() ? roster.filter((p) => nameMatch(p, q)) : roster).sort((a, b) => rank(a.id) - rank(b.id) || cmp(a, b));
+  const visits = sort === "often" ? counts : undefined;
+  const tiles = (players: Player[]) => (
+    <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+      {players.map((p) => (
+        <PlayerTile key={p.id} p={p} on={checked.has(p.id)} signed={signed.has(p.id)} visits={visits?.get(p.id) ?? (visits && 0)} />
+      ))}
+    </ul>
   );
-  const groups = LEVELS.map((l) => ({ level: l, players: list.filter((p) => p.level === l.value) })).filter((g) => g.players.length);
-  const [closed, setClosed] = useState<Set<number>>(new Set());
-  const toggle = (v: number) =>
-    setClosed((c) => {
-      const n = new Set(c);
-      if (n.has(v)) n.delete(v);
-      else n.add(v);
-      return n;
-    });
   const members = state.players.filter((p) => !p.pending && !p.guestOf).length;
 
   return (
@@ -80,35 +81,22 @@ export function CheckInTab() {
         </Card>
       )}
 
-      {groups.map(({ level, players }) => {
-        const open = q.trim() !== "" || !closed.has(level.value);
-        const inCount = players.filter((p) => checked.has(p.id)).length;
-        const signedCount = players.filter((p) => signed.has(p.id) && !checked.has(p.id)).length;
-        return (
-          <section key={level.value} className="space-y-2.5">
-            <button
-              className="flex w-full items-center gap-2 rounded-2xl bg-zinc-100 px-3 py-2.5 text-left"
-              onClick={() => toggle(level.value)}
-              aria-expanded={open}
-            >
-              <LevelBadge level={level.value} />
-              <span className="min-w-0 flex-1 truncate font-semibold">{t(level.label)}</span>
-              <span className="shrink-0 text-xs text-zinc-500">
-                {t("มาแล้ว {a}/{b}", { a: inCount, b: players.length })}
-                {signedCount > 0 && ` · ${t("ลงชื่อ {n}", { n: signedCount })}`}
-              </span>
-              <span className="shrink-0 text-sm text-zinc-400">{open ? "▲" : "▼"}</span>
-            </button>
-            {open && (
-              <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-                {players.map((p) => (
-                  <PlayerTile key={p.id} p={p} on={checked.has(p.id)} signed={signed.has(p.id)} />
-                ))}
-              </ul>
-            )}
-          </section>
-        );
-      })}
+      <RosterSortSwitch value={sort} onChange={setSort} />
+      {sort === "level" ? (
+        <LevelGroups
+          players={list}
+          forceOpen={q.trim() !== ""}
+          summary={(players) => {
+            const inCount = players.filter((p) => checked.has(p.id)).length;
+            const signedCount = players.filter((p) => signed.has(p.id) && !checked.has(p.id)).length;
+            return t("มาแล้ว {a}/{b}", { a: inCount, b: players.length }) + (signedCount > 0 ? ` · ${t("ลงชื่อ {n}", { n: signedCount })}` : "");
+          }}
+        >
+          {tiles}
+        </LevelGroups>
+      ) : (
+        tiles(list)
+      )}
       {list.length === 0 && (
         <Card className="py-10 text-center text-sm text-zinc-500">
           {state.players.length === 0 ? t("ยังไม่มีผู้เล่น กดปุ่ม + เพื่อลงทะเบียน") : t("ไม่พบชื่อที่ค้นหา")}
@@ -118,7 +106,7 @@ export function CheckInTab() {
   );
 }
 
-function PlayerTile({ p, on, signed }: { p: Player; on: boolean; signed: boolean }) {
+function PlayerTile({ p, on, signed, visits }: { p: Player; on: boolean; signed: boolean; visits?: number }) {
   const { state, dispatch } = useStore();
   const { date } = useToday();
   return (
@@ -147,6 +135,9 @@ function PlayerTile({ p, on, signed }: { p: Player; on: boolean; signed: boolean
         </span>
         <Avatar name={p.name} photo={p.photo} size={52} />
         <span className="w-full truncate font-semibold">{p.name}</span>
+        {visits !== undefined && (
+          <span className={`-mt-1.5 text-[11px] ${on ? "text-white/60" : "text-zinc-500"}`}>{t("มา {n} ครั้ง/30 วัน", { n: visits })}</span>
+        )}
         <span className="flex items-center gap-1.5">
           <LevelBadge level={p.level} />
           {p.guestOf && <span className={`text-[11px] font-medium ${on ? "text-amber-300" : "text-amber-600"}`}>{t("แขก")}</span>}
