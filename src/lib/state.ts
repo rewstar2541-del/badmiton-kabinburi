@@ -44,6 +44,8 @@ export type Action =
   | { type: "cancelSignUp"; date: string; playerId: string }
   /** ใช้ในโหมดเก็บในเครื่องเท่านั้น ออนไลน์ส่งผ่าน submit_slip */
   | { type: "addSlip"; date: string; playerId: string; amount: number; _id: string; _at: number }
+  /** ล้างประวัติทั้งหมด (ช่วงทดลองใช้) เก็บผู้เล่น ตั้งค่า วันงดเล่น และวันจัดก๊วนหลังวันนี้ไว้ */
+  | { type: "clearHistory"; today: string }
   | { type: "replace"; state: State };
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
@@ -205,6 +207,15 @@ export function reducer(state: State, a: Action): State {
       }));
     case "cancelSignUp":
       return withDay(state, a.date, (d) => ({ ...d, signups: d.signups?.filter((x) => x.playerId !== a.playerId) }));
+    case "clearHistory":
+      return {
+        ...state,
+        players: state.players.filter((p) => !p.guestOf),
+        monthly: {},
+        days: state.days
+          .filter((d) => d.date > a.today && d.announcement !== undefined)
+          .map((d) => ({ date: d.date, checkIns: [], games: [], drinks: [], announcement: d.announcement })),
+      };
     case "replace":
       return a.state;
   }

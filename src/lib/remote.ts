@@ -354,6 +354,14 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       return check(await db.from("signups").delete().eq("date", a.date).eq("player_id", a.playerId));
     case "addSlip":
       return; // ออนไลน์ใช้ submitSlip
+    case "clearHistory": {
+      // ลบตามลำดับ (เกมและค่าใช้จ่ายก่อนเช็คอิน แขกลบท้ายสุด)
+      for (const table of ["games", "drinks", "slips", "signups", "checkins", "day_prices"])
+        check(await db.from(table).delete().gte("date", "1900-01-01"));
+      check(await db.from("monthly_payments").delete().neq("month", ""));
+      check(await db.from("announcements").delete().lte("date", a.today));
+      return check(await db.from("players").delete().not("guest_of", "is", null));
+    }
     case "replace":
       return importState(db, a.state);
   }

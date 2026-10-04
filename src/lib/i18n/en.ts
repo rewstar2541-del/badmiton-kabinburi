@@ -471,4 +471,11 @@ export const en: Record<string, string> = {
   "ไม่ลบ": "Keep",
   "ลบสลิปนี้ (แนบผิด)": "Delete this slip (wrong one)",
   "ลบสลิปนี้ไม่ได้ (ลบได้เฉพาะสลิปของตัวเองที่ส่งวันนี้)": "Can't delete this slip (you can only delete your own slips sent today)",
+  "ล้างประวัติทั้งหมด": "Clear all history",
+  "ใช้ตอนทดลองใช้เสร็จ ก่อนเริ่มใช้จริง ลบ: การลงชื่อ เช็คอิน เกมและคิว ค่าลูก ค่าน้ำ การจ่ายเงิน ค่ารายเดือน สลิป แขก และประกาศจัดก๊วนถึงวันนี้": "Use after the trial, before real use. Deletes: sign-ups, check-ins, games and queue, shuttle fees, drinks, payments, monthly fees, slips, guests and play-day announcements up to today.",
+  "เก็บไว้: รายชื่อผู้เล่น (ระดับมือ รูป และ LINE ที่ผูกไว้) แอดมิน ราคาและตั้งค่า วันงดเล่น วันจัดก๊วนหลังวันนี้ และรูปกิจกรรม": "Kept: players (levels, photos, linked LINE), admins, prices and settings, closed days, play days after today, and event photos.",
+  "ล้างประวัติแล้ว": "History cleared",
+  "ลบแล้วกู้คืนไม่ได้ ควรกด \"ดาวน์โหลดไฟล์สำรอง\" ด้านบนเก็บไว้ก่อน พิมพ์คำว่า {word} เพื่อยืนยัน": "This cannot be undone. Tap \"Download backup\" above first. Type {word} to confirm.",
+  "คำยืนยัน": "Confirmation word",
+  "ยืนยันล้างประวัติ": "Confirm clear history",
 };

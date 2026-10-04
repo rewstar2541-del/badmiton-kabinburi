@@ -114,3 +114,17 @@ describe("แก้ราคา", () => {
     expect(st.days[0].slips).toEqual([]);
   });
 });
+
+describe("ล้างประวัติ", () => {
+  it("ลบกิจกรรมทั้งหมด เก็บผู้เล่น ตั้งค่า วันงดเล่น และวันจัดก๊วนหลังวันนี้", () => {
+    const guest: Player = { id: "g", name: "แขก", level: 1, guestOf: "d" };
+    const past = { ...day("2026-10-04", [game("g1", 2)]), announcement: "วันนี้" };
+    const future = { date: "2026-10-10", checkIns: [], games: [], drinks: [], announcement: "", signups: [{ playerId: "d", at: 1 }] };
+    let st: State = { ...EMPTY_STATE, players: [daily, monthly, guest], days: [past, future], monthly: M, closed: { "2026-10-11": "ปิด" } };
+    st = reducer(st, prepare({ type: "clearHistory", today: "2026-10-04" }));
+    expect(st.players.map((p) => p.id)).toEqual(["d", "m"]);
+    expect(st.monthly).toEqual({});
+    expect(st.closed).toEqual({ "2026-10-11": "ปิด" });
+    expect(st.days).toEqual([{ date: "2026-10-10", checkIns: [], games: [], drinks: [], announcement: "" }]);
+  });
+});

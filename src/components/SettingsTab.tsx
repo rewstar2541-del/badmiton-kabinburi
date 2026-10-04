@@ -147,7 +147,60 @@ export function SettingsTab() {
         </div>
       </Card>
 
+      <ClearHistory />
+
       {auth.online && <LoginTab />}
     </div>
+  );
+}
+
+const CONFIRM_WORD = "ล้างข้อมูล";
+
+/** ล้างประวัติทั้งหมด ใช้ตอนทดลองใช้เสร็จ ก่อนเริ่มใช้จริง */
+function ClearHistory() {
+  const { dispatch } = useStore();
+  const [open, setOpen] = useState(false);
+  const [word, setWord] = useState("");
+  const [done, setDone] = useState(false);
+  return (
+    <Card className="space-y-3 border border-red-200">
+      <h2 className="font-display font-semibold text-red-600">{t("ล้างประวัติทั้งหมด")}</h2>
+      <p className="text-sm text-zinc-500">
+        {t("ใช้ตอนทดลองใช้เสร็จ ก่อนเริ่มใช้จริง ลบ: การลงชื่อ เช็คอิน เกมและคิว ค่าลูก ค่าน้ำ การจ่ายเงิน ค่ารายเดือน สลิป แขก และประกาศจัดก๊วนถึงวันนี้")}
+      </p>
+      <p className="text-sm text-zinc-500">
+        {t("เก็บไว้: รายชื่อผู้เล่น (ระดับมือ รูป และ LINE ที่ผูกไว้) แอดมิน ราคาและตั้งค่า วันงดเล่น วันจัดก๊วนหลังวันนี้ และรูปกิจกรรม")}
+      </p>
+      {done ? (
+        <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{t("ล้างประวัติแล้ว")}</p>
+      ) : !open ? (
+        <Button className="w-full !text-red-600" onClick={() => setOpen(true)}>
+          {t("ล้างประวัติทั้งหมด")}
+        </Button>
+      ) : (
+        <form
+          className="space-y-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (word.trim() !== CONFIRM_WORD) return;
+            dispatch({ type: "clearHistory", today: today() });
+            setDone(true);
+          }}
+        >
+          <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+            {t("ลบแล้วกู้คืนไม่ได้ ควรกด \"ดาวน์โหลดไฟล์สำรอง\" ด้านบนเก็บไว้ก่อน พิมพ์คำว่า {word} เพื่อยืนยัน", { word: CONFIRM_WORD })}
+          </p>
+          <input className={inputClass} value={word} onChange={(e) => setWord(e.target.value)} placeholder={CONFIRM_WORD} aria-label={t("คำยืนยัน")} />
+          <div className="flex gap-2">
+            <Button type="submit" variant="primary" className="flex-1 !bg-red-600 !text-white" disabled={word.trim() !== CONFIRM_WORD}>
+              {t("ยืนยันล้างประวัติ")}
+            </Button>
+            <Button type="button" onClick={() => { setOpen(false); setWord(""); }}>
+              {t("ยกเลิก")}
+            </Button>
+          </div>
+        </form>
+      )}
+    </Card>
   );
 }
