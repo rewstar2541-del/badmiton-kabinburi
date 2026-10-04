@@ -1,6 +1,6 @@
 import { dayAmount } from "./billing";
 import { monthlyAmount, type State } from "./state";
-import { monthOf } from "./types";
+import { monthOf, type Expense, type ExpenseCategory } from "./types";
 
 export interface DayRow {
   date: string;
@@ -32,8 +32,11 @@ export interface MonthReport {
   days: DayRow[];
   players: PlayerRow[];
   monthlyFees: { name: string; paidAt: number; amount: number }[];
-  /** รวมทั้งเดือน: ยอดรายวัน + ค่าสมาชิกรายเดือน */
-  totals: DayRow & { monthlyFees: number; income: number };
+  /** รายจ่ายของก๊วนในเดือนนี้ เรียงตามวันที่ */
+  expenses: Expense[];
+  expenseBy: Record<ExpenseCategory, number>;
+  /** รวมทั้งเดือน: ยอดรายวัน + ค่าสมาชิกรายเดือน, รายจ่าย และกำไร (รายรับที่เก็บได้แล้ว - รายจ่าย) */
+  totals: DayRow & { monthlyFees: number; income: number; expenses: number; profit: number };
 }
 
 /** รายงานรายเดือนสำหรับทำบัญชี: แยกรายวัน รายคน และค่าสมาชิกรายเดือน */
@@ -95,11 +98,18 @@ export function monthReport(state: State, month: string): MonthReport {
 
   const sum = (k: keyof DayRow) => days.reduce((s, r) => s + (r[k] as number), 0);
   const monthlyTotal = monthlyFees.reduce((s, m) => s + m.amount, 0);
+  const expenses = (state.expenses ?? []).filter((e) => monthOf(e.date) === month).sort((a, b) => a.date.localeCompare(b.date));
+  const expenseBy: Record<ExpenseCategory, number> = { court: 0, shuttle: 0, other: 0 };
+  for (const e of expenses) expenseBy[e.category] += e.amount;
+  const expenseTotal = expenses.reduce((s, e) => s + e.amount, 0);
+  const income = sum("received") + monthlyTotal;
   return {
     month,
     days,
     players: [...perPlayer.values()].sort((a, b) => a.name.localeCompare(b.name, "th")),
     monthlyFees,
+    expenses,
+    expenseBy,
     totals: {
       date: month,
       players: sum("players"),
@@ -112,7 +122,9 @@ export function monthReport(state: State, month: string): MonthReport {
       received: sum("received"),
       unpaid: sum("unpaid"),
       monthlyFees: monthlyTotal,
-      income: sum("received") + monthlyTotal,
+      income,
+      expenses: expenseTotal,
+      profit: income - expenseTotal,
     },
   };
 }

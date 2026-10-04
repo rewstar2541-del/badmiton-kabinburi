@@ -11,6 +11,11 @@ describe("monthReport", () => {
         { id: "b", name: "บี", level: 3 },
       ],
       monthly: { "2026-10": { b: 5 } },
+      expenses: [
+        { id: "e1", date: "2026-10-01", category: "court", amount: 200, note: "" },
+        { id: "e2", date: "2026-10-04", category: "shuttle", amount: 30, note: "" },
+        { id: "e3", date: "2026-09-30", category: "other", amount: 999, note: "" },
+      ],
       days: [
         {
           date: "2026-10-04",
@@ -32,6 +37,7 @@ describe("monthReport", () => {
       ["บี", 70, true],
       ["เอ", 95, false],
     ]);
-    expect(r.totals).toMatchObject({ monthlyFees: 150, income: 95 + 150 });
+    expect(r.totals).toMatchObject({ monthlyFees: 150, income: 95 + 150, expenses: 230, profit: 245 - 230 });
+    expect(r.expenseBy).toEqual({ court: 200, shuttle: 30, other: 0 });
   });
 });

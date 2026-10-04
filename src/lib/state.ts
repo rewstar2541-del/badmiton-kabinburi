@@ -1,5 +1,5 @@
 import { guestsOf, markPaid } from "./billing";
-import { DEFAULT_SETTINGS, type Day, type DayPrices, type Game, type Level, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
+import { DEFAULT_SETTINGS, type Day, type DayPrices, type Expense, type Game, type Level, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
 
 export interface State {
   players: Player[];
@@ -10,6 +10,8 @@ export interface State {
   closed: Record<string, string>;
   /** ค่ารายเดือนที่จ่ายจริง เดือน -> ผู้เล่น -> บาท (ไม่มี = ราคาปัจจุบัน) */
   monthlyAmounts?: Record<string, Record<string, number>>;
+  /** รายจ่ายของก๊วน (แอดมินเท่านั้น) */
+  expenses?: Expense[];
 }
 
 /** ค่ารายเดือนที่คนนี้จ่ายในเดือนนั้น ใช้ราคาตอนจ่าย ไม่ใช่ราคาปัจจุบัน */
@@ -54,6 +56,8 @@ export type Action =
   | { type: "addSlip"; date: string; playerId: string; amount: number; _id: string; _at: number }
   /** ล้างประวัติทั้งหมด (ช่วงทดลองใช้) เก็บผู้เล่น ตั้งค่า วันงดเล่น และวันจัดก๊วนหลังวันนี้ไว้ */
   | { type: "clearHistory"; today: string }
+  | { type: "addExpense"; expense: Omit<Expense, "id">; _id: string }
+  | { type: "removeExpense"; id: string }
   | { type: "replace"; state: State };
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
@@ -76,6 +80,7 @@ export function normalizeBackup(raw: unknown): State {
     monthly: data.monthly ?? {},
     closed: data.closed ?? {},
     monthlyAmounts: data.monthlyAmounts ?? {},
+    expenses: Array.isArray(data.expenses) ? data.expenses : [],
   };
 }
 
@@ -268,10 +273,15 @@ export function reducer(state: State, a: Action): State {
         ...state,
         players: state.players.filter((p) => !p.guestOf),
         monthly: {},
+        expenses: [],
         days: state.days
           .filter((d) => d.date > a.today && d.announcement !== undefined)
           .map((d) => ({ date: d.date, checkIns: [], games: [], drinks: [], announcement: d.announcement })),
       };
+    case "addExpense":
+      return { ...state, expenses: [...(state.expenses ?? []), { ...a.expense, id: a._id }] };
+    case "removeExpense":
+      return { ...state, expenses: (state.expenses ?? []).filter((e) => e.id !== a.id) };
     case "replace":
       return a.state;
   }

@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Action, SelfAction, State } from "./state";
-import { DEFAULT_SETTINGS, type Day, type Game, type Gender, type Level, type MonthlyPayments, type Plan, type Player, type Settings } from "./types";
+import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type Gender, type Level, type MonthlyPayments, type Plan, type Player, type Settings } from "./types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -51,6 +51,7 @@ export interface Rows {
   signups: { date: string; player_id: string; at: string }[];
   closed: { date: string; reason: string }[];
   slips: { id: string; date: string; player_id: string; amount: number; created_at: string }[];
+  expenses?: { id: string; date: string; category: Expense["category"]; amount: number; note: string }[];
   settings:
     | {
         court_count: number;
@@ -157,6 +158,7 @@ export function rowsToState(r: Rows): State {
     days: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)),
     monthly,
     monthlyAmounts,
+    expenses: (r.expenses ?? []).map((e) => ({ id: e.id, date: e.date, category: e.category, amount: e.amount, note: e.note })),
   };
 }
 
@@ -196,6 +198,7 @@ export const TABLE_OF: Record<string, TableKey> = {
   slips: "slips",
   closed_days: "closed",
   day_prices: "prices",
+  expenses: "expenses",
 };
 
 export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iterable<TableKey>, prev?: Rows): Promise<Rows> {
@@ -222,6 +225,7 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
     signups: () => all(() => db.from("signups").select("date,player_id,at").gte("date", since).order("date").order("player_id")),
     slips: async () => (isAdmin ? all(() => db.from("slips").select("id,date,player_id,amount,created_at").is("removed_at", null).order("id")) : []),
     closed: () => all(() => db.from("closed_days").select("date,reason").order("date")),
+    expenses: async () => (isAdmin ? all(() => db.from("expenses").select("id,date,category,amount,note").order("date").order("id")) : []),
     prices: () => all(() => db.from("day_prices").select("date,court_fee,first_shuttle_fee,next_shuttle_fee").gte("date", since).order("date")),
   };
   const want = new Set<TableKey>(keys ?? (Object.keys(fetchers) as TableKey[]));
@@ -397,9 +401,13 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       return check(await db.from("signups").delete().eq("date", a.date).eq("player_id", a.playerId));
     case "addSlip":
       return; // ออนไลน์ใช้ submitSlip
+    case "addExpense":
+      return check(await db.from("expenses").insert({ id: a._id, ...a.expense }));
+    case "removeExpense":
+      return check(await db.from("expenses").delete().eq("id", a.id));
     case "clearHistory": {
       // ลบตามลำดับ (เกมและค่าใช้จ่ายก่อนเช็คอิน แขกลบท้ายสุด)
-      for (const table of ["games", "drinks", "slips", "signups", "checkins", "day_prices"])
+      for (const table of ["games", "drinks", "slips", "signups", "checkins", "day_prices", "expenses"])
         check(await db.from(table).delete().gte("date", "1900-01-01"));
       check(await db.from("monthly_payments").delete().neq("month", ""));
       check(await db.from("announcements").delete().lte("date", a.today));
@@ -458,6 +466,7 @@ async function importState(db: SupabaseClient, s: State) {
   if (signups.length) check(await db.from("signups").upsert(signups));
   const closed = Object.entries(s.closed ?? {}).map(([date, reason]) => ({ date, reason }));
   if (closed.length) check(await db.from("closed_days").upsert(closed));
+  if (s.expenses?.length) check(await db.from("expenses").upsert(s.expenses));
   await persist(db, { type: "updateSettings", settings: s.settings });
 }
 
