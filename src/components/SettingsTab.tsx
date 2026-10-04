@@ -5,7 +5,7 @@ import { isValidPromptPayId } from "@/lib/promptpay";
 import { useStore, type State } from "@/lib/store";
 import type { Settings } from "@/lib/types";
 import { ClubCalendar } from "./Calendar";
-import { LineCard } from "./LineCard";
+import { LINE_NOTIFY_ENABLED, LineCard } from "./LineCard";
 import { LoginTab } from "./LoginTab";
 import { Button, Card, SectionTitle, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
@@ -50,7 +50,7 @@ export function SettingsTab() {
     <div className="space-y-4">
       <SectionTitle>{t("ตั้งค่า")}</SectionTitle>
       <ClubCalendar />
-      <LineCard />
+      {LINE_NOTIFY_ENABLED && <LineCard />}
       <Card className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
           <h2 className="font-display font-semibold">{t("จอสนาม")}</h2>

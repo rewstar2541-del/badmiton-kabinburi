@@ -23,8 +23,7 @@ export function startLineLogin() {
     redirect_uri: redirectUri(),
     state,
     scope: "profile openid",
-    // ชวนเพิ่มเพื่อนบัญชีก๊วน จะได้รับแจ้งเตือน "ถึงคิวคุณ" ทาง LINE
-    bot_prompt: "aggressive",
+    // ถ้าเปิดแจ้งเตือน LINE อีกครั้ง ใส่ bot_prompt: "aggressive" เพื่อชวนเพิ่มเพื่อนบัญชีก๊วน
   });
   window.location.href = `https://access.line.me/oauth2/v2.1/authorize?${q}`;
 }

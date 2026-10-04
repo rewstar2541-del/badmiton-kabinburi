@@ -7,6 +7,9 @@ import { Button, Card } from "./ui";
 import { t } from "@/lib/i18n";
 
 /** แจ้งเตือนเข้ากลุ่ม LINE ของก๊วน: มีคนลงชื่อ และถึงคิวลงสนาม */
+/** พักระบบแจ้งเตือน LINE ไว้ก่อน (Rew 2026-10-04: เสียเงิน) เปลี่ยนเป็น true เพื่อแสดงการ์ดตั้งค่าอีกครั้ง */
+export const LINE_NOTIFY_ENABLED = false;
+
 export function LineCard() {
   const { auth } = useStore();
   const [s, setS] = useState<LineSettings | null>(null);
