@@ -4,7 +4,8 @@ import type { Session } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import { isDemo, demoState } from "./demo";
 import { randomToken, readSession, writeSession } from "./session";
-import { addGuest, adminResetPin, loadPrivate, playerLogin, registerPlayer, type LoginResult, loadRemote, persist, selfService, setPartnerPrefs, slipImage, submitSlip, supabase } from "./remote";
+import { clearLineTicket, handleLineCallback, readLineTicket } from "./lineLogin";
+import { addGuest, adminResetPin, linkLine, registerPlayerLine, loadPrivate, playerLogin, registerPlayer, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, supabase } from "./remote";
 import { EMPTY_STATE, guestCheck, prepare, reducer, today, type Intent, type SelfAction, type State } from "./state";
 import { DEFAULT_SETTINGS, monthOf, type Level, type Player } from "./types";
 import { t } from "@/lib/i18n";
@@ -215,9 +216,14 @@ function RemoteProvider({ children }: { children: ReactNode }) {
   const [noAdmins, setNoAdmins] = useState(false);
   const adminRef = useRef(false);
 
-  const reload = useCallback(async () => {
+  // แถวล่าสุดที่โหลดมา เวลามีการเปลี่ยนแปลงจะโหลดใหม่เฉพาะตารางนั้น (คนเยอะจะได้ไม่หนัก)
+  const rowsRef = useRef<{ rows: Rows; admin: boolean } | null>(null);
+  const reload = useCallback(async (tables?: Set<TableKey>) => {
     try {
-      let s = await loadRemote(db, adminRef.current);
+      const prev = rowsRef.current?.admin === adminRef.current && tables ? rowsRef.current.rows : undefined;
+      const rows = await loadRows(db, adminRef.current, tables, prev);
+      rowsRef.current = { rows, admin: adminRef.current };
+      let s = rowsToState(rows);
       // ผู้เล่นทั่วไปไม่เห็นค่าน้ำ/ค่ารายเดือนของคนอื่น โหลดเฉพาะของตัวเองหลังล็อกอิน
       const me = readSession();
       if (!adminRef.current && me) {
@@ -254,7 +260,12 @@ function RemoteProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    db.auth.getSession().then(({ data }) => check(data.session));
+    // กลับมาจากหน้าเข้าสู่ระบบของ LINE
+    handleLineCallback(db).then((r) => {
+      if (r === "redirect") return;
+      if (r) setError(t(r));
+      db.auth.getSession().then(({ data }) => check(data.session));
+    });
     const { data: sub } = db.auth.onAuthStateChange((event, s) => {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT") check(s);
     });
@@ -264,11 +275,18 @@ function RemoteProvider({ children }: { children: ReactNode }) {
   // อัปเดตทันทีเมื่อเครื่องอื่นแก้ข้อมูล
   useEffect(() => {
     let t: ReturnType<typeof setTimeout> | undefined;
+    const pending = new Set<TableKey>();
     const channel = db
       .channel("all-changes")
-      .on("postgres_changes", { event: "*", schema: "public" }, () => {
+      .on("postgres_changes", { event: "*", schema: "public" }, (payload) => {
+        const key = TABLE_OF[payload.table];
+        if (key) pending.add(key);
         clearTimeout(t);
-        t = setTimeout(reload, 300);
+        t = setTimeout(() => {
+          const tables = new Set(pending);
+          pending.clear();
+          reload(tables);
+        }, 300);
       })
       .subscribe();
     return () => {
@@ -311,8 +329,11 @@ function RemoteProvider({ children }: { children: ReactNode }) {
   const getSlip = useCallback((id: string) => slipImage(db, id), [db]);
   const loginRemote = useCallback(
     async (playerId: string, pin: string, newPin?: string) => {
-      const r = await playerLogin(db, playerId, pin, newPin);
+      // ถ้าเพิ่งเข้าด้วย LINE แต่ยังไม่ผูก ให้ผูก LINE กับผู้เล่นคนนี้ไปพร้อมกัน
+      const tk = readLineTicket();
+      const r = tk ? await linkLine(db, tk.ticket, playerId, pin, newPin) : await playerLogin(db, playerId, pin, newPin);
       if (r.token) {
+        clearLineTicket();
         writeSession({ playerId, token: r.token });
         await reload();
       }
@@ -323,7 +344,9 @@ function RemoteProvider({ children }: { children: ReactNode }) {
   const resetPinRemote = useCallback((playerId: string) => adminResetPin(db, playerId), [db]);
   const registerRemote = useCallback(
     async (p: Omit<Player, "id">) => {
-      const r = await registerPlayer(db, p);
+      const tk = readLineTicket();
+      const r = tk ? await registerPlayerLine(db, tk.ticket, p) : await registerPlayer(db, p);
+      if (r.id) clearLineTicket();
       if (r.id) await reload();
       return r;
     },

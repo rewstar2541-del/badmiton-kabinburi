@@ -368,4 +368,13 @@ export const en: Record<string, string> = {
   "รหัส PIN ไม่ถูกต้อง": "Wrong PIN",
   "ใส่รหัสผิดหลายครั้ง รอ 15 นาทีแล้วลองใหม่": "Too many wrong tries. Wait 15 minutes and try again.",
   "กรุณาเข้าสู่ระบบใหม่": "Please sign in again",
+  "แจ้ง \"ถึงคิวคุณ\" ส่วนตัว (ผู้เล่นที่เข้าด้วย LINE)": "Personal \"your turn\" message (players signed in with LINE)",
+  "แจ้งคิวเข้ากลุ่มด้วย (เปลืองโควตา)": "Also post turns in the group (uses more quota)",
+  "สวัสดีคุณ {name} เลือกชื่อของคุณในก๊วนเพื่อผูกกับ LINE (ทำครั้งเดียว) ถ้ามาครั้งแรกให้กดสมัครด้านล่าง": "Hi {name}! Pick your name in the club to link it with LINE (one time only). New here? Sign up below.",
+  "เข้าสู่ระบบด้วย LINE": "Sign in with LINE",
+  "อนุมัติแล้วกดเข้าสู่ระบบด้วย LINE ได้เลย": "Once approved, just sign in with LINE",
+  "เข้าสู่ระบบด้วย LINE ไม่สำเร็จ ลองใหม่อีกครั้ง": "LINE sign-in failed. Please try again.",
+  "กรุณาเข้าสู่ระบบด้วย LINE ใหม่": "Please sign in with LINE again",
+  "บัญชี LINE นี้ผูกกับผู้เล่นคนอื่นแล้ว": "This LINE account is already linked to another player",
+  "ยังไม่ได้ตั้งค่า LINE Login ใน Supabase": "LINE Login isn't set up in Supabase yet",
 };

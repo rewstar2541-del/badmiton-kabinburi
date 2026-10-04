@@ -79,9 +79,11 @@ Deno.serve(async (req) => {
   const hook = req.headers.get("x-hook-secret");
   if (hook) {
     if (hook !== s.hook_secret) return json({ error: "forbidden" }, 403);
-    if (!s.group_id) return json({ skipped: "no group" });
-    const err = await push(s.group_id, String(JSON.parse(body).text ?? ""));
-    return err ? json({ error: err }, 502) : json({ ok: true });
+    const b = JSON.parse(body) as { text?: string; messages?: { to: string; text: string }[] };
+    // ข้อความส่วนตัวหลายคน (ถึงคิว) หรือข้อความเดียวเข้ากลุ่ม
+    const list = b.messages ?? (s.group_id && b.text ? [{ to: s.group_id, text: b.text }] : []);
+    const errs = (await Promise.all(list.slice(0, 10).map((m) => push(m.to, m.text)))).filter(Boolean);
+    return errs.length ? json({ error: errs }, 502) : json({ ok: true, sent: list.length });
   }
 
   // 3. แอดมินกดทดสอบ

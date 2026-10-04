@@ -54,14 +54,16 @@ export function PlayerForm({
   onCancel,
   requirePhone,
   submitLabel,
+  defaultName,
 }: {
+  defaultName?: string;
   requirePhone?: boolean;
   submitLabel?: string;
   initial?: Player;
   onSave: (p: PlayerInput) => void;
   onCancel?: () => void;
 }) {
-  const [name, setName] = useState(initial?.name ?? "");
+  const [name, setName] = useState(initial?.name ?? defaultName ?? "");
   const [photo, setPhoto] = useState(initial?.photo);
   const [phone, setPhone] = useState(initial?.phone ?? "");
   const [gender, setGender] = useState<Gender | undefined>(initial?.gender);

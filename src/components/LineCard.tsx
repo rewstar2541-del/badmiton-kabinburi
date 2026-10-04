@@ -24,7 +24,7 @@ export function LineCard() {
     };
   }, [auth.isAdmin]);
 
-  const toggle = async (key: "notify_signup" | "notify_turn") => {
+  const toggle = async (key: "notify_signup" | "notify_turn" | "notify_turn_personal") => {
     if (!supabase || !s) return;
     const next = { ...s, [key]: !s[key] };
     setS(next);
@@ -48,7 +48,8 @@ export function LineCard() {
             (
               [
                 ["notify_signup", t("แจ้งเมื่อมีคนลงชื่อ")],
-                ["notify_turn", t("แจ้งเมื่อถึงคิวลงสนาม")],
+                ["notify_turn_personal", t("แจ้ง \"ถึงคิวคุณ\" ส่วนตัว (ผู้เล่นที่เข้าด้วย LINE)")],
+                ["notify_turn", t("แจ้งคิวเข้ากลุ่มด้วย (เปลืองโควตา)")],
               ] as const
             ).map(([key, label]) => (
               <label key={key} className="flex items-center justify-between text-sm">

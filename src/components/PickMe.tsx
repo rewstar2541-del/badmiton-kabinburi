@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { readSession, writeSession } from "@/lib/session";
+import { lineLoginEnabled, readLineTicket, startLineLogin } from "@/lib/lineLogin";
 import type { Player } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { PlayerForm } from "./PlayersTab";
@@ -24,7 +25,8 @@ export const savedPin = {
 };
 
 export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: string }) {
-  const { state } = useStore();
+  const { state, auth } = useStore();
+  const [ticket] = useState(readLineTicket);
   const [q, setQ] = useState("");
   const [registering, setRegistering] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
@@ -36,6 +38,21 @@ export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: s
   return (
     <div className="space-y-4">
       <SectionTitle>{t("คุณคือใคร?")}</SectionTitle>
+      {ticket ? (
+        <p className="rounded-2xl bg-[#06C755]/10 px-4 py-3 text-sm text-emerald-900">
+          {t("สวัสดีคุณ {name} เลือกชื่อของคุณในก๊วนเพื่อผูกกับ LINE (ทำครั้งเดียว) ถ้ามาครั้งแรกให้กดสมัครด้านล่าง", { name: ticket.name })}
+        </p>
+      ) : (
+        lineLoginEnabled &&
+        auth.online && (
+          <button
+            onClick={startLineLogin}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#06C755] px-4 py-3 text-sm font-semibold text-white"
+          >
+            {t("เข้าสู่ระบบด้วย LINE")}
+          </button>
+        )
+      )}
       <p className="px-1 text-sm text-zinc-500">{hint}</p>
       <div className="relative">
         <Icon.Search className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-zinc-400" width={18} height={18} />
@@ -133,6 +150,7 @@ function Login({ player, onDone, onCancel }: { player: Player; onDone: () => voi
 /** ผู้เล่นสมัครเองครั้งแรก แอดมินต้องกดอนุมัติก่อน แล้วจึงเข้าสู่ระบบได้ */
 function Register({ onCancel }: { onCancel: () => void }) {
   const { register } = useStore();
+  const [ticket] = useState(readLineTicket);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState<string | null>(null);
@@ -141,7 +159,9 @@ function Register({ onCancel }: { onCancel: () => void }) {
       <Card className="space-y-2 py-8 text-center">
         <Icon.Clock className="mx-auto text-amber-500" width={32} height={32} />
         <p className="font-semibold">{t("{name} สมัครแล้ว รอแอดมินอนุมัติ", { name: sent })}</p>
-        <p className="text-sm text-zinc-500">{t("อนุมัติแล้วให้เลือกชื่อของคุณ แล้วเข้าสู่ระบบด้วย 4 ตัวท้ายเบอร์โทร")}</p>
+        <p className="text-sm text-zinc-500">
+          {ticket ? t("อนุมัติแล้วกดเข้าสู่ระบบด้วย LINE ได้เลย") : t("อนุมัติแล้วให้เลือกชื่อของคุณ แล้วเข้าสู่ระบบด้วย 4 ตัวท้ายเบอร์โทร")}
+        </p>
         <Button className="mx-auto" onClick={onCancel}>
           {t("กลับ")}
         </Button>
@@ -155,6 +175,7 @@ function Register({ onCancel }: { onCancel: () => void }) {
         {error && <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
         <PlayerForm
           requirePhone
+          defaultName={ticket?.name}
           submitLabel={busy ? t("กำลังส่ง...") : t("ส่งใบสมัคร")}
           onCancel={onCancel}
           onSave={async (p) => {
