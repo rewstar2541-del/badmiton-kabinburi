@@ -8,7 +8,7 @@ import { FirstAdminCard } from "./PickMe";
 import { readSession } from "@/lib/session";
 import { monthlyDue } from "./Membership";
 import { MyBillTab } from "./MyBillTab";
-import { CheckInTab } from "./CheckInTab";
+import { CheckInTab, SignupList } from "./CheckInTab";
 import { CourtsTab } from "./CourtsTab";
 import { PlayersTab } from "./PlayersTab";
 import { SettingsTab } from "./SettingsTab";
@@ -16,7 +16,7 @@ import { TodayTab } from "./TodayTab";
 import { TvView } from "./TvView";
 import { QrOnlyPage } from "./PayQr";
 import { appName } from "@/lib/brand";
-import { Icon } from "./ui";
+import { Icon, Sheet } from "./ui";
 import { LANGS, locale, setLang, t, useLang } from "@/lib/i18n";
 import { setTheme, useTheme } from "@/lib/theme";
 
@@ -161,7 +161,8 @@ function ModeSwitch() {
 }
 
 function Header() {
-  const { state } = useStore();
+  const { state, auth } = useStore();
+  const [showSignups, setShowSignups] = useState(false);
   const { day } = useToday();
   const playing = day.games.filter((g) => !g.endedAt).length * 4;
   const waiting = waitingQueue(day, state.players).length;
@@ -201,13 +202,32 @@ function Header() {
           </div>
         </div>
         <div className="mt-5 grid grid-cols-4 gap-2">
-          {stats.map((s) => (
-            <div key={s.label} className="rounded-2xl bg-white/[0.07] px-3 py-2.5 ring-1 ring-white/10">
-              <div className="font-display text-2xl leading-none font-semibold">{s.value}</div>
-              <div className="mt-1 text-[11px] text-white/60">{s.label}</div>
-            </div>
-          ))}
+          {stats.map((s, i) => {
+            // แอดมินแตะช่อง "ลงชื่อ" เพื่อดูว่าใครลงชื่อไว้บ้าง
+            const tap = i === 0 && auth.isAdmin;
+            const Box = tap ? "button" : "div";
+            return (
+              <Box
+                key={s.label}
+                {...(tap ? { onClick: () => setShowSignups(true) } : {})}
+                className={`rounded-2xl bg-white/[0.07] px-3 py-2.5 text-left ring-1 ring-white/10 ${tap ? "ring-lime/40 active:scale-[0.97]" : ""}`}
+              >
+                <div className="font-display text-2xl leading-none font-semibold">{s.value}</div>
+                <div className="mt-1 text-[11px] text-white/60">
+                  {s.label}
+                  {tap && " ›"}
+                </div>
+              </Box>
+            );
+          })}
         </div>
+        {showSignups && (
+          <Sheet title={<h3 className="font-display text-lg font-semibold text-ink">{t("คนที่ลงชื่อวันนี้")}</h3>} onClose={() => setShowSignups(false)}>
+            <div className="text-ink">
+              <SignupList bare />
+            </div>
+          </Sheet>
+        )}
       </div>
     </header>
   );

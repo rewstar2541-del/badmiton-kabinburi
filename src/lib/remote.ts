@@ -47,7 +47,7 @@ export interface Rows {
   }[];
   drinks: { id: string; date: string; player_id: string; amount: number; note: string }[];
   monthly: { month: string; player_id: string; paid_at: string; amount?: number | null }[];
-  announcements: { date: string; message: string }[];
+  announcements: { date: string; message: string; title?: string | null }[];
   signups: { date: string; player_id: string; at: string }[];
   closed: { date: string; reason: string }[];
   slips: { id: string; date: string; player_id: string; amount: number; created_at: string }[];
@@ -114,7 +114,10 @@ export function rowsToState(r: Rows): State {
       winner: (g.winner as Game["winner"]) ?? undefined,
     });
   for (const x of r.drinks) day(x.date).drinks.push({ id: x.id, playerId: x.player_id, amount: x.amount, note: x.note });
-  for (const a of r.announcements) day(a.date).announcement = a.message;
+  for (const a of r.announcements) {
+    day(a.date).announcement = a.message;
+    if (a.title) day(a.date).announcementTitle = a.title;
+  }
   for (const s of r.signups) (day(s.date).signups ??= []).push({ playerId: s.player_id, at: ms(s.at) });
   for (const x of r.slips)
     (day(x.date).slips ??= []).push({ id: x.id, playerId: x.player_id, amount: Number(x.amount), at: ms(x.created_at) });
@@ -215,7 +218,7 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
       );
       return (r[0] as Rows["settings"]) ?? null;
     },
-    announcements: () => all(() => db.from("announcements").select("date,message").gte("date", since).order("date")),
+    announcements: () => all(() => db.from("announcements").select("date,message,title").gte("date", since).order("date")),
     signups: () => all(() => db.from("signups").select("date,player_id,at").gte("date", since).order("date").order("player_id")),
     slips: async () => (isAdmin ? all(() => db.from("slips").select("id,date,player_id,amount,created_at").is("removed_at", null).order("id")) : []),
     closed: () => all(() => db.from("closed_days").select("date,reason").order("date")),
@@ -381,7 +384,11 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
     case "setAnnouncement":
       return a.message === null
         ? check(await db.from("announcements").delete().eq("date", a.date))
-        : check(await db.from("announcements").upsert({ date: a.date, message: a.message }));
+        : check(
+            await db
+              .from("announcements")
+              .upsert({ date: a.date, message: a.message, ...(a.title === undefined ? {} : { title: a.title }) }),
+          );
     case "signUp":
       return check(
         await db.from("signups").upsert({ date: a.date, player_id: a.playerId, at: iso(a._at) }, { ignoreDuplicates: true }),
@@ -442,7 +449,9 @@ async function importState(db: SupabaseClient, s: State) {
       ? [{ date: d.date, court_fee: d.prices.courtFee, first_shuttle_fee: d.prices.firstShuttleFee, next_shuttle_fee: d.prices.nextShuttleFee }]
       : [],
   );
-  const announcements = days.flatMap((d) => (d.announcement != null ? [{ date: d.date, message: d.announcement }] : []));
+  const announcements = days.flatMap((d) =>
+    d.announcement != null ? [{ date: d.date, message: d.announcement, title: d.announcementTitle ?? null }] : [],
+  );
   const signups = days.flatMap((d) => (d.signups ?? []).map((x) => ({ date: d.date, player_id: x.playerId, at: iso(x.at) })));
   if (prices.length) check(await db.from("day_prices").upsert(prices));
   if (announcements.length) check(await db.from("announcements").upsert(announcements));

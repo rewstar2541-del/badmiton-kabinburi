@@ -42,6 +42,7 @@ export function CheckInTab() {
   return (
     <div className="space-y-4">
       <AnnounceCard />
+      <SignupList />
       {waiting > 0 && (
         <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
           {t("มีคนสมัครใหม่รออนุมัติ {n} คน ดูที่หน้าผู้เล่น", { n: waiting })}
@@ -157,4 +158,51 @@ function PlayerTile({ p, on, signed }: { p: Player; on: boolean; signed: boolean
       </button>
     </li>
   );
+}
+
+/** รายชื่อคนที่ลงชื่อว่าจะมาวันนี้ (แอดมินเท่านั้น) แตะชื่อที่ยังไม่มาเพื่อเช็คอินให้ */
+export function SignupList({ bare }: { bare?: boolean }) {
+  const { state, dispatch } = useStore();
+  const { date, day } = useToday();
+  const byId = new Map(state.players.map((p) => [p.id, p]));
+  const checked = new Set(day.checkIns.map((c) => c.playerId));
+  const list = [...(day.signups ?? [])].sort((a, b) => a.at - b.at);
+  if (!list.length && !bare) return null;
+  const arrived = list.filter((s) => checked.has(s.playerId)).length;
+  const body = (
+    <>
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="font-display font-semibold">{t("ลงชื่อว่าจะมา {n} คน", { n: list.length })}</h3>
+        <span className="text-xs text-zinc-500">{t("มาแล้ว {n} คน", { n: arrived })}</span>
+      </div>
+      {list.length === 0 ? (
+        <p className="text-sm text-zinc-500">{t("ยังไม่มีใครลงชื่อ")}</p>
+      ) : (
+        <ul className="flex flex-wrap gap-1.5">
+          {list.map((s) => {
+            const p = byId.get(s.playerId);
+            const on = checked.has(s.playerId);
+            return (
+              <li key={s.playerId}>
+                <button
+                  disabled={on}
+                  onClick={() => dispatch({ type: "checkIn", date, playerId: s.playerId })}
+                  title={on ? t("มาแล้ว") : t("แตะเพื่อเช็คอิน")}
+                  className={`flex items-center gap-1.5 rounded-full py-1 pr-3 pl-1 text-sm font-medium ${
+                    on ? "bg-emerald-50 text-emerald-700" : "bg-sky-50 text-sky-800"
+                  }`}
+                >
+                  <Avatar name={p?.name ?? "?"} photo={p?.photo} size={22} />
+                  {p?.name ?? "?"}
+                  {on && <Icon.Check width={14} height={14} strokeWidth={3} />}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {list.some((s) => !checked.has(s.playerId)) && <p className="text-xs text-zinc-500">{t("แตะชื่อคนที่ยังไม่มา เพื่อเช็คอินให้")}</p>}
+    </>
+  );
+  return bare ? <div className="space-y-3">{body}</div> : <Card className="space-y-3">{body}</Card>;
 }

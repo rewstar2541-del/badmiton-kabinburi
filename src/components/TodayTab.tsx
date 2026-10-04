@@ -15,12 +15,12 @@ import { EventPhotos } from "./EventPhotos";
 import { MonthlyReminder, PlanChoice, goToTab } from "./Membership";
 
 /** ประกาศจัดก๊วนวันนี้ (ใช้ทั้งหน้าผู้เล่นและแอดมิน) */
-export function AnnouncementBanner({ message }: { message: string }) {
+export function AnnouncementBanner({ message, title }: { message: string; title?: string }) {
   return (
     <div className="flex gap-3 rounded-3xl bg-lime p-4 text-ink">
       <Icon.Megaphone className="shrink-0" />
       <div className="min-w-0">
-        <div className="font-display font-semibold">{t("วันนี้มีจัดก๊วน")}</div>
+        <div className="font-display font-semibold">{title ? <Auto text={title} /> : t("วันนี้มีจัดก๊วน")}</div>
         {message && <p className="mt-0.5 text-sm whitespace-pre-line"><Auto text={message} /></p>}
       </div>
     </div>
@@ -44,7 +44,7 @@ export function TodayTab() {
   if (!player)
     return (
       <div className="space-y-4">
-        {announced && <AnnouncementBanner message={day.announcement ?? ""} />}
+        {announced && <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} />}
         <PickMe onPick={setMe} hint={t("เข้าสู่ระบบครั้งเดียว เครื่องนี้จะจำไว้ แล้วลงชื่อ เช็คอิน และดูยอดของตัวเองได้")} />
       </div>
     );
@@ -52,7 +52,7 @@ export function TodayTab() {
   if (player.pending)
     return (
       <div className="space-y-4">
-        {announced && <AnnouncementBanner message={day.announcement ?? ""} />}
+        {announced && <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} />}
         <PendingNotice name={player.name} onNotMe={() => setMe(null)} />
       </div>
     );
@@ -99,7 +99,7 @@ export function TodayTab() {
     <div className="space-y-4">
       <PlanChoice player={player} />
       <MonthlyReminder player={player} />
-      <AnnouncementBanner message={day.announcement ?? ""} />
+      <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} />
 
       <Card className="space-y-4">
         <div className="flex items-center gap-3">

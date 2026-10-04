@@ -131,7 +131,12 @@ export function TvView() {
 
       {day.announcement && (
         <div className="flex items-center gap-3 rounded-2xl bg-lime px-5 py-3 text-xl text-ink">
-          <Icon.Megaphone /> <span className="font-semibold">{day.announcement ? <Auto text={day.announcement} /> : t("วันนี้มีจัดก๊วน")}</span>
+          <Icon.Megaphone /> <span className="font-semibold">{day.announcementTitle && (
+            <>
+              <Auto text={day.announcementTitle} /> ·{" "}
+            </>
+          )}
+          {day.announcement ? <Auto text={day.announcement} /> : t("วันนี้มีจัดก๊วน")}</span>
         </div>
       )}
 

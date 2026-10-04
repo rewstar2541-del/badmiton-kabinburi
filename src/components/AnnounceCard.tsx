@@ -10,12 +10,17 @@ import { t } from "@/lib/i18n";
 const DEFAULT_TH = "ลงชื่อกันได้เลย มาถึงสนามแล้วกดเช็คอินเองในแอพ";
 const DEFAULT_MESSAGE = () => t(DEFAULT_TH);
 
+/** หัวข้อสำเร็จรูป เก็บเป็นภาษาไทย แสดงตามภาษาที่เลือก (null = จัดก๊วน) */
+const PRESETS = [null, "กินเลี้ยง", "ทำความสะอาดสนาม", "แข่งขันในก๊วน"] as const;
+
 /** แอดมินประกาศ/แก้/ยกเลิกประกาศจัดก๊วนวันนี้ */
 export function AnnounceCard() {
   const { dispatch, state } = useStore();
   const { date, day } = useToday();
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState(day.announcement ?? DEFAULT_MESSAGE());
+  const [title, setTitle] = useState<string | null>(day.announcementTitle ?? null);
+  const custom = title !== null && !(PRESETS as readonly (string | null)[]).includes(title);
   const announced = day.announcement !== undefined;
 
   const closed = state.closed[date];
@@ -30,12 +35,13 @@ export function AnnounceCard() {
   if (announced && !editing)
     return (
       <div className="space-y-2">
-        <AnnouncementBanner message={day.announcement ?? ""} />
+        <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} />
         <div className="flex justify-end gap-4 px-1 text-xs text-zinc-500">
           <button
             className="underline-offset-2 active:underline"
             onClick={() => {
               setMessage(day.announcement ?? "");
+              setTitle(day.announcementTitle ?? null);
               setEditing(true);
             }}
           >
@@ -56,8 +62,39 @@ export function AnnounceCard() {
   return (
     <Card className="space-y-3">
       <h3 className="flex items-center gap-2 font-display font-semibold">
-        <Icon.Megaphone width={20} height={20} /> {t("ประกาศจัดก๊วนวันนี้")}
+        <Icon.Megaphone width={20} height={20} /> {t("ประกาศวันนี้")}
       </h3>
+      <div className="space-y-1.5 text-sm font-medium">
+        {t("หัวข้อ")}
+        <div className="flex flex-wrap gap-1.5">
+          {PRESETS.map((p) => (
+            <button
+              key={p ?? "session"}
+              type="button"
+              onClick={() => setTitle(p)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${title === p ? "bg-ink text-white" : "bg-zinc-100 text-zinc-600"}`}
+            >
+              {p ? t(p) : t("จัดก๊วน")}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setTitle(custom ? title : "")}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${custom ? "bg-ink text-white" : "bg-zinc-100 text-zinc-600"}`}
+          >
+            {t("อื่นๆ")}
+          </button>
+        </div>
+        {custom && (
+          <input
+            className={inputClass}
+            maxLength={60}
+            placeholder={t("พิมพ์หัวข้อ เช่น ทำบุญสนาม")}
+            value={title ?? ""}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        )}
+      </div>
       <textarea className={`${inputClass} min-h-20`} value={message} onChange={(e) => setMessage(e.target.value)} />
       <div className="flex gap-2">
         <Button
@@ -65,7 +102,12 @@ export function AnnounceCard() {
           className="flex-1"
           onClick={() => {
             // ข้อความเริ่มต้นเก็บเป็นภาษาไทย ผู้เล่นแต่ละคนจะเห็นตามภาษาที่ตัวเองเลือก
-            dispatch({ type: "setAnnouncement", date, message: message.trim() === DEFAULT_MESSAGE() ? DEFAULT_TH : message.trim() });
+            dispatch({
+              type: "setAnnouncement",
+              date,
+              message: message.trim() === DEFAULT_MESSAGE() ? DEFAULT_TH : message.trim(),
+              title: title?.trim() || null,
+            });
             setEditing(false);
           }}
         >
