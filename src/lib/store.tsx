@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useReducer, useRef, 
 import { isDemo, demoState } from "./demo";
 import { randomToken, readSession, writeSession } from "./session";
 import { clearLineTicket, handleLineCallback, readLineTicket } from "./lineLogin";
-import { addGuest, claimPlayer, signUpDay, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, supabase } from "./remote";
+import { addGuest, claimPlayer, signUpDay, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, removeMySlip, supabase } from "./remote";
 import { EMPTY_STATE, guestCheck, prepare, reducer, today, type Intent, type SelfAction, type State } from "./state";
 import { DEFAULT_SETTINGS, monthOf, type Level, type Player } from "./types";
 import { t } from "@/lib/i18n";
@@ -47,6 +47,8 @@ interface Ctx {
   self: (action: SelfAction, playerId: string, pin: string, date?: string) => Promise<string | null>;
   /** ผู้เล่นส่งรูปสลิปโอนเงิน คืนข้อความผิดพลาด หรือ null */
   sendSlip: (playerId: string, pin: string, amount: number, image: string) => Promise<string | null>;
+  /** ผู้เล่นลบสลิปของตัวเองที่ส่งผิด (เฉพาะที่ส่งวันนี้) คืนข้อความผิดพลาด หรือ null */
+  removeSlip: (playerId: string, pin: string, slipId: string) => Promise<string | null>;
   /** ผู้เล่นตั้งคนที่อยากจับคู่/ไม่อยากเจอ คืนข้อความผิดพลาด หรือ null */
   setPrefs: (playerId: string, pin: string, prefer: string[], avoid: string[]) => Promise<string | null>;
   /**
@@ -152,6 +154,11 @@ function LocalProvider({ children }: { children: ReactNode }) {
     return null;
   }, []);
   const getSlip = useCallback(async (id: string) => images.current.get(id) ?? null, []);
+  const removeSlipLocal = useCallback(async (_p: string, _pin: string, slipId: string) => {
+    images.current.delete(slipId);
+    apply(prepare({ type: "removeSlip", date: today(), slipId }));
+    return null;
+  }, []);
   const [isAdmin, setAdmin] = useState(true);
   const auth: Auth = {
     online: false,
@@ -167,7 +174,7 @@ function LocalProvider({ children }: { children: ReactNode }) {
       : undefined,
   };
   return (
-    <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, setPrefs, addGuest: addGuestLocal, register: registerLocal, login: loginLocal, slipImage: getSlip, ready: true, error: null, auth }}>
+    <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, removeSlip: removeSlipLocal, setPrefs, addGuest: addGuestLocal, register: registerLocal, login: loginLocal, slipImage: getSlip, ready: true, error: null, auth }}>
       {children}
     </StoreCtx.Provider>
   );
@@ -298,6 +305,18 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     [db, reload],
   );
 
+  const removeSlipRemote = useCallback(
+    async (playerId: string, pin: string, slipId: string) => {
+      const err = await removeMySlip(db, playerId, pin, slipId);
+      if (!err) {
+        apply(prepare({ type: "removeSlip", date: today(), slipId }));
+        await reload();
+      }
+      return err;
+    },
+    [db, reload],
+  );
+
   const getSlip = useCallback((id: string) => slipImage(db, id), [db]);
   const loginRemote = useCallback(
     async (playerId: string): Promise<LoginResult> => {
@@ -358,7 +377,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  return <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, setPrefs, addGuest: addGuestRemote, register: registerRemote, login: loginRemote, slipImage: getSlip, ready, error, auth }}>{children}</StoreCtx.Provider>;
+  return <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, removeSlip: removeSlipRemote, setPrefs, addGuest: addGuestRemote, register: registerRemote, login: loginRemote, slipImage: getSlip, ready, error, auth }}>{children}</StoreCtx.Provider>;
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {

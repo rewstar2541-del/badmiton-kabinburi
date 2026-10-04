@@ -1,5 +1,5 @@
 import { guestsOf, markPaid } from "./billing";
-import { DEFAULT_SETTINGS, type Day, type Game, type Level, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
+import { DEFAULT_SETTINGS, type Day, type DayPrices, type Game, type Level, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
 
 export interface State {
   players: Player[];
@@ -29,10 +29,15 @@ export type Action =
   | { type: "cancelGame"; date: string; gameId: string }
   | { type: "addDrink"; date: string; playerId: string; amount: number; note: string; _id: string }
   | { type: "removeDrink"; date: string; drinkId: string }
+  | { type: "editDrink"; date: string; drinkId: string; amount: number; note: string }
+  /** แอดมินแก้ค่าสนาม / ค่าลูกของคนนี้วันนั้น (null = กลับไปคิดตามราคาปกติ) */
+  | { type: "setBillFees"; date: string; playerId: string; courtFee: number | null; shuttleFee: number | null }
+  | { type: "removeSlip"; date: string; slipId: string }
   | { type: "markPaid"; date: string; playerId: string; _at: number }
   | { type: "unmarkPaid"; date: string; playerId: string }
   | { type: "setMonthlyPaid"; month: string; playerId: string; paid: boolean; _at: number }
-  | { type: "updateSettings"; settings: Settings }
+  /** freeze: เก็บราคาเดิมไว้กับวันก่อนๆ ตอนเปลี่ยนราคา บิลเก่าจะได้ไม่เปลี่ยนตาม */
+  | { type: "updateSettings"; settings: Settings; freeze?: { dates: string[]; prices: DayPrices } }
   | { type: "setAnnouncement"; date: string; message: string | null }
   | { type: "setClosed"; date: string; reason: string | null }
   | { type: "signUp"; date: string; playerId: string; _at: number }
@@ -159,8 +164,26 @@ export function reducer(state: State, a: Action): State {
       else delete month[a.playerId];
       return { ...state, monthly: { ...state.monthly, [a.month]: month } };
     }
-    case "updateSettings":
-      return { ...state, settings: a.settings };
+    case "updateSettings": {
+      const f = a.freeze;
+      const dates = new Set(f?.dates ?? []);
+      const days = f ? state.days.map((d) => (dates.has(d.date) && !d.prices ? { ...d, prices: f.prices } : d)) : state.days;
+      return { ...state, settings: a.settings, days };
+    }
+    case "editDrink":
+      return withDay(state, a.date, (d) => ({
+        ...d,
+        drinks: d.drinks.map((x) => (x.id === a.drinkId ? { ...x, amount: a.amount, note: a.note } : x)),
+      }));
+    case "setBillFees":
+      return withDay(state, a.date, (d) => ({
+        ...d,
+        checkIns: d.checkIns.map((c) =>
+          c.playerId === a.playerId ? { ...c, courtFee: a.courtFee ?? undefined, shuttleFee: a.shuttleFee ?? undefined } : c,
+        ),
+      }));
+    case "removeSlip":
+      return withDay(state, a.date, (d) => ({ ...d, slips: d.slips?.filter((x) => x.id !== a.slipId) }));
     case "setClosed": {
       const closed = { ...state.closed };
       if (a.reason === null) delete closed[a.date];

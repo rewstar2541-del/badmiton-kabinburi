@@ -1,6 +1,6 @@
 "use client";
 
-import { billFor } from "@/lib/billing";
+import { billFor, shuttleFormula } from "@/lib/billing";
 import { useStore, useToday } from "@/lib/store";
 import { isMonthlyPaid, monthOf } from "@/lib/types";
 import { PayQr } from "./PayQr";
@@ -61,10 +61,11 @@ export function MyBillTab() {
             <div className="font-display text-4xl font-semibold">{baht(bill.total)}</div>
             <div className="mt-4 space-y-1.5 text-sm">
               {[
-                [monthly ? t("ค่าสนาม (จ่ายรายเดือนแล้ว)") : t("ค่าสนาม"), bill.courtFee],
+                [(monthly ? t("ค่าสนาม (จ่ายรายเดือนแล้ว)") : t("ค่าสนาม")) + (bill.courtAdjusted ? ` (${t("แอดมินแก้ยอด")})` : ""), bill.courtFee],
                 [
                   t("ค่าลูก {n} ลูก", { n: bill.shuttleCount }) +
-                    (bill.shuttleCount > 0 ? ` (${s.firstShuttleFee} + ${s.nextShuttleFee}×${bill.shuttleCount - 1})` : ""),
+                    shuttleFormula(bill) +
+            (bill.shuttleAdjusted ? ` (${t("แอดมินแก้ยอด")})` : ""),
                   bill.shuttleFee,
                 ],
                 [t("ค่าน้ำ"), bill.drinkFee],

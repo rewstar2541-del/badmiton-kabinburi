@@ -93,7 +93,14 @@ export interface CheckIn {
   paidAt?: number;
   /** ขอพัก ระบบข้ามคิวไปก่อน */
   resting?: boolean;
+  /** แอดมินแก้ค่าสนามของคนนี้วันนี้เอง (ไม่มี = คิดตามราคาปกติ) */
+  courtFee?: number;
+  /** แอดมินแก้ค่าลูกรวมของคนนี้วันนี้เอง (ไม่มี = คิดตามจำนวนลูก) */
+  shuttleFee?: number;
 }
+
+/** ราคาที่ใช้คิดเงินของวันหนึ่ง (เก็บไว้เมื่อแอดมินเปลี่ยนราคา บิลวันก่อนๆ จะได้ไม่เปลี่ยนตาม) */
+export type DayPrices = Pick<Settings, "courtFee" | "firstShuttleFee" | "nextShuttleFee">;
 
 export interface Drink {
   id: string;
@@ -114,6 +121,8 @@ export interface Day {
   signups?: SignUp[];
   /** สลิปโอนเงินที่ผู้เล่นส่งมา (รูปโหลดแยกเฉพาะแอดมิน) */
   slips?: Slip[];
+  /** ราคาของวันนั้น (ไม่มี = ใช้ราคาปัจจุบันในตั้งค่า) */
+  prices?: DayPrices;
 }
 
 export interface Slip {

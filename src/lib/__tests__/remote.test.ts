@@ -31,6 +31,7 @@ describe("rowsToState", () => {
     settings: null,
     announcements: [{ date: "2026-10-05", message: "พรุ่งนี้ 1 ทุ่ม" }],
     closed: [{ date: "2026-10-10", reason: "ปิดปรับปรุง" }],
+    prices: [],
     slips: [{ id: "s1", date: "2026-10-04", player_id: "a", amount: 110, created_at: "2026-10-04T14:00:00Z" }],
     signups: [
       { date: "2026-10-05", player_id: "a", at: "2026-10-04T13:00:00Z" },
