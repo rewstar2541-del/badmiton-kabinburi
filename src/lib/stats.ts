@@ -57,3 +57,59 @@ export function monthSummary(state: State, player: Player, month: string): Month
     topPartner: top ? { id: top[0], games: top[1] } : undefined,
   };
 }
+
+export interface Badge {
+  id: string;
+  /** ชื่อป้าย (ข้อความไทย ใช้เป็นคีย์แปล) */
+  name: string;
+  /** วิธีได้ป้าย (ข้อความไทย ใช้เป็นคีย์แปล มี {n}) */
+  how: string;
+  target: number;
+  progress: number;
+  earned: boolean;
+}
+
+/** สถิติตลอดการเล่นที่ใช้คิดป้ายรางวัล */
+export function lifetime(state: State, playerId: string) {
+  let visits = 0;
+  let games = 0;
+  let bestDay = 0;
+  let streak = 0;
+  let bestStreak = 0;
+  const days = [...state.days].sort((a, b) => a.date.localeCompare(b.date));
+  for (const d of days) {
+    if (!d.checkIns.some((c) => c.playerId === playerId)) continue;
+    visits++;
+    let today = 0;
+    for (const g of [...d.games].sort((a, b) => a.startedAt - b.startedAt)) {
+      const i = g.playerIds.indexOf(playerId);
+      if (i < 0 || !g.endedAt) continue;
+      games++;
+      today++;
+      if (!g.winner) continue;
+      streak = (g.winner === "A") === i < 2 ? streak + 1 : 0;
+      bestStreak = Math.max(bestStreak, streak);
+    }
+    bestDay = Math.max(bestDay, today);
+  }
+  const monthlyMonths = Object.values(state.monthly).filter((m) => m[playerId]).length;
+  return { visits, games, bestDay, bestStreak, monthlyMonths };
+}
+
+const BADGES: { id: string; name: string; how: string; target: number; stat: keyof ReturnType<typeof lifetime> }[] = [
+  { id: "first", name: "มือใหม่หัดมา", how: "มาเล่นครั้งแรก", target: 1, stat: "visits" },
+  { id: "regular", name: "ขาประจำ", how: "มาเล่นครบ {n} ครั้ง", target: 10, stat: "visits" },
+  { id: "core", name: "ตัวจริงของก๊วน", how: "มาเล่นครบ {n} ครั้ง", target: 50, stat: "visits" },
+  { id: "streak", name: "ไฟลุก", how: "ชนะติดกัน {n} เกม", target: 5, stat: "bestStreak" },
+  { id: "marathon", name: "มาราธอน", how: "เล่น {n} เกมในวันเดียว", target: 10, stat: "bestDay" },
+  { id: "hundred", name: "ร้อยเกม", how: "เล่นครบ {n} เกม", target: 100, stat: "games" },
+  { id: "member", name: "สมาชิกขาจริง", how: "จ่ายรายเดือน {n} เดือน", target: 3, stat: "monthlyMonths" },
+];
+
+export function badgesFor(state: State, playerId: string): Badge[] {
+  const s = lifetime(state, playerId);
+  return BADGES.map((b) => {
+    const progress = Math.min(s[b.stat], b.target);
+    return { id: b.id, name: b.name, how: b.how, target: b.target, progress, earned: s[b.stat] >= b.target };
+  });
+}

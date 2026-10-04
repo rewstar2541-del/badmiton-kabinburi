@@ -31,6 +31,7 @@ describe("rowsToState", () => {
     monthly: [{ month: "2026-10", player_id: "b", paid_at: "2026-10-01T00:00:00Z" }],
     settings: null,
     announcements: [{ date: "2026-10-05", message: "พรุ่งนี้ 1 ทุ่ม" }],
+    closed: [{ date: "2026-10-10", reason: "ปิดปรับปรุง" }],
     slips: [{ id: "s1", date: "2026-10-04", player_id: "a", amount: 110, created_at: "2026-10-04T14:00:00Z" }],
     signups: [
       { date: "2026-10-05", player_id: "a", at: "2026-10-04T13:00:00Z" },
@@ -47,6 +48,7 @@ describe("rowsToState", () => {
     expect(state.days[0].games[0]).toMatchObject({ shuttles: 2, endedAt: undefined, winner: undefined });
     expect(state.monthly["2026-10"].b).toBe(Date.parse("2026-10-01T00:00:00Z"));
     expect(state.settings).toEqual(DEFAULT_SETTINGS);
+    expect(state.closed).toEqual({ "2026-10-10": "ปิดปรับปรุง" });
   });
 
   it("ประกาศและคนลงชื่อ เรียงตามเวลาที่ลงชื่อ", () => {

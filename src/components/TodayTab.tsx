@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useStore, useToday } from "@/lib/store";
 import { presence } from "@/lib/matchmaking";
 import type { SelfAction } from "@/lib/state";
+import { ClosedBanner, ClubCalendar } from "./Calendar";
 import { PickMe, savedPin, useMe } from "./PickMe";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
@@ -64,8 +65,9 @@ export function SignupList() {
 /** หน้าแรกของผู้เล่น: ดูประกาศ ลงชื่อ และเช็คอินเองเมื่อถึงสนาม */
 export function TodayTab() {
   const { state, self, auth } = useStore();
-  const { day } = useToday();
+  const { date, day } = useToday();
   const [me, setMe] = useMe();
+  const closed = state.closed[date];
   const [pin, setPin] = useState(savedPin.get);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -75,11 +77,16 @@ export function TodayTab() {
   if (!announced)
     return (
       <div className="space-y-4">
-        <Card className="space-y-1 py-10 text-center">
-          <Icon.Megaphone className="mx-auto text-zinc-300" width={32} height={32} />
-          <p className="font-semibold">{t("วันนี้ยังไม่มีประกาศจัดก๊วน")}</p>
-          <p className="text-sm text-zinc-500">{t("เมื่อแอดมินประกาศ จะลงชื่อและเช็คอินได้ที่หน้านี้")}</p>
-        </Card>
+        {closed !== undefined ? (
+          <ClosedBanner reason={closed} />
+        ) : (
+          <Card className="space-y-1 py-10 text-center">
+            <Icon.Megaphone className="mx-auto text-zinc-300" width={32} height={32} />
+            <p className="font-semibold">{t("วันนี้ยังไม่มีประกาศจัดก๊วน")}</p>
+            <p className="text-sm text-zinc-500">{t("เมื่อแอดมินประกาศ จะลงชื่อและเช็คอินได้ที่หน้านี้")}</p>
+          </Card>
+        )}
+        <ClubCalendar />
       </div>
     );
 
@@ -88,6 +95,7 @@ export function TodayTab() {
       <div className="space-y-4">
         <AnnouncementBanner message={day.announcement ?? ""} />
         <PickMe onPick={setMe} hint={t("เลือกชื่อของคุณเพื่อลงชื่อและเช็คอิน เครื่องนี้จะจำไว้ให้")} />
+        <ClubCalendar />
       </div>
     );
 
@@ -182,6 +190,7 @@ export function TodayTab() {
       </Card>
 
       <SignupList />
+      <ClubCalendar />
     </div>
   );
 }

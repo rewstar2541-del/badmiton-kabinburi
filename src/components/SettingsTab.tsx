@@ -4,6 +4,7 @@ import { useState } from "react";
 import { isValidPromptPayId } from "@/lib/promptpay";
 import { useStore, type State } from "@/lib/store";
 import type { Settings } from "@/lib/types";
+import { ClubCalendar } from "./Calendar";
 import { LoginTab } from "./LoginTab";
 import { Button, Card, SectionTitle, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
@@ -47,6 +48,7 @@ export function SettingsTab() {
   return (
     <div className="space-y-4">
       <SectionTitle>{t("ตั้งค่า")}</SectionTitle>
+      <ClubCalendar />
       <Card className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
           <h2 className="font-display font-semibold">{t("จอสนาม")}</h2>

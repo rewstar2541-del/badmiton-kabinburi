@@ -35,6 +35,7 @@ export function demoState(): State {
     settings: { ...DEFAULT_SETTINGS, promptPayId: "0812345678" },
     days: [],
     monthly: {},
+    closed: {},
   };
   const run = (i: Parameters<typeof prepare>[0], at = now) => (s = reducer(s, prepare(i, at)));
   NAMES.forEach(([name, gender, level], i) =>
@@ -45,5 +46,9 @@ export function demoState(): State {
   s.players.slice(0, 8).forEach((p, i) => run({ type: "checkIn", date, playerId: p.id }, now - (40 - i * 3) * 60000));
   run({ type: "setMonthlyPaid", month: date.slice(0, 7), playerId: s.players[0].id, paid: true });
   run({ type: "setMonthlyPaid", month: date.slice(0, 7), playerId: s.players[3].id, paid: true });
+  // วันงดเล่นตัวอย่าง: อีก 3 วัน
+  const off = new Date(now + 3 * 86400000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  run({ type: "setClosed", date: `${off.getFullYear()}-${pad(off.getMonth() + 1)}-${pad(off.getDate())}`, reason: "สนามปิดปรับปรุง" });
   return s;
 }

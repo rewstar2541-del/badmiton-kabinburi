@@ -19,7 +19,7 @@ function loadLocal(): State {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEMO ? demoState() : EMPTY_STATE;
     const s = JSON.parse(raw) as State;
-    return { ...EMPTY_STATE, ...s, settings: { ...DEFAULT_SETTINGS, ...s.settings }, monthly: s.monthly ?? {} };
+    return { ...EMPTY_STATE, ...s, settings: { ...DEFAULT_SETTINGS, ...s.settings }, monthly: s.monthly ?? {}, closed: s.closed ?? {} };
   } catch {
     return DEMO ? demoState() : EMPTY_STATE;
   }

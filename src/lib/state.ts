@@ -6,6 +6,8 @@ export interface State {
   settings: Settings;
   days: Day[];
   monthly: MonthlyPayments;
+  /** วันงดเล่น (YYYY-MM-DD) -> เหตุผล */
+  closed: Record<string, string>;
 }
 
 /**
@@ -30,6 +32,7 @@ export type Action =
   | { type: "setMonthlyPaid"; month: string; playerId: string; paid: boolean; _at: number }
   | { type: "updateSettings"; settings: Settings }
   | { type: "setAnnouncement"; date: string; message: string | null }
+  | { type: "setClosed"; date: string; reason: string | null }
   | { type: "signUp"; date: string; playerId: string; _at: number }
   | { type: "cancelSignUp"; date: string; playerId: string }
   /** ใช้ในโหมดเก็บในเครื่องเท่านั้น ออนไลน์ส่งผ่าน submit_slip */
@@ -41,7 +44,7 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K>
 /** สิ่งที่หน้าจอส่งเข้ามา (ยังไม่มี id และเวลา) */
 export type Intent = DistributiveOmit<Action, "_id" | "_at">;
 
-export const EMPTY_STATE: State = { players: [], settings: DEFAULT_SETTINGS, days: [], monthly: {} };
+export const EMPTY_STATE: State = { players: [], settings: DEFAULT_SETTINGS, days: [], monthly: {}, closed: {} };
 
 export function newId(): string {
   return crypto.randomUUID();
@@ -129,6 +132,12 @@ export function reducer(state: State, a: Action): State {
     }
     case "updateSettings":
       return { ...state, settings: a.settings };
+    case "setClosed": {
+      const closed = { ...state.closed };
+      if (a.reason === null) delete closed[a.date];
+      else closed[a.date] = a.reason;
+      return { ...state, closed };
+    }
     case "setAnnouncement":
       return withDay(state, a.date, (d) => ({ ...d, announcement: a.message ?? undefined }));
     case "signUp":

@@ -4,10 +4,10 @@ import { useState } from "react";
 import { APP_NAME } from "@/lib/brand";
 import { locale, t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
-import { monthSummary } from "@/lib/stats";
+import { badgesFor, monthSummary } from "@/lib/stats";
 import { monthOf, type Player } from "@/lib/types";
 import { savedPin } from "./PickMe";
-import { Avatar, Button, Card, SectionTitle, baht, inputClass } from "./ui";
+import { Avatar, Button, Card, Icon, SectionTitle, baht, inputClass } from "./ui";
 
 const MAX = 5;
 type Pref = "prefer" | "avoid" | null;
@@ -219,6 +219,43 @@ export function MonthCard({ player }: { player: Player }) {
         <Button variant="accent" className="w-full" onClick={share}>
           {copied ? t("คัดลอกแล้ว ไปวางในไลน์ได้เลย") : t("แชร์สรุป")}
         </Button>
+      </Card>
+    </>
+  );
+}
+
+/** ป้ายรางวัลของผู้เล่น ได้แล้วเป็นสี ยังไม่ได้แสดงความคืบหน้า */
+export function BadgesCard({ player }: { player: Player }) {
+  const { state } = useStore();
+  const badges = badgesFor(state, player.id);
+  const earned = badges.filter((b) => b.earned).length;
+  return (
+    <>
+      <SectionTitle right={t("{n}/{m} ป้าย", { n: earned, m: badges.length })}>{t("ป้ายรางวัล")}</SectionTitle>
+      <Card className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3">
+        {badges.map((b) => (
+          <div
+            key={b.id}
+            className={`flex items-center gap-2.5 rounded-2xl p-2.5 ${b.earned ? "bg-lime/30" : "bg-zinc-50"}`}
+          >
+            <span
+              className={`grid size-10 shrink-0 place-items-center rounded-full ${
+                b.earned ? "bg-ink text-lime" : "bg-zinc-200 text-zinc-400"
+              }`}
+            >
+              <Icon.Trophy width={20} height={20} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className={`truncate text-sm font-semibold ${b.earned ? "" : "text-zinc-500"}`}>{t(b.name)}</div>
+              <div className="text-[11px] leading-tight text-zinc-500">{t(b.how, { n: b.target })}</div>
+              {!b.earned && (
+                <div className="mt-1 h-1 overflow-hidden rounded-full bg-zinc-200">
+                  <div className="h-full rounded-full bg-ink/60" style={{ width: `${(b.progress / b.target) * 100}%` }} />
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
       </Card>
     </>
   );

@@ -5,7 +5,7 @@ import { useStore, useToday } from "@/lib/store";
 import { isMonthlyPaid, monthOf } from "@/lib/types";
 import { PayQr } from "./PayQr";
 import { PickMe, useMe } from "./PickMe";
-import { MonthCard, PartnerPrefs } from "./MyExtras";
+import { BadgesCard, MonthCard, PartnerPrefs } from "./MyExtras";
 import { SlipUpload } from "./Slips";
 import { Avatar, Card, Icon, LevelBadge, baht } from "./ui";
 import { t } from "@/lib/i18n";
@@ -91,6 +91,7 @@ export function MyBillTab() {
       )}
 
       <MonthCard player={player} />
+      <BadgesCard player={player} />
       <PartnerPrefs key={(player.prefer ?? []).join() + "|" + (player.avoid ?? []).join()} player={player} />
     </div>
   );

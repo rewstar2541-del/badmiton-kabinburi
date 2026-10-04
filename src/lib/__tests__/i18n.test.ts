@@ -8,6 +8,7 @@ const root = join(__dirname, "..", "..");
 const files = [
   ...readdirSync(join(root, "components")).map((f) => join(root, "components", f)),
   join(root, "lib", "store.tsx"),
+  join(root, "lib", "stats.ts"),
 ];
 
 /** ข้อความที่ส่งเข้า t("...") และ label ภาษาไทยในโค้ด */
@@ -16,7 +17,7 @@ function usedKeys(): string[] {
   for (const f of files) {
     const s = readFileSync(f, "utf8");
     for (const m of s.matchAll(/\bt\(\s*"((?:[^"\\]|\\.)*)"/g)) keys.add(JSON.parse(`"${m[1]}"`));
-    for (const m of s.matchAll(/label: "([^"]*[฀-๿][^"]*)"/g)) keys.add(m[1]);
+    for (const m of s.matchAll(/(?:label|name|how): "([^"]*[฀-๿][^"]*)"/g)) keys.add(m[1]);
   }
   return [...keys];
 }

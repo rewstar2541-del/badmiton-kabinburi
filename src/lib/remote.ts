@@ -36,6 +36,7 @@ export interface Rows {
   monthly: { month: string; player_id: string; paid_at: string }[];
   announcements: { date: string; message: string }[];
   signups: { date: string; player_id: string; at: string }[];
+  closed: { date: string; reason: string }[];
   slips: { id: string; date: string; player_id: string; amount: number; created_at: string }[];
   settings:
     | {
@@ -115,9 +116,13 @@ export function rowsToState(r: Rows): State {
       }
     : DEFAULT_SETTINGS;
 
+  const closed: Record<string, string> = {};
+  for (const c of r.closed) closed[c.date] = c.reason;
+
   return {
     players,
     settings,
+    closed,
     days: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)),
     monthly,
   };
@@ -130,7 +135,7 @@ async function all<T>(q: PromiseLike<{ data: T[] | null; error: { message: strin
 }
 
 export async function loadRemote(db: SupabaseClient, isAdmin: boolean): Promise<State> {
-  const [players, contacts, checkins, games, drinks, monthly, settings, announcements, signups, slips] = await Promise.all([
+  const [players, contacts, checkins, games, drinks, monthly, settings, announcements, signups, slips, closed] = await Promise.all([
     all<Rows["players"][number]>(db.from("players").select("id,name,photo,gender,level,prefer,avoid").order("name")),
     // เบอร์โทรเห็นเฉพาะแอดมิน
     isAdmin ? all<Rows["contacts"][number]>(db.from("player_contacts").select("player_id,phone")) : Promise.resolve([]),
@@ -144,6 +149,7 @@ export async function loadRemote(db: SupabaseClient, isAdmin: boolean): Promise<
     all<Rows["announcements"][number]>(db.from("announcements").select("date,message")),
     all<Rows["signups"][number]>(db.from("signups").select("date,player_id,at")),
     all<Rows["slips"][number]>(db.from("slips").select("id,date,player_id,amount,created_at")),
+    all<Rows["closed"][number]>(db.from("closed_days").select("date,reason")),
   ]);
   return rowsToState({
     players,
@@ -156,6 +162,7 @@ export async function loadRemote(db: SupabaseClient, isAdmin: boolean): Promise<
     announcements,
     signups,
     slips,
+    closed,
   });
 }
 
@@ -251,6 +258,10 @@ export async function persist(db: SupabaseClient, a: Action): Promise<void> {
         }),
       );
     }
+    case "setClosed":
+      return a.reason === null
+        ? check(await db.from("closed_days").delete().eq("date", a.date))
+        : check(await db.from("closed_days").upsert({ date: a.date, reason: a.reason }));
     case "setAnnouncement":
       return a.message === null
         ? check(await db.from("announcements").delete().eq("date", a.date))
@@ -301,6 +312,8 @@ async function importState(db: SupabaseClient, s: State) {
   if (games.length) check(await db.from("games").upsert(games));
   if (drinks.length) check(await db.from("drinks").upsert(drinks));
   if (monthly.length) check(await db.from("monthly_payments").upsert(monthly));
+  const closed = Object.entries(s.closed ?? {}).map(([date, reason]) => ({ date, reason }));
+  if (closed.length) check(await db.from("closed_days").upsert(closed));
   await persist(db, { type: "updateSettings", settings: s.settings });
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { APP_NAME } from "@/lib/brand";
 import { locale, t, useLang } from "@/lib/i18n";
 import { presence, waitingQueue } from "@/lib/matchmaking";
@@ -27,6 +27,23 @@ function Name({ p, big }: { p?: Player; big?: boolean }) {
   );
 }
 
+const VOICE_KEY = "badminton-kabinburi:tv-voice";
+
+function speak(text: string) {
+  if (typeof speechSynthesis === "undefined") return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = locale();
+  const voice = speechSynthesis.getVoices().find((v) => v.lang.replace("_", "-").startsWith(u.lang.slice(0, 2)));
+  if (voice) u.voice = voice;
+  u.rate = 0.95;
+  speechSynthesis.speak(u);
+}
+
+/** ข้อความเรียกคนลงสนาม */
+function callText(court: number, names: string[]) {
+  return t("สนาม {n} เชิญ {names} ลงสนามครับ", { n: court, names: names.join(", ") });
+}
+
 /** จอสนาม: เปิดบนแท็บเล็ตหรือทีวีที่สนาม ด้วย ?tv แสดงสนาม คิวถัดไป อัปเดตเองเมื่อข้อมูลเปลี่ยน */
 export function TvView() {
   const { state, ready } = useStore();
@@ -38,6 +55,45 @@ export function TvView() {
   const games = new Map(day.games.filter((g) => !g.endedAt).map((g) => [g.court, g]));
   const courts = Array.from({ length: state.settings.courtCount }, (_, i) => i + 1);
   const resting = day.checkIns.filter((c) => presence(day, c.playerId) === "resting").length;
+  const canSpeak = typeof window !== "undefined" && "speechSynthesis" in window;
+  const [voiceOn, setVoiceOn] = useState(() => {
+    try {
+      return localStorage.getItem(VOICE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const seen = useRef<Set<string> | null>(null);
+  const namesOf = (ids: string[]) => ids.map((id) => byId.get(id)?.name ?? "?");
+
+  // เกมที่เพิ่งเริ่ม ให้จอพูดเรียกชื่อ (เกมที่มีอยู่แล้วตอนเปิดจอไม่เรียก)
+  const activeKey = [...games.values()].map((g) => g.id).join();
+  useEffect(() => {
+    if (!ready) return;
+    const ids = [...games.values()];
+    if (!seen.current) {
+      seen.current = new Set(ids.map((g) => g.id));
+      return;
+    }
+    for (const g of ids) {
+      if (seen.current.has(g.id)) continue;
+      seen.current.add(g.id);
+      if (voiceOn) speak(callText(g.court, namesOf(g.playerIds)));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeKey, ready, voiceOn]);
+
+  const toggleVoice = () => {
+    const on = !voiceOn;
+    setVoiceOn(on);
+    try {
+      localStorage.setItem(VOICE_KEY, on ? "1" : "0");
+    } catch {
+      // ไม่จำก็ได้
+    }
+    if (on) speak(t("เปิดเสียงเรียกคิวแล้ว"));
+    else speechSynthesis.cancel();
+  };
 
   if (!ready) return <div className="grid flex-1 place-items-center bg-ink text-white/60">{t("กำลังโหลด...")}</div>;
 
@@ -50,6 +106,14 @@ export function TvView() {
         <h1 className="font-display text-3xl leading-tight font-semibold">
           {APP_NAME[0]} <span className="text-lime">{APP_NAME[1]}</span>
         </h1>
+        {canSpeak && (
+          <button
+            onClick={toggleVoice}
+            className={`rounded-full px-4 py-2 text-sm font-semibold ${voiceOn ? "bg-lime text-ink" : "bg-white/10 text-white/80"}`}
+          >
+            {voiceOn ? t("เสียงเรียกคิว: เปิด") : t("เปิดเสียงเรียกคิว")}
+          </button>
+        )}
         <div className="ml-auto text-right">
           <div className="font-display text-4xl font-semibold tabular-nums">
             {new Date(now).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" })}
@@ -74,7 +138,15 @@ export function TvView() {
               <div key={c} className="rounded-3xl bg-white/[0.06] p-4 ring-1 ring-white/10">
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="font-display text-2xl font-semibold">{t("สนาม {n}", { n: c })}</h2>
-                  <span className="text-lg text-white/60 tabular-nums">
+                  <span className="flex items-center gap-3 text-lg text-white/60 tabular-nums">
+                    {g && voiceOn && (
+                      <button
+                        onClick={() => speak(callText(c, namesOf(g.playerIds)))}
+                        className="rounded-full bg-white/10 px-3 py-1 text-sm text-white"
+                      >
+                        {t("เรียกอีกครั้ง")}
+                      </button>
+                    )}
                     {g ? t("{n} นาที", { n: Math.max(0, Math.floor((now - g.startedAt) / 60000)) }) : t("ว่าง")}
                   </span>
                 </div>
