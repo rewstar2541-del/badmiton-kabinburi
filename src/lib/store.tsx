@@ -27,6 +27,9 @@ export interface Auth {
   online: boolean;
   email?: string;
   isAdmin: boolean;
+  /** ยังไม่มีแอดมินในระบบเลย (คนที่ล็อคอินอยู่ตั้งตัวเองเป็นแอดมินคนแรกได้) */
+  noAdmins: boolean;
+  claimFirstAdmin: () => Promise<string | null>;
   signIn: (email: string) => Promise<string | null>;
   signOut: () => Promise<void>;
 }
@@ -63,7 +66,12 @@ function LocalProvider({ children }: { children: ReactNode }) {
     return null;
   }, [dispatch]);
   const sendSlip = async () => "ส่งสลิปได้เฉพาะเมื่อต่อ Supabase";
-  const auth: Auth = { online: false, isAdmin: true, signIn: async () => null, signOut: async () => {} };
+  const auth: Auth = {
+    online: false,
+    isAdmin: true,
+    noAdmins: false,
+    claimFirstAdmin: async () => null,
+    signIn: async () => null, signOut: async () => {} };
   return <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, ready: true, error: null, auth }}>{children}</StoreCtx.Provider>;
 }
 
@@ -74,6 +82,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [noAdmins, setNoAdmins] = useState(false);
   const adminRef = useRef(false);
 
   const reload = useCallback(async () => {
@@ -88,24 +97,31 @@ function RemoteProvider({ children }: { children: ReactNode }) {
   }, [db]);
 
   // สถานะล็อคอิน และเช็คว่าเป็นแอดมินไหม
-  useEffect(() => {
-    const check = async (s: Session | null) => {
+  const check = useCallback(
+    async (s: Session | null) => {
       setSession(s);
       let admin = false;
+      let none = false;
       if (s) {
         const { data } = await db.rpc("is_admin");
         admin = data === true;
+        if (!admin) none = (await db.rpc("has_admins")).data === false;
       }
       adminRef.current = admin;
       setIsAdmin(admin);
+      setNoAdmins(none);
       await reload();
-    };
+    },
+    [db, reload],
+  );
+
+  useEffect(() => {
     db.auth.getSession().then(({ data }) => check(data.session));
     const { data: sub } = db.auth.onAuthStateChange((event, s) => {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT") check(s);
     });
     return () => sub.subscription.unsubscribe();
-  }, [db, reload]);
+  }, [db, check]);
 
   // อัปเดตทันทีเมื่อเครื่องอื่นแก้ข้อมูล
   useEffect(() => {
@@ -158,6 +174,13 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     online: true,
     email: session?.user.email,
     isAdmin,
+    noAdmins,
+    claimFirstAdmin: async () => {
+      const { data, error } = await db.rpc("claim_first_admin");
+      const err = error?.message ?? (data as string | null);
+      if (!err) await check(session);
+      return err ?? null;
+    },
     signIn: async (email) => {
       const { error } = await db.auth.signInWithOtp({
         email: email.trim().toLowerCase(),
