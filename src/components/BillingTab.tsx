@@ -5,6 +5,7 @@ import { billFor, type Bill } from "@/lib/billing";
 import { locale, t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
 import { monthOf, type Player } from "@/lib/types";
+import { ExportReport } from "./ExportReport";
 import { PayQr } from "./PayQr";
 import { SlipReview } from "./Slips";
 import { Avatar, Button, Card, Icon, SectionTitle, Sheet, baht, inputClass } from "./ui";
@@ -108,6 +109,7 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
             <Button variant="accent" className="w-full" onClick={() => dispatch({ type: "markPaid", date, playerId: player.id })}>
               {t("ได้รับเงินแล้ว {amount}", { amount: baht(bill.total) })}
             </Button>
+            <p className="text-center text-xs text-zinc-500">{t("กดรับเงินแล้ว ผู้เล่นจะออกจากคิว ถือว่ากลับบ้าน")}</p>
           </div>
         )
       )}
@@ -234,6 +236,7 @@ function MonthlyView() {
           </div>
         </div>
       </div>
+      <ExportReport month={month} />
       <p className="px-1 text-xs text-zinc-500">
         {t("คนที่จ่ายเดือนนี้แล้ว ระบบไม่คิดค่าสนามรายวันให้อัตโนมัติ ถ้าบันทึกผิด แตะเพื่อแก้ได้เลย")}
       </p>

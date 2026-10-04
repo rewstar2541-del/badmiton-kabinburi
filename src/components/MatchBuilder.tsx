@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { nextMatch, waitingQueue } from "@/lib/matchmaking";
+import { hasAvoid, nextMatch, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
 import type { Game, Player } from "@/lib/types";
 import { Avatar, Button, Icon, LevelBadge, Sheet } from "./ui";
@@ -43,6 +43,8 @@ export function MatchBuilder({ court, onClose }: { court: number; onClose: () =>
   };
 
   const full = slots.every(Boolean);
+  const chosen = slots.map((id) => (id ? byId.get(id) : undefined)).filter((p) => p !== undefined);
+  const clash = hasAvoid(chosen);
   const teamSum = (ids: Slots) => ids.reduce((n, id) => n + (id ? (byId.get(id)?.level ?? 0) : 0), 0);
 
   const slot = (i: number) => {
@@ -87,6 +89,10 @@ export function MatchBuilder({ court, onClose }: { court: number; onClose: () =>
       <p className="text-xs text-zinc-500">
         {t("แตะช่องที่ต้องการเปลี่ยน แล้วแตะชื่อจากคิว แตะช่องเดิมซ้ำเพื่อเอาออก ตัวเลขข้างทีมคือผลรวมระดับมือ")}
       </p>
+
+      {clash && (
+        <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">{t("มีคนในเกมนี้ที่ขอไม่เจอกัน ลองเปลี่ยนคนดูก่อน")}</p>
+      )}
 
       <ul className="grid grid-cols-2 gap-1.5">
         {queue.map((e, i) => {

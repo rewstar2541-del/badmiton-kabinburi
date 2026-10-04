@@ -1,4 +1,4 @@
-import { markPaid } from "./billing";
+import { guestsOf, markPaid } from "./billing";
 import { DEFAULT_SETTINGS, type Day, type Game, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
 
 export interface State {
@@ -6,6 +6,8 @@ export interface State {
   settings: Settings;
   days: Day[];
   monthly: MonthlyPayments;
+  /** วันงดเล่น (YYYY-MM-DD) -> เหตุผล */
+  closed: Record<string, string>;
 }
 
 /**
@@ -18,6 +20,7 @@ export type Action =
   | { type: "removePlayer"; playerId: string }
   | { type: "checkIn"; date: string; playerId: string; _at: number }
   | { type: "undoCheckIn"; date: string; playerId: string }
+  | { type: "setResting"; date: string; playerId: string; resting: boolean }
   | { type: "startGame"; date: string; court: number; playerIds: Game["playerIds"]; _id: string; _at: number }
   | { type: "setShuttles"; date: string; gameId: string; shuttles: number }
   | { type: "endGame"; date: string; gameId: string; winner?: Team; _at: number }
@@ -29,6 +32,7 @@ export type Action =
   | { type: "setMonthlyPaid"; month: string; playerId: string; paid: boolean; _at: number }
   | { type: "updateSettings"; settings: Settings }
   | { type: "setAnnouncement"; date: string; message: string | null }
+  | { type: "setClosed"; date: string; reason: string | null }
   | { type: "signUp"; date: string; playerId: string; _at: number }
   | { type: "cancelSignUp"; date: string; playerId: string }
   /** ใช้ในโหมดเก็บในเครื่องเท่านั้น ออนไลน์ส่งผ่าน submit_slip */
@@ -40,7 +44,7 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K>
 /** สิ่งที่หน้าจอส่งเข้ามา (ยังไม่มี id และเวลา) */
 export type Intent = DistributiveOmit<Action, "_id" | "_at">;
 
-export const EMPTY_STATE: State = { players: [], settings: DEFAULT_SETTINGS, days: [], monthly: {} };
+export const EMPTY_STATE: State = { players: [], settings: DEFAULT_SETTINGS, days: [], monthly: {}, closed: {} };
 
 export function newId(): string {
   return crypto.randomUUID();
@@ -53,7 +57,27 @@ export function today(): string {
 }
 
 /** สิ่งที่ผู้เล่นทำเองได้โดยไม่ต้องเป็นแอดมิน */
-export type SelfAction = "signUp" | "cancelSignUp" | "checkIn";
+export type SelfAction = "signUp" | "cancelSignUp" | "checkIn" | "rest" | "unrest" | "pay" | "payMonth";
+
+/** พาแขกได้ไม่เกินกี่คนต่อวัน */
+export const MAX_GUESTS = 3;
+
+/** ตรวจก่อนเพิ่มแขกแบบผู้เล่นทำเอง (กติกาเดียวกับ add_guest ในฐานข้อมูล) คืนข้อความผิดพลาด หรือ null */
+export function guestCheck(state: State, date: string, hostId: string, name: string): string | null {
+  const host = state.players.find((p) => p.id === hostId);
+  if (!host || host.guestOf) return "คำสั่งไม่ถูกต้อง";
+  const day = state.days.find((d) => d.date === date);
+  if (!day?.announcement) return "วันนี้ยังไม่มีประกาศจัดก๊วน";
+  if (!name.trim()) return "กรุณาใส่ชื่อเล่น";
+  const guests = new Set(guestsOf(state.players, hostId).map((g) => g.id));
+  if (day.checkIns.filter((c) => guests.has(c.playerId)).length >= MAX_GUESTS) return "พาแขกได้ไม่เกิน 3 คนต่อวัน";
+  return null;
+}
+
+/** ผู้เล่นและแขกที่ผู้เล่นพามา */
+export function withGuests(state: State, playerId: string): string[] {
+  return [playerId, ...guestsOf(state.players, playerId).map((g) => g.id)];
+}
 
 export function prepare(i: Intent, now = Date.now(), id = newId): Action {
   return { ...i, _id: id(), _at: now } as Action;
@@ -88,6 +112,11 @@ export function reducer(state: State, a: Action): State {
           ? d
           : { ...d, checkIns: [...d.checkIns, { playerId: a.playerId, at: a._at }] },
       );
+    case "setResting":
+      return withDay(state, a.date, (d) => ({
+        ...d,
+        checkIns: d.checkIns.map((c) => (c.playerId === a.playerId ? { ...c, resting: a.resting || undefined } : c)),
+      }));
     case "undoCheckIn":
       return withDay(state, a.date, (d) => ({ ...d, checkIns: d.checkIns.filter((c) => c.playerId !== a.playerId) }));
     case "startGame":
@@ -109,12 +138,15 @@ export function reducer(state: State, a: Action): State {
     case "removeDrink":
       return withDay(state, a.date, (d) => ({ ...d, drinks: d.drinks.filter((x) => x.id !== a.drinkId) }));
     case "markPaid":
-      return { ...state, days: markPaid(state.days, a.date, a.playerId, a._at) };
-    case "unmarkPaid":
+      // จ่ายรวมของแขกที่พามาด้วย
+      return { ...state, days: markPaid(state.days, a.date, withGuests(state, a.playerId), a._at) };
+    case "unmarkPaid": {
+      const ids = new Set(withGuests(state, a.playerId));
       return withDay(state, a.date, (d) => ({
         ...d,
-        checkIns: d.checkIns.map((c) => (c.playerId === a.playerId ? { ...c, paidAt: undefined } : c)),
+        checkIns: d.checkIns.map((c) => (ids.has(c.playerId) ? { ...c, paidAt: undefined } : c)),
       }));
+    }
     case "setMonthlyPaid": {
       const month = { ...state.monthly[a.month] };
       if (a.paid) month[a.playerId] = a._at;
@@ -123,6 +155,12 @@ export function reducer(state: State, a: Action): State {
     }
     case "updateSettings":
       return { ...state, settings: a.settings };
+    case "setClosed": {
+      const closed = { ...state.closed };
+      if (a.reason === null) delete closed[a.date];
+      else closed[a.date] = a.reason;
+      return { ...state, closed };
+    }
     case "setAnnouncement":
       return withDay(state, a.date, (d) => ({ ...d, announcement: a.message ?? undefined }));
     case "signUp":

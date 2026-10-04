@@ -11,9 +11,18 @@ export const supabase: SupabaseClient | null = url && key ? createClient(url, ke
 // ---------- แถวในฐานข้อมูล ----------
 
 export interface Rows {
-  players: { id: string; name: string; photo: string | null; gender: string | null; level: number }[];
+  players: {
+    id: string;
+    name: string;
+    photo: string | null;
+    gender: string | null;
+    level: number;
+    prefer?: string[] | null;
+    avoid?: string[] | null;
+    guest_of?: string | null;
+  }[];
   contacts: { player_id: string; phone: string }[];
-  checkins: { date: string; player_id: string; at: string; paid_at: string | null }[];
+  checkins: { date: string; player_id: string; at: string; paid_at: string | null; resting?: boolean }[];
   games: {
     id: string;
     date: string;
@@ -28,6 +37,7 @@ export interface Rows {
   monthly: { month: string; player_id: string; paid_at: string }[];
   announcements: { date: string; message: string }[];
   signups: { date: string; player_id: string; at: string }[];
+  closed: { date: string; reason: string }[];
   slips: { id: string; date: string; player_id: string; amount: number; created_at: string }[];
   settings:
     | {
@@ -53,6 +63,9 @@ export function rowsToState(r: Rows): State {
     gender: (p.gender as Gender | null) ?? undefined,
     level: p.level as Level,
     phone: phones.get(p.id),
+    ...(p.prefer?.length ? { prefer: p.prefer } : {}),
+    ...(p.avoid?.length ? { avoid: p.avoid } : {}),
+    ...(p.guest_of ? { guestOf: p.guest_of } : {}),
   }));
 
   const days = new Map<string, Day>();
@@ -62,7 +75,12 @@ export function rowsToState(r: Rows): State {
     return d;
   };
   for (const c of r.checkins)
-    day(c.date).checkIns.push({ playerId: c.player_id, at: ms(c.at), paidAt: c.paid_at ? ms(c.paid_at) : undefined });
+    day(c.date).checkIns.push({
+      playerId: c.player_id,
+      at: ms(c.at),
+      paidAt: c.paid_at ? ms(c.paid_at) : undefined,
+      ...(c.resting ? { resting: true } : {}),
+    });
   for (const g of r.games)
     day(g.date).games.push({
       id: g.id,
@@ -100,9 +118,13 @@ export function rowsToState(r: Rows): State {
       }
     : DEFAULT_SETTINGS;
 
+  const closed: Record<string, string> = {};
+  for (const c of r.closed) closed[c.date] = c.reason;
+
   return {
     players,
     settings,
+    closed,
     days: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)),
     monthly,
   };
@@ -115,11 +137,11 @@ async function all<T>(q: PromiseLike<{ data: T[] | null; error: { message: strin
 }
 
 export async function loadRemote(db: SupabaseClient, isAdmin: boolean): Promise<State> {
-  const [players, contacts, checkins, games, drinks, monthly, settings, announcements, signups, slips] = await Promise.all([
-    all<Rows["players"][number]>(db.from("players").select("id,name,photo,gender,level").order("name")),
+  const [players, contacts, checkins, games, drinks, monthly, settings, announcements, signups, slips, closed] = await Promise.all([
+    all<Rows["players"][number]>(db.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of").order("name")),
     // เบอร์โทรเห็นเฉพาะแอดมิน
     isAdmin ? all<Rows["contacts"][number]>(db.from("player_contacts").select("player_id,phone")) : Promise.resolve([]),
-    all<Rows["checkins"][number]>(db.from("checkins").select("date,player_id,at,paid_at")),
+    all<Rows["checkins"][number]>(db.from("checkins").select("date,player_id,at,paid_at,resting")),
     all<Rows["games"][number]>(db.from("games").select("id,date,court,player_ids,started_at,ended_at,shuttles,winner")),
     all<Rows["drinks"][number]>(db.from("drinks").select("id,date,player_id,amount,note")),
     all<Rows["monthly"][number]>(db.from("monthly_payments").select("month,player_id,paid_at")),
@@ -129,6 +151,7 @@ export async function loadRemote(db: SupabaseClient, isAdmin: boolean): Promise<
     all<Rows["announcements"][number]>(db.from("announcements").select("date,message")),
     all<Rows["signups"][number]>(db.from("signups").select("date,player_id,at")),
     all<Rows["slips"][number]>(db.from("slips").select("id,date,player_id,amount,created_at")),
+    all<Rows["closed"][number]>(db.from("closed_days").select("date,reason")),
   ]);
   return rowsToState({
     players,
@@ -141,6 +164,7 @@ export async function loadRemote(db: SupabaseClient, isAdmin: boolean): Promise<
     announcements,
     signups,
     slips,
+    closed,
   });
 }
 
@@ -149,7 +173,16 @@ function check(res: { error: { message: string } | null }) {
 }
 
 function playerRow(p: Omit<Player, "id"> & { id: string }) {
-  return { id: p.id, name: p.name, photo: p.photo ?? null, gender: p.gender ?? null, level: p.level };
+  return {
+    id: p.id,
+    name: p.name,
+    photo: p.photo ?? null,
+    gender: p.gender ?? null,
+    level: p.level,
+    prefer: p.prefer ?? [],
+    avoid: p.avoid ?? [],
+    guest_of: p.guestOf ?? null,
+  };
 }
 
 async function saveContact(db: SupabaseClient, playerId: string, phone?: string) {
@@ -158,7 +191,9 @@ async function saveContact(db: SupabaseClient, playerId: string, phone?: string)
 }
 
 /** บันทึกการเปลี่ยนแปลงหนึ่งครั้งลง Supabase (ต้องเป็นแอดมิน) */
-export async function persist(db: SupabaseClient, a: Action): Promise<void> {
+/** players ใช้หาแขกของคนที่จ่ายเงิน เพื่อปิดยอดของแขกไปพร้อมกัน */
+export async function persist(db: SupabaseClient, a: Action, players: Player[] = []): Promise<void> {
+  const withGuests = (id: string) => [id, ...players.filter((p) => p.guestOf === id).map((p) => p.id)];
   switch (a.type) {
     case "addPlayer":
       check(await db.from("players").insert(playerRow({ ...a.player, id: a._id })));
@@ -173,6 +208,10 @@ export async function persist(db: SupabaseClient, a: Action): Promise<void> {
     case "checkIn":
       return check(
         await db.from("checkins").upsert({ date: a.date, player_id: a.playerId, at: iso(a._at) }, { ignoreDuplicates: true }),
+      );
+    case "setResting":
+      return check(
+        await db.from("checkins").update({ resting: a.resting }).eq("date", a.date).eq("player_id", a.playerId),
       );
     case "undoCheckIn":
       return check(await db.from("checkins").delete().eq("date", a.date).eq("player_id", a.playerId));
@@ -200,12 +239,12 @@ export async function persist(db: SupabaseClient, a: Action): Promise<void> {
         await db
           .from("checkins")
           .update({ paid_at: iso(a._at) })
-          .eq("player_id", a.playerId)
+          .in("player_id", withGuests(a.playerId))
           .lte("date", a.date)
           .is("paid_at", null),
       );
     case "unmarkPaid":
-      return check(await db.from("checkins").update({ paid_at: null }).eq("date", a.date).eq("player_id", a.playerId));
+      return check(await db.from("checkins").update({ paid_at: null }).eq("date", a.date).in("player_id", withGuests(a.playerId)));
     case "setMonthlyPaid":
       return a.paid
         ? check(await db.from("monthly_payments").upsert({ month: a.month, player_id: a.playerId, paid_at: iso(a._at) }))
@@ -224,6 +263,10 @@ export async function persist(db: SupabaseClient, a: Action): Promise<void> {
         }),
       );
     }
+    case "setClosed":
+      return a.reason === null
+        ? check(await db.from("closed_days").delete().eq("date", a.date))
+        : check(await db.from("closed_days").upsert({ date: a.date, reason: a.reason }));
     case "setAnnouncement":
       return a.message === null
         ? check(await db.from("announcements").delete().eq("date", a.date))
@@ -248,7 +291,9 @@ async function importState(db: SupabaseClient, s: State) {
   if (contacts.length) check(await db.from("player_contacts").upsert(contacts));
   const days = s.days;
   const checkins = days.flatMap((d) =>
-    d.checkIns.map((c) => ({ date: d.date, player_id: c.playerId, at: iso(c.at), paid_at: c.paidAt ? iso(c.paidAt) : null })),
+    d.checkIns.map((c) => ({ date: d.date, player_id: c.playerId, at: iso(c.at), paid_at: c.paidAt ? iso(c.paidAt) : null,
+      resting: Boolean(c.resting),
+    })),
   );
   const games = days.flatMap((d) =>
     d.games.map((g) => ({
@@ -272,6 +317,8 @@ async function importState(db: SupabaseClient, s: State) {
   if (games.length) check(await db.from("games").upsert(games));
   if (drinks.length) check(await db.from("drinks").upsert(drinks));
   if (monthly.length) check(await db.from("monthly_payments").upsert(monthly));
+  const closed = Object.entries(s.closed ?? {}).map(([date, reason]) => ({ date, reason }));
+  if (closed.length) check(await db.from("closed_days").upsert(closed));
   await persist(db, { type: "updateSettings", settings: s.settings });
 }
 
@@ -293,6 +340,20 @@ export async function submitSlip(db: SupabaseClient, playerId: string, pin: stri
 export async function slipImage(db: SupabaseClient, slipId: string): Promise<string | null> {
   const { data, error } = await db.rpc("slip_image", { p_id: slipId });
   if (error) throw new Error(error.message);
+  return (data as string | null) ?? null;
+}
+
+/** ผู้เล่นตั้งคนที่อยากจับคู่/ไม่อยากเจอ คืนข้อความผิดพลาด หรือ null */
+/** สมาชิกพาเพื่อนมา: สร้างแขกและเช็คอินวันนี้ให้ คืนข้อความผิดพลาด หรือ null */
+export async function addGuest(db: SupabaseClient, hostId: string, pin: string, name: string, level: number) {
+  const { data, error } = await db.rpc("add_guest", { p_host: hostId, p_pin: pin, p_name: name, p_level: level });
+  if (error) return error.message;
+  return (data as string | null) ?? null;
+}
+
+export async function setPartnerPrefs(db: SupabaseClient, playerId: string, pin: string, prefer: string[], avoid: string[]) {
+  const { data, error } = await db.rpc("set_partner_prefs", { p_player: playerId, p_pin: pin, p_prefer: prefer, p_avoid: avoid });
+  if (error) return error.message;
   return (data as string | null) ?? null;
 }
 

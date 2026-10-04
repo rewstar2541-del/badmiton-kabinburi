@@ -11,6 +11,8 @@ import { CourtsTab } from "./CourtsTab";
 import { PlayersTab } from "./PlayersTab";
 import { SettingsTab } from "./SettingsTab";
 import { TodayTab } from "./TodayTab";
+import { TvView } from "./TvView";
+import { APP_NAME } from "@/lib/brand";
 import { Icon } from "./ui";
 import { LANGS, locale, setLang, t, useLang } from "@/lib/i18n";
 
@@ -32,8 +34,6 @@ const PLAYER_TABS: Tab[] = [
   { id: "mybill", label: "ยอดของฉัน", icon: Icon.Wallet },
   { id: "login", label: "แอดมิน", icon: Icon.Settings },
 ];
-
-export const APP_NAME = ["แบดมินตันกบินทร์บุรี", "สวนน้อมเกล้า"] as const;
 
 function LangSwitch() {
   const lang = useLang();
@@ -188,10 +188,14 @@ function Shell() {
   );
 }
 
+function isTv() {
+  try {
+    return new URLSearchParams(window.location.search).has("tv");
+  } catch {
+    return false;
+  }
+}
+
 export function App() {
-  return (
-    <StoreProvider>
-      <Shell />
-    </StoreProvider>
-  );
+  return <StoreProvider>{isTv() ? <TvView /> : <Shell />}</StoreProvider>;
 }

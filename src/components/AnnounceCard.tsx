@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useStore, useToday } from "@/lib/store";
+import { ClosedBanner } from "./Calendar";
 import { AnnouncementBanner } from "./TodayTab";
 import { Button, Card, Icon, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
@@ -10,11 +11,20 @@ const DEFAULT_MESSAGE = () => t("ลงชื่อกันได้เลย �
 
 /** แอดมินประกาศ/แก้/ยกเลิกประกาศจัดก๊วนวันนี้ */
 export function AnnounceCard() {
-  const { dispatch } = useStore();
+  const { dispatch, state } = useStore();
   const { date, day } = useToday();
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState(day.announcement ?? DEFAULT_MESSAGE());
   const announced = day.announcement !== undefined;
+
+  const closed = state.closed[date];
+  if (closed !== undefined && !announced)
+    return (
+      <div className="space-y-1">
+        <ClosedBanner reason={closed} />
+        <p className="px-1 text-xs text-zinc-500">{t("ถ้าจะเปิดเล่น ไปที่ ตั้งค่า > ปฏิทินก๊วน แล้วแตะวันนี้")}</p>
+      </div>
+    );
 
   if (announced && !editing)
     return (

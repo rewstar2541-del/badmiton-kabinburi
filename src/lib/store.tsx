@@ -3,9 +3,9 @@
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import { isDemo, demoState } from "./demo";
-import { loadRemote, persist, selfService, slipImage, submitSlip, supabase } from "./remote";
-import { EMPTY_STATE, prepare, reducer, today, type Intent, type SelfAction, type State } from "./state";
-import { DEFAULT_SETTINGS } from "./types";
+import { addGuest, loadRemote, persist, selfService, setPartnerPrefs, slipImage, submitSlip, supabase } from "./remote";
+import { EMPTY_STATE, guestCheck, prepare, reducer, today, type Intent, type SelfAction, type State } from "./state";
+import { DEFAULT_SETTINGS, monthOf, type Level } from "./types";
 import { t } from "@/lib/i18n";
 
 export { today, newId } from "./state";
@@ -19,7 +19,7 @@ function loadLocal(): State {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEMO ? demoState() : EMPTY_STATE;
     const s = JSON.parse(raw) as State;
-    return { ...EMPTY_STATE, ...s, settings: { ...DEFAULT_SETTINGS, ...s.settings }, monthly: s.monthly ?? {} };
+    return { ...EMPTY_STATE, ...s, settings: { ...DEFAULT_SETTINGS, ...s.settings }, monthly: s.monthly ?? {}, closed: s.closed ?? {} };
   } catch {
     return DEMO ? demoState() : EMPTY_STATE;
   }
@@ -46,6 +46,10 @@ interface Ctx {
   self: (action: SelfAction, playerId: string, pin: string) => Promise<string | null>;
   /** ผู้เล่นส่งรูปสลิปโอนเงิน คืนข้อความผิดพลาด หรือ null */
   sendSlip: (playerId: string, pin: string, amount: number, image: string) => Promise<string | null>;
+  /** ผู้เล่นตั้งคนที่อยากจับคู่/ไม่อยากเจอ คืนข้อความผิดพลาด หรือ null */
+  setPrefs: (playerId: string, pin: string, prefer: string[], avoid: string[]) => Promise<string | null>;
+  /** สมาชิกพาเพื่อนมา (สร้างแขกและเช็คอินวันนี้) คืนข้อความผิดพลาด หรือ null */
+  addGuest: (hostId: string, pin: string, name: string, level: Level) => Promise<string | null>;
   /** รูปสลิป (เฉพาะแอดมิน) */
   slipImage: (slipId: string) => Promise<string | null>;
   ready: boolean;
@@ -67,11 +71,52 @@ function LocalProvider({ children }: { children: ReactNode }) {
     }
   }, [state]);
 
+  // แท็บอื่นในเครื่องเดียวกัน (เช่นจอสนาม) แก้ข้อมูล ให้หน้านี้อัปเดตตาม
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== STORAGE_KEY || !e.newValue) return;
+      try {
+        apply({ type: "replace", state: JSON.parse(e.newValue) as State });
+      } catch {
+        // ข้อมูลเสีย ไม่ต้องทำอะไร
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   const dispatch = useCallback((i: Intent) => apply(prepare(i)), []);
-  const self = useCallback(async (action: SelfAction, playerId: string) => {
-    dispatch({ type: action, date: today(), playerId });
-    return null;
-  }, [dispatch]);
+  const self = useCallback(
+    async (action: SelfAction, playerId: string) => {
+      const date = today();
+      if (action === "rest" || action === "unrest") dispatch({ type: "setResting", date, playerId, resting: action === "rest" });
+      else if (action === "pay") dispatch({ type: "markPaid", date, playerId });
+      else if (action === "payMonth") dispatch({ type: "setMonthlyPaid", month: monthOf(date), playerId, paid: true });
+      else dispatch({ type: action, date, playerId });
+      return null;
+    },
+    [dispatch],
+  );
+  const setPrefs = useCallback(
+    async (playerId: string, _pin: string, prefer: string[], avoid: string[]) => {
+      const p = state.players.find((x) => x.id === playerId);
+      if (p) dispatch({ type: "updatePlayer", player: { ...p, prefer, avoid } });
+      return null;
+    },
+    [dispatch, state.players],
+  );
+  const addGuestLocal = useCallback(
+    async (hostId: string, _pin: string, name: string, level: Level) => {
+      const date = today();
+      const err = guestCheck(state, date, hostId, name);
+      if (err) return err;
+      const a = prepare({ type: "addPlayer", player: { name: name.trim().slice(0, 40), level, guestOf: hostId } });
+      apply(a);
+      if (a.type === "addPlayer") apply(prepare({ type: "checkIn", date, playerId: a._id }));
+      return null;
+    },
+    [state],
+  );
   // รูปสลิปในโหมดเครื่องเดียว เก็บไว้ในหน่วยความจำ (หายเมื่อรีเฟรช)
   const images = useRef(new Map<string, string>());
   const sendSlip = useCallback(async (playerId: string, _pin: string, amount: number, image: string) => {
@@ -97,7 +142,7 @@ function LocalProvider({ children }: { children: ReactNode }) {
       : undefined,
   };
   return (
-    <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, slipImage: getSlip, ready: true, error: null, auth }}>
+    <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, setPrefs, addGuest: addGuestLocal, slipImage: getSlip, ready: true, error: null, auth }}>
       {children}
     </StoreCtx.Provider>
   );
@@ -106,6 +151,10 @@ function LocalProvider({ children }: { children: ReactNode }) {
 function RemoteProvider({ children }: { children: ReactNode }) {
   const db = supabase!;
   const [state, apply] = useReducer(reducer, EMPTY_STATE);
+  const playersRef = useRef(state.players);
+  useEffect(() => {
+    playersRef.current = state.players;
+  }, [state.players]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -172,7 +221,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
       if (!adminRef.current) return;
       const a = prepare(i);
       apply(a);
-      persist(db, a).catch((e) => {
+      persist(db, a, playersRef.current).catch((e) => {
         setError(t("บันทึกไม่สำเร็จ: {msg}", { msg: e instanceof Error ? e.message : String(e) }));
         reload();
       });
@@ -199,6 +248,22 @@ function RemoteProvider({ children }: { children: ReactNode }) {
   );
 
   const getSlip = useCallback((id: string) => slipImage(db, id), [db]);
+  const addGuestRemote = useCallback(
+    async (hostId: string, pin: string, name: string, level: Level) => {
+      const err = await addGuest(db, hostId, pin, name, level);
+      if (!err) await reload();
+      return err;
+    },
+    [db, reload],
+  );
+  const setPrefs = useCallback(
+    async (playerId: string, pin: string, prefer: string[], avoid: string[]) => {
+      const err = await setPartnerPrefs(db, playerId, pin, prefer, avoid);
+      if (!err) await reload();
+      return err;
+    },
+    [db, reload],
+  );
 
   const auth: Auth = {
     online: true,
@@ -223,7 +288,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  return <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, slipImage: getSlip, ready, error, auth }}>{children}</StoreCtx.Provider>;
+  return <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, setPrefs, addGuest: addGuestRemote, slipImage: getSlip, ready, error, auth }}>{children}</StoreCtx.Provider>;
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
