@@ -6,6 +6,7 @@ import { isMonthlyPaid } from "@/lib/types";
 import { AnnounceCard } from "./AnnounceCard";
 import { PlayerForm } from "./PlayersTab";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, inputClass } from "./ui";
+import { t } from "@/lib/i18n";
 
 export function CheckInTab() {
   const { state, dispatch } = useStore();
@@ -24,21 +25,23 @@ export function CheckInTab() {
   return (
     <div className="space-y-4">
       <AnnounceCard />
-      <SectionTitle right={`${checked.size}/${state.players.length} คน${signed.size ? ` · ลงชื่อ ${signed.size}` : ""}`}>เช็คอินวันนี้</SectionTitle>
+      <SectionTitle right={t("{a}/{b} คน", { a: checked.size, b: state.players.length }) + (signed.size ? ` · ${t("ลงชื่อ {n}", { n: signed.size })}` : "")}>
+        {t("เช็คอินวันนี้")}
+      </SectionTitle>
 
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Icon.Search className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-zinc-400" width={18} height={18} />
-          <input className={`${inputClass} pl-11`} placeholder="ค้นหาชื่อเล่น" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input className={`${inputClass} pl-11`} placeholder={t("ค้นหาชื่อเล่น")} value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
-        <Button variant="accent" className="px-4" onClick={() => setAdding(true)} aria-label="ลงทะเบียนผู้เล่นใหม่">
+        <Button variant="accent" className="px-4" onClick={() => setAdding(true)} aria-label={t("ลงทะเบียนผู้เล่นใหม่")}>
           <Icon.Plus width={20} height={20} strokeWidth={2.5} />
         </Button>
       </div>
 
       {adding && (
         <Card>
-          <h3 className="mb-3 font-display font-semibold">ลงทะเบียนผู้เล่นใหม่</h3>
+          <h3 className="mb-3 font-display font-semibold">{t("ลงทะเบียนผู้เล่นใหม่")}</h3>
           <PlayerForm
             onCancel={() => setAdding(false)}
             onSave={(player) => {
@@ -71,9 +74,9 @@ export function CheckInTab() {
                 <span className="w-full truncate font-semibold">{p.name}</span>
                 <span className="flex items-center gap-1.5">
                   <LevelBadge level={p.level} />
-                  {signed.has(p.id) && !on && <span className="text-[11px] font-medium text-sky-600">ลงชื่อ</span>}
+                  {signed.has(p.id) && !on && <span className="text-[11px] font-medium text-sky-600">{t("ลงชื่อ")}</span>}
                   {isMonthlyPaid(state.monthly, date, p.id) && (
-                    <span className={`text-[11px] font-medium ${on ? "text-lime" : "text-emerald-600"}`}>รายเดือน</span>
+                    <span className={`text-[11px] font-medium ${on ? "text-lime" : "text-emerald-600"}`}>{t("รายเดือน")}</span>
                   )}
                 </span>
               </button>
@@ -83,7 +86,7 @@ export function CheckInTab() {
       </ul>
       {list.length === 0 && (
         <Card className="py-10 text-center text-sm text-zinc-500">
-          {state.players.length === 0 ? "ยังไม่มีผู้เล่น กดปุ่ม + เพื่อลงทะเบียน" : "ไม่พบชื่อที่ค้นหา"}
+          {state.players.length === 0 ? t("ยังไม่มีผู้เล่น กดปุ่ม + เพื่อลงทะเบียน") : t("ไม่พบชื่อที่ค้นหา")}
         </Card>
       )}
     </div>

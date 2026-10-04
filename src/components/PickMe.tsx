@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { useStore } from "@/lib/store";
 import { Avatar, Icon, SectionTitle, inputClass } from "./ui";
+import { t } from "@/lib/i18n";
 
 const ME_KEY = "badminton-kabinburi:me";
 const PIN_KEY = "badminton-kabinburi:pin";
@@ -47,11 +48,11 @@ export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: s
   const list = state.players.filter((p) => p.name.toLowerCase().includes(q.trim().toLowerCase()));
   return (
     <div className="space-y-4">
-      <SectionTitle>คุณคือใคร?</SectionTitle>
+      <SectionTitle>{t("คุณคือใคร?")}</SectionTitle>
       <p className="px-1 text-sm text-zinc-500">{hint}</p>
       <div className="relative">
         <Icon.Search className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-zinc-400" width={18} height={18} />
-        <input className={`${inputClass} pl-11`} placeholder="ค้นหาชื่อเล่น" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className={`${inputClass} pl-11`} placeholder={t("ค้นหาชื่อเล่น")} value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
       <ul className="grid grid-cols-3 gap-2">
         {list.map((p) => (
@@ -66,7 +67,7 @@ export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: s
           </li>
         ))}
       </ul>
-      {state.players.length === 0 && <p className="text-center text-sm text-zinc-500">ยังไม่มีรายชื่อ ให้แอดมินลงทะเบียนให้ก่อน</p>}
+      {state.players.length === 0 && <p className="text-center text-sm text-zinc-500">{t("ยังไม่มีรายชื่อ ให้แอดมินลงทะเบียนให้ก่อน")}</p>}
     </div>
   );
 }

@@ -2,23 +2,26 @@
 
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
-import { loadRemote, persist, selfService, submitSlip, supabase } from "./remote";
+import { isDemo, demoState } from "./demo";
+import { loadRemote, persist, selfService, slipImage, submitSlip, supabase } from "./remote";
 import { EMPTY_STATE, prepare, reducer, today, type Intent, type SelfAction, type State } from "./state";
 import { DEFAULT_SETTINGS } from "./types";
+import { t } from "@/lib/i18n";
 
 export { today, newId } from "./state";
 export type { State, Intent } from "./state";
 
-const STORAGE_KEY = "badminton-kabinburi:v1";
+const DEMO = typeof window !== "undefined" && isDemo();
+const STORAGE_KEY = DEMO ? "badminton-kabinburi:demo" : "badminton-kabinburi:v1";
 
 function loadLocal(): State {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return EMPTY_STATE;
+    if (!raw) return DEMO ? demoState() : EMPTY_STATE;
     const s = JSON.parse(raw) as State;
     return { ...EMPTY_STATE, ...s, settings: { ...DEFAULT_SETTINGS, ...s.settings }, monthly: s.monthly ?? {} };
   } catch {
-    return EMPTY_STATE;
+    return DEMO ? demoState() : EMPTY_STATE;
   }
 }
 
@@ -27,6 +30,8 @@ export interface Auth {
   online: boolean;
   email?: string;
   isAdmin: boolean;
+  /** โหมดทดลอง: สลับดูแบบแอดมิน/ผู้เล่นได้ */
+  demo?: { setAdmin: (admin: boolean) => void; reset: () => void };
   /** ยังไม่มีแอดมินในระบบเลย (คนที่ล็อคอินอยู่ตั้งตัวเองเป็นแอดมินคนแรกได้) */
   noAdmins: boolean;
   claimFirstAdmin: () => Promise<string | null>;
@@ -41,6 +46,8 @@ interface Ctx {
   self: (action: SelfAction, playerId: string, pin: string) => Promise<string | null>;
   /** ผู้เล่นส่งรูปสลิปโอนเงิน คืนข้อความผิดพลาด หรือ null */
   sendSlip: (playerId: string, pin: string, amount: number, image: string) => Promise<string | null>;
+  /** รูปสลิป (เฉพาะแอดมิน) */
+  slipImage: (slipId: string) => Promise<string | null>;
   ready: boolean;
   error: string | null;
   auth: Auth;
@@ -65,14 +72,35 @@ function LocalProvider({ children }: { children: ReactNode }) {
     dispatch({ type: action, date: today(), playerId });
     return null;
   }, [dispatch]);
-  const sendSlip = async () => "ส่งสลิปได้เฉพาะเมื่อต่อ Supabase";
+  // รูปสลิปในโหมดเครื่องเดียว เก็บไว้ในหน่วยความจำ (หายเมื่อรีเฟรช)
+  const images = useRef(new Map<string, string>());
+  const sendSlip = useCallback(async (playerId: string, _pin: string, amount: number, image: string) => {
+    const a = prepare({ type: "addSlip", date: today(), playerId, amount });
+    if (a.type === "addSlip") images.current.set(a._id, image);
+    apply(a);
+    return null;
+  }, []);
+  const getSlip = useCallback(async (id: string) => images.current.get(id) ?? null, []);
+  const [isAdmin, setAdmin] = useState(true);
   const auth: Auth = {
     online: false,
-    isAdmin: true,
+    isAdmin,
     noAdmins: false,
     claimFirstAdmin: async () => null,
-    signIn: async () => null, signOut: async () => {} };
-  return <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, ready: true, error: null, auth }}>{children}</StoreCtx.Provider>;
+    signIn: async () => null,
+    signOut: async () => {},
+    demo: DEMO
+      ? {
+          setAdmin,
+          reset: () => apply({ type: "replace", state: demoState() }),
+        }
+      : undefined,
+  };
+  return (
+    <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, slipImage: getSlip, ready: true, error: null, auth }}>
+      {children}
+    </StoreCtx.Provider>
+  );
 }
 
 function RemoteProvider({ children }: { children: ReactNode }) {
@@ -145,7 +173,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
       const a = prepare(i);
       apply(a);
       persist(db, a).catch((e) => {
-        setError(`บันทึกไม่สำเร็จ: ${e instanceof Error ? e.message : e}`);
+        setError(t("บันทึกไม่สำเร็จ: {msg}", { msg: e instanceof Error ? e.message : String(e) }));
         reload();
       });
     },
@@ -170,6 +198,8 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     [db, reload],
   );
 
+  const getSlip = useCallback((id: string) => slipImage(db, id), [db]);
+
   const auth: Auth = {
     online: true,
     email: session?.user.email,
@@ -193,11 +223,11 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  return <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, ready, error, auth }}>{children}</StoreCtx.Provider>;
+  return <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, slipImage: getSlip, ready, error, auth }}>{children}</StoreCtx.Provider>;
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  return supabase ? <RemoteProvider>{children}</RemoteProvider> : <LocalProvider>{children}</LocalProvider>;
+  return supabase && !DEMO ? <RemoteProvider>{children}</RemoteProvider> : <LocalProvider>{children}</LocalProvider>;
 }
 
 export function useStore() {

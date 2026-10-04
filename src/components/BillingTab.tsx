@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { billFor, type Bill } from "@/lib/billing";
+import { locale, t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
 import { monthOf, type Player } from "@/lib/types";
 import { PayQr } from "./PayQr";
@@ -21,7 +22,7 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
   const { state, dispatch } = useStore();
   const { date, day } = useToday();
   const [amount, setAmount] = useState("");
-  const [note, setNote] = useState("น้ำ");
+  const [note, setNote] = useState(() => t("น้ำ"));
   const drinks = day.drinks.filter((d) => d.playerId === player.id);
   const s = state.settings;
 
@@ -33,34 +34,37 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
           <Avatar name={player.name} photo={player.photo} size={44} />
           <div>
             <h3 className="font-display text-lg font-semibold">{player.name}</h3>
-            <p className="text-xs text-zinc-500">{bill.monthlyMember ? "สมาชิกรายเดือน" : "จ่ายรายวัน"}</p>
+            <p className="text-xs text-zinc-500">{bill.monthlyMember ? t("สมาชิกรายเดือน") : t("จ่ายรายวัน")}</p>
           </div>
         </div>
       }
     >
       <div className="space-y-2 rounded-3xl bg-zinc-50 p-4">
-        <Row label={bill.monthlyMember ? "ค่าสนาม (จ่ายรายเดือนแล้ว)" : "ค่าสนาม"} value={baht(bill.courtFee)} />
+        <Row label={bill.monthlyMember ? t("ค่าสนาม (จ่ายรายเดือนแล้ว)") : t("ค่าสนาม")} value={baht(bill.courtFee)} />
         <Row
-          label={`ค่าลูก ${bill.shuttleCount} ลูก${bill.shuttleCount > 0 ? ` (${s.firstShuttleFee} + ${s.nextShuttleFee}×${bill.shuttleCount - 1})` : ""}`}
+          label={
+            t("ค่าลูก {n} ลูก", { n: bill.shuttleCount }) +
+            (bill.shuttleCount > 0 ? ` (${s.firstShuttleFee} + ${s.nextShuttleFee}×${bill.shuttleCount - 1})` : "")
+          }
           value={baht(bill.shuttleFee)}
         />
-        <Row label="ค่าน้ำ" value={baht(bill.drinkFee)} />
-        {bill.carriedOver > 0 && <Row label="ค้างจ่ายครั้งก่อน" value={baht(bill.carriedOver)} />}
+        <Row label={t("ค่าน้ำ")} value={baht(bill.drinkFee)} />
+        {bill.carriedOver > 0 && <Row label={t("ค้างจ่ายครั้งก่อน")} value={baht(bill.carriedOver)} />}
         <div className="flex items-baseline justify-between border-t border-dashed border-zinc-300 pt-3">
-          <span className="font-medium">รวม</span>
+          <span className="font-medium">{t("รวม")}</span>
           <span className="font-display text-2xl font-semibold">{baht(bill.total)}</span>
         </div>
       </div>
 
       <div className="space-y-2">
-        <div className="text-sm font-semibold">ค่าน้ำ</div>
+        <div className="text-sm font-semibold">{t("ค่าน้ำ")}</div>
         {drinks.map((d) => (
           <div key={d.id} className="flex items-center justify-between rounded-2xl bg-zinc-50 px-3 py-2 text-sm">
             <span>
               {d.note} · {baht(d.amount)}
             </span>
             <button className="text-xs text-red-500" onClick={() => dispatch({ type: "removeDrink", date, drinkId: d.id })}>
-              ลบ
+              {t("ลบ")}
             </button>
           </div>
         ))}
@@ -70,7 +74,7 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
             e.preventDefault();
             const n = Number(amount);
             if (!n || n <= 0) return;
-            dispatch({ type: "addDrink", date, playerId: player.id, amount: n, note: note.trim() || "น้ำ" });
+            dispatch({ type: "addDrink", date, playerId: player.id, amount: n, note: note.trim() || t("น้ำ") });
             setAmount("");
           }}
         >
@@ -78,11 +82,11 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
           <input
             className={`${inputClass} min-w-0 flex-1`}
             inputMode="numeric"
-            placeholder="บาท"
+            placeholder={t("บาท")}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
           />
-          <Button type="submit">เพิ่ม</Button>
+          <Button type="submit">{t("เพิ่ม")}</Button>
         </form>
       </div>
 
@@ -91,10 +95,10 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
       {bill.paid ? (
         <div className="space-y-2 rounded-3xl bg-emerald-50 p-4 text-center">
           <p className="flex items-center justify-center gap-1.5 font-semibold text-emerald-700">
-            <Icon.Check width={18} height={18} /> จ่ายแล้ว
+            <Icon.Check width={18} height={18} /> {t("จ่ายแล้ว")}
           </p>
           <button className="text-xs text-zinc-500 underline" onClick={() => dispatch({ type: "unmarkPaid", date, playerId: player.id })}>
-            ยกเลิกสถานะจ่ายแล้ว
+            {t("ยกเลิกสถานะจ่ายแล้ว")}
           </button>
         </div>
       ) : (
@@ -102,7 +106,7 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
           <div className="flex flex-col items-center gap-3">
             <PayQr promptPayId={s.promptPayId} amount={bill.total} />
             <Button variant="accent" className="w-full" onClick={() => dispatch({ type: "markPaid", date, playerId: player.id })}>
-              ได้รับเงินแล้ว {baht(bill.total)}
+              {t("ได้รับเงินแล้ว {amount}", { amount: baht(bill.total) })}
             </Button>
           </div>
         )
@@ -132,14 +136,14 @@ function DailyView() {
   return (
     <>
       <div className="rounded-3xl bg-ink p-5 text-white">
-        <div className="text-xs text-white/60">ยอดรวมวันนี้</div>
+        <div className="text-xs text-white/60">{t("ยอดรวมวันนี้")}</div>
         <div className="font-display text-3xl font-semibold">{baht(total)}</div>
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
           <div className="h-full rounded-full bg-lime transition-all" style={{ width: total ? `${(received / total) * 100}%` : 0 }} />
         </div>
         <div className="mt-2 flex justify-between text-xs text-white/70">
-          <span>รับแล้ว {baht(received)}</span>
-          <span>ใช้ลูก {shuttlesUsed} ลูก</span>
+          <span>{t("รับแล้ว {amount}", { amount: baht(received) })}</span>
+          <span>{t("ใช้ลูก {n} ลูก", { n: shuttlesUsed })}</span>
         </div>
       </div>
 
@@ -154,23 +158,24 @@ function DailyView() {
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold">{player.name}</span>
                 <span className="block text-xs text-zinc-500">
-                  {bill.shuttleCount} ลูก{bill.drinkFee > 0 && ` · น้ำ ${bill.drinkFee}`}
-                  {bill.monthlyMember && " · รายเดือน"}
-                  {bill.carriedOver > 0 && ` · ค้าง ${bill.carriedOver}`}
+                  {t("{n} ลูก", { n: bill.shuttleCount })}
+                  {bill.drinkFee > 0 && ` · ${t("น้ำ {n}", { n: bill.drinkFee })}`}
+                  {bill.monthlyMember && ` · ${t("รายเดือน")}`}
+                  {bill.carriedOver > 0 && ` · ${t("ค้าง {n}", { n: bill.carriedOver })}`}
                 </span>
               </span>
               {!bill.paid && withSlip.has(player.id) && (
-                <span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">มีสลิป</span>
+                <span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">{t("มีสลิป")}</span>
               )}
               {bill.paid ? (
-                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">จ่ายแล้ว</span>
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">{t("จ่ายแล้ว")}</span>
               ) : (
                 <span className="font-display text-lg font-semibold">{bill.total}฿</span>
               )}
             </button>
           </li>
         ))}
-        {rows.length === 0 && <Card className="py-10 text-center text-sm text-zinc-500">ยังไม่มีคนเช็คอินวันนี้</Card>}
+        {rows.length === 0 && <Card className="py-10 text-center text-sm text-zinc-500">{t("ยังไม่มีคนเช็คอินวันนี้")}</Card>}
       </ul>
 
       {openRow && <BillDetail player={openRow.player} bill={openRow.bill} onClose={() => setOpen(null)} />}
@@ -186,7 +191,7 @@ function shiftMonth(month: string, delta: number): string {
 
 function monthLabel(month: string): string {
   const [y, m] = month.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString("th-TH", { month: "long", year: "numeric" });
+  return new Date(y, m - 1, 1).toLocaleDateString(locale(), { month: "long", year: "numeric" });
 }
 
 /** แอดมินบันทึกว่าใครจ่ายรายเดือนของเดือนไหนแล้ว แก้ไขย้อนหลังได้ */
@@ -207,30 +212,30 @@ function MonthlyView() {
     <>
       <div className="rounded-3xl bg-ink p-5 text-white">
         <div className="flex items-center justify-between">
-          <button className="grid size-9 place-items-center rounded-full bg-white/10" onClick={() => setMonth(shiftMonth(month, -1))} aria-label="เดือนก่อน">
+          <button className="grid size-9 place-items-center rounded-full bg-white/10" onClick={() => setMonth(shiftMonth(month, -1))} aria-label={t("เดือนก่อน")}>
             ‹
           </button>
           <div className="text-center">
             <div className="font-display text-lg font-semibold">{monthLabel(month)}</div>
-            <div className="text-xs text-white/60">ค่าสมาชิก {baht(fee)}</div>
+            <div className="text-xs text-white/60">{t("ค่าสมาชิก {amount}", { amount: baht(fee) })}</div>
           </div>
-          <button className="grid size-9 place-items-center rounded-full bg-white/10" onClick={() => setMonth(shiftMonth(month, 1))} aria-label="เดือนถัดไป">
+          <button className="grid size-9 place-items-center rounded-full bg-white/10" onClick={() => setMonth(shiftMonth(month, 1))} aria-label={t("เดือนถัดไป")}>
             ›
           </button>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2 text-center">
           <div className="rounded-2xl bg-white/[0.07] py-2">
             <div className="font-display text-2xl font-semibold">{count}</div>
-            <div className="text-[11px] text-white/60">คนจ่ายแล้ว</div>
+            <div className="text-[11px] text-white/60">{t("คนจ่ายแล้ว")}</div>
           </div>
           <div className="rounded-2xl bg-white/[0.07] py-2">
             <div className="font-display text-2xl font-semibold">{(count * fee).toLocaleString("th-TH")}</div>
-            <div className="text-[11px] text-white/60">บาทที่เก็บได้</div>
+            <div className="text-[11px] text-white/60">{t("บาทที่เก็บได้")}</div>
           </div>
         </div>
       </div>
       <p className="px-1 text-xs text-zinc-500">
-        คนที่จ่ายเดือนนี้แล้ว ระบบไม่คิดค่าสนามรายวันให้อัตโนมัติ ถ้าบันทึกผิด แตะเพื่อแก้ได้เลย
+        {t("คนที่จ่ายเดือนนี้แล้ว ระบบไม่คิดค่าสนามรายวันให้อัตโนมัติ ถ้าบันทึกผิด แตะเพื่อแก้ได้เลย")}
       </p>
 
       <ul className="space-y-2">
@@ -242,28 +247,30 @@ function MonthlyView() {
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold">{p.name}</span>
                 <span className="block text-xs text-zinc-500">
-                  {at ? `จ่ายเมื่อ ${new Date(at).toLocaleDateString("th-TH", { day: "numeric", month: "short" })}` : "ยังไม่จ่าย"}
+                  {at
+                    ? t("จ่ายเมื่อ {date}", { date: new Date(at).toLocaleDateString(locale(), { day: "numeric", month: "short" }) })
+                    : t("ยังไม่จ่าย")}
                 </span>
               </span>
               {at ? (
                 <button
                   className="flex items-center gap-1 rounded-full bg-lime px-3 py-1.5 text-xs font-semibold text-ink"
                   onClick={() => {
-                    if (confirm(`ยกเลิกรายเดือน ${monthLabel(month)} ของ ${p.name}? ระบบจะกลับมาคิดค่าสนามรายวัน`))
+                    if (confirm(t("ยกเลิกรายเดือน {month} ของ {name}? ระบบจะกลับมาคิดค่าสนามรายวัน", { month: monthLabel(month), name: p.name })))
                       dispatch({ type: "setMonthlyPaid", month, playerId: p.id, paid: false });
                   }}
                 >
-                  <Icon.Check width={14} height={14} strokeWidth={3} /> จ่ายแล้ว
+                  <Icon.Check width={14} height={14} strokeWidth={3} /> {t("จ่ายแล้ว")}
                 </button>
               ) : (
                 <button className="rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-600" onClick={() => setPayFor(p)}>
-                  รับเงิน
+                  {t("รับเงิน")}
                 </button>
               )}
             </li>
           );
         })}
-        {players.length === 0 && <Card className="py-10 text-center text-sm text-zinc-500">ยังไม่มีผู้เล่น</Card>}
+        {players.length === 0 && <Card className="py-10 text-center text-sm text-zinc-500">{t("ยังไม่มีผู้เล่น")}</Card>}
       </ul>
 
       {payFor && (
@@ -271,7 +278,7 @@ function MonthlyView() {
           onClose={() => setPayFor(null)}
           title={
             <div>
-              <h3 className="font-display text-lg font-semibold">รายเดือน {payFor.name}</h3>
+              <h3 className="font-display text-lg font-semibold">{t("รายเดือน {name}", { name: payFor.name })}</h3>
               <p className="text-xs text-zinc-500">{monthLabel(month)}</p>
             </div>
           }
@@ -286,7 +293,7 @@ function MonthlyView() {
                 setPayFor(null);
               }}
             >
-              ได้รับเงินแล้ว {baht(fee)}
+              {t("ได้รับเงินแล้ว {amount}", { amount: baht(fee) })}
             </Button>
           </div>
         </Sheet>
@@ -299,7 +306,7 @@ export function BillingTab() {
   const [view, setView] = useState<"daily" | "monthly">("daily");
   return (
     <div className="space-y-4">
-      <SectionTitle>คิดเงิน</SectionTitle>
+      <SectionTitle>{t("คิดเงิน")}</SectionTitle>
       <div className="grid grid-cols-2 gap-1 rounded-2xl bg-white p-1 shadow-sm">
         {(
           [
@@ -312,7 +319,7 @@ export function BillingTab() {
             onClick={() => setView(id)}
             className={`rounded-xl py-2 text-sm font-semibold transition ${view === id ? "bg-ink text-white" : "text-zinc-500"}`}
           >
-            {label}
+            {t(label)}
           </button>
         ))}
       </div>
