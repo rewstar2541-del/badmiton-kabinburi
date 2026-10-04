@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ก๊วนแบดกบินทร์บุรี
 
-## Getting Started
+เว็บแอพสำหรับแอดมินก๊วน: เช็คอินคนที่มาเล่น จัดคู่ลงสนามอัตโนมัติ และคิดเงินค่าสนาม ค่าลูก ค่าน้ำ พร้อม PromptPay QR ตามยอดของแต่ละคน
 
-First, run the development server:
+## กติกาคิดเงิน (แก้ได้ในแท็บ "ตั้งค่า")
+
+| รายการ | สมาชิกรายเดือน | คนจ่ายรายวัน |
+| --- | --- | --- |
+| ค่าสนาม | 150 บาท/เดือน ไม่คิดรายวัน | 40 บาท/ครั้ง |
+| ค่าลูก | ลูกแรกของวัน 30 บาท ลูกต่อไป 25 บาท ต่อคน | เหมือนกัน |
+| ค่าน้ำ | ตามจริง | ตามจริง |
+
+ยอดที่ยังไม่จ่ายจะยกไปรวมกับครั้งถัดไป และกด "ได้รับเงินแล้ว" ครั้งเดียวปิดยอดค้างทั้งหมด
+
+## การจัดคู่
+
+- คนที่เล่นน้อยที่สุดวันนี้ได้ลงก่อน ถ้าเท่ากัน คนที่รอนานกว่าได้ก่อน
+- คนต้นคิวได้ลงเสมอ อีก 3 คนเลือกจากคนต้นคิวให้ฝีมือใกล้กัน
+- แบ่งทีมให้ระดับฝีมือรวมสองฝั่งใกล้กันที่สุด และเลี่ยงคู่ซ้ำ
+
+## สถานะ
+
+เฟส 1 ตอนนี้เก็บข้อมูลในเครื่องที่เปิด (localStorage) ใช้ได้ทันทีจากมือถือแอดมินหนึ่งเครื่อง ขั้นต่อไปคือต่อ Supabase ให้แอดมินหลายคนและผู้เล่นเห็นข้อมูลเดียวกัน
+
+## พัฒนา
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # http://localhost:3000
+npm test         # เทสต์สูตรคิดเงิน การจัดคู่ และ PromptPay QR
+npm run lint
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+โค้ดหลักอยู่ใน `src/lib` (`billing.ts`, `matchmaking.ts`, `promptpay.ts`) หน้าจออยู่ใน `src/components`

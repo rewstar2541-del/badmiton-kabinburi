@@ -1,0 +1,97 @@
+import type { Day, Player } from "./types";
+
+export interface QueueEntry {
+  player: Player;
+  gamesPlayed: number;
+  /** เวลาที่เริ่มรอ (จบเกมล่าสุด หรือเวลาเช็คอิน) */
+  waitingSince: number;
+}
+
+/** ผู้เล่นที่เช็คอินแล้วและไม่ได้อยู่บนสนาม เรียงตามสิทธิ์ลงก่อน */
+export function waitingQueue(day: Day, players: Player[]): QueueEntry[] {
+  const byId = new Map(players.map((p) => [p.id, p]));
+  const onCourt = new Set(day.games.filter((g) => !g.endedAt).flatMap((g) => g.playerIds));
+
+  const entries: QueueEntry[] = [];
+  for (const ci of day.checkIns) {
+    const player = byId.get(ci.playerId);
+    if (!player || onCourt.has(player.id)) continue;
+    const played = day.games.filter((g) => g.endedAt && g.playerIds.includes(player.id));
+    const lastEnd = Math.max(ci.at, ...played.map((g) => g.endedAt!));
+    entries.push({ player, gamesPlayed: played.length, waitingSince: lastEnd });
+  }
+  // เล่นน้อยได้ก่อน ถ้าเท่ากัน รอนานได้ก่อน
+  return entries.sort((a, b) => a.gamesPlayed - b.gamesPlayed || a.waitingSince - b.waitingSince);
+}
+
+/** จำนวนครั้งที่ a กับ b เคยอยู่ทีมเดียวกันวันนี้ */
+function partnerCounts(day: Day): Map<string, number> {
+  const m = new Map<string, number>();
+  const add = (x: string, y: string) => {
+    const k = x < y ? `${x}|${y}` : `${y}|${x}`;
+    m.set(k, (m.get(k) ?? 0) + 1);
+  };
+  for (const g of day.games) {
+    add(g.playerIds[0], g.playerIds[1]);
+    add(g.playerIds[2], g.playerIds[3]);
+  }
+  return m;
+}
+
+function pairKey(x: string, y: string) {
+  return x < y ? `${x}|${y}` : `${y}|${x}`;
+}
+
+/** แบ่ง 4 คนเป็น 2 ทีมให้ฝีมือรวมใกล้กันที่สุด และไม่ซ้ำคู่เดิม */
+export function splitTeams(
+  four: Player[],
+  partners: Map<string, number> = new Map(),
+): { teams: [string, string, string, string]; cost: number } {
+  const [p0, p1, p2, p3] = four;
+  const options: [Player, Player, Player, Player][] = [
+    [p0, p1, p2, p3],
+    [p0, p2, p1, p3],
+    [p0, p3, p1, p2],
+  ];
+  let best = { teams: options[0].map((p) => p.id) as [string, string, string, string], cost: Infinity };
+  for (const [a1, a2, b1, b2] of options) {
+    const gap = Math.abs(a1.level + a2.level - (b1.level + b2.level));
+    const repeat =
+      (partners.get(pairKey(a1.id, a2.id)) ?? 0) + (partners.get(pairKey(b1.id, b2.id)) ?? 0);
+    const cost = gap * 10 + repeat * 4;
+    if (cost < best.cost) best = { teams: [a1.id, a2.id, b1.id, b2.id], cost };
+  }
+  return best;
+}
+
+/**
+ * เลือก 4 คนลงสนามถัดไป
+ * คนแรกของคิวได้ลงแน่นอน อีก 3 คนเลือกจากคนต้นคิว (window) ให้ฝีมือใกล้กันและไม่ซ้ำคู่
+ */
+export function nextMatch(
+  day: Day,
+  players: Player[],
+  window = 8,
+): [string, string, string, string] | null {
+  const queue = waitingQueue(day, players);
+  if (queue.length < 4) return null;
+
+  const head = queue[0].player;
+  const pool = queue.slice(1, Math.max(4, window)).map((e, i) => ({ p: e.player, rank: i + 1 }));
+  const partners = partnerCounts(day);
+
+  let best: { teams: [string, string, string, string]; score: number } | null = null;
+  for (let i = 0; i < pool.length; i++)
+    for (let j = i + 1; j < pool.length; j++)
+      for (let k = j + 1; k < pool.length; k++) {
+        const four = [head, pool[i].p, pool[j].p, pool[k].p];
+        const levels = four.map((p) => p.level);
+        const spread = Math.max(...levels) - Math.min(...levels);
+        const split = splitTeams(four, partners);
+        // ให้น้ำหนักกับลำดับคิว เพื่อไม่ให้คนรอนานถูกข้าม
+        const waitPenalty = pool[i].rank + pool[j].rank + pool[k].rank;
+        const score = split.cost + spread * 3 + waitPenalty * 2;
+        if (!best || score < best.score) best = { teams: split.teams, score };
+      }
+  return best!.teams;
+}
