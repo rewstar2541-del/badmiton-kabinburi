@@ -7,6 +7,7 @@ import { DEFAULT_LEVEL, LEVELS, isMonthlyPaid, type Gender, type Level, type Pla
 import { Avatar, Button, Card, Icon, LevelBadge, SearchInput, SectionTitle, inputClass } from "./ui";
 import { cameSince, daysBefore, visibleRoster } from "@/lib/roster";
 import { t } from "@/lib/i18n";
+import { useAdmins } from "./AdminsCard";
 
 const GENDERS: { value: Gender; label: string }[] = [
   { value: "male", label: "ชาย" },
@@ -169,7 +170,8 @@ export function PlayerForm({
 }
 
 export function PlayersTab() {
-  const { state, dispatch, resetPin } = useStore();
+  const { state, dispatch, auth } = useStore();
+  const admin = useAdmins();
   const [editing, setEditing] = useState<string | null>(null);
   const date = today();
   const pending = state.players.filter((p) => p.pending);
@@ -192,6 +194,7 @@ export function PlayersTab() {
       </Card>
 
       <SectionTitle right={t("{n} คน", { n: all.length })}>{t("ผู้เล่นทั้งหมด")}</SectionTitle>
+      {admin.error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{admin.error}</p>}
       <SearchInput value={q} onChange={setQ} />
       <ul className="space-y-2">
         {players.map((p) => (
@@ -236,19 +239,24 @@ export function PlayersTab() {
                       {t("เป็นสมาชิก")}
                     </Button>
                   )}
-                  {!p.guestOf && (
-                    <Button
-                      variant="ghost"
-                      className="px-2 text-xs text-zinc-500"
-                      onClick={async () => {
-                        if (!confirm(t("รีเซ็ต PIN ของ {name}? ครั้งต่อไปเข้าด้วย 4 ตัวท้ายเบอร์โทร", { name: p.name }))) return;
-                        const err = await resetPin(p.id);
-                        alert(err ? t(err) : t("รีเซ็ต PIN แล้ว"));
-                      }}
-                    >
-                      {t("รีเซ็ต PIN")}
-                    </Button>
-                  )}
+                  {admin.enabled && admin.emailOf.has(p.id) && (() => {
+                    const email = admin.emailOf.get(p.id)!;
+                    const on = admin.admins.includes(email);
+                    const self = email === auth.email?.toLowerCase();
+                    return (
+                      <Button
+                        variant="ghost"
+                        className={`px-2 text-xs ${on ? "text-ink" : "text-zinc-500"}`}
+                        disabled={admin.busy || self}
+                        onClick={() => {
+                          const msg = on ? t("เอา {name} ออกจากแอดมิน?", { name: p.name }) : t("ตั้ง {name} เป็นแอดมิน?", { name: p.name });
+                          if (confirm(msg)) admin.setAdmin(email, !on);
+                        }}
+                      >
+                        {on ? t("แอดมิน ✓") : t("ตั้งเป็นแอดมิน")}
+                      </Button>
+                    );
+                  })()}
                   <Button variant="ghost" className="px-3" onClick={() => setEditing(p.id)}>
                     {t("แก้ไข")}
                   </Button>

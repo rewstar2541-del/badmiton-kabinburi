@@ -37,7 +37,6 @@ export interface Auth {
   /** ยังไม่มีแอดมินในระบบเลย (คนที่ล็อคอินอยู่ตั้งตัวเองเป็นแอดมินคนแรกได้) */
   noAdmins: boolean;
   claimFirstAdmin: () => Promise<string | null>;
-  signIn: (email: string) => Promise<string | null>;
   signOut: () => Promise<void>;
 }
 
@@ -146,14 +145,9 @@ function LocalProvider({ children }: { children: ReactNode }) {
       const p = state.players.find((x) => x.id === playerId);
       if (!p) return { error: "ไม่พบผู้เล่น" };
       if (p.pending) return { error: "รอแอดมินอนุมัติก่อน" };
-      const pins = readPins();
-      const ok = pins[playerId] ? pins[playerId] === pin : !p.phone || p.phone.slice(-4) === pin;
-      if (!ok) return { error: pins[playerId] ? "รหัส PIN ไม่ถูกต้อง" : "เลข 4 ตัวท้ายเบอร์โทรไม่ตรง" };
-      if (!pins[playerId]) {
-        if (!newPin) return { need_pin: true };
-        if (!/^\d{4,6}$/.test(newPin)) return { error: "PIN ต้องเป็นตัวเลข 4-6 หลัก" };
-        writePins({ ...pins, [playerId]: newPin });
-      }
+      // โหมดทดลองแทนการเข้าด้วย LINE: ยืนยันด้วย 4 ตัวท้ายเบอร์โทร
+      if (p.phone && p.phone.slice(-4) !== pin) return { error: "เลข 4 ตัวท้ายเบอร์โทรไม่ตรง" };
+      void newPin;
       const token = randomToken();
       writeSession({ playerId, token });
       return { token };
@@ -186,7 +180,6 @@ function LocalProvider({ children }: { children: ReactNode }) {
     isAdmin,
     noAdmins: false,
     claimFirstAdmin: async () => null,
-    signIn: async () => null,
     signOut: async () => {},
     demo: DEMO
       ? {
@@ -380,14 +373,10 @@ function RemoteProvider({ children }: { children: ReactNode }) {
       if (!err) await check(session);
       return err ?? null;
     },
-    signIn: async (email) => {
-      const { error } = await db.auth.signInWithOtp({
-        email: email.trim().toLowerCase(),
-        options: { emailRedirectTo: window.location.origin, shouldCreateUser: true },
-      });
-      return error ? error.message : null;
-    },
+    // ออกจากระบบทั้งตัวตน LINE (แอดมิน) และบัญชีผู้เล่นบนเครื่องนี้
     signOut: async () => {
+      writeSession(null);
+      clearLineTicket();
       await db.auth.signOut();
     },
   };

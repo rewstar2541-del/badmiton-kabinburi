@@ -429,6 +429,13 @@ export async function removeAdmin(db: SupabaseClient, email: string) {
   check(await db.from("admins").delete().eq("email", email));
 }
 
+/** อีเมลประจำบัญชี LINE ของผู้เล่นที่ผูก LINE แล้ว (แอดมินเท่านั้น) ใช้ตั้ง/ถอดแอดมิน */
+export async function playerLineEmails(db: SupabaseClient): Promise<Map<string, string>> {
+  const { data, error } = await db.rpc("player_line_emails");
+  if (error) throw new Error(error.message);
+  return new Map(((data ?? []) as { player_id: string; email: string }[]).map((r) => [r.player_id, r.email]));
+}
+
 // ---------- แจ้งเตือน LINE ----------
 
 export interface LineSettings {
@@ -511,7 +518,15 @@ export async function adminResetPin(db: SupabaseClient, playerId: string): Promi
 
 // ---------- เข้าสู่ระบบด้วย LINE ----------
 
-export type LineLoginResult = { token?: string; player_id?: string; ticket?: string; name?: string; error?: string };
+export type LineLoginResult = {
+  session?: { access_token: string; refresh_token: string };
+  pending?: boolean;
+  token?: string;
+  player_id?: string;
+  ticket?: string;
+  name?: string;
+  error?: string;
+};
 
 export async function lineLogin(db: SupabaseClient, code: string, redirectUri: string): Promise<LineLoginResult> {
   const { data, error } = await db.functions.invoke("line-login", { body: { code, redirect_uri: redirectUri } });

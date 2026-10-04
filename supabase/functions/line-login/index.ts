@@ -1,12 +1,15 @@
-// เข้าสู่ระบบด้วย LINE (LINE Login) สำหรับผู้เล่น
-// รับ code จาก LINE -> ตรวจกับ LINE -> ถ้าผูกกับผู้เล่นแล้วออก session token ให้
-// ถ้ายังไม่ผูก คืน ticket ไว้ให้ผู้เล่นเลือกชื่อ/สมัครในแอพ
+// เข้าสู่ระบบด้วย LINE (LINE Login) ทางเดียวของทุกคน ทั้งผู้เล่นและแอดมิน
+// รับ code จาก LINE -> ตรวจกับ LINE -> ออก session ของ Supabase Auth (ตัวตนคือ <line user id>@line.kabinburi.app
+// ใช้ตัดสินว่าเป็นแอดมินไหม) แล้ว
+// - ถ้าผูกกับผู้เล่นแล้ว ออก session token ของผู้เล่นให้ด้วย
+// - ถ้ายังไม่ผูก คืน ticket ไว้ให้สมัคร (หรือผูกชื่อเดิม) ในแอพ
 // ต้องตั้ง secrets: LINE_LOGIN_CHANNEL_ID, LINE_LOGIN_CHANNEL_SECRET
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const CHANNEL_ID = Deno.env.get("LINE_LOGIN_CHANNEL_ID") ?? "";
 const CHANNEL_SECRET = Deno.env.get("LINE_LOGIN_CHANNEL_SECRET") ?? "";
-const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+const SB_URL = Deno.env.get("SUPABASE_URL")!;
+const db = createClient(SB_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -18,6 +21,17 @@ const json = (body: unknown, status = 200) =>
 async function sha256(s: string) {
   const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
   return Array.from(new Uint8Array(h), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** session ของ Supabase Auth สำหรับบัญชี LINE นี้ (สร้างผู้ใช้ครั้งแรกอัตโนมัติ) */
+async function authSession(sub: string, name: string) {
+  const email = `${sub.toLowerCase()}@line.kabinburi.app`;
+  await db.auth.admin.createUser({ email, email_confirm: true, user_metadata: { line_name: name } }); // มีอยู่แล้วก็ไม่เป็นไร
+  const { data: link, error } = await db.auth.admin.generateLink({ type: "magiclink", email });
+  if (error || !link.properties?.hashed_token) return null;
+  const anon = createClient(SB_URL, Deno.env.get("SUPABASE_ANON_KEY")!, { auth: { persistSession: false } });
+  const { data } = await anon.auth.verifyOtp({ type: "magiclink", token_hash: link.properties.hashed_token });
+  return data.session ? { access_token: data.session.access_token, refresh_token: data.session.refresh_token } : null;
 }
 
 Deno.serve(async (req) => {
@@ -44,17 +58,20 @@ Deno.serve(async (req) => {
   if (!verify.ok) return json({ error: "เข้าสู่ระบบด้วย LINE ไม่สำเร็จ ลองใหม่อีกครั้ง" });
   const profile = (await verify.json()) as { sub: string; name?: string };
 
+  const session = await authSession(profile.sub, profile.name ?? "");
+  if (!session) return json({ error: "เข้าสู่ระบบด้วย LINE ไม่สำเร็จ ลองใหม่อีกครั้ง" });
+
   const { data: auth } = await db.from("player_auth").select("player_id").eq("line_user_id", profile.sub).maybeSingle();
   if (auth) {
     const { data: p } = await db.from("players").select("pending").eq("id", auth.player_id).single();
-    if (p?.pending) return json({ error: "รอแอดมินอนุมัติก่อน" });
+    if (p?.pending) return json({ session, pending: true, player_id: auth.player_id });
     const { data: token, error } = await db.rpc("new_player_session", { p_player: auth.player_id });
     if (error) return json({ error: error.message }, 500);
-    return json({ token, player_id: auth.player_id });
+    return json({ session, token, player_id: auth.player_id });
   }
 
   // ยังไม่ผูก: ออก ticket ให้ไปเลือกชื่อหรือสมัครในแอพ
   const ticket = crypto.randomUUID() + crypto.randomUUID();
   await db.from("line_link_tickets").insert({ ticket_hash: await sha256(ticket), line_user_id: profile.sub, line_name: profile.name ?? null });
-  return json({ ticket, name: profile.name ?? "" });
+  return json({ session, ticket, name: profile.name ?? "" });
 });

@@ -65,6 +65,9 @@ export async function handleLineCallback(db: SupabaseClient): Promise<string | "
   window.history.replaceState(null, "", redirectUri());
   if (!state || state !== expected) return "เข้าสู่ระบบด้วย LINE ไม่สำเร็จ ลองใหม่อีกครั้ง";
   const r = await lineLogin(db, code, redirectUri());
+  // session ของ Supabase Auth ใช้ตัดสินว่าเป็นแอดมินไหม (ทุกคนเข้าด้วย LINE ทางเดียว)
+  if (r.session) await db.auth.setSession(r.session);
+  if (r.pending) return "รอแอดมินอนุมัติก่อน";
   if (r.token && r.player_id) {
     writeSession({ playerId: r.player_id, token: r.token });
     clearLineTicket();

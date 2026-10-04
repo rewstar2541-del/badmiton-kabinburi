@@ -1,94 +1,102 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { addAdmin, listAdmins, removeAdmin, supabase } from "@/lib/remote";
+import { addAdmin, listAdmins, playerLineEmails, removeAdmin, supabase } from "@/lib/remote";
 import { useStore } from "@/lib/store";
-import { Button, Card, Icon, SectionTitle, inputClass } from "./ui";
+import { Button, Card, Icon, SectionTitle } from "./ui";
 import { t } from "@/lib/i18n";
 
-/** เพิ่ม/ลบแอดมินด้วยอีเมล */
-export function AdminsCard() {
+/**
+ * แอดมินคือบัญชี LINE ที่อยู่ในตาราง admins (อีเมลประจำบัญชี LINE)
+ * ตั้ง/ถอดแอดมินจากชื่อผู้เล่นที่ผูก LINE แล้ว
+ */
+export function useAdmins() {
   const { auth } = useStore();
   const [admins, setAdmins] = useState<string[]>([]);
-  const [email, setEmail] = useState("");
+  const [emailOf, setEmailOf] = useState<Map<string, string>>(new Map());
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const enabled = auth.online && auth.isAdmin && Boolean(supabase);
 
-  const run = useCallback(async (job?: () => Promise<void>) => {
+  const load = useCallback(async () => {
     if (!supabase) return;
-    setBusy(true);
-    try {
-      await job?.();
-      setAdmins(await listAdmins(supabase));
-      setError("");
-      return true;
-    } catch (e) {
-      setError(t(e instanceof Error ? e.message : String(e)));
-      return false;
-    } finally {
-      setBusy(false);
-    }
+    const [a, e] = await Promise.all([listAdmins(supabase), playerLineEmails(supabase)]);
+    setAdmins(a);
+    setEmailOf(e);
   }, []);
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!enabled) return;
     let live = true;
-    listAdmins(supabase)
-      .then((a) => live && setAdmins(a))
+    Promise.all([listAdmins(supabase!), playerLineEmails(supabase!)])
+      .then(([a, e]) => {
+        if (!live) return;
+        setAdmins(a);
+        setEmailOf(e);
+      })
       .catch((e) => live && setError(String(e?.message ?? e)));
     return () => {
       live = false;
     };
-  }, []);
+  }, [enabled]);
+
+  const setAdmin = useCallback(
+    async (email: string, on: boolean) => {
+      if (!supabase) return;
+      setBusy(true);
+      try {
+        await (on ? addAdmin(supabase, email) : removeAdmin(supabase, email));
+        await load();
+        setError("");
+      } catch (e) {
+        setError(t(e instanceof Error ? e.message : String(e)));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [load],
+  );
+
+  return { enabled, admins, emailOf, setAdmin, error, busy };
+}
+
+/** รายชื่อแอดมินในหน้าตั้งค่า */
+export function AdminsCard() {
+  const { state, auth } = useStore();
+  const { admins, emailOf, setAdmin, error, busy } = useAdmins();
+  const nameOf = new Map([...emailOf].map(([playerId, email]) => [email, state.players.find((p) => p.id === playerId)?.name]));
 
   return (
     <div className="space-y-4">
       <SectionTitle right={t("{n} คน", { n: admins.length })}>{t("แอดมิน")}</SectionTitle>
       <Card className="space-y-3">
         <ul className="space-y-1">
-          {admins.map((a) => (
-            <li key={a} className="flex items-center gap-2 rounded-2xl px-1 py-1.5">
-              <span className="min-w-0 flex-1 truncate text-sm">{a}</span>
-              {a === auth.email?.toLowerCase() ? (
-                <span className="text-xs text-zinc-400">{t("คุณ")}</span>
-              ) : (
-                <Button
-                  variant="ghost"
-                  className="px-2 text-red-500"
-                  aria-label={t("ลบแอดมิน {email}", { email: a })}
-                  disabled={busy}
-                  onClick={() => {
-                    if (confirm(t("เอา {email} ออกจากแอดมิน?", { email: a }))) run(() => removeAdmin(supabase!, a));
-                  }}
-                >
-                  <Icon.X width={18} height={18} />
-                </Button>
-              )}
-            </li>
-          ))}
+          {admins.map((a) => {
+            const name = nameOf.get(a) ?? t("บัญชี LINE ที่ยังไม่ได้สมัครเป็นผู้เล่น");
+            return (
+              <li key={a} className="flex items-center gap-2 rounded-2xl px-1 py-1.5">
+                <span className="min-w-0 flex-1 truncate text-sm">{name}</span>
+                {a === auth.email?.toLowerCase() ? (
+                  <span className="text-xs text-zinc-400">{t("คุณ")}</span>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    className="px-2 text-red-500"
+                    aria-label={t("ลบแอดมิน {email}", { email: name })}
+                    disabled={busy}
+                    onClick={() => {
+                      if (confirm(t("เอา {email} ออกจากแอดมิน?", { email: name }))) setAdmin(a, false);
+                    }}
+                  >
+                    <Icon.X width={18} height={18} />
+                  </Button>
+                )}
+              </li>
+            );
+          })}
         </ul>
-        <form
-          className="flex gap-2"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            if (!/^\S+@\S+\.\S+$/.test(email.trim())) return setError(t("อีเมลไม่ถูกต้อง"));
-            if (await run(() => addAdmin(supabase!, email))) setEmail("");
-          }}
-        >
-          <input
-            className={`${inputClass} min-w-0 flex-1`}
-            type="email"
-            inputMode="email"
-            placeholder={t("อีเมลแอดมินใหม่")}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Button variant="primary" type="submit" disabled={busy}>
-            {t("เพิ่ม")}
-          </Button>
-        </form>
         {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
-        <p className="text-xs text-zinc-500">{t("แอดมินใหม่ล็อคอินด้วยอีเมลนี้ได้ทันที ลบตัวเองไม่ได้ ให้แอดมินคนอื่นลบให้")}</p>
+        <p className="text-xs text-zinc-500">{t("ตั้งแอดมินเพิ่มได้ที่หน้าผู้เล่น กด \"ตั้งเป็นแอดมิน\" ที่ชื่อคนนั้น (ต้องเคยเข้าด้วย LINE แล้ว) ลบตัวเองไม่ได้")}</p>
       </Card>
     </div>
   );

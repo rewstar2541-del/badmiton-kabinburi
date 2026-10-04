@@ -12,11 +12,19 @@ import { visibleRoster } from "@/lib/roster";
 
 /** ผู้เล่นที่ล็อกอินบนเครื่องนี้ (ต้องล็อกอินด้วย PIN ก่อน คนอื่นจึงเปิดดูบัญชีเราไม่ได้) */
 export function useMe() {
+  const { auth } = useStore();
   const [me, setMeState] = useState<string | null>(() => readSession()?.playerId ?? null);
-  const setMe = useCallback((id: string | null) => {
-    if (!id) writeSession(null);
-    setMeState(id);
-  }, []);
+  const setMe = useCallback(
+    (id: string | null) => {
+      // ออกจากระบบ: ล้างทั้งบัญชีผู้เล่นและตัวตน LINE บนเครื่องนี้
+      if (!id) {
+        writeSession(null);
+        void auth.signOut();
+      }
+      setMeState(id);
+    },
+    [auth],
+  );
   return [me, setMe] as const;
 }
 
@@ -26,17 +34,15 @@ export const savedPin = {
 };
 
 /**
- * หน้าเข้าสู่ระบบของผู้เล่น ใช้ทุกเมนู
- * - มี LINE Login: กดเข้าด้วย LINE ครั้งแรกถ้ายังไม่มีชื่อในก๊วนให้สมัคร ถ้ามีชื่อแล้วผูกกับชื่อเดิมครั้งเดียว
- * - ไม่มี LINE (หรือเลือกใช้ PIN): พิมพ์ชื่อตัวเองค้นหาแล้วใส่ PIN ไม่แสดงรายชื่อคนอื่นทั้งหมด
+ * หน้าเข้าสู่ระบบ ใช้ทุกเมนู เข้าด้วย LINE ทางเดียว (ทั้งผู้เล่นและแอดมิน)
+ * - LINE นี้ยังไม่มีชื่อในก๊วน: สมัครครั้งแรก หรือผูกกับชื่อเดิม (ยืนยัน 4 ตัวท้ายเบอร์โทรครั้งเดียว)
+ * - โหมดทดลองไม่มี LINE: พิมพ์ชื่อแล้วใส่รหัสแทน
  */
 export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: string }) {
   const { state, auth } = useStore();
   const [ticket] = useState(readLineTicket);
-  const line = lineLoginEnabled && auth.online;
   const [q, setQ] = useState("");
   const [registering, setRegistering] = useState(false);
-  const [usePin, setUsePin] = useState(!line);
   const [linking, setLinking] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
   const members = state.players.filter((p) => !p.guestOf && !p.pending);
@@ -81,14 +87,30 @@ export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: s
           </Button>
           {!linking ? (
             <button className="w-full text-center text-sm text-zinc-500 underline" onClick={() => setLinking(true)}>
-              {t("เคยมีชื่อในก๊วนแล้ว? ผูกกับชื่อเดิม")}
+              {t("แอดมินเคยลงชื่อให้แล้ว? ผูกกับชื่อเดิม")}
             </button>
           ) : (
             <>
-              <p className="text-xs text-zinc-500">{t("พิมพ์ชื่อของคุณ แล้วยืนยันด้วย PIN หรือ 4 ตัวท้ายเบอร์โทร ครั้งเดียว")}</p>
+              <p className="text-xs text-zinc-500">{t("พิมพ์ชื่อของคุณ แล้วยืนยันด้วย 4 ตัวท้ายเบอร์โทรครั้งเดียว")}</p>
               {search}
             </>
           )}
+        </Card>
+      </div>
+    );
+
+  // โหมดทดลอง (ไม่มี LINE จริง): เลือกชื่อด้วยการพิมพ์ค้นหา
+  if (!auth.online)
+    return (
+      <div className="space-y-4">
+        <SectionTitle>{t("เข้าสู่ระบบ")}</SectionTitle>
+        <p className="px-1 text-sm text-zinc-500">{hint}</p>
+        <Card className="space-y-3">
+          <p className="text-xs text-amber-700">{t("โหมดทดลอง: ของจริงกดเข้าสู่ระบบด้วย LINE ตรงนี้แทน")}</p>
+          {search}
+          <Button variant="primary" className="w-full" onClick={() => setRegistering(true)}>
+            {t("มาครั้งแรก ยังไม่มีชื่อ? สมัครเลย")}
+          </Button>
         </Card>
       </div>
     );
@@ -97,34 +119,49 @@ export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: s
     <div className="space-y-4">
       <SectionTitle>{t("เข้าสู่ระบบ")}</SectionTitle>
       <p className="px-1 text-sm text-zinc-500">{hint}</p>
-      {line && (
-        <Card className="space-y-3">
-          <button
-            onClick={startLineLogin}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#06C755] px-4 py-3.5 font-semibold text-white"
-          >
-            {t("เข้าสู่ระบบด้วย LINE")}
-          </button>
-          <p className="text-center text-xs text-zinc-500">{t("มาครั้งแรกก็กดปุ่มนี้ แล้วสมัครต่อได้เลย")}</p>
-        </Card>
-      )}
-      {line && !usePin && (
-        <button className="w-full text-center text-xs text-zinc-500 underline" onClick={() => setUsePin(true)}>
-          {t("ไม่ใช้ LINE? เข้าด้วย PIN")}
-        </button>
-      )}
-      {usePin && (
-        <Card className="space-y-3">
-          {line && <p className="text-sm font-semibold">{t("เข้าด้วย PIN")}</p>}
-          {search}
-          {!line && (
-            <Button variant="primary" className="w-full" onClick={() => setRegistering(true)}>
-              {t("มาครั้งแรก ยังไม่มีชื่อ? สมัครเลย")}
-            </Button>
-          )}
-        </Card>
-      )}
+      <Card className="space-y-3">
+        {lineLoginEnabled ? (
+          <>
+            <button
+              onClick={startLineLogin}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#06C755] px-4 py-3.5 font-semibold text-white"
+            >
+              {t("เข้าสู่ระบบด้วย LINE")}
+            </button>
+            <p className="text-center text-xs text-zinc-500">{t("มาครั้งแรกก็กดปุ่มนี้ แล้วสมัครต่อได้เลย")}</p>
+          </>
+        ) : (
+          <p className="rounded-2xl bg-amber-50 px-3 py-2.5 text-sm text-amber-900">{t("ยังไม่ได้ตั้งค่า LINE Login ให้แอพ")}</p>
+        )}
+      </Card>
     </div>
+  );
+}
+
+/** ยังไม่มีแอดมินเลย: คนแรกที่เข้าด้วย LINE กดตั้งตัวเองเป็นแอดมินได้ (ครั้งเดียว) */
+export function FirstAdminCard() {
+  const { auth } = useStore();
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  if (!auth.online || auth.isAdmin || !auth.noAdmins || !auth.email) return null;
+  return (
+    <Card className="space-y-2 bg-lime/30">
+      <p className="text-sm">{t("ระบบยังไม่มีแอดมินเลย ตั้งตัวเองเป็นแอดมินคนแรกได้ (ทำได้ครั้งเดียว)")}</p>
+      {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+      <Button
+        variant="primary"
+        className="w-full"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          const err = await auth.claimFirstAdmin();
+          setBusy(false);
+          setError(err ? t(err) : "");
+        }}
+      >
+        {t("ตั้งฉันเป็นแอดมินคนแรก")}
+      </Button>
+    </Card>
   );
 }
 
@@ -157,7 +194,7 @@ function Login({ player, onDone, onCancel }: { player: Player; onDone: () => voi
           <Avatar name={player.name} photo={player.photo} size={52} />
           <div className="min-w-0 flex-1">
             <div className="truncate font-display text-lg font-semibold">{player.name}</div>
-            <div className="text-xs text-zinc-500">{t("เข้าสู่ระบบครั้งเดียว เครื่องนี้จะจำไว้ คนอื่นเปิดดูบัญชีคุณไม่ได้")}</div>
+            <div className="text-xs text-zinc-500">{t("ยืนยันตัวตนครั้งเดียว เครื่องนี้จะจำไว้")}</div>
           </div>
         </div>
         <form
@@ -169,7 +206,7 @@ function Login({ player, onDone, onCancel }: { player: Player; onDone: () => voi
         >
           {!needPin ? (
             <label className="block space-y-1.5 text-sm font-medium">
-              {t("PIN ของคุณ (ครั้งแรกใช้ 4 ตัวท้ายเบอร์โทร)")}
+              {t("4 ตัวท้ายเบอร์โทรของคุณ")}
               <input className={inputClass} type="password" inputMode="numeric" autoComplete="current-password" value={pin} onChange={(e) => setPin(digits(e.target.value))} />
             </label>
           ) : (
@@ -189,7 +226,7 @@ function Login({ player, onDone, onCancel }: { player: Player; onDone: () => voi
           </div>
         </form>
       </Card>
-      <p className="px-1 text-center text-xs text-zinc-500">{t("ลืม PIN? ให้แอดมินรีเซ็ตให้")}</p>
+      <p className="px-1 text-center text-xs text-zinc-500">{t("ไม่มีเบอร์ในระบบหรือจำไม่ได้ ให้แอดมินแก้เบอร์ให้")}</p>
       {auth.demo && player.phone && (
         <p className="px-1 text-center text-xs text-amber-700">{t("โหมดทดลอง: 4 ตัวท้ายเบอร์ของ {name} คือ {pin}", { name: player.name, pin: player.phone.slice(-4) })}</p>
       )}

@@ -4,7 +4,7 @@ import { Fragment, useState, type ComponentType, type SVGProps } from "react";
 import { waitingQueue } from "@/lib/matchmaking";
 import { StoreProvider, useStore, useToday } from "@/lib/store";
 import { BillingTab } from "./BillingTab";
-import { LoginTab } from "./LoginTab";
+import { FirstAdminCard } from "./PickMe";
 import { MyBillTab } from "./MyBillTab";
 import { CheckInTab } from "./CheckInTab";
 import { CourtsTab } from "./CourtsTab";
@@ -16,7 +16,7 @@ import { APP_NAME } from "@/lib/brand";
 import { Icon } from "./ui";
 import { LANGS, locale, setLang, t, useLang } from "@/lib/i18n";
 
-type TabId = "today" | "checkin" | "courts" | "billing" | "players" | "settings" | "mybill" | "login";
+type TabId = "today" | "checkin" | "courts" | "billing" | "players" | "settings" | "mybill";
 type Tab = { id: TabId; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> };
 
 const ADMIN_TABS: Tab[] = [
@@ -33,9 +33,6 @@ const PLAYER_TABS: Tab[] = [
   { id: "courts", label: "สนาม", icon: Icon.Court },
   { id: "mybill", label: "ยอดของฉัน", icon: Icon.Wallet },
 ];
-
-/** หน้าเข้าสู่ระบบแอดมิน ผู้เล่นทั่วไปไม่เห็น แอดมินเปิดด้วยลิงก์ ?admin */
-const LOGIN_TAB: Tab = { id: "login", label: "แอดมิน", icon: Icon.Settings };
 
 function hasParam(name: string) {
   try {
@@ -141,9 +138,8 @@ function Header() {
 function Shell() {
   const { auth, ready, error } = useStore();
   const lang = useLang();
-  // คนที่ล็อกอินอีเมลแล้วแต่ยังไม่เป็นแอดมิน หรือเปิดลิงก์ ?admin เท่านั้นที่เห็นหน้าเข้าสู่ระบบแอดมิน
-  const adminEntry = Boolean(auth.email) || hasParam("admin");
-  const tabs = auth.isAdmin ? ADMIN_TABS : adminEntry ? [...PLAYER_TABS, LOGIN_TAB] : PLAYER_TABS;
+  // เข้าด้วย LINE แล้วเป็นแอดมิน เมนูแอดมินจะขึ้นเอง
+  const tabs = auth.isAdmin ? ADMIN_TABS : PLAYER_TABS;
   const [picked, setTab] = useState<TabId>(tabs[0].id);
   const tab = tabs.some((t) => t.id === picked) ? picked : tabs[0].id;
 
@@ -165,6 +161,11 @@ function Shell() {
       <Header />
       <main className="mx-auto -mt-2 w-full max-w-3xl flex-1 rounded-t-[28px] bg-background px-4 pt-5 pb-32">
         {error && <div className="mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+        {!auth.isAdmin && (
+          <div className="mb-4 empty:hidden">
+            <FirstAdminCard />
+          </div>
+        )}
         {tab === "today" && <TodayTab />}
         {tab === "checkin" && <CheckInTab />}
         {tab === "courts" && <CourtsTab />}
@@ -172,7 +173,6 @@ function Shell() {
         {tab === "players" && <PlayersTab />}
         {tab === "settings" && <SettingsTab />}
         {tab === "mybill" && <MyBillTab />}
-        {tab === "login" && <LoginTab />}
       </main>
       <nav className="fixed inset-x-0 bottom-0 z-10 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)]">
         <div
