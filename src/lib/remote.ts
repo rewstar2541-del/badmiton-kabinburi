@@ -22,6 +22,8 @@ export interface Rows {
     guest_of?: string | null;
     pending?: boolean | null;
     plan?: string | null;
+    bio?: string | null;
+    level_request?: number | null;
   }[];
   checkins: {
     date: string;
@@ -76,6 +78,8 @@ export function rowsToState(r: Rows): State {
     ...(p.guest_of ? { guestOf: p.guest_of } : {}),
     ...(p.pending ? { pending: true } : {}),
     ...(p.plan === "daily" || p.plan === "monthly" ? { plan: p.plan } : {}),
+    ...(p.bio ? { bio: p.bio } : {}),
+    ...(p.level_request ? { levelRequest: p.level_request as Level } : {}),
   }));
 
   const days = new Map<string, Day>();
@@ -189,7 +193,7 @@ export const TABLE_OF: Record<string, TableKey> = {
 export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iterable<TableKey>, prev?: Rows): Promise<Rows> {
   const since = isAdmin ? "2000-01-01" : sinceDate(PLAYER_HISTORY_DAYS);
   const fetchers: { [K in TableKey]: () => Promise<Rows[K]> } = {
-    players: () => all(() => db.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of,pending,plan").order("id")),
+    players: () => all(() => db.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of,pending,plan,bio,level_request").order("id")),
     checkins: () => all(() => db.from("checkins").select("date,player_id,at,paid_at,resting,court_fee,shuttle_fee").gte("date", since).order("date").order("player_id")),
     games: () => all(() => db.from("games").select("id,date,court,player_ids,started_at,ended_at,shuttles,winner").gte("date", since).order("id")),
     // ค่าน้ำ ค่ารายเดือน และสลิป ผู้เล่นทั่วไปอ่านไม่ได้ (โหลดของตัวเองแยกผ่าน my_private)
@@ -239,6 +243,8 @@ function playerRow(p: Omit<Player, "id"> & { id: string }) {
     guest_of: p.guestOf ?? null,
     pending: p.pending ?? false,
     plan: p.plan ?? null,
+    bio: p.bio ?? null,
+    level_request: p.levelRequest ?? null,
   };
 }
 
@@ -454,6 +460,23 @@ export async function addGuest(db: SupabaseClient, hostId: string, pin: string, 
 
 export async function setPartnerPrefs(db: SupabaseClient, playerId: string, pin: string, prefer: string[], avoid: string[]) {
   const { data, error } = await db.rpc("set_partner_prefs", { p_player: playerId, p_pin: pin, p_prefer: prefer, p_avoid: avoid });
+  if (error) return error.message;
+  return (data as string | null) ?? null;
+}
+
+export type ProfileInput = Pick<Player, "name" | "photo" | "gender" | "bio"> & { level: Level };
+
+/** ผู้เล่นแก้ข้อมูลตัวเอง (เปลี่ยนระดับมือจะเป็นคำขอให้แอดมินอนุมัติ) */
+export async function updateMyProfile(db: SupabaseClient, playerId: string, pin: string, p: ProfileInput) {
+  const { data, error } = await db.rpc("update_my_profile", {
+    p_player: playerId,
+    p_pin: pin,
+    p_name: p.name,
+    p_photo: p.photo ?? "",
+    p_gender: p.gender ?? null,
+    p_bio: p.bio ?? "",
+    p_level: p.level,
+  });
   if (error) return error.message;
   return (data as string | null) ?? null;
 }

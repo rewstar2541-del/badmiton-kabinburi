@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import { isDemo, demoState } from "./demo";
 import { randomToken, readSession, writeSession } from "./session";
 import { clearLineTicket, handleLineCallback, readLineTicket } from "./lineLogin";
-import { addGuest, claimPlayer, signUpDay, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, removeMySlip, setMyPlan, supabase } from "./remote";
+import { addGuest, claimPlayer, signUpDay, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, removeMySlip, setMyPlan, updateMyProfile, type ProfileInput, supabase } from "./remote";
 import { EMPTY_STATE, guestCheck, prepare, reducer, today, type Intent, type SelfAction, type State } from "./state";
 import { DEFAULT_SETTINGS, monthOf, type Level, type Plan, type Player } from "./types";
 import { t } from "@/lib/i18n";
@@ -59,6 +59,8 @@ interface Ctx {
   setPrefs: (playerId: string, pin: string, prefer: string[], avoid: string[]) => Promise<string | null>;
   /** ผู้เล่นเลือกสมาชิกรายวัน/รายเดือน คืนข้อความผิดพลาด หรือ null */
   setPlan: (playerId: string, pin: string, plan: Plan) => Promise<string | null>;
+  /** ผู้เล่นแก้ข้อมูลตัวเอง คืนข้อความผิดพลาด หรือ null */
+  updateProfile: (playerId: string, pin: string, p: ProfileInput) => Promise<string | null>;
   /**
    * "นี่คือฉัน" กับชื่อที่แอดมินลงไว้แล้ว: ของจริงส่งคำขอผูก LINE ให้แอดมินยืนยัน (pending)
    * โหมดทดลองเข้าเป็นคนนั้นได้เลย (token)
@@ -133,6 +135,16 @@ function LocalProvider({ children }: { children: ReactNode }) {
     },
     [dispatch, state.players],
   );
+  const updateProfileLocal = useCallback(
+    async (playerId: string, _pin: string, v: ProfileInput) => {
+      const p = state.players.find((x) => x.id === playerId);
+      if (!p) return "ไม่พบผู้เล่น";
+      const { level, ...rest } = v;
+      dispatch({ type: "updatePlayer", player: { ...p, ...rest, levelRequest: level === p.level ? undefined : level } });
+      return null;
+    },
+    [dispatch, state.players],
+  );
   const addGuestLocal = useCallback(
     async (hostId: string, _pin: string, name: string, level: Level) => {
       const date = today();
@@ -190,7 +202,7 @@ function LocalProvider({ children }: { children: ReactNode }) {
       : undefined,
   };
   return (
-    <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, removeSlip: removeSlipLocal, setPrefs, setPlan: setPlanLocal, addGuest: addGuestLocal, register: registerLocal, login: loginLocal, slipImage: getSlip, ready: true, error: null, auth }}>
+    <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, removeSlip: removeSlipLocal, setPrefs, setPlan: setPlanLocal, updateProfile: updateProfileLocal, addGuest: addGuestLocal, register: registerLocal, login: loginLocal, slipImage: getSlip, ready: true, error: null, auth }}>
       {children}
     </StoreCtx.Provider>
   );
@@ -383,6 +395,15 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     [db, reload],
   );
 
+  const updateProfileRemote = useCallback(
+    async (playerId: string, pin: string, v: ProfileInput) => {
+      const err = await updateMyProfile(db, playerId, pin, v);
+      if (!err) await reload();
+      return err;
+    },
+    [db, reload],
+  );
+
   const auth: Auth = {
     online: true,
     email: session?.user.email,
@@ -402,7 +423,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  return <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, removeSlip: removeSlipRemote, setPrefs, setPlan: setPlanRemote, addGuest: addGuestRemote, register: registerRemote, login: loginRemote, slipImage: getSlip, ready, error, auth }}>{children}</StoreCtx.Provider>;
+  return <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, removeSlip: removeSlipRemote, setPrefs, setPlan: setPlanRemote, updateProfile: updateProfileRemote, addGuest: addGuestRemote, register: registerRemote, login: loginRemote, slipImage: getSlip, ready, error, auth }}>{children}</StoreCtx.Provider>;
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {

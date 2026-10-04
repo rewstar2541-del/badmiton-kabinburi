@@ -498,4 +498,12 @@ export const en: Record<string, string> = {
   "ยืนยัน นี่คือฉัน": "Confirm, this is me",
   "วันนี้ฉันเป็น": "Today I'm",
   "โหมดผู้เล่นต้องผูก LINE กับชื่อของคุณก่อน: สลับเป็นแอดมิน แล้วไปที่ ตั้งค่า > ผูก LINE ของฉันกับชื่อในก๊วน": "Player mode needs your LINE linked to your name first: switch to Admin, then Settings > Link my LINE to my name in the group.",
+  "แก้ไขข้อมูล": "Edit profile",
+  "ขอเปลี่ยนระดับมือเป็น {level} รอแอดมินอนุมัติ": "Requested level {level}, waiting for admin approval",
+  "ใช้รูปจาก LINE แทน (อัปเดตตอนเข้าสู่ระบบครั้งถัดไป)": "Use my LINE photo instead (updates at next login)",
+  "แนะนำตัว (ไม่ใส่ก็ได้)": "About me (optional)",
+  "เช่น ตีมา 2 ปี ชอบเล่นหน้าเน็ต": "e.g. playing for 2 years, love the net",
+  "เปลี่ยนระดับมือแล้วต้องรอแอดมินอนุมัติก่อน": "Level changes need admin approval",
+  "ขอเปลี่ยนระดับมือ": "Level change requests",
+  "กรุณาใส่ชื่อเล่น (ไม่เกิน 30 ตัวอักษร)": "Please enter a nickname (max 30 characters)",
 };
