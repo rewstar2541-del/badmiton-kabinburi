@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useStore, useToday } from "@/lib/store";
-import { Avatar, Button, Card, LevelBadge, inputClass } from "./ui";
+import { isMonthlyPaid } from "@/lib/types";
 import { PlayerForm } from "./PlayersTab";
+import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, inputClass } from "./ui";
 
 export function CheckInTab() {
   const { state, dispatch } = useStore();
@@ -18,15 +19,21 @@ export function CheckInTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-lg font-semibold">เช็คอินวันนี้</h2>
-        <span className="text-sm text-zinc-500">มาแล้ว {checked.size} คน</span>
+      <SectionTitle right={`${checked.size}/${state.players.length} คน`}>เช็คอินวันนี้</SectionTitle>
+
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Icon.Search className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-zinc-400" width={18} height={18} />
+          <input className={`${inputClass} pl-11`} placeholder="ค้นหาชื่อเล่น" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        <Button variant="accent" className="px-4" onClick={() => setAdding(true)} aria-label="ลงทะเบียนผู้เล่นใหม่">
+          <Icon.Plus width={20} height={20} strokeWidth={2.5} />
+        </Button>
       </div>
 
-      <input className={inputClass} placeholder="ค้นหาชื่อ" value={q} onChange={(e) => setQ(e.target.value)} />
-
-      {adding ? (
+      {adding && (
         <Card>
+          <h3 className="mb-3 font-display font-semibold">ลงทะเบียนผู้เล่นใหม่</h3>
           <PlayerForm
             onCancel={() => setAdding(false)}
             onSave={(player) => {
@@ -34,48 +41,45 @@ export function CheckInTab() {
               setAdding(false);
             }}
           />
-          <p className="mt-2 text-xs text-zinc-500">เพิ่มแล้วกดเช็คอินในรายชื่อได้เลย</p>
         </Card>
-      ) : (
-        <Button className="w-full" onClick={() => setAdding(true)}>
-          + ผู้เล่นใหม่
-        </Button>
       )}
 
-      <ul className="space-y-2">
+      <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
         {list.map((p) => {
           const on = checked.has(p.id);
           return (
             <li key={p.id}>
               <button
-                onClick={() =>
-                  dispatch({ type: on ? "undoCheckIn" : "checkIn", date, playerId: p.id })
-                }
-                className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition ${
-                  on
-                    ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950"
-                    : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+                onClick={() => dispatch({ type: on ? "undoCheckIn" : "checkIn", date, playerId: p.id })}
+                className={`relative flex w-full flex-col items-center gap-2 rounded-3xl px-3 pt-4 pb-3 text-center transition active:scale-[0.97] ${
+                  on ? "bg-ink text-white shadow-lg shadow-ink/20" : "bg-white shadow-[0_8px_24px_-14px_rgba(11,18,32,0.25)]"
                 }`}
               >
                 <span
-                  className={`grid size-6 place-items-center rounded-full border text-sm ${
-                    on ? "border-emerald-600 bg-emerald-600 text-white" : "border-zinc-300"
+                  className={`absolute top-2.5 right-2.5 grid size-6 place-items-center rounded-full transition ${
+                    on ? "bg-lime text-ink" : "bg-zinc-100 text-transparent"
                   }`}
                 >
-                  {on ? "✓" : ""}
+                  <Icon.Check width={14} height={14} strokeWidth={3} />
                 </span>
-                <Avatar name={p.name} photo={p.photo} />
-                <span className="flex-1 font-medium">{p.name}</span>
-                {p.isMonthly && <span className="text-xs text-emerald-600">รายเดือน</span>}
-                <LevelBadge level={p.level} />
+                <Avatar name={p.name} photo={p.photo} size={52} />
+                <span className="w-full truncate font-semibold">{p.name}</span>
+                <span className="flex items-center gap-1.5">
+                  <LevelBadge level={p.level} />
+                  {isMonthlyPaid(state.monthly, date, p.id) && (
+                    <span className={`text-[11px] font-medium ${on ? "text-lime" : "text-emerald-600"}`}>รายเดือน</span>
+                  )}
+                </span>
               </button>
             </li>
           );
         })}
-        {list.length === 0 && (
-          <li className="py-8 text-center text-sm text-zinc-500">ยังไม่มีผู้เล่น กด &quot;+ ผู้เล่นใหม่&quot;</li>
-        )}
       </ul>
+      {list.length === 0 && (
+        <Card className="py-10 text-center text-sm text-zinc-500">
+          {state.players.length === 0 ? "ยังไม่มีผู้เล่น กดปุ่ม + เพื่อลงทะเบียน" : "ไม่พบชื่อที่ค้นหา"}
+        </Card>
+      )}
     </div>
   );
 }

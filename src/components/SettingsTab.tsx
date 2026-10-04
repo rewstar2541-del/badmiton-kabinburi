@@ -4,11 +4,11 @@ import { useState } from "react";
 import { isValidPromptPayId } from "@/lib/promptpay";
 import { useStore, type State } from "@/lib/store";
 import type { Settings } from "@/lib/types";
-import { Button, Card, inputClass } from "./ui";
+import { Button, Card, SectionTitle, inputClass } from "./ui";
 
 const NUMBER_FIELDS: { key: keyof Settings; label: string }[] = [
   { key: "courtCount", label: "จำนวนสนาม" },
-  { key: "courtFee", label: "ค่าสนามต่อครั้ง (คนไม่ใช่รายเดือน)" },
+  { key: "courtFee", label: "ค่าสนามต่อครั้ง (คนที่ไม่ได้จ่ายรายเดือน)" },
   { key: "firstShuttleFee", label: "ค่าลูกแรกของวัน ต่อคน" },
   { key: "nextShuttleFee", label: "ค่าลูกถัดไป ต่อคน ต่อลูก" },
   { key: "monthlyFee", label: "ค่าสมาชิกรายเดือน" },
@@ -44,6 +44,7 @@ export function SettingsTab() {
 
   return (
     <div className="space-y-4">
+      <SectionTitle>ตั้งค่า</SectionTitle>
       <Card>
         <form
           className="space-y-3"
@@ -54,7 +55,7 @@ export function SettingsTab() {
             setSaved(true);
           }}
         >
-          <h2 className="font-semibold">ราคาและสนาม</h2>
+          <h2 className="font-display font-semibold">ราคาและสนาม</h2>
           {NUMBER_FIELDS.map((f) => (
             <label key={f.key} className="block text-sm">
               {f.label}
@@ -69,7 +70,7 @@ export function SettingsTab() {
               />
             </label>
           ))}
-          <label className="block text-sm">
+          <label className="block space-y-1.5 text-sm font-medium">
             เบอร์ PromptPay ของสนาม (เบอร์มือถือ หรือเลขบัตร 13 หลัก)
             <input
               className={inputClass}
@@ -89,7 +90,7 @@ export function SettingsTab() {
       </Card>
 
       <Card className="space-y-3">
-        <h2 className="font-semibold">สำรองข้อมูล</h2>
+        <h2 className="font-display font-semibold">สำรองข้อมูล</h2>
         <p className="text-sm text-zinc-500">
           ตอนนี้ข้อมูลเก็บในเครื่องนี้เครื่องเดียว ควรกดสำรองไว้หลังเลิกเล่นทุกครั้ง
         </p>
@@ -97,7 +98,7 @@ export function SettingsTab() {
           <Button onClick={exportData} className="flex-1">
             ดาวน์โหลดไฟล์สำรอง
           </Button>
-          <label className="flex-1 cursor-pointer rounded-xl bg-zinc-100 px-4 py-2.5 text-center text-sm font-medium dark:bg-zinc-800">
+          <label className="flex-1 cursor-pointer rounded-2xl bg-zinc-100 px-4 py-3 text-center text-sm font-semibold">
             นำเข้าไฟล์
             <input
               type="file"

@@ -1,4 +1,15 @@
+/** ระดับมือของก๊วน เรียงจากอ่อนไปเก่ง: 1 = New ... 5 = P */
 export type Level = 1 | 2 | 3 | 4 | 5;
+
+export const LEVELS: { value: Level; code: string; label: string }[] = [
+  { value: 1, code: "New", label: "มือใหม่" },
+  { value: 2, code: "BG", label: "เริ่มตีได้" },
+  { value: 3, code: "N", label: "ทั่วไป" },
+  { value: 4, code: "S", label: "ตีดี" },
+  { value: 5, code: "P", label: "เก่ง" },
+];
+
+export const DEFAULT_LEVEL: Level = 3;
 
 export type Gender = "male" | "female" | "other";
 
@@ -10,10 +21,19 @@ export interface Player {
   photo?: string;
   phone?: string;
   gender?: Gender;
-  /** 1 = มือใหม่, 5 = เก่งสุด */
+  /** ดู LEVELS */
   level: Level;
-  /** สมาชิกรายเดือน ไม่ต้องจ่ายค่าสนามรายวัน */
-  isMonthly: boolean;
+}
+
+/** เดือน (YYYY-MM) -> ผู้เล่น -> เวลาที่จ่ายค่าสมาชิกรายเดือน */
+export type MonthlyPayments = Record<string, Record<string, number>>;
+
+export function monthOf(date: string): string {
+  return date.slice(0, 7);
+}
+
+export function isMonthlyPaid(monthly: MonthlyPayments, date: string, playerId: string): boolean {
+  return Boolean(monthly[monthOf(date)]?.[playerId]);
 }
 
 export interface Settings {

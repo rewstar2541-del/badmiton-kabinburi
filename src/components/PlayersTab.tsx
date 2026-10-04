@@ -2,11 +2,9 @@
 
 import { useRef, useState } from "react";
 import { resizeToSquare } from "@/lib/image";
-import { useStore } from "@/lib/store";
-import type { Gender, Level, Player } from "@/lib/types";
-import { Avatar, Button, Card, LEVEL_LABEL, LevelBadge, inputClass } from "./ui";
-
-const LEVELS: Level[] = [1, 2, 3, 4, 5];
+import { today, useStore } from "@/lib/store";
+import { DEFAULT_LEVEL, LEVELS, isMonthlyPaid, type Gender, type Level, type Player } from "@/lib/types";
+import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, inputClass } from "./ui";
 
 const GENDERS: { value: Gender; label: string }[] = [
   { value: "male", label: "ชาย" },
@@ -26,18 +24,18 @@ function Segmented<T extends string | number>({
   cols: number;
 }) {
   return (
-    <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+    <div className="grid gap-1 rounded-2xl bg-zinc-100 p-1" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
       {options.map((o) => (
         <button
           type="button"
           key={o.value}
           onClick={() => onChange(o.value)}
-          className={`rounded-lg px-1 py-2 text-sm ${
-            value === o.value ? "bg-emerald-600 text-white" : "bg-zinc-100 dark:bg-zinc-800"
+          className={`rounded-xl px-1 py-2 text-sm font-semibold transition ${
+            value === o.value ? "bg-ink text-white shadow-sm" : "text-zinc-600"
           }`}
         >
           {o.label}
-          {o.sub && <div className="truncate text-[10px] opacity-80">{o.sub}</div>}
+          {o.sub && <div className={`truncate text-[10px] font-normal ${value === o.value ? "text-white/70" : "text-zinc-400"}`}>{o.sub}</div>}
         </button>
       ))}
     </div>
@@ -60,8 +58,7 @@ export function PlayerForm({
   const [photo, setPhoto] = useState(initial?.photo);
   const [phone, setPhone] = useState(initial?.phone ?? "");
   const [gender, setGender] = useState<Gender | undefined>(initial?.gender);
-  const [level, setLevel] = useState<Level>(initial?.level ?? 3);
-  const [isMonthly, setMonthly] = useState(initial?.isMonthly ?? false);
+  const [level, setLevel] = useState<Level>(initial?.level ?? DEFAULT_LEVEL);
   const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -72,8 +69,7 @@ export function PlayerForm({
     setPhoto(undefined);
     setPhone("");
     setGender(undefined);
-    setLevel(3);
-    setMonthly(false);
+    setLevel(DEFAULT_LEVEL);
   };
 
   return (
@@ -85,15 +81,21 @@ export function PlayerForm({
         if (phoneDigits && phoneDigits.length !== 10) return setError("เบอร์โทรต้องมี 10 หลัก");
         if (!gender) return setError("กรุณาเลือกเพศ");
         setError("");
-        onSave({ name: name.trim(), photo, phone: phoneDigits || undefined, gender, level, isMonthly });
+        onSave({ name: name.trim(), photo, phone: phoneDigits || undefined, gender, level });
         if (!initial) reset();
       }}
     >
       <div className="flex items-center gap-4">
-        <button type="button" onClick={() => fileRef.current?.click()} className="relative" aria-label="เลือกรูป">
-          <Avatar name={name || "+"} photo={photo} size={72} />
-          <span className="absolute -right-1 -bottom-1 grid size-7 place-items-center rounded-full bg-zinc-900 text-xs text-white">
-            📷
+        <button type="button" onClick={() => fileRef.current?.click()} className="relative shrink-0" aria-label="เลือกรูป">
+          {photo || name ? (
+            <Avatar name={name} photo={photo} size={76} />
+          ) : (
+            <span className="grid size-[76px] place-items-center rounded-full border-2 border-dashed border-zinc-300 text-zinc-400">
+              <Icon.Camera />
+            </span>
+          )}
+          <span className="absolute -right-0.5 -bottom-0.5 grid size-7 place-items-center rounded-full bg-lime text-ink ring-2 ring-white">
+            <Icon.Camera width={14} height={14} />
           </span>
         </button>
         <input
@@ -107,13 +109,13 @@ export function PlayerForm({
             e.target.value = "";
           }}
         />
-        <div className="flex-1 space-y-1">
-          <label className="text-sm">ชื่อเล่น</label>
+        <label className="flex-1 space-y-1.5 text-sm font-medium">
+          ชื่อเล่น
           <input className={inputClass} placeholder="เช่น ต้น" value={name} onChange={(e) => setName(e.target.value)} />
-        </div>
+        </label>
       </div>
 
-      <label className="block space-y-1 text-sm">
+      <label className="block space-y-1.5 text-sm font-medium">
         เบอร์โทร
         <input
           className={inputClass}
@@ -125,27 +127,22 @@ export function PlayerForm({
         />
       </label>
 
-      <div className="space-y-1 text-sm">
+      <div className="space-y-1.5 text-sm font-medium">
         เพศ
         <Segmented options={GENDERS} value={gender} onChange={setGender} cols={3} />
       </div>
 
-      <div className="space-y-1 text-sm">
+      <div className="space-y-1.5 text-sm font-medium">
         ระดับมือ
         <Segmented
-          options={LEVELS.map((l) => ({ value: l, label: String(l), sub: LEVEL_LABEL[l] }))}
+          options={LEVELS.map((l) => ({ value: l.value, label: l.code, sub: l.label }))}
           value={level}
           onChange={setLevel}
           cols={5}
         />
       </div>
 
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" className="size-5" checked={isMonthly} onChange={(e) => setMonthly(e.target.checked)} />
-        สมาชิกรายเดือน (ไม่คิดค่าสนามรายวัน)
-      </label>
-
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
 
       <div className="flex gap-2">
         <Button variant="primary" type="submit" className="flex-1">
@@ -164,16 +161,17 @@ export function PlayerForm({
 export function PlayersTab() {
   const { state, dispatch } = useStore();
   const [editing, setEditing] = useState<string | null>(null);
+  const date = today();
   const players = [...state.players].sort((a, b) => a.name.localeCompare(b.name, "th"));
 
   return (
     <div className="space-y-4">
+      <SectionTitle>ลงทะเบียนผู้เล่นใหม่</SectionTitle>
       <Card>
-        <h2 className="mb-3 font-semibold">ลงทะเบียนผู้เล่นใหม่</h2>
         <PlayerForm onSave={(player) => dispatch({ type: "addPlayer", player })} />
       </Card>
 
-      <div className="text-sm text-zinc-500">ทั้งหมด {players.length} คน</div>
+      <SectionTitle right={`${players.length} คน`}>ผู้เล่นทั้งหมด</SectionTitle>
       <ul className="space-y-2">
         {players.map((p) => (
           <li key={p.id}>
@@ -188,24 +186,30 @@ export function PlayersTab() {
                   }}
                 />
               ) : (
-                <div className="flex items-center gap-2">
-                  <Avatar name={p.name} photo={p.photo} />
+                <div className="flex items-center gap-3">
+                  <Avatar name={p.name} photo={p.photo} size={44} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">{p.name}</span>
-                    {p.phone && <span className="block text-xs text-zinc-500">{p.phone}</span>}
+                    <span className="flex items-center gap-1.5">
+                      <span className="truncate font-semibold">{p.name}</span>
+                      <LevelBadge level={p.level} />
+                    </span>
+                    <span className="block text-xs text-zinc-500">
+                      {[p.phone, isMonthlyPaid(state.monthly, date, p.id) && "รายเดือนเดือนนี้"].filter(Boolean).join(" · ") ||
+                        " "}
+                    </span>
                   </span>
-                  <LevelBadge level={p.level} />
-                  {p.isMonthly && <span className="text-xs text-emerald-600">รายเดือน</span>}
-                  <Button variant="ghost" onClick={() => setEditing(p.id)}>
+                  <Button variant="ghost" className="px-3" onClick={() => setEditing(p.id)}>
                     แก้ไข
                   </Button>
                   <Button
                     variant="ghost"
+                    className="px-2 text-red-500"
+                    aria-label={`ลบ ${p.name}`}
                     onClick={() => {
                       if (confirm(`ลบ ${p.name}?`)) dispatch({ type: "removePlayer", id: p.id });
                     }}
                   >
-                    ลบ
+                    <Icon.X width={18} height={18} />
                   </Button>
                 </div>
               )}

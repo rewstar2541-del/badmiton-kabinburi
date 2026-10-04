@@ -2,12 +2,13 @@
 
 import { createContext, useContext, useEffect, useReducer, type ReactNode } from "react";
 import { markPaid } from "./billing";
-import { DEFAULT_SETTINGS, type Day, type Game, type Player, type Settings, type Team } from "./types";
+import { DEFAULT_SETTINGS, type Day, type Game, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
 
 export interface State {
   players: Player[];
   settings: Settings;
   days: Day[];
+  monthly: MonthlyPayments;
 }
 
 export type Action =
@@ -24,12 +25,13 @@ export type Action =
   | { type: "removeDrink"; date: string; drinkId: string }
   | { type: "markPaid"; date: string; playerId: string }
   | { type: "unmarkPaid"; date: string; playerId: string }
+  | { type: "setMonthlyPaid"; month: string; playerId: string; paid: boolean }
   | { type: "updateSettings"; settings: Settings }
   | { type: "replace"; state: State };
 
 const STORAGE_KEY = "badminton-kabinburi:v1";
 
-export const EMPTY_STATE: State = { players: [], settings: DEFAULT_SETTINGS, days: [] };
+export const EMPTY_STATE: State = { players: [], settings: DEFAULT_SETTINGS, days: [], monthly: {} };
 
 export function newId(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
@@ -108,6 +110,12 @@ export function reducer(state: State, a: Action): State {
         ...d,
         checkIns: d.checkIns.map((c) => (c.playerId === a.playerId ? { ...c, paidAt: undefined } : c)),
       }));
+    case "setMonthlyPaid": {
+      const month = { ...state.monthly[a.month] };
+      if (a.paid) month[a.playerId] = Date.now();
+      else delete month[a.playerId];
+      return { ...state, monthly: { ...state.monthly, [a.month]: month } };
+    }
     case "updateSettings":
       return { ...state, settings: a.settings };
     case "replace":
@@ -120,7 +128,7 @@ function load(): State {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return EMPTY_STATE;
     const s = JSON.parse(raw) as State;
-    return { ...EMPTY_STATE, ...s, settings: { ...DEFAULT_SETTINGS, ...s.settings } };
+    return { ...EMPTY_STATE, ...s, settings: { ...DEFAULT_SETTINGS, ...s.settings }, monthly: s.monthly ?? {} };
   } catch {
     return EMPTY_STATE;
   }

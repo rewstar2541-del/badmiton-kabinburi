@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { nextMatch, splitTeams, waitingQueue } from "../matchmaking";
 import type { Day, Level, Player } from "../types";
 
-const p = (id: string, level: Level): Player => ({ id, name: id, level, isMonthly: false });
+const p = (id: string, level: Level): Player => ({ id, name: id, level });
 
 function dayWith(players: Player[], games: Day["games"] = []): Day {
   return {

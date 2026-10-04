@@ -1,11 +1,22 @@
-import type { Metadata } from "next";
-import { Noto_Sans_Thai } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { IBM_Plex_Sans_Thai, Prompt } from "next/font/google";
 import "./globals.css";
 
-const notoThai = Noto_Sans_Thai({
+const body = IBM_Plex_Sans_Thai({
   variable: "--font-thai",
+  weight: ["400", "500", "600", "700"],
   subsets: ["thai", "latin"],
 });
+
+const display = Prompt({
+  variable: "--font-display",
+  weight: ["500", "600", "700"],
+  subsets: ["thai", "latin"],
+});
+
+export const viewport: Viewport = {
+  themeColor: "#0b1220",
+};
 
 export const metadata: Metadata = {
   title: "ก๊วนแบดกบินทร์บุรี",
@@ -16,9 +27,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="th"
-      className={`${notoThai.variable} h-full antialiased`}
+      className={`${body.variable} ${display.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">{children}</body>
+      <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );
 }
