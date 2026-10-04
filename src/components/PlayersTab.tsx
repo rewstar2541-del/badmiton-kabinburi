@@ -4,7 +4,8 @@ import { useRef, useState } from "react";
 import { resizeToSquare } from "@/lib/image";
 import { today, useStore } from "@/lib/store";
 import { DEFAULT_LEVEL, LEVELS, isMonthlyPaid, type Gender, type Level, type Player } from "@/lib/types";
-import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, inputClass } from "./ui";
+import { Avatar, Button, Card, Icon, LevelBadge, SearchInput, SectionTitle, inputClass } from "./ui";
+import { cameSince, daysBefore, visibleRoster } from "@/lib/roster";
 import { t } from "@/lib/i18n";
 
 const GENDERS: { value: Gender; label: string }[] = [
@@ -172,7 +173,15 @@ export function PlayersTab() {
   const [editing, setEditing] = useState<string | null>(null);
   const date = today();
   const pending = state.players.filter((p) => p.pending);
-  const players = state.players.filter((p) => !p.pending).sort((a, b) => a.name.localeCompare(b.name, "th"));
+  const all = state.players.filter((p) => !p.pending);
+  const [q, setQ] = useState("");
+  const [showAll, setShowAll] = useState(false);
+  // ปกติแสดงคนที่มาเล่นใน 60 วันล่าสุด คนที่หายไปนานซ่อนไว้ ค้นหาหรือกดแสดงทั้งหมดได้
+  const recent = cameSince(state.days, daysBefore(date, 60));
+  const players = visibleRoster(all, q, (p) => showAll || recent.has(p.id) || editing === p.id).sort((a, b) =>
+    a.name.localeCompare(b.name, "th"),
+  );
+  const hidden = q.trim() ? 0 : all.length - players.length;
 
   return (
     <div className="space-y-4">
@@ -182,7 +191,8 @@ export function PlayersTab() {
         <PlayerForm onSave={(player) => dispatch({ type: "addPlayer", player })} />
       </Card>
 
-      <SectionTitle right={t("{n} คน", { n: players.length })}>{t("ผู้เล่นทั้งหมด")}</SectionTitle>
+      <SectionTitle right={t("{n} คน", { n: all.length })}>{t("ผู้เล่นทั้งหมด")}</SectionTitle>
+      <SearchInput value={q} onChange={setQ} />
       <ul className="space-y-2">
         {players.map((p) => (
           <li key={p.id}>
@@ -258,6 +268,11 @@ export function PlayersTab() {
           </li>
         ))}
       </ul>
+      {hidden > 0 && (
+        <button className="w-full text-center text-sm font-semibold text-zinc-600 underline" onClick={() => setShowAll(true)}>
+          {t("แสดงคนที่ไม่ได้มาเกิน 60 วัน ({n} คน)", { n: hidden })}
+        </button>
+      )}
     </div>
   );
 }

@@ -224,3 +224,12 @@ export const Icon = {
     </Svg>
   ),
 };
+
+export function SearchInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="relative">
+      <Icon.Search className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-zinc-400" width={18} height={18} />
+      <input className={`${inputClass} pl-11`} placeholder={t("ค้นหาชื่อเล่น")} value={value} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}

@@ -7,7 +7,8 @@ import { useStore, useToday } from "@/lib/store";
 import { badgesFor, monthSummary } from "@/lib/stats";
 import { monthOf, type Player } from "@/lib/types";
 import { savedPin } from "./PickMe";
-import { Avatar, Button, Card, Icon, SectionTitle, baht } from "./ui";
+import { Avatar, Button, Card, Icon, SearchInput, SectionTitle, baht } from "./ui";
+import { cameSince, daysBefore, visibleRoster } from "@/lib/roster";
 
 const MAX = 5;
 type Pref = "prefer" | "avoid" | null;
@@ -22,7 +23,15 @@ export function PartnerPrefs({ player }: { player: Player }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const byId = new Map(state.players.map((p) => [p.id, p]));
-  const others = state.players.filter((p) => p.id !== player.id).sort((a, b) => a.name.localeCompare(b.name, "th"));
+  const [q, setQ] = useState("");
+  const { date } = useToday();
+  // แสดงคนที่เลือกไว้และคนที่มาเล่นช่วง 30 วันล่าสุด คนอื่นค้นหาชื่อ
+  const recent = cameSince(state.days, daysBefore(date, 30));
+  const others = visibleRoster(
+    state.players.filter((p) => p.id !== player.id && !p.pending && !p.guestOf),
+    q,
+    (p) => recent.has(p.id) || prefer.includes(p.id) || avoid.includes(p.id),
+  ).sort((a, b) => a.name.localeCompare(b.name, "th"));
   const prefOf = (id: string): Pref => (prefer.includes(id) ? "prefer" : avoid.includes(id) ? "avoid" : null);
 
   // แตะวนสามสถานะ: ไม่ระบุ → อยากจับคู่ → ไม่อยากเจอ → ไม่ระบุ
@@ -82,6 +91,7 @@ export function PartnerPrefs({ player }: { player: Player }) {
         ) : (
           <>
             <p className="text-xs text-zinc-500">{t("แตะชื่อเพื่อเปลี่ยน: ไม่ระบุ → อยากจับคู่ → ไม่อยากเจอ (สูงสุดอย่างละ 5 คน)")}</p>
+            <SearchInput value={q} onChange={setQ} />
             <ul className="grid grid-cols-2 gap-1.5">
               {others.map((p) => {
                 const pref = prefOf(p.id);

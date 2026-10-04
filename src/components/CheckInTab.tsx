@@ -8,6 +8,7 @@ import { AdminAddGuest } from "./Guests";
 import { PlayerForm } from "./PlayersTab";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
+import { visibleRoster } from "@/lib/roster";
 
 export function CheckInTab() {
   const { state, dispatch } = useStore();
@@ -21,11 +22,14 @@ export function CheckInTab() {
   const signed = new Set(day.signups?.map((s) => s.playerId));
   // ยังไม่เช็คอินขึ้นก่อน ในนั้นคนที่ลงชื่อไว้ขึ้นก่อน
   const rank = (id: string) => (checked.has(id) ? 2 : signed.has(id) ? 0 : 1);
-  const list = state.players
-    // แขกที่ไม่ได้มาวันนี้ และคนที่ยังรออนุมัติ ไม่ต้องแสดง
-    .filter((p) => !p.pending && (!p.guestOf || checked.has(p.id)))
-    .filter((p) => p.name.toLowerCase().includes(q.trim().toLowerCase()))
-    .sort((a, b) => rank(a.id) - rank(b.id) || a.name.localeCompare(b.name, "th"));
+  // แขกที่ไม่ได้มาวันนี้ และคนที่ยังรออนุมัติ ไม่ต้องแสดง
+  const roster = state.players.filter((p) => !p.pending && (!p.guestOf || checked.has(p.id)));
+  // ปกติแสดงแค่คนที่ลงชื่อหรือเช็คอินวันนี้ คนอื่นพิมพ์ชื่อค้นหา
+  const list = visibleRoster(roster, q, (p) => checked.has(p.id) || signed.has(p.id)).sort(
+    (a, b) => rank(a.id) - rank(b.id) || a.name.localeCompare(b.name, "th"),
+  );
+  const hidden = !q.trim() && list.length < roster.length;
+  const members = state.players.filter((p) => !p.pending && !p.guestOf).length;
 
   return (
     <div className="space-y-4">
@@ -35,7 +39,7 @@ export function CheckInTab() {
           {t("มีคนสมัครใหม่รออนุมัติ {n} คน ดูที่หน้าผู้เล่น", { n: waiting })}
         </p>
       )}
-      <SectionTitle right={t("{a}/{b} คน", { a: checked.size, b: state.players.length }) + (signed.size ? ` · ${t("ลงชื่อ {n}", { n: signed.size })}` : "")}>
+      <SectionTitle right={t("{a}/{b} คน", { a: checked.size, b: members }) + (signed.size ? ` · ${t("ลงชื่อ {n}", { n: signed.size })}` : "")}>
         {t("เช็คอินวันนี้")}
       </SectionTitle>
 
@@ -100,7 +104,14 @@ export function CheckInTab() {
           );
         })}
       </ul>
-      {list.length === 0 && (
+      {hidden && (
+        <p className="px-1 text-center text-sm text-zinc-500">
+          {list.length === 0
+            ? t("ยังไม่มีใครลงชื่อหรือเช็คอินวันนี้ พิมพ์ชื่อด้านบนเพื่อเช็คอินให้")
+            : t("แสดงเฉพาะคนที่ลงชื่อหรือมาวันนี้ คนอื่นพิมพ์ชื่อค้นหา")}
+        </p>
+      )}
+      {!hidden && list.length === 0 && (
         <Card className="py-10 text-center text-sm text-zinc-500">
           {state.players.length === 0 ? t("ยังไม่มีผู้เล่น กดปุ่ม + เพื่อลงทะเบียน") : t("ไม่พบชื่อที่ค้นหา")}
         </Card>

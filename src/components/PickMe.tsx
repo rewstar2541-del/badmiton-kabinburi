@@ -8,6 +8,7 @@ import { useStore } from "@/lib/store";
 import { PlayerForm } from "./PlayersTab";
 import { Avatar, Button, Card, Icon, SectionTitle, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
+import { visibleRoster } from "@/lib/roster";
 
 /** ผู้เล่นที่ล็อกอินบนเครื่องนี้ (ต้องล็อกอินด้วย PIN ก่อน คนอื่นจึงเปิดดูบัญชีเราไม่ได้) */
 export function useMe() {
@@ -30,7 +31,10 @@ export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: s
   const [q, setQ] = useState("");
   const [registering, setRegistering] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
-  const list = state.players.filter((p) => !p.guestOf && !p.pending && p.name.toLowerCase().includes(q.trim().toLowerCase()));
+  const members = state.players.filter((p) => !p.guestOf && !p.pending);
+  // ก๊วนใหญ่ไม่แสดงรายชื่อทั้งหมด ให้พิมพ์ชื่อตัวเองค้นหา
+  const list = visibleRoster(members, q, () => false);
+  const mustSearch = !q.trim() && list.length < members.length;
   if (registering) return <Register onCancel={() => setRegistering(false)} />;
   const pickedPlayer = state.players.find((p) => p.id === picked);
   if (pickedPlayer) return <Login player={pickedPlayer} onDone={() => onPick(pickedPlayer.id)} onCancel={() => setPicked(null)} />;
@@ -71,6 +75,8 @@ export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: s
           </li>
         ))}
       </ul>
+      {mustSearch && <p className="px-1 text-center text-sm text-zinc-500">{t("พิมพ์ชื่อของคุณเพื่อค้นหา")}</p>}
+      {!mustSearch && list.length === 0 && <p className="px-1 text-center text-sm text-zinc-500">{t("ไม่พบชื่อที่ค้นหา")}</p>}
       <Button variant="primary" className="w-full" onClick={() => setRegistering(true)}>
         {t("มาครั้งแรก ยังไม่มีชื่อ? สมัครเลย")}
       </Button>

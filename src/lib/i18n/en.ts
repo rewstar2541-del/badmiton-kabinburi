@@ -377,4 +377,9 @@ export const en: Record<string, string> = {
   "กรุณาเข้าสู่ระบบด้วย LINE ใหม่": "Please sign in with LINE again",
   "บัญชี LINE นี้ผูกกับผู้เล่นคนอื่นแล้ว": "This LINE account is already linked to another player",
   "ยังไม่ได้ตั้งค่า LINE Login ใน Supabase": "LINE Login isn't set up in Supabase yet",
+  "แสดงเฉพาะคนที่จ่ายแล้วหรือมาเล่นเดือนนี้ อีก {n} คนพิมพ์ชื่อค้นหา": "Showing only people who paid or played this month. Search to find the other {n}",
+  "ยังไม่มีใครลงชื่อหรือเช็คอินวันนี้ พิมพ์ชื่อด้านบนเพื่อเช็คอินให้": "No one has signed up or checked in today. Type a name above to check someone in",
+  "แสดงเฉพาะคนที่ลงชื่อหรือมาวันนี้ คนอื่นพิมพ์ชื่อค้นหา": "Showing only today's sign-ups and arrivals. Search to find others",
+  "พิมพ์ชื่อของคุณเพื่อค้นหา": "Type your name to find yourself",
+  "แสดงคนที่ไม่ได้มาเกิน 60 วัน ({n} คน)": "Show people who haven't come in 60+ days ({n})",
 };

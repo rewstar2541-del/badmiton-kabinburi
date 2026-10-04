@@ -8,7 +8,8 @@ import { monthOf, type Player } from "@/lib/types";
 import { ExportReport } from "./ExportReport";
 import { PayQr } from "./PayQr";
 import { SlipReview } from "./Slips";
-import { Avatar, Button, Card, Icon, SectionTitle, Sheet, baht, inputClass } from "./ui";
+import { Avatar, Button, Card, Icon, SearchInput, SectionTitle, Sheet, baht, inputClass } from "./ui";
+import { visibleRoster } from "@/lib/roster";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -216,13 +217,18 @@ function MonthlyView() {
   const { date } = useToday();
   const [month, setMonth] = useState(monthOf(date));
   const [payFor, setPayFor] = useState<Player | null>(null);
+  const [q, setQ] = useState("");
   const paid = state.monthly[month] ?? {};
   const fee = state.settings.monthlyFee;
 
-  const players = state.players.filter((p) => !p.guestOf && !p.pending).sort(
+  const members = state.players.filter((p) => !p.guestOf && !p.pending);
+  const count = members.filter((p) => paid[p.id]).length;
+  // แสดงคนที่จ่ายแล้วหรือมาเล่นในเดือนนี้ คนอื่นค้นหาชื่อ
+  const came = new Set(state.days.filter((d) => monthOf(d.date) === month).flatMap((d) => d.checkIns.map((c) => c.playerId)));
+  const players = visibleRoster(members, q, (p) => Boolean(paid[p.id]) || came.has(p.id)).sort(
     (a, b) => Number(Boolean(paid[b.id])) - Number(Boolean(paid[a.id])) || a.name.localeCompare(b.name, "th"),
   );
-  const count = players.filter((p) => paid[p.id]).length;
+  const hidden = members.length - players.length;
 
   return (
     <>
@@ -255,6 +261,10 @@ function MonthlyView() {
         {t("คนที่จ่ายเดือนนี้แล้ว ระบบไม่คิดค่าสนามรายวันให้อัตโนมัติ ถ้าบันทึกผิด แตะเพื่อแก้ได้เลย")}
       </p>
 
+      <SearchInput value={q} onChange={setQ} />
+      {!q.trim() && hidden > 0 && (
+        <p className="px-1 text-xs text-zinc-500">{t("แสดงเฉพาะคนที่จ่ายแล้วหรือมาเล่นเดือนนี้ อีก {n} คนพิมพ์ชื่อค้นหา", { n: hidden })}</p>
+      )}
       <ul className="space-y-2">
         {players.map((p) => {
           const at = paid[p.id];
@@ -287,7 +297,9 @@ function MonthlyView() {
             </li>
           );
         })}
-        {players.length === 0 && <Card className="py-10 text-center text-sm text-zinc-500">{t("ยังไม่มีผู้เล่น")}</Card>}
+        {players.length === 0 && (
+          <Card className="py-10 text-center text-sm text-zinc-500">{members.length ? t("ไม่พบชื่อที่ค้นหา") : t("ยังไม่มีผู้เล่น")}</Card>
+        )}
       </ul>
 
       {payFor && (
