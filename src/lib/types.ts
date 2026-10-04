@@ -21,6 +21,8 @@ export const DEFAULT_LEVEL: Level = 3;
 
 export type Gender = "male" | "female" | "other";
 
+export type Plan = "daily" | "monthly";
+
 export interface Player {
   id: string;
   /** ชื่อเล่น */
@@ -38,6 +40,8 @@ export interface Player {
   guestOf?: string;
   /** สมัครเองแล้ว รอแอดมินอนุมัติ ยังลงชื่อ/เช็คอินไม่ได้ */
   pending?: boolean;
+  /** สมาชิกรายวันหรือรายเดือน (ไม่มี = ยังไม่ได้เลือก) */
+  plan?: Plan;
 }
 
 /** เดือน (YYYY-MM) -> ผู้เล่น -> เวลาที่จ่ายค่าสมาชิกรายเดือน */

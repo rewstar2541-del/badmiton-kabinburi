@@ -1,10 +1,12 @@
 "use client";
 
-import { Fragment, useState, type ComponentType, type SVGProps } from "react";
+import { Fragment, useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { waitingQueue } from "@/lib/matchmaking";
 import { StoreProvider, useStore, useToday } from "@/lib/store";
 import { BillingTab } from "./BillingTab";
 import { FirstAdminCard } from "./PickMe";
+import { readSession } from "@/lib/session";
+import { monthlyDue } from "./Membership";
 import { MyBillTab } from "./MyBillTab";
 import { CheckInTab } from "./CheckInTab";
 import { CourtsTab } from "./CourtsTab";
@@ -163,12 +165,24 @@ function Header() {
 }
 
 function Shell() {
-  const { auth, ready, error } = useStore();
+  const { auth, ready, error, state } = useStore();
+  const { date } = useToday();
   const lang = useLang();
   // เข้าด้วย LINE แล้วเป็นแอดมิน เมนูแอดมินจะขึ้นเอง
   const tabs = auth.isAdmin ? ADMIN_TABS : PLAYER_TABS;
   const [picked, setTab] = useState<TabId>(tabs[0].id);
   const tab = tabs.some((t) => t.id === picked) ? picked : tabs[0].id;
+  // ปุ่มในหน้าต่างๆ สั่งเปลี่ยนแท็บได้ (เช่น แจ้งเตือนจ่ายรายเดือน -> ยอดของฉัน)
+  useEffect(() => {
+    const go = (e: Event) => {
+      setTab((e as CustomEvent<TabId>).detail);
+      window.scrollTo({ top: 0 });
+    };
+    window.addEventListener("goto-tab", go);
+    return () => window.removeEventListener("goto-tab", go);
+  }, []);
+  // จุดแดงที่ "ยอดของฉัน" เมื่อยังไม่จ่ายค่ารายเดือน
+  const billDot = !auth.isAdmin && monthlyDue(state, state.players.find((p) => p.id === readSession()?.playerId), date);
 
   if (!ready)
     return (
@@ -216,7 +230,12 @@ function Shell() {
                   active ? "bg-lime text-ink" : "text-white/60 active:text-white"
                 }`}
               >
-                <item.icon width={20} height={20} strokeWidth={active ? 2.4 : 2} />
+                <span className="relative">
+                  <item.icon width={20} height={20} strokeWidth={active ? 2.4 : 2} />
+                  {item.id === "mybill" && billDot && (
+                    <span className="absolute -top-1 -right-1.5 size-2.5 rounded-full bg-amber-400 ring-2 ring-ink" aria-label={t("ยังไม่จ่ายค่ารายเดือน")} />
+                  )}
+                </span>
                 {t(item.label)}
               </button>
             );

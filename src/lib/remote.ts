@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Action, SelfAction, State } from "./state";
-import { DEFAULT_SETTINGS, type Day, type Game, type Gender, type Level, type MonthlyPayments, type Player, type Settings } from "./types";
+import { DEFAULT_SETTINGS, type Day, type Game, type Gender, type Level, type MonthlyPayments, type Plan, type Player, type Settings } from "./types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -21,6 +21,7 @@ export interface Rows {
     avoid?: string[] | null;
     guest_of?: string | null;
     pending?: boolean | null;
+    plan?: string | null;
   }[];
   checkins: {
     date: string;
@@ -74,6 +75,7 @@ export function rowsToState(r: Rows): State {
     ...(p.avoid?.length ? { avoid: p.avoid } : {}),
     ...(p.guest_of ? { guestOf: p.guest_of } : {}),
     ...(p.pending ? { pending: true } : {}),
+    ...(p.plan === "daily" || p.plan === "monthly" ? { plan: p.plan } : {}),
   }));
 
   const days = new Map<string, Day>();
@@ -187,7 +189,7 @@ export const TABLE_OF: Record<string, TableKey> = {
 export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iterable<TableKey>, prev?: Rows): Promise<Rows> {
   const since = isAdmin ? "2000-01-01" : sinceDate(PLAYER_HISTORY_DAYS);
   const fetchers: { [K in TableKey]: () => Promise<Rows[K]> } = {
-    players: () => all(() => db.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of,pending").order("id")),
+    players: () => all(() => db.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of,pending,plan").order("id")),
     checkins: () => all(() => db.from("checkins").select("date,player_id,at,paid_at,resting,court_fee,shuttle_fee").gte("date", since).order("date").order("player_id")),
     games: () => all(() => db.from("games").select("id,date,court,player_ids,started_at,ended_at,shuttles,winner").gte("date", since).order("id")),
     // ค่าน้ำ ค่ารายเดือน และสลิป ผู้เล่นทั่วไปอ่านไม่ได้ (โหลดของตัวเองแยกผ่าน my_private)
@@ -236,6 +238,7 @@ function playerRow(p: Omit<Player, "id"> & { id: string }) {
     avoid: p.avoid ?? [],
     guest_of: p.guestOf ?? null,
     pending: p.pending ?? false,
+    plan: p.plan ?? null,
   };
 }
 
@@ -451,6 +454,13 @@ export async function addGuest(db: SupabaseClient, hostId: string, pin: string, 
 
 export async function setPartnerPrefs(db: SupabaseClient, playerId: string, pin: string, prefer: string[], avoid: string[]) {
   const { data, error } = await db.rpc("set_partner_prefs", { p_player: playerId, p_pin: pin, p_prefer: prefer, p_avoid: avoid });
+  if (error) return error.message;
+  return (data as string | null) ?? null;
+}
+
+/** ผู้เล่นเลือกเป็นสมาชิกรายวันหรือรายเดือน */
+export async function setMyPlan(db: SupabaseClient, playerId: string, pin: string, plan: Plan) {
+  const { data, error } = await db.rpc("set_my_plan", { p_player: playerId, p_pin: pin, p_plan: plan });
   if (error) return error.message;
   return (data as string | null) ?? null;
 }
