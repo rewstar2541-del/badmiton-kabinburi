@@ -525,4 +525,9 @@ export const en: Record<string, string> = {
   "พิมพ์ในกลุ่ม LINE ภายใน 15 นาที:": "Type this in the LINE group within 15 minutes:",
   "เปลี่ยนกลุ่ม LINE (ขอรหัสเชื่อม)": "Change LINE group (get a link code)",
   "ขอรหัสเชื่อมกลุ่ม": "Get a group link code",
+  "อยากคู่": "Partner",
+  "ไม่อยากคู่": "Avoid",
+  "ค้นหาชื่อ แล้วกด อยากคู่ หรือ ไม่อยากคู่ (สูงสุดอย่างละ 5 คน) กดซ้ำเพื่อเอาออก": "Search a name, then tap Partner or Avoid (up to 5 each). Tap again to remove.",
+  "คู่ที่อยากเล่นด้วย / ไม่อยากคู่ด้วย": "Preferred / avoided partners",
+  "ไม่อยากคู่ด้วย (จะไม่จัดลงเกมเดียวกัน)": "Avoid (won't be put in the same game)",
 };

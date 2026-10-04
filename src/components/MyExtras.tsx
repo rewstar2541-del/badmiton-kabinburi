@@ -30,17 +30,16 @@ export function PartnerPrefs({ player }: { player: Player }) {
     .sort((a, b) => a.name.localeCompare(b.name, "th"));
   const prefOf = (id: string): Pref => (prefer.includes(id) ? "prefer" : avoid.includes(id) ? "avoid" : null);
 
-  // แตะวนสามสถานะ: ไม่ระบุ → อยากจับคู่ → ไม่อยากเจอ → ไม่ระบุ
-  const cycle = (id: string) => {
-    const now = prefOf(id);
-    setPrefer((l) => l.filter((x) => x !== id));
-    setAvoid((l) => l.filter((x) => x !== id));
-    if (now === null) {
-      if (prefer.length >= MAX) return setError(t("เลือกได้ไม่เกิน 5 คน"));
-      setPrefer((l) => [...l, id]);
-    } else if (now === "prefer") {
-      if (avoid.length >= MAX) return setError(t("เลือกได้ไม่เกิน 5 คน"));
-      setAvoid((l) => [...l, id]);
+  // เลือกได้ทีละแบบต่อคน: อยากจับคู่ หรือ ไม่อยากคู่ด้วย กดซ้ำเพื่อเอาออก
+  const toggle = (id: string, kind: "prefer" | "avoid") => {
+    const list = kind === "prefer" ? prefer : avoid;
+    const set = kind === "prefer" ? setPrefer : setAvoid;
+    const other = kind === "prefer" ? setAvoid : setPrefer;
+    if (list.includes(id)) set((l) => l.filter((x) => x !== id));
+    else {
+      if (list.length >= MAX) return setError(t("เลือกได้ไม่เกิน 5 คน"));
+      other((l) => l.filter((x) => x !== id));
+      set((l) => [...l, id]);
     }
     setError("");
   };
@@ -60,7 +59,7 @@ export function PartnerPrefs({ player }: { player: Player }) {
 
   return (
     <>
-      <SectionTitle>{t("คู่ที่อยากเล่นด้วย")}</SectionTitle>
+      <SectionTitle>{t("คู่ที่อยากเล่นด้วย / ไม่อยากคู่ด้วย")}</SectionTitle>
       <Card className="space-y-3">
         {!editing ? (
           <>
@@ -69,7 +68,7 @@ export function PartnerPrefs({ player }: { player: Player }) {
               {chips(player.prefer ?? [], "bg-emerald-50 text-emerald-700")}
             </div>
             <div className="space-y-1.5">
-              <div className="text-xs font-semibold text-red-600">{t("ไม่อยากเจอในเกมเดียวกัน")}</div>
+              <div className="text-xs font-semibold text-red-600">{t("ไม่อยากคู่ด้วย (จะไม่จัดลงเกมเดียวกัน)")}</div>
               {chips(player.avoid ?? [], "bg-red-50 text-red-600")}
             </div>
             <p className="text-xs text-zinc-500">{t("ระบบจัดคู่จะพยายามทำตาม แต่ถ้าคนรอไม่พอ อาจต้องจัดรวมกัน")}</p>
@@ -86,28 +85,26 @@ export function PartnerPrefs({ player }: { player: Player }) {
           </>
         ) : (
           <>
-            <p className="text-xs text-zinc-500">{t("แตะชื่อเพื่อเปลี่ยน: ไม่ระบุ → อยากจับคู่ → ไม่อยากเจอ (สูงสุดอย่างละ 5 คน)")}</p>
+            <p className="text-xs text-zinc-500">{t("ค้นหาชื่อ แล้วกด อยากคู่ หรือ ไม่อยากคู่ (สูงสุดอย่างละ 5 คน) กดซ้ำเพื่อเอาออก")}</p>
             <SearchInput value={q} onChange={setQ} placeholder={t("พิมพ์ชื่อคนที่จะเลือก")} />
-            <ul className="grid grid-cols-2 gap-1.5">
+            <ul className="space-y-1.5">
               {others.map((p) => {
                 const pref = prefOf(p.id);
                 return (
-                  <li key={p.id}>
+                  <li key={p.id} className="flex items-center gap-2 rounded-2xl bg-zinc-100 px-2 py-1.5 text-sm">
+                    <Avatar name={p.name} photo={p.photo} size={24} />
+                    <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
                     <button
-                      onClick={() => cycle(p.id)}
-                      className={`flex w-full items-center gap-2 rounded-2xl px-2 py-1.5 text-left text-sm ${
-                        pref === "prefer"
-                          ? "bg-emerald-100 text-emerald-800"
-                          : pref === "avoid"
-                            ? "bg-red-100 text-red-700"
-                            : "bg-zinc-100"
-                      }`}
+                      onClick={() => toggle(p.id, "prefer")}
+                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${pref === "prefer" ? "bg-emerald-600 text-white" : "bg-white text-emerald-700"}`}
                     >
-                      <Avatar name={p.name} photo={p.photo} size={24} />
-                      <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
-                      <span className="text-[10px] font-semibold">
-                        {pref === "prefer" ? t("คู่") : pref === "avoid" ? t("เลี่ยง") : ""}
-                      </span>
+                      {t("อยากคู่")}
+                    </button>
+                    <button
+                      onClick={() => toggle(p.id, "avoid")}
+                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${pref === "avoid" ? "bg-red-600 text-white" : "bg-white text-red-600"}`}
+                    >
+                      {t("ไม่อยากคู่")}
                     </button>
                   </li>
                 );
