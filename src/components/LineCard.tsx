@@ -7,9 +7,6 @@ import { Button, Card } from "./ui";
 import { t } from "@/lib/i18n";
 
 /** แจ้งเตือนเข้ากลุ่ม LINE ของก๊วน: มีคนลงชื่อ และถึงคิวลงสนาม */
-/** พักระบบแจ้งเตือน LINE ไว้ก่อน (Rew 2026-10-04: เสียเงิน) เปลี่ยนเป็น true เพื่อแสดงการ์ดตั้งค่าอีกครั้ง */
-export const LINE_NOTIFY_ENABLED = false;
-
 export function LineCard() {
   const { auth } = useStore();
   const [s, setS] = useState<LineSettings | null>(null);
@@ -39,6 +36,7 @@ export function LineCard() {
       <div>
         <h2 className="font-display font-semibold">{t("แจ้งเตือนกลุ่ม LINE")}</h2>
         <p className="text-xs text-zinc-500">{t("ส่งข้อความเข้ากลุ่ม LINE ของก๊วนเมื่อมีคนลงชื่อ และเมื่อถึงคิวลงสนาม")}</p>
+        <p className="mt-1 text-xs text-amber-700">{t("ปิดไว้ทั้งหมดเป็นค่าเริ่มต้น เปิดเฉพาะที่ต้องการ ถ้าส่งเกินโควตาฟรีของ LINE ต่อเดือนจะเสียเงิน")}</p>
       </div>
       {!auth.online ? (
         <p className="rounded-2xl bg-zinc-50 px-3 py-2.5 text-sm text-zinc-500">{t("ใช้ได้เมื่อแอพเชื่อมฐานข้อมูลออนไลน์แล้ว")}</p>

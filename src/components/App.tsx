@@ -32,8 +32,18 @@ const PLAYER_TABS: Tab[] = [
   { id: "today", label: "วันนี้", icon: Icon.Megaphone },
   { id: "courts", label: "สนาม", icon: Icon.Court },
   { id: "mybill", label: "ยอดของฉัน", icon: Icon.Wallet },
-  { id: "login", label: "แอดมิน", icon: Icon.Settings },
 ];
+
+/** หน้าเข้าสู่ระบบแอดมิน ผู้เล่นทั่วไปไม่เห็น แอดมินเปิดด้วยลิงก์ ?admin */
+const LOGIN_TAB: Tab = { id: "login", label: "แอดมิน", icon: Icon.Settings };
+
+function hasParam(name: string) {
+  try {
+    return new URLSearchParams(window.location.search).has(name);
+  } catch {
+    return false;
+  }
+}
 
 function LangSwitch() {
   const lang = useLang();
@@ -131,7 +141,9 @@ function Header() {
 function Shell() {
   const { auth, ready, error } = useStore();
   const lang = useLang();
-  const tabs = auth.isAdmin ? ADMIN_TABS : PLAYER_TABS;
+  // คนที่ล็อกอินอีเมลแล้วแต่ยังไม่เป็นแอดมิน หรือเปิดลิงก์ ?admin เท่านั้นที่เห็นหน้าเข้าสู่ระบบแอดมิน
+  const adminEntry = Boolean(auth.email) || hasParam("admin");
+  const tabs = auth.isAdmin ? ADMIN_TABS : adminEntry ? [...PLAYER_TABS, LOGIN_TAB] : PLAYER_TABS;
   const [picked, setTab] = useState<TabId>(tabs[0].id);
   const tab = tabs.some((t) => t.id === picked) ? picked : tabs[0].id;
 
@@ -189,11 +201,7 @@ function Shell() {
 }
 
 function isTv() {
-  try {
-    return new URLSearchParams(window.location.search).has("tv");
-  } catch {
-    return false;
-  }
+  return hasParam("tv");
 }
 
 export function App() {

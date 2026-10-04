@@ -385,4 +385,5 @@ export const en: Record<string, string> = {
   "จะพักหลังจบเกมนี้ ระบบจะข้ามคิวให้": "You'll rest after this game; the queue will skip you",
   "ยกเลิกพัก": "Cancel rest",
   "ขอพักหลังจบเกมนี้": "Rest after this game",
+  "ปิดไว้ทั้งหมดเป็นค่าเริ่มต้น เปิดเฉพาะที่ต้องการ ถ้าส่งเกินโควตาฟรีของ LINE ต่อเดือนจะเสียเงิน": "All off by default. Turn on only what you need; sending beyond LINE's free monthly quota costs money",
 };
