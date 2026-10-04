@@ -14,6 +14,7 @@ import { PlayersTab } from "./PlayersTab";
 import { SettingsTab } from "./SettingsTab";
 import { TodayTab } from "./TodayTab";
 import { TvView } from "./TvView";
+import { QrOnlyPage } from "./PayQr";
 import { APP_NAME } from "@/lib/brand";
 import { Icon } from "./ui";
 import { LANGS, locale, setLang, t, useLang } from "@/lib/i18n";
@@ -283,10 +284,15 @@ function isTv() {
   return hasParam("tv");
 }
 
+function QrRoute() {
+  const { state } = useStore();
+  return <QrOnlyPage promptPayId={state.settings.promptPayId} />;
+}
+
 export function App() {
   return (
     <StoreProvider>
-      <PlayerModeProvider>{isTv() ? <TvView /> : <Shell />}</PlayerModeProvider>
+      <PlayerModeProvider>{hasParam("payqr") ? <QrRoute /> : isTv() ? <TvView /> : <Shell />}</PlayerModeProvider>
     </StoreProvider>
   );
 }

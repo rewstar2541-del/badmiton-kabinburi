@@ -53,12 +53,61 @@ export function PayQr({ promptPayId, amount }: { promptPayId: string; amount: nu
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={preview} alt="PromptPay QR" className="max-h-[70vh] max-w-full rounded-xl" onClick={(e) => e.stopPropagation()} />
           <p className="max-w-xs text-center text-sm text-white">{t("กดค้างที่รูป แล้วเลือก \"บันทึกรูปภาพ\" (หรือแคปหน้าจอ)")}</p>
+          {/* LINE เปิดลิงก์ที่มี openExternalBrowser=1 ใน Chrome / Safari ซึ่งบันทึกไฟล์ได้ */}
+          <a
+            href={externalQrUrl(amount)}
+            className="rounded-full bg-lime px-4 py-2 text-sm font-semibold text-ink"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {t("บันทึกไม่ได้? เปิดใน Chrome / Safari")}
+          </a>
           <button className="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white" onClick={() => setPreview(null)}>
             {t("ปิด")}
           </button>
         </div>,
           document.body,
         )}
+    </div>
+  );
+}
+
+/** หน้า QR อย่างเดียว (ไม่ต้องล็อกอิน) เปิดนอกแอพ LINE เพื่อให้ดาวน์โหลดรูปได้ */
+export function externalQrUrl(amount: number) {
+  return `${window.location.origin}/?payqr=${amount}&openExternalBrowser=1`;
+}
+
+/** หน้าเต็มสำหรับบันทึกรูป QR เปิดจากลิงก์ ?payqr=ยอดเงิน */
+export function QrOnlyPage({ promptPayId }: { promptPayId: string }) {
+  const amount = Number(new URLSearchParams(window.location.search).get("payqr")) || 0;
+  const [src, setSrc] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    if (!isValidPromptPayId(promptPayId)) return;
+    qrImage(promptPayId, amount).then(blobToDataUrl).then(setSrc);
+  }, [promptPayId, amount]);
+  return (
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-white p-6 text-ink">
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="PromptPay QR" className="w-full max-w-xs rounded-xl border border-zinc-200" />
+      ) : (
+        <div className="size-72 animate-pulse rounded-xl bg-zinc-100" />
+      )}
+      <Button
+        variant="primary"
+        disabled={!src}
+        onClick={async () => {
+          await saveQr(promptPayId, amount, true);
+          setDone(true);
+        }}
+      >
+        {t("บันทึกรูป QR")}
+      </Button>
+      <p className="max-w-xs text-center text-sm text-zinc-500">
+        {done
+          ? t("บันทึกแล้ว เปิดแอพธนาคาร เลือกสแกนจากรูปในเครื่อง แล้วกลับไปกด \"ฉันจ่ายแล้ว\" ในแอพก๊วน")
+          : t("ถ้ากดแล้วไม่มีอะไรเกิดขึ้น ให้กดค้างที่รูปแล้วเลือกบันทึกรูปภาพ")}
+      </p>
     </div>
   );
 }
@@ -90,9 +139,9 @@ function inAppBrowser() {
 }
 
 /** บันทึกรูป QR: แชร์/ดาวน์โหลด หรือคืนรูป (data URL) ให้แสดงเต็มจอเมื่อบันทึกเองไม่ได้ */
-async function saveQr(promptPayId: string, amount: number): Promise<string | null> {
+async function saveQr(promptPayId: string, amount: number, forceDownload = false): Promise<string | null> {
   const blob = await qrImage(promptPayId, amount);
-  if (inAppBrowser()) return blobToDataUrl(blob);
+  if (inAppBrowser() && !forceDownload) return blobToDataUrl(blob);
   const file = new File([blob], `promptpay-${amount}.png`, { type: "image/png" });
   // มือถือ (โดยเฉพาะ iPhone) ใช้เมนูแชร์ แล้วกด "บันทึกรูปภาพ"
   if (navigator.canShare?.({ files: [file] })) {

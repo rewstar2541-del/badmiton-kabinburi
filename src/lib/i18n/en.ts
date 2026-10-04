@@ -530,4 +530,7 @@ export const en: Record<string, string> = {
   "ค้นหาชื่อ แล้วกด อยากคู่ หรือ ไม่อยากคู่ (สูงสุดอย่างละ 5 คน) กดซ้ำเพื่อเอาออก": "Search a name, then tap Partner or Avoid (up to 5 each). Tap again to remove.",
   "คู่ที่อยากเล่นด้วย / ไม่อยากคู่ด้วย": "Preferred / avoided partners",
   "ไม่อยากคู่ด้วย (จะไม่จัดลงเกมเดียวกัน)": "Avoid (won't be put in the same game)",
+  "บันทึกไม่ได้? เปิดใน Chrome / Safari": "Can't save? Open in Chrome / Safari",
+  "บันทึกแล้ว เปิดแอพธนาคาร เลือกสแกนจากรูปในเครื่อง แล้วกลับไปกด \"ฉันจ่ายแล้ว\" ในแอพก๊วน": "Saved. Open your bank app, scan from your photos, then go back and tap \"I've paid\" in the club app.",
+  "ถ้ากดแล้วไม่มีอะไรเกิดขึ้น ให้กดค้างที่รูปแล้วเลือกบันทึกรูปภาพ": "If nothing happens, press and hold the image and choose Save image.",
 };
