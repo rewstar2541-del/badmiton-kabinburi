@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { readSession, writeSession } from "@/lib/session";
 import { lineLoginEnabled, readLineTicket, startLineLogin } from "@/lib/lineLogin";
 import type { Player } from "@/lib/types";
@@ -12,7 +12,7 @@ import { visibleRoster } from "@/lib/roster";
 
 /** ผู้เล่นที่ล็อกอินบนเครื่องนี้ (ต้องเข้าด้วย LINE ก่อน คนอื่นจึงเปิดดูบัญชีเราไม่ได้) */
 export function useMe() {
-  const { auth } = useStore();
+  const { auth, state } = useStore();
   const [me, setMeState] = useState<string | null>(() => readSession()?.playerId ?? null);
   const setMe = useCallback(
     (id: string | null) => {
@@ -26,6 +26,13 @@ export function useMe() {
     },
     [auth],
   );
+  // การเข้าสู่ระบบอาจถูกดึงคืนจากคุกกี้สำรองหลังหน้าโหลดแล้ว
+  useEffect(() => {
+    if (!me) {
+      const id = readSession()?.playerId;
+      if (id) setMeState(id);
+    }
+  }, [me, state]);
   return [me, setMe] as const;
 }
 

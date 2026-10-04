@@ -3,7 +3,7 @@
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { isDemo, demoState } from "./demo";
-import { randomToken, readSession, writeSession } from "./session";
+import { randomToken, readSession, remember, restoreRemembered, writeSession } from "./session";
 import { clearLineTicket, handleLineCallback, readLineTicket } from "./lineLogin";
 import { addGuest, claimPlayer, signUpDay, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, removeMySlip, setMyPlan, updateMyProfile, type ProfileInput, supabase } from "./remote";
 import { EMPTY_STATE, guestCheck, prepare, reducer, today, type Intent, type SelfAction, type State } from "./state";
@@ -280,12 +280,22 @@ function RemoteProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // กลับมาจากหน้าเข้าสู่ระบบของ LINE
-    handleLineCallback(db).then((r) => {
+    handleLineCallback(db).then(async (r) => {
       if (r === "redirect") return;
       if (r) setError(t(r));
-      db.auth.getSession().then(({ data }) => check(data.session));
+      // เครื่องลืมการเข้าสู่ระบบ (เช่น Safari ลบข้อมูลเว็บที่ไม่ได้เปิดเกิน 7 วัน) ดึงคืนจากคุกกี้สำรอง
+      const refresh = await restoreRemembered();
+      let { data } = await db.auth.getSession();
+      if (!data.session && refresh) {
+        const r2 = await db.auth.refreshSession({ refresh_token: refresh });
+        if (r2.data.session) data = { session: r2.data.session };
+        else remember({ refresh: "" });
+      } else if (data.session && data.session.refresh_token !== refresh) remember({ refresh: data.session.refresh_token });
+      check(data.session);
     });
     const { data: sub } = db.auth.onAuthStateChange((event, s) => {
+      // refresh token เปลี่ยนทุกครั้งที่ต่ออายุ เก็บตัวล่าสุดไว้ในคุกกี้สำรองด้วย
+      if (s?.refresh_token && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED")) remember({ refresh: s.refresh_token });
       if (event === "SIGNED_IN" || event === "SIGNED_OUT") check(s);
     });
     return () => sub.subscription.unsubscribe();
@@ -431,6 +441,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     // ออกจากระบบทั้งตัวตน LINE (แอดมิน) และบัญชีผู้เล่นบนเครื่องนี้
     signOut: async () => {
       writeSession(null);
+      remember({ refresh: "" });
       clearLineTicket();
       await db.auth.signOut();
     },
