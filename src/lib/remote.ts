@@ -239,3 +239,18 @@ async function importState(db: SupabaseClient, s: State) {
   if (monthly.length) check(await db.from("monthly_payments").upsert(monthly));
   await persist(db, { type: "updateSettings", settings: s.settings });
 }
+
+// ---------- จัดการแอดมิน (เฉพาะแอดมิน) ----------
+
+export async function listAdmins(db: SupabaseClient): Promise<string[]> {
+  const rows = await all<{ email: string }>(db.from("admins").select("email").order("email"));
+  return rows.map((r) => r.email);
+}
+
+export async function addAdmin(db: SupabaseClient, email: string) {
+  check(await db.from("admins").upsert({ email: email.trim().toLowerCase() }, { ignoreDuplicates: true }));
+}
+
+export async function removeAdmin(db: SupabaseClient, email: string) {
+  check(await db.from("admins").delete().eq("email", email));
+}

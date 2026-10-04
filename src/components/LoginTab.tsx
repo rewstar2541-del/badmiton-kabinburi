@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useStore } from "@/lib/store";
+import { AdminsCard } from "./AdminsCard";
 import { Button, Card, Icon, SectionTitle, inputClass } from "./ui";
 
 export function LoginTab() {
@@ -28,6 +29,7 @@ export function LoginTab() {
             ออกจากระบบ
           </Button>
         </Card>
+        {auth.isAdmin && <AdminsCard />}
       </div>
     );
 
