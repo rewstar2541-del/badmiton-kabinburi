@@ -19,7 +19,7 @@ export function MyBillTab() {
   const [me, setMe] = useMe();
   const player = state.players.find((p) => p.id === me);
 
-  if (!player) return <PickMe onPick={setMe} hint={t("เลือกชื่อของคุณเพื่อดูยอดที่ต้องจ่าย เครื่องนี้จะจำไว้ให้")} />;
+  if (!player) return <PickMe onPick={setMe} hint={t("เข้าสู่ระบบครั้งเดียว เครื่องนี้จะจำไว้ แล้วลงชื่อ เช็คอิน และดูยอดของตัวเองได้")} />;
   if (player.pending) return <PendingNotice name={player.name} onNotMe={() => setMe(null)} />;
 
   const checkedIn = day.checkIns.some((c) => c.playerId === player.id);
@@ -48,7 +48,7 @@ export function MyBillTab() {
             setMe(null);
           }}
         >
-          {t("ไม่ใช่ฉัน")}
+          {t("ออกจากระบบ")}
         </button>
       </Card>
 

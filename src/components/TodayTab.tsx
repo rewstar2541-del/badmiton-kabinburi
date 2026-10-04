@@ -24,43 +24,23 @@ export function AnnouncementBanner({ message }: { message: string }) {
   );
 }
 
-/** รายชื่อคนลงชื่อวันนี้ พร้อมสถานะมาถึงแล้ว */
-export function SignupList() {
-  const { state } = useStore();
+/** ยอดคนลงชื่อวันนี้ แสดงเป็นตัวเลข ไม่แสดงชื่อคนอื่น */
+function SignupCount() {
   const { day } = useToday();
-  const byId = new Map(state.players.map((p) => [p.id, p]));
   const checked = new Set(day.checkIns.map((c) => c.playerId));
-  const signups = (day.signups ?? []).filter((s) => byId.has(s.playerId));
+  const signups = day.signups ?? [];
   const arrived = signups.filter((s) => checked.has(s.playerId)).length;
-
   return (
-    <>
-      <SectionTitle right={t("{n} คน · มาแล้ว {m}", { n: signups.length, m: arrived })}>{t("ลงชื่อวันนี้")}</SectionTitle>
-      <Card className="p-2">
-        <ol>
-          {signups.map((s, i) => {
-            const p = byId.get(s.playerId)!;
-            const here = checked.has(p.id);
-            return (
-              <li key={p.id} className="flex items-center gap-3 rounded-2xl px-2 py-2">
-                <span className="w-5 text-center text-xs text-zinc-400">{i + 1}</span>
-                <Avatar name={p.name} photo={p.photo} size={32} />
-                <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
-                <LevelBadge level={p.level} />
-                <span
-                  className={`w-16 rounded-full py-0.5 text-center text-[11px] font-medium ${
-                    here ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"
-                  }`}
-                >
-                  {here ? t("มาแล้ว") : t("ยังไม่มา")}
-                </span>
-              </li>
-            );
-          })}
-          {signups.length === 0 && <li className="py-6 text-center text-sm text-zinc-500">{t("ยังไม่มีคนลงชื่อ")}</li>}
-        </ol>
-      </Card>
-    </>
+    <Card className="grid grid-cols-2 gap-2 text-center">
+      <div>
+        <div className="font-display text-2xl font-semibold">{signups.length}</div>
+        <div className="text-xs text-zinc-500">{t("ลงชื่อวันนี้")}</div>
+      </div>
+      <div>
+        <div className="font-display text-2xl font-semibold">{arrived}</div>
+        <div className="text-xs text-zinc-500">{t("มาแล้ว")}</div>
+      </div>
+    </Card>
   );
 }
 
@@ -77,6 +57,22 @@ export function TodayTab() {
   const announced = day.announcement !== undefined;
   const hereToday = Boolean(player && day.checkIns.some((c) => c.playerId === player.id));
 
+  if (!player)
+    return (
+      <div className="space-y-4">
+        {announced && <AnnouncementBanner message={day.announcement ?? ""} />}
+        <PickMe onPick={setMe} hint={t("เข้าสู่ระบบครั้งเดียว เครื่องนี้จะจำไว้ แล้วลงชื่อ เช็คอิน และดูยอดของตัวเองได้")} />
+      </div>
+    );
+
+  if (player.pending)
+    return (
+      <div className="space-y-4">
+        {announced && <AnnouncementBanner message={day.announcement ?? ""} />}
+        <PendingNotice name={player.name} onNotMe={() => setMe(null)} />
+      </div>
+    );
+
   if (!announced && !hereToday)
     return (
       <div className="space-y-4">
@@ -90,23 +86,6 @@ export function TodayTab() {
           </Card>
         )}
         <ClubCalendar />
-      </div>
-    );
-
-  if (!player)
-    return (
-      <div className="space-y-4">
-        <AnnouncementBanner message={day.announcement ?? ""} />
-        <PickMe onPick={setMe} hint={t("เลือกชื่อของคุณเพื่อลงชื่อและเช็คอิน เครื่องนี้จะจำไว้ให้")} />
-        <ClubCalendar />
-      </div>
-    );
-
-  if (player.pending)
-    return (
-      <div className="space-y-4">
-        <AnnouncementBanner message={day.announcement ?? ""} />
-        <PendingNotice name={player.name} onNotMe={() => setMe(null)} />
       </div>
     );
 
@@ -145,7 +124,7 @@ export function TodayTab() {
             </div>
           </div>
           <button className="text-xs text-zinc-500 underline" onClick={() => setMe(null)}>
-            {t("ไม่ใช่ฉัน")}
+            {t("ออกจากระบบ")}
           </button>
         </div>
 
@@ -177,7 +156,7 @@ export function TodayTab() {
       </Card>
 
       {checkedIn && status !== "home" && !player.guestOf && <BringGuest player={player} pin={pin} />}
-      <SignupList />
+      <SignupCount />
       <ClubCalendar />
     </div>
   );

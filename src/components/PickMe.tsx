@@ -6,7 +6,7 @@ import { lineLoginEnabled, readLineTicket, startLineLogin } from "@/lib/lineLogi
 import type { Player } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { PlayerForm } from "./PlayersTab";
-import { Avatar, Button, Card, Icon, SectionTitle, inputClass } from "./ui";
+import { Avatar, Button, Card, Icon, SearchInput, SectionTitle, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
 import { visibleRoster } from "@/lib/roster";
 
@@ -25,61 +25,105 @@ export const savedPin = {
   get: () => readSession()?.token ?? "",
 };
 
+/**
+ * หน้าเข้าสู่ระบบของผู้เล่น ใช้ทุกเมนู
+ * - มี LINE Login: กดเข้าด้วย LINE ครั้งแรกถ้ายังไม่มีชื่อในก๊วนให้สมัคร ถ้ามีชื่อแล้วผูกกับชื่อเดิมครั้งเดียว
+ * - ไม่มี LINE (หรือเลือกใช้ PIN): พิมพ์ชื่อตัวเองค้นหาแล้วใส่ PIN ไม่แสดงรายชื่อคนอื่นทั้งหมด
+ */
 export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: string }) {
   const { state, auth } = useStore();
   const [ticket] = useState(readLineTicket);
+  const line = lineLoginEnabled && auth.online;
   const [q, setQ] = useState("");
   const [registering, setRegistering] = useState(false);
+  const [usePin, setUsePin] = useState(!line);
+  const [linking, setLinking] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
   const members = state.players.filter((p) => !p.guestOf && !p.pending);
-  // ก๊วนใหญ่ไม่แสดงรายชื่อทั้งหมด ให้พิมพ์ชื่อตัวเองค้นหา
-  const list = visibleRoster(members, q, () => false);
-  const mustSearch = !q.trim() && list.length < members.length;
+  // ไม่แสดงชื่อคนอื่นจนกว่าจะพิมพ์ชื่อตัวเอง
+  const list = q.trim() ? visibleRoster(members, q, () => false).slice(0, 6) : [];
   if (registering) return <Register onCancel={() => setRegistering(false)} />;
   const pickedPlayer = state.players.find((p) => p.id === picked);
   if (pickedPlayer) return <Login player={pickedPlayer} onDone={() => onPick(pickedPlayer.id)} onCancel={() => setPicked(null)} />;
 
+  const search = (
+    <div className="space-y-2">
+      <SearchInput value={q} onChange={setQ} placeholder={t("พิมพ์ชื่อเล่นของคุณ")} />
+      {list.length > 0 && (
+        <ul className="space-y-1.5">
+          {list.map((p) => (
+            <li key={p.id}>
+              <button
+                onClick={() => setPicked(p.id)}
+                className="flex w-full items-center gap-3 rounded-2xl bg-white px-3 py-2 text-left shadow-[0_8px_24px_-14px_rgba(11,18,32,0.25)] active:scale-[0.99]"
+              >
+                <Avatar name={p.name} photo={p.photo} size={32} />
+                <span className="min-w-0 flex-1 truncate font-semibold">{p.name}</span>
+                <span className="text-xs text-zinc-400">{t("นี่คือฉัน")}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {q.trim() && list.length === 0 && <p className="px-1 text-center text-sm text-zinc-500">{t("ไม่พบชื่อที่ค้นหา")}</p>}
+    </div>
+  );
+
+  // กลับมาจาก LINE แล้ว แต่บัญชี LINE นี้ยังไม่ได้ผูกกับชื่อในก๊วน
+  if (ticket)
+    return (
+      <div className="space-y-4">
+        <SectionTitle>{t("สวัสดีคุณ {name}", { name: ticket.name })}</SectionTitle>
+        <Card className="space-y-3">
+          <p className="text-sm text-zinc-600">{t("บัญชี LINE นี้ยังไม่มีชื่อในก๊วน ถ้ามาครั้งแรกให้สมัครก่อน (ทำครั้งเดียว)")}</p>
+          <Button variant="accent" className="w-full" onClick={() => setRegistering(true)}>
+            {t("สมัครครั้งแรก")}
+          </Button>
+          {!linking ? (
+            <button className="w-full text-center text-sm text-zinc-500 underline" onClick={() => setLinking(true)}>
+              {t("เคยมีชื่อในก๊วนแล้ว? ผูกกับชื่อเดิม")}
+            </button>
+          ) : (
+            <>
+              <p className="text-xs text-zinc-500">{t("พิมพ์ชื่อของคุณ แล้วยืนยันด้วย PIN หรือ 4 ตัวท้ายเบอร์โทร ครั้งเดียว")}</p>
+              {search}
+            </>
+          )}
+        </Card>
+      </div>
+    );
+
   return (
     <div className="space-y-4">
-      <SectionTitle>{t("คุณคือใคร?")}</SectionTitle>
-      {ticket ? (
-        <p className="rounded-2xl bg-[#06C755]/10 px-4 py-3 text-sm text-emerald-900">
-          {t("สวัสดีคุณ {name} เลือกชื่อของคุณในก๊วนเพื่อผูกกับ LINE (ทำครั้งเดียว) ถ้ามาครั้งแรกให้กดสมัครด้านล่าง", { name: ticket.name })}
-        </p>
-      ) : (
-        lineLoginEnabled &&
-        auth.online && (
+      <SectionTitle>{t("เข้าสู่ระบบ")}</SectionTitle>
+      <p className="px-1 text-sm text-zinc-500">{hint}</p>
+      {line && (
+        <Card className="space-y-3">
           <button
             onClick={startLineLogin}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#06C755] px-4 py-3 text-sm font-semibold text-white"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#06C755] px-4 py-3.5 font-semibold text-white"
           >
             {t("เข้าสู่ระบบด้วย LINE")}
           </button>
-        )
+          <p className="text-center text-xs text-zinc-500">{t("มาครั้งแรกก็กดปุ่มนี้ แล้วสมัครต่อได้เลย")}</p>
+        </Card>
       )}
-      <p className="px-1 text-sm text-zinc-500">{hint}</p>
-      <div className="relative">
-        <Icon.Search className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-zinc-400" width={18} height={18} />
-        <input className={`${inputClass} pl-11`} placeholder={t("ค้นหาชื่อเล่น")} value={q} onChange={(e) => setQ(e.target.value)} />
-      </div>
-      <ul className="grid grid-cols-3 gap-2">
-        {list.map((p) => (
-          <li key={p.id}>
-            <button
-              onClick={() => setPicked(p.id)}
-              className="flex w-full flex-col items-center gap-1.5 rounded-3xl bg-white p-3 shadow-[0_8px_24px_-14px_rgba(11,18,32,0.25)] active:scale-[0.97]"
-            >
-              <Avatar name={p.name} photo={p.photo} size={44} />
-              <span className="w-full truncate text-sm font-semibold">{p.name}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
-      {mustSearch && <p className="px-1 text-center text-sm text-zinc-500">{t("พิมพ์ชื่อของคุณเพื่อค้นหา")}</p>}
-      {!mustSearch && list.length === 0 && <p className="px-1 text-center text-sm text-zinc-500">{t("ไม่พบชื่อที่ค้นหา")}</p>}
-      <Button variant="primary" className="w-full" onClick={() => setRegistering(true)}>
-        {t("มาครั้งแรก ยังไม่มีชื่อ? สมัครเลย")}
-      </Button>
+      {line && !usePin && (
+        <button className="w-full text-center text-xs text-zinc-500 underline" onClick={() => setUsePin(true)}>
+          {t("ไม่ใช้ LINE? เข้าด้วย PIN")}
+        </button>
+      )}
+      {usePin && (
+        <Card className="space-y-3">
+          {line && <p className="text-sm font-semibold">{t("เข้าด้วย PIN")}</p>}
+          {search}
+          {!line && (
+            <Button variant="primary" className="w-full" onClick={() => setRegistering(true)}>
+              {t("มาครั้งแรก ยังไม่มีชื่อ? สมัครเลย")}
+            </Button>
+          )}
+        </Card>
+      )}
     </div>
   );
 }
@@ -206,7 +250,7 @@ export function PendingNotice({ name, onNotMe }: { name: string; onNotMe: () => 
       <p className="font-semibold">{t("{name} สมัครแล้ว รอแอดมินอนุมัติ", { name })}</p>
       <p className="text-sm text-zinc-500">{t("เมื่ออนุมัติแล้ว หน้านี้จะลงชื่อและเช็คอินได้เอง")}</p>
       <button className="text-xs text-zinc-500 underline" onClick={onNotMe}>
-        {t("ไม่ใช่ฉัน")}
+        {t("ออกจากระบบ")}
       </button>
     </Card>
   );
