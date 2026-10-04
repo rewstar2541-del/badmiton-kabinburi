@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useStore, useToday } from "@/lib/store";
 import { presence } from "@/lib/matchmaking";
+import { BringGuest } from "./Guests";
 import type { SelfAction } from "@/lib/state";
 import { ClosedBanner, ClubCalendar } from "./Calendar";
 import { PickMe, savedPin, useMe } from "./PickMe";
@@ -139,7 +140,7 @@ export function TodayTab() {
           </button>
         </div>
 
-        {(!checkedIn || status === "waiting" || status === "resting") && auth.online && (
+        {status !== "home" && auth.online && (
           <label className="block space-y-1.5 text-sm font-medium">
             {t("เลข 4 ตัวท้ายเบอร์โทรของคุณ")}
             <input
@@ -189,6 +190,7 @@ export function TodayTab() {
         )}
       </Card>
 
+      {checkedIn && status !== "home" && !player.guestOf && <BringGuest player={player} pin={pin} onPinOk={() => savedPin.set(pin)} />}
       <SignupList />
       <ClubCalendar />
     </div>

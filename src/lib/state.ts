@@ -1,5 +1,5 @@
 import { guestsOf, markPaid } from "./billing";
-import { DEFAULT_SETTINGS, type Day, type Game, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
+import { DEFAULT_SETTINGS, type Day, type Game, type Level, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
 
 export interface State {
   players: Player[];
@@ -18,6 +18,8 @@ export type Action =
   | { type: "addPlayer"; player: Omit<Player, "id">; _id: string }
   | { type: "updatePlayer"; player: Player }
   | { type: "removePlayer"; playerId: string }
+  /** เพิ่มแขก (ผู้เล่นที่มี guestOf) แล้วเช็คอินวันนั้นให้ในทีเดียว */
+  | { type: "addGuest"; date: string; hostId: string; name: string; level: Level; _id: string; _at: number }
   | { type: "checkIn"; date: string; playerId: string; _at: number }
   | { type: "undoCheckIn"; date: string; playerId: string }
   | { type: "setResting"; date: string; playerId: string; resting: boolean }
@@ -137,6 +139,10 @@ export function reducer(state: State, a: Action): State {
       }));
     case "removeDrink":
       return withDay(state, a.date, (d) => ({ ...d, drinks: d.drinks.filter((x) => x.id !== a.drinkId) }));
+    case "addGuest": {
+      const s = { ...state, players: [...state.players, { id: a._id, name: a.name, level: a.level, guestOf: a.hostId }] };
+      return withDay(s, a.date, (d) => ({ ...d, checkIns: [...d.checkIns, { playerId: a._id, at: a._at }] }));
+    }
     case "markPaid":
       // จ่ายรวมของแขกที่พามาด้วย
       return { ...state, days: markPaid(state.days, a.date, withGuests(state, a.playerId), a._at) };

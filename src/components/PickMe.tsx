@@ -45,7 +45,7 @@ export const savedPin = {
 export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: string }) {
   const { state } = useStore();
   const [q, setQ] = useState("");
-  const list = state.players.filter((p) => p.name.toLowerCase().includes(q.trim().toLowerCase()));
+  const list = state.players.filter((p) => !p.guestOf && p.name.toLowerCase().includes(q.trim().toLowerCase()));
   return (
     <div className="space-y-4">
       <SectionTitle>{t("คุณคือใคร?")}</SectionTitle>

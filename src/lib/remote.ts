@@ -203,6 +203,9 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       check(await db.from("players").update(playerRow(a.player)).eq("id", a.player.id));
       await saveContact(db, a.player.id, a.player.phone);
       return;
+    case "addGuest":
+      check(await db.from("players").insert({ id: a._id, name: a.name, level: a.level, guest_of: a.hostId }));
+      return check(await db.from("checkins").insert({ date: a.date, player_id: a._id, at: iso(a._at) }));
     case "removePlayer":
       return check(await db.from("players").delete().eq("id", a.playerId));
     case "checkIn":

@@ -13,7 +13,7 @@ const GENDERS: { value: Gender; label: string }[] = [
   { value: "other", label: "ไม่ระบุ" },
 ];
 
-function Segmented<T extends string | number>({
+export function Segmented<T extends string | number>({
   options,
   value,
   onChange,
@@ -197,10 +197,27 @@ export function PlayersTab() {
                       <LevelBadge level={p.level} />
                     </span>
                     <span className="block text-xs text-zinc-500">
-                      {[p.phone, isMonthlyPaid(state.monthly, date, p.id) && t("รายเดือนเดือนนี้")].filter(Boolean).join(" · ") ||
+                      {[
+                        p.guestOf && t("แขกของ {name}", { name: state.players.find((h) => h.id === p.guestOf)?.name ?? "?" }),
+                        p.phone,
+                        isMonthlyPaid(state.monthly, date, p.id) && t("รายเดือนเดือนนี้"),
+                      ].filter(Boolean).join(" · ") ||
                         " "}
                     </span>
                   </span>
+                  {p.guestOf && (
+                    <Button
+                      variant="ghost"
+                      className="px-2 text-xs text-emerald-700"
+                      onClick={() => {
+                        const member = { ...p, guestOf: undefined };
+                        dispatch({ type: "updatePlayer", player: member });
+                        setEditing(p.id);
+                      }}
+                    >
+                      {t("เป็นสมาชิก")}
+                    </Button>
+                  )}
                   <Button variant="ghost" className="px-3" onClick={() => setEditing(p.id)}>
                     {t("แก้ไข")}
                   </Button>

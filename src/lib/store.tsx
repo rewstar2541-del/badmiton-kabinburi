@@ -110,9 +110,7 @@ function LocalProvider({ children }: { children: ReactNode }) {
       const date = today();
       const err = guestCheck(state, date, hostId, name);
       if (err) return err;
-      const a = prepare({ type: "addPlayer", player: { name: name.trim().slice(0, 40), level, guestOf: hostId } });
-      apply(a);
-      if (a.type === "addPlayer") apply(prepare({ type: "checkIn", date, playerId: a._id }));
+      apply(prepare({ type: "addGuest", date, hostId, name: name.trim().slice(0, 40), level }));
       return null;
     },
     [state],

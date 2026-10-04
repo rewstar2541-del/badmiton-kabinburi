@@ -120,7 +120,7 @@ export function SlipReview({ playerId }: { playerId: string }) {
         </div>
       ))}
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
-      <p className="text-xs text-zinc-500">{t("ตรวจยอดเข้าบัญชีให้ตรงก่อนกด \"ได้รับเงินแล้ว\"")}</p>
+      <p className="text-xs text-zinc-500">{t("ตรวจยอดเข้าบัญชีให้ตรงกับสลิป ถ้าไม่ตรงกดยกเลิกสถานะจ่ายแล้ว")}</p>
     </div>
   );
 }

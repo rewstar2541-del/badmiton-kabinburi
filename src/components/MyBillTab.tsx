@@ -6,7 +6,9 @@ import { isMonthlyPaid, monthOf } from "@/lib/types";
 import { PayQr } from "./PayQr";
 import { PickMe, useMe } from "./PickMe";
 import { BadgesCard, MonthCard, PartnerPrefs } from "./MyExtras";
+import { SelfPay } from "./SelfPay";
 import { SlipUpload } from "./Slips";
+import { useState } from "react";
 import { Avatar, Card, Icon, LevelBadge, baht } from "./ui";
 import { t } from "@/lib/i18n";
 
@@ -20,7 +22,7 @@ export function MyBillTab() {
   if (!player) return <PickMe onPick={setMe} hint={t("เลือกชื่อของคุณเพื่อดูยอดที่ต้องจ่าย เครื่องนี้จะจำไว้ให้")} />;
 
   const checkedIn = day.checkIns.some((c) => c.playerId === player.id);
-  const bill = billFor(state.days, day, player, state.settings, state.monthly);
+  const bill = billFor(state.days, day, player, state.settings, state.monthly, state.players);
   const s = state.settings;
   const monthly = isMonthlyPaid(state.monthly, date, player.id);
   const played = day.games.filter((g) => g.playerIds.includes(player.id));
@@ -49,7 +51,7 @@ export function MyBillTab() {
         </button>
       </Card>
 
-      {!checkedIn && bill.carriedOver === 0 ? (
+      {!checkedIn && bill.total === 0 ? (
         <Card className="py-8 text-center text-sm text-zinc-500">{t("วันนี้ยังไม่ได้เช็คอิน")}</Card>
       ) : (
         <>
@@ -66,6 +68,7 @@ export function MyBillTab() {
                 ],
                 [t("ค่าน้ำ"), bill.drinkFee],
                 ...(bill.carriedOver > 0 ? [[t("ค้างจ่ายครั้งก่อน"), bill.carriedOver] as const] : []),
+                ...bill.guests.map((g) => [t("แขก: {name}", { name: g.name }), g.amount] as const),
               ].map(([label, v]) => (
                 <div key={label} className="flex justify-between text-white/80">
                   <span>{label}</span>
@@ -82,7 +85,8 @@ export function MyBillTab() {
             bill.total > 0 && (
               <Card className="flex flex-col items-center gap-2">
                 <PayQr promptPayId={s.promptPayId} amount={bill.total} />
-                <p className="text-center text-xs text-zinc-500">{t("สแกนจ่ายแล้วแนบสลิปไว้ แอดมินจะตรวจและกดรับเงินให้")}</p>
+                <p className="text-center text-xs text-zinc-500">{t("สแกนจ่ายหรือจ่ายเงินสด แล้วกดปุ่มด้านล่าง นับว่าจ่ายทันที")}</p>
+                <SelfPay playerId={player.id} amount={bill.total} action="pay" />
                 <SlipUpload playerId={player.id} amount={bill.total} />
               </Card>
             )
@@ -90,9 +94,35 @@ export function MyBillTab() {
         </>
       )}
 
+      {!monthly && <MonthlyFee playerId={player.id} />}
       <MonthCard player={player} />
       <BadgesCard player={player} />
       <PartnerPrefs key={(player.prefer ?? []).join() + "|" + (player.avoid ?? []).join()} player={player} />
     </div>
+  );
+}
+
+/** สมัคร/จ่ายค่าสมาชิกรายเดือนเอง เดือนนี้ไม่ต้องจ่ายค่าสนามรายวัน */
+function MonthlyFee({ playerId }: { playerId: string }) {
+  const { state } = useStore();
+  const { date } = useToday();
+  const [open, setOpen] = useState(false);
+  const fee = state.settings.monthlyFee;
+  return (
+    <Card className="space-y-3">
+      <button className="flex w-full items-center justify-between text-left" onClick={() => setOpen(!open)}>
+        <span>
+          <span className="block font-display font-semibold">{t("ค่าสมาชิกรายเดือน {month}", { month: monthOf(date) })}</span>
+          <span className="block text-xs text-zinc-500">{t("จ่าย {amount} ไม่ต้องจ่ายค่าสนามทุกครั้งทั้งเดือน", { amount: baht(fee) })}</span>
+        </span>
+        <span className="text-sm text-zinc-400">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div className="flex flex-col items-center gap-2">
+          <PayQr promptPayId={state.settings.promptPayId} amount={fee} />
+          <SelfPay playerId={playerId} amount={fee} action="payMonth" />
+        </div>
+      )}
+    </Card>
   );
 }

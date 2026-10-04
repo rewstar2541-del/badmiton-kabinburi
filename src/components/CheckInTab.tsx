@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useStore, useToday } from "@/lib/store";
 import { isMonthlyPaid } from "@/lib/types";
 import { AnnounceCard } from "./AnnounceCard";
+import { AdminAddGuest } from "./Guests";
 import { PlayerForm } from "./PlayersTab";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
@@ -13,12 +14,15 @@ export function CheckInTab() {
   const { date, day } = useToday();
   const [q, setQ] = useState("");
   const [adding, setAdding] = useState(false);
+  const [addingGuest, setAddingGuest] = useState(false);
 
   const checked = new Set(day.checkIns.map((c) => c.playerId));
   const signed = new Set(day.signups?.map((s) => s.playerId));
   // ยังไม่เช็คอินขึ้นก่อน ในนั้นคนที่ลงชื่อไว้ขึ้นก่อน
   const rank = (id: string) => (checked.has(id) ? 2 : signed.has(id) ? 0 : 1);
   const list = state.players
+    // แขกที่ไม่ได้มาวันนี้ไม่ต้องแสดง
+    .filter((p) => !p.guestOf || checked.has(p.id))
     .filter((p) => p.name.toLowerCase().includes(q.trim().toLowerCase()))
     .sort((a, b) => rank(a.id) - rank(b.id) || a.name.localeCompare(b.name, "th"));
 
@@ -38,6 +42,11 @@ export function CheckInTab() {
           <Icon.Plus width={20} height={20} strokeWidth={2.5} />
         </Button>
       </div>
+
+      <button className="text-sm font-semibold text-zinc-600 underline" onClick={() => setAddingGuest(true)}>
+        {t("+ เพิ่มแขกที่สมาชิกพามา")}
+      </button>
+      {addingGuest && <AdminAddGuest onClose={() => setAddingGuest(false)} />}
 
       {adding && (
         <Card>
@@ -74,6 +83,7 @@ export function CheckInTab() {
                 <span className="w-full truncate font-semibold">{p.name}</span>
                 <span className="flex items-center gap-1.5">
                   <LevelBadge level={p.level} />
+                  {p.guestOf && <span className={`text-[11px] font-medium ${on ? "text-amber-300" : "text-amber-600"}`}>{t("แขก")}</span>}
                   {signed.has(p.id) && !on && <span className="text-[11px] font-medium text-sky-600">{t("ลงชื่อ")}</span>}
                   {isMonthlyPaid(state.monthly, date, p.id) && (
                     <span className={`text-[11px] font-medium ${on ? "text-lime" : "text-emerald-600"}`}>{t("รายเดือน")}</span>
