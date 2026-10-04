@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Action, State } from "./state";
+import type { Action, SelfAction, State } from "./state";
 import { DEFAULT_SETTINGS, type Day, type Game, type Gender, type Level, type MonthlyPayments, type Player, type Settings } from "./types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -26,6 +26,8 @@ export interface Rows {
   }[];
   drinks: { id: string; date: string; player_id: string; amount: number; note: string }[];
   monthly: { month: string; player_id: string; paid_at: string }[];
+  announcements: { date: string; message: string }[];
+  signups: { date: string; player_id: string; at: string }[];
   settings:
     | {
         court_count: number;
@@ -71,7 +73,10 @@ export function rowsToState(r: Rows): State {
       winner: (g.winner as Game["winner"]) ?? undefined,
     });
   for (const x of r.drinks) day(x.date).drinks.push({ id: x.id, playerId: x.player_id, amount: x.amount, note: x.note });
+  for (const a of r.announcements) day(a.date).announcement = a.message;
+  for (const s of r.signups) (day(s.date).signups ??= []).push({ playerId: s.player_id, at: ms(s.at) });
   for (const d of days.values()) {
+    d.signups?.sort((a, b) => a.at - b.at);
     d.checkIns.sort((a, b) => a.at - b.at);
     d.games.sort((a, b) => a.startedAt - b.startedAt);
   }
@@ -106,7 +111,7 @@ async function all<T>(q: PromiseLike<{ data: T[] | null; error: { message: strin
 }
 
 export async function loadRemote(db: SupabaseClient, isAdmin: boolean): Promise<State> {
-  const [players, contacts, checkins, games, drinks, monthly, settings] = await Promise.all([
+  const [players, contacts, checkins, games, drinks, monthly, settings, announcements, signups] = await Promise.all([
     all<Rows["players"][number]>(db.from("players").select("id,name,photo,gender,level").order("name")),
     // เบอร์โทรเห็นเฉพาะแอดมิน
     isAdmin ? all<Rows["contacts"][number]>(db.from("player_contacts").select("player_id,phone")) : Promise.resolve([]),
@@ -117,8 +122,20 @@ export async function loadRemote(db: SupabaseClient, isAdmin: boolean): Promise<
     all<NonNullable<Rows["settings"]>>(
       db.from("settings").select("court_count,court_fee,first_shuttle_fee,next_shuttle_fee,monthly_fee,promptpay_id").eq("id", 1),
     ),
+    all<Rows["announcements"][number]>(db.from("announcements").select("date,message")),
+    all<Rows["signups"][number]>(db.from("signups").select("date,player_id,at")),
   ]);
-  return rowsToState({ players, contacts, checkins, games, drinks, monthly, settings: settings[0] ?? null });
+  return rowsToState({
+    players,
+    contacts,
+    checkins,
+    games,
+    drinks,
+    monthly,
+    settings: settings[0] ?? null,
+    announcements,
+    signups,
+  });
 }
 
 function check(res: { error: { message: string } | null }) {
@@ -201,6 +218,16 @@ export async function persist(db: SupabaseClient, a: Action): Promise<void> {
         }),
       );
     }
+    case "setAnnouncement":
+      return a.message === null
+        ? check(await db.from("announcements").delete().eq("date", a.date))
+        : check(await db.from("announcements").upsert({ date: a.date, message: a.message }));
+    case "signUp":
+      return check(
+        await db.from("signups").upsert({ date: a.date, player_id: a.playerId, at: iso(a._at) }, { ignoreDuplicates: true }),
+      );
+    case "cancelSignUp":
+      return check(await db.from("signups").delete().eq("date", a.date).eq("player_id", a.playerId));
     case "replace":
       return importState(db, a.state);
   }
@@ -238,6 +265,13 @@ async function importState(db: SupabaseClient, s: State) {
   if (drinks.length) check(await db.from("drinks").upsert(drinks));
   if (monthly.length) check(await db.from("monthly_payments").upsert(monthly));
   await persist(db, { type: "updateSettings", settings: s.settings });
+}
+
+/** ผู้เล่นลงชื่อ/เช็คอินเอง ผ่านฟังก์ชันในฐานข้อมูลที่ตรวจเลข 4 ตัวท้ายเบอร์โทร คืนข้อความผิดพลาด หรือ null */
+export async function selfService(db: SupabaseClient, action: SelfAction, playerId: string, pin: string) {
+  const { data, error } = await db.rpc("self_service", { p_player: playerId, p_pin: pin, p_action: action });
+  if (error) return error.message;
+  return (data as string | null) ?? null;
 }
 
 // ---------- จัดการแอดมิน (เฉพาะแอดมิน) ----------

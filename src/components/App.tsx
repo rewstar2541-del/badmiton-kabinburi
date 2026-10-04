@@ -10,9 +10,10 @@ import { CheckInTab } from "./CheckInTab";
 import { CourtsTab } from "./CourtsTab";
 import { PlayersTab } from "./PlayersTab";
 import { SettingsTab } from "./SettingsTab";
+import { TodayTab } from "./TodayTab";
 import { Icon } from "./ui";
 
-type TabId = "checkin" | "courts" | "billing" | "players" | "settings" | "mybill" | "login";
+type TabId = "today" | "checkin" | "courts" | "billing" | "players" | "settings" | "mybill" | "login";
 type Tab = { id: TabId; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> };
 
 const ADMIN_TABS: Tab[] = [
@@ -25,6 +26,7 @@ const ADMIN_TABS: Tab[] = [
 
 /** ผู้เล่นทั่วไปที่เปิดลิงก์ ดูได้อย่างเดียว */
 const PLAYER_TABS: Tab[] = [
+  { id: "today", label: "วันนี้", icon: Icon.Megaphone },
   { id: "courts", label: "สนาม", icon: Icon.Court },
   { id: "mybill", label: "ยอดของฉัน", icon: Icon.Wallet },
   { id: "login", label: "แอดมิน", icon: Icon.Settings },
@@ -94,6 +96,7 @@ function Shell() {
       <Header />
       <main className="mx-auto -mt-2 w-full max-w-3xl flex-1 rounded-t-[28px] bg-background px-4 pt-5 pb-32">
         {error && <div className="mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+        {tab === "today" && <TodayTab />}
         {tab === "checkin" && <CheckInTab />}
         {tab === "courts" && <CourtsTab />}
         {tab === "billing" && <BillingTab />}

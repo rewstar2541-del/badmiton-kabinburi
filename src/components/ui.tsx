@@ -190,6 +190,12 @@ export const Icon = {
       <path d="M12 7v5l3 2" />
     </Svg>
   ),
+  Megaphone: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="m3 11 15-6v14L3 13z" />
+      <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+    </Svg>
+  ),
   X: (p: IconProps) => (
     <Svg {...p}>
       <path d="M18 6 6 18M6 6l12 12" />

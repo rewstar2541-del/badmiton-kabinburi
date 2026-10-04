@@ -1,68 +1,20 @@
 "use client";
 
-import { useState } from "react";
 import { billFor } from "@/lib/billing";
 import { useStore, useToday } from "@/lib/store";
 import { isMonthlyPaid, monthOf } from "@/lib/types";
 import { PayQr } from "./PayQr";
-import { Avatar, Card, Icon, LevelBadge, SectionTitle, baht, inputClass } from "./ui";
-
-const ME_KEY = "badminton-kabinburi:me";
-
-function readMe(): string | null {
-  try {
-    return localStorage.getItem(ME_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function saveMe(id: string | null) {
-  try {
-    if (id) localStorage.setItem(ME_KEY, id);
-    else localStorage.removeItem(ME_KEY);
-  } catch {
-    // ไม่จำก็ได้
-  }
-}
+import { PickMe, useMe } from "./PickMe";
+import { Avatar, Card, Icon, LevelBadge, baht } from "./ui";
 
 /** หน้าสำหรับผู้เล่น: เลือกชื่อตัวเอง แล้วดูยอดที่ต้องจ่ายวันนี้ */
 export function MyBillTab() {
   const { state } = useStore();
   const { date, day } = useToday();
-  const [me, setMe] = useState<string | null>(readMe);
-  const [q, setQ] = useState("");
+  const [me, setMe] = useMe();
   const player = state.players.find((p) => p.id === me);
 
-  if (!player) {
-    const list = state.players.filter((p) => p.name.toLowerCase().includes(q.trim().toLowerCase()));
-    return (
-      <div className="space-y-4">
-        <SectionTitle>คุณคือใคร?</SectionTitle>
-        <p className="px-1 text-sm text-zinc-500">เลือกชื่อของคุณเพื่อดูยอดที่ต้องจ่าย เครื่องนี้จะจำไว้ให้</p>
-        <div className="relative">
-          <Icon.Search className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-zinc-400" width={18} height={18} />
-          <input className={`${inputClass} pl-11`} placeholder="ค้นหาชื่อเล่น" value={q} onChange={(e) => setQ(e.target.value)} />
-        </div>
-        <ul className="grid grid-cols-3 gap-2">
-          {list.map((p) => (
-            <li key={p.id}>
-              <button
-                onClick={() => {
-                  saveMe(p.id);
-                  setMe(p.id);
-                }}
-                className="flex w-full flex-col items-center gap-1.5 rounded-3xl bg-white p-3 shadow-[0_8px_24px_-14px_rgba(11,18,32,0.25)] active:scale-[0.97]"
-              >
-                <Avatar name={p.name} photo={p.photo} size={44} />
-                <span className="w-full truncate text-sm font-semibold">{p.name}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  }
+  if (!player) return <PickMe onPick={setMe} hint="เลือกชื่อของคุณเพื่อดูยอดที่ต้องจ่าย เครื่องนี้จะจำไว้ให้" />;
 
   const checkedIn = day.checkIns.some((c) => c.playerId === player.id);
   const bill = billFor(state.days, day, player, state.settings, state.monthly);
@@ -86,7 +38,6 @@ export function MyBillTab() {
         <button
           className="text-xs text-zinc-500 underline"
           onClick={() => {
-            saveMe(null);
             setMe(null);
           }}
         >

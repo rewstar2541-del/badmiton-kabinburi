@@ -28,6 +28,9 @@ export type Action =
   | { type: "unmarkPaid"; date: string; playerId: string }
   | { type: "setMonthlyPaid"; month: string; playerId: string; paid: boolean; _at: number }
   | { type: "updateSettings"; settings: Settings }
+  | { type: "setAnnouncement"; date: string; message: string | null }
+  | { type: "signUp"; date: string; playerId: string; _at: number }
+  | { type: "cancelSignUp"; date: string; playerId: string }
   | { type: "replace"; state: State };
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
@@ -46,6 +49,9 @@ export function today(): string {
   const pad = (n: number) => n.toString().padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
+
+/** สิ่งที่ผู้เล่นทำเองได้โดยไม่ต้องเป็นแอดมิน */
+export type SelfAction = "signUp" | "cancelSignUp" | "checkIn";
 
 export function prepare(i: Intent, now = Date.now(), id = newId): Action {
   return { ...i, _id: id(), _at: now } as Action;
@@ -115,6 +121,16 @@ export function reducer(state: State, a: Action): State {
     }
     case "updateSettings":
       return { ...state, settings: a.settings };
+    case "setAnnouncement":
+      return withDay(state, a.date, (d) => ({ ...d, announcement: a.message ?? undefined }));
+    case "signUp":
+      return withDay(state, a.date, (d) =>
+        d.signups?.some((x) => x.playerId === a.playerId)
+          ? d
+          : { ...d, signups: [...(d.signups ?? []), { playerId: a.playerId, at: a._at }] },
+      );
+    case "cancelSignUp":
+      return withDay(state, a.date, (d) => ({ ...d, signups: d.signups?.filter((x) => x.playerId !== a.playerId) }));
     case "replace":
       return a.state;
   }
