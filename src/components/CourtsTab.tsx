@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { nextMatch, waitingQueue } from "@/lib/matchmaking";
+import { waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
 import type { Game, Player, Team } from "@/lib/types";
+import { MatchBuilder } from "./MatchBuilder";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle } from "./ui";
 
 function useNow(intervalMs = 15000) {
@@ -44,7 +45,7 @@ function CourtSide({ ids, byId, team }: { ids: string[]; byId: Map<string, Playe
 }
 
 function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, Player>; date: string; now: number }) {
-  const { dispatch } = useStore();
+  const { dispatch, auth } = useStore();
   const end = (winner?: Team) => dispatch({ type: "endGame", date, gameId: game.id, winner });
   const setShuttles = (n: number) => dispatch({ type: "setShuttles", date, gameId: game.id, shuttles: n });
 
@@ -60,7 +61,12 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
           <Icon.Clock width={14} height={14} />
           {minutes(now - game.startedAt)} นาที
         </span>
-        <div className="flex items-center gap-1 rounded-full bg-zinc-100 p-1">
+        {!auth.isAdmin && (
+          <span className="flex items-center gap-1 text-sm font-semibold">
+            <Icon.Shuttle width={16} height={16} /> {game.shuttles} ลูก
+          </span>
+        )}
+        {auth.isAdmin && <div className="flex items-center gap-1 rounded-full bg-zinc-100 p-1">
           <button
             className="grid size-8 place-items-center rounded-full bg-white shadow-sm active:scale-95"
             onClick={() => setShuttles(game.shuttles - 1)}
@@ -79,8 +85,10 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
           >
             <Icon.Plus width={16} height={16} />
           </button>
-        </div>
+        </div>}
       </div>
+      {auth.isAdmin && (
+        <>
 
       <div className="grid grid-cols-2 gap-2">
         <Button variant="accent" onClick={() => end("A")} className="flex items-center justify-center gap-1.5">
@@ -103,23 +111,22 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
           ยกเลิกเกม
         </button>
       </div>
+        </>
+      )}
     </div>
   );
 }
 
 export function CourtsTab() {
-  const { state, dispatch } = useStore();
+  const { state, auth } = useStore();
   const { date, day } = useToday();
+  const [building, setBuilding] = useState<number | null>(null);
   const now = useNow();
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const queue = waitingQueue(day, state.players);
   const courts = Array.from({ length: state.settings.courtCount }, (_, i) => i + 1);
   const active = new Map(day.games.filter((g) => !g.endedAt).map((g) => [g.court, g]));
 
-  const fill = (court: number) => {
-    const teams = nextMatch(day, state.players);
-    if (teams) dispatch({ type: "startGame", date, court, playerIds: teams });
-  };
 
   return (
     <div className="space-y-4">
@@ -142,10 +149,14 @@ export function CourtsTab() {
               </div>
               {g ? (
                 <ActiveCourt game={g} byId={byId} date={date} now={now} />
+              ) : !auth.isAdmin ? (
+                <div className="court-surface flex h-24 items-center justify-center rounded-2xl text-sm font-semibold text-white/80">
+                  ว่าง
+                </div>
               ) : (
                 <button
                   disabled={queue.length < 4}
-                  onClick={() => fill(c)}
+                  onClick={() => setBuilding(c)}
                   className="court-surface flex h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl text-white transition active:scale-[0.99] disabled:opacity-40 disabled:grayscale"
                 >
                   <span className="grid size-10 place-items-center rounded-full bg-lime text-ink shadow-lg">
@@ -160,6 +171,8 @@ export function CourtsTab() {
           );
         })}
       </div>
+
+      {building !== null && <MatchBuilder court={building} onClose={() => setBuilding(null)} />}
 
       <SectionTitle right={`${queue.length} คน`}>คิวรอลงสนาม</SectionTitle>
       <Card className="p-2">

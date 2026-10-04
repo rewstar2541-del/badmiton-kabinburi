@@ -90,4 +90,22 @@ export interface Day {
   checkIns: CheckIn[];
   games: Game[];
   drinks: Drink[];
+  /** ข้อความประกาศจัดก๊วนวันนี้ (ไม่มี = ไม่ได้ประกาศ) */
+  announcement?: string;
+  /** คนที่ลงชื่อว่าจะมา */
+  signups?: SignUp[];
+  /** สลิปโอนเงินที่ผู้เล่นส่งมา (รูปโหลดแยกเฉพาะแอดมิน) */
+  slips?: Slip[];
+}
+
+export interface Slip {
+  id: string;
+  playerId: string;
+  amount: number;
+  at: number;
+}
+
+export interface SignUp {
+  playerId: string;
+  at: number;
 }

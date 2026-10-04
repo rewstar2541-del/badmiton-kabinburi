@@ -4,20 +4,32 @@ import { useState, type ComponentType, type SVGProps } from "react";
 import { waitingQueue } from "@/lib/matchmaking";
 import { StoreProvider, useStore, useToday } from "@/lib/store";
 import { BillingTab } from "./BillingTab";
+import { LoginTab } from "./LoginTab";
+import { MyBillTab } from "./MyBillTab";
 import { CheckInTab } from "./CheckInTab";
 import { CourtsTab } from "./CourtsTab";
 import { PlayersTab } from "./PlayersTab";
 import { SettingsTab } from "./SettingsTab";
+import { TodayTab } from "./TodayTab";
 import { Icon } from "./ui";
 
-type TabId = "checkin" | "courts" | "billing" | "players" | "settings";
+type TabId = "today" | "checkin" | "courts" | "billing" | "players" | "settings" | "mybill" | "login";
+type Tab = { id: TabId; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> };
 
-const TABS: { id: TabId; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
+const ADMIN_TABS: Tab[] = [
   { id: "checkin", label: "เช็คอิน", icon: Icon.CheckIn },
   { id: "courts", label: "สนาม", icon: Icon.Court },
   { id: "billing", label: "คิดเงิน", icon: Icon.Wallet },
   { id: "players", label: "ผู้เล่น", icon: Icon.Users },
   { id: "settings", label: "ตั้งค่า", icon: Icon.Settings },
+];
+
+/** ผู้เล่นทั่วไปที่เปิดลิงก์ ดูได้อย่างเดียว */
+const PLAYER_TABS: Tab[] = [
+  { id: "today", label: "วันนี้", icon: Icon.Megaphone },
+  { id: "courts", label: "สนาม", icon: Icon.Court },
+  { id: "mybill", label: "ยอดของฉัน", icon: Icon.Wallet },
+  { id: "login", label: "แอดมิน", icon: Icon.Settings },
 ];
 
 function Header() {
@@ -62,21 +74,43 @@ function Header() {
 }
 
 function Shell() {
-  const [tab, setTab] = useState<TabId>("checkin");
+  const { auth, ready, error } = useStore();
+  const tabs = auth.isAdmin ? ADMIN_TABS : PLAYER_TABS;
+  const [picked, setTab] = useState<TabId>(tabs[0].id);
+  const tab = tabs.some((t) => t.id === picked) ? picked : tabs[0].id;
+
+  if (!ready)
+    return (
+      <div className="grid flex-1 place-items-center bg-ink text-white">
+        <div className="flex flex-col items-center gap-3">
+          <span className="grid size-14 animate-pulse place-items-center rounded-3xl bg-lime text-ink">
+            <Icon.Shuttle width={28} height={28} />
+          </span>
+          <span className="text-sm text-white/60">กำลังโหลด...</span>
+        </div>
+      </div>
+    );
 
   return (
     <>
       <Header />
       <main className="mx-auto -mt-2 w-full max-w-3xl flex-1 rounded-t-[28px] bg-background px-4 pt-5 pb-32">
+        {error && <div className="mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+        {tab === "today" && <TodayTab />}
         {tab === "checkin" && <CheckInTab />}
         {tab === "courts" && <CourtsTab />}
         {tab === "billing" && <BillingTab />}
         {tab === "players" && <PlayersTab />}
         {tab === "settings" && <SettingsTab />}
+        {tab === "mybill" && <MyBillTab />}
+        {tab === "login" && <LoginTab />}
       </main>
       <nav className="fixed inset-x-0 bottom-0 z-10 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)]">
-        <div className="mx-auto grid max-w-md grid-cols-5 rounded-[26px] bg-ink/95 p-1.5 shadow-xl shadow-ink/30 backdrop-blur">
-          {TABS.map((t) => {
+        <div
+          className="mx-auto grid max-w-md rounded-[26px] bg-ink/95 p-1.5 shadow-xl shadow-ink/30 backdrop-blur"
+          style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+        >
+          {tabs.map((t) => {
             const active = tab === t.id;
             return (
               <button

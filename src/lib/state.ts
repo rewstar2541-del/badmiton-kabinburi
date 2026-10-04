@@ -1,0 +1,137 @@
+import { markPaid } from "./billing";
+import { DEFAULT_SETTINGS, type Day, type Game, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
+
+export interface State {
+  players: Player[];
+  settings: Settings;
+  days: Day[];
+  monthly: MonthlyPayments;
+}
+
+/**
+ * การกระทำที่เปลี่ยนข้อมูล `_id` และ `_at` ถูกเติมโดย `prepare` ก่อนเข้า reducer
+ * เพื่อให้ reducer เป็นฟังก์ชันบริสุทธิ์ และค่าที่บันทึกลงฐานข้อมูลตรงกับบนหน้าจอ
+ */
+export type Action =
+  | { type: "addPlayer"; player: Omit<Player, "id">; _id: string }
+  | { type: "updatePlayer"; player: Player }
+  | { type: "removePlayer"; playerId: string }
+  | { type: "checkIn"; date: string; playerId: string; _at: number }
+  | { type: "undoCheckIn"; date: string; playerId: string }
+  | { type: "startGame"; date: string; court: number; playerIds: Game["playerIds"]; _id: string; _at: number }
+  | { type: "setShuttles"; date: string; gameId: string; shuttles: number }
+  | { type: "endGame"; date: string; gameId: string; winner?: Team; _at: number }
+  | { type: "cancelGame"; date: string; gameId: string }
+  | { type: "addDrink"; date: string; playerId: string; amount: number; note: string; _id: string }
+  | { type: "removeDrink"; date: string; drinkId: string }
+  | { type: "markPaid"; date: string; playerId: string; _at: number }
+  | { type: "unmarkPaid"; date: string; playerId: string }
+  | { type: "setMonthlyPaid"; month: string; playerId: string; paid: boolean; _at: number }
+  | { type: "updateSettings"; settings: Settings }
+  | { type: "setAnnouncement"; date: string; message: string | null }
+  | { type: "signUp"; date: string; playerId: string; _at: number }
+  | { type: "cancelSignUp"; date: string; playerId: string }
+  | { type: "replace"; state: State };
+
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
+
+/** สิ่งที่หน้าจอส่งเข้ามา (ยังไม่มี id และเวลา) */
+export type Intent = DistributiveOmit<Action, "_id" | "_at">;
+
+export const EMPTY_STATE: State = { players: [], settings: DEFAULT_SETTINGS, days: [], monthly: {} };
+
+export function newId(): string {
+  return crypto.randomUUID();
+}
+
+export function today(): string {
+  const d = new Date();
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** สิ่งที่ผู้เล่นทำเองได้โดยไม่ต้องเป็นแอดมิน */
+export type SelfAction = "signUp" | "cancelSignUp" | "checkIn";
+
+export function prepare(i: Intent, now = Date.now(), id = newId): Action {
+  return { ...i, _id: id(), _at: now } as Action;
+}
+
+function withDay(state: State, date: string, fn: (d: Day) => Day): State {
+  const exists = state.days.some((d) => d.date === date);
+  const days = exists
+    ? state.days.map((d) => (d.date === date ? fn(d) : d))
+    : [...state.days, fn({ date, checkIns: [], games: [], drinks: [] })].sort((a, b) => a.date.localeCompare(b.date));
+  return { ...state, days };
+}
+
+function updateGame(state: State, date: string, gameId: string, fn: (g: Game) => Game): State {
+  return withDay(state, date, (d) => ({
+    ...d,
+    games: d.games.map((g) => (g.id === gameId ? fn(g) : g)),
+  }));
+}
+
+export function reducer(state: State, a: Action): State {
+  switch (a.type) {
+    case "addPlayer":
+      return { ...state, players: [...state.players, { ...a.player, id: a._id }] };
+    case "updatePlayer":
+      return { ...state, players: state.players.map((p) => (p.id === a.player.id ? a.player : p)) };
+    case "removePlayer":
+      return { ...state, players: state.players.filter((p) => p.id !== a.playerId) };
+    case "checkIn":
+      return withDay(state, a.date, (d) =>
+        d.checkIns.some((c) => c.playerId === a.playerId)
+          ? d
+          : { ...d, checkIns: [...d.checkIns, { playerId: a.playerId, at: a._at }] },
+      );
+    case "undoCheckIn":
+      return withDay(state, a.date, (d) => ({ ...d, checkIns: d.checkIns.filter((c) => c.playerId !== a.playerId) }));
+    case "startGame":
+      return withDay(state, a.date, (d) => ({
+        ...d,
+        games: [...d.games, { id: a._id, court: a.court, playerIds: a.playerIds, startedAt: a._at, shuttles: 1 }],
+      }));
+    case "setShuttles":
+      return updateGame(state, a.date, a.gameId, (g) => ({ ...g, shuttles: Math.max(0, a.shuttles) }));
+    case "endGame":
+      return updateGame(state, a.date, a.gameId, (g) => ({ ...g, endedAt: a._at, winner: a.winner }));
+    case "cancelGame":
+      return withDay(state, a.date, (d) => ({ ...d, games: d.games.filter((g) => g.id !== a.gameId) }));
+    case "addDrink":
+      return withDay(state, a.date, (d) => ({
+        ...d,
+        drinks: [...d.drinks, { id: a._id, playerId: a.playerId, amount: a.amount, note: a.note }],
+      }));
+    case "removeDrink":
+      return withDay(state, a.date, (d) => ({ ...d, drinks: d.drinks.filter((x) => x.id !== a.drinkId) }));
+    case "markPaid":
+      return { ...state, days: markPaid(state.days, a.date, a.playerId, a._at) };
+    case "unmarkPaid":
+      return withDay(state, a.date, (d) => ({
+        ...d,
+        checkIns: d.checkIns.map((c) => (c.playerId === a.playerId ? { ...c, paidAt: undefined } : c)),
+      }));
+    case "setMonthlyPaid": {
+      const month = { ...state.monthly[a.month] };
+      if (a.paid) month[a.playerId] = a._at;
+      else delete month[a.playerId];
+      return { ...state, monthly: { ...state.monthly, [a.month]: month } };
+    }
+    case "updateSettings":
+      return { ...state, settings: a.settings };
+    case "setAnnouncement":
+      return withDay(state, a.date, (d) => ({ ...d, announcement: a.message ?? undefined }));
+    case "signUp":
+      return withDay(state, a.date, (d) =>
+        d.signups?.some((x) => x.playerId === a.playerId)
+          ? d
+          : { ...d, signups: [...(d.signups ?? []), { playerId: a.playerId, at: a._at }] },
+      );
+    case "cancelSignUp":
+      return withDay(state, a.date, (d) => ({ ...d, signups: d.signups?.filter((x) => x.playerId !== a.playerId) }));
+    case "replace":
+      return a.state;
+  }
+}

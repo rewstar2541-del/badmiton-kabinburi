@@ -4,6 +4,7 @@ import { useState } from "react";
 import { isValidPromptPayId } from "@/lib/promptpay";
 import { useStore, type State } from "@/lib/store";
 import type { Settings } from "@/lib/types";
+import { LoginTab } from "./LoginTab";
 import { Button, Card, SectionTitle, inputClass } from "./ui";
 
 const NUMBER_FIELDS: { key: keyof Settings; label: string }[] = [
@@ -15,7 +16,7 @@ const NUMBER_FIELDS: { key: keyof Settings; label: string }[] = [
 ];
 
 export function SettingsTab() {
-  const { state, dispatch } = useStore();
+  const { state, dispatch, auth } = useStore();
   const [s, setS] = useState(state.settings);
   const [saved, setSaved] = useState(false);
   const ppOk = !s.promptPayId || isValidPromptPayId(s.promptPayId);
@@ -92,7 +93,9 @@ export function SettingsTab() {
       <Card className="space-y-3">
         <h2 className="font-display font-semibold">สำรองข้อมูล</h2>
         <p className="text-sm text-zinc-500">
-          ตอนนี้ข้อมูลเก็บในเครื่องนี้เครื่องเดียว ควรกดสำรองไว้หลังเลิกเล่นทุกครั้ง
+          {auth.online
+            ? "ข้อมูลเก็บออนไลน์แล้ว ดาวน์โหลดไฟล์สำรองเก็บไว้เป็นครั้งคราวได้ นำเข้าไฟล์จะเพิ่มข้อมูลเข้าไป ไม่ลบของเดิม"
+            : "ตอนนี้ข้อมูลเก็บในเครื่องนี้เครื่องเดียว ควรกดสำรองไว้หลังเลิกเล่นทุกครั้ง"}
         </p>
         <div className="flex gap-2">
           <Button onClick={exportData} className="flex-1">
@@ -109,6 +112,8 @@ export function SettingsTab() {
           </label>
         </div>
       </Card>
+
+      {auth.online && <LoginTab />}
     </div>
   );
 }

@@ -5,33 +5,14 @@ import { billFor, type Bill } from "@/lib/billing";
 import { useStore, useToday } from "@/lib/store";
 import { monthOf, type Player } from "@/lib/types";
 import { PayQr } from "./PayQr";
-import { Avatar, Button, Card, Icon, SectionTitle, baht, inputClass } from "./ui";
+import { SlipReview } from "./Slips";
+import { Avatar, Button, Card, Icon, SectionTitle, Sheet, baht, inputClass } from "./ui";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between text-sm">
       <span className="text-zinc-500">{label}</span>
       <span className="font-medium">{value}</span>
-    </div>
-  );
-}
-
-function Sheet({ title, onClose, children }: { title: React.ReactNode; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <div className="fixed inset-0 z-20 flex items-end justify-center bg-ink/50 backdrop-blur-sm sm:items-center" onClick={onClose}>
-      <div
-        className="max-h-[92vh] w-full max-w-md space-y-4 overflow-y-auto rounded-t-[32px] bg-white p-5 pb-[calc(env(safe-area-inset-bottom)+20px)] sm:rounded-[32px]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mx-auto h-1 w-10 rounded-full bg-zinc-200 sm:hidden" />
-        <div className="flex items-center justify-between gap-3">
-          {title}
-          <button onClick={onClose} className="grid size-9 place-items-center rounded-full bg-zinc-100" aria-label="ปิด">
-            <Icon.X width={18} height={18} />
-          </button>
-        </div>
-        {children}
-      </div>
     </div>
   );
 }
@@ -105,6 +86,8 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
         </form>
       </div>
 
+      <SlipReview playerId={player.id} />
+
       {bill.paid ? (
         <div className="space-y-2 rounded-3xl bg-emerald-50 p-4 text-center">
           <p className="flex items-center justify-center gap-1.5 font-semibold text-emerald-700">
@@ -144,6 +127,7 @@ function DailyView() {
   const received = rows.filter((r) => r.bill.paid).reduce((s, r) => s + r.bill.total, 0);
   const shuttlesUsed = day.games.reduce((s, g) => s + g.shuttles, 0);
   const openRow = rows.find((r) => r.player.id === open);
+  const withSlip = new Set(day.slips?.map((s) => s.playerId));
 
   return (
     <>
@@ -175,6 +159,9 @@ function DailyView() {
                   {bill.carriedOver > 0 && ` · ค้าง ${bill.carriedOver}`}
                 </span>
               </span>
+              {!bill.paid && withSlip.has(player.id) && (
+                <span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">มีสลิป</span>
+              )}
               {bill.paid ? (
                 <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">จ่ายแล้ว</span>
               ) : (
