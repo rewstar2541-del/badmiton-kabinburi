@@ -206,7 +206,7 @@ export function PlayersTab() {
                     className="px-2 text-red-500"
                     aria-label={`ลบ ${p.name}`}
                     onClick={() => {
-                      if (confirm(`ลบ ${p.name}?`)) dispatch({ type: "removePlayer", id: p.id });
+                      if (confirm(`ลบ ${p.name}?`)) dispatch({ type: "removePlayer", playerId: p.id });
                     }}
                   >
                     <Icon.X width={18} height={18} />
