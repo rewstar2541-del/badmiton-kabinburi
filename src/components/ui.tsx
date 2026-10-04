@@ -61,3 +61,17 @@ export function baht(n: number): string {
 
 export const inputClass =
   "w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-base outline-none focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-950";
+
+export function Avatar({ name, photo, size = 36 }: { name: string; photo?: string; size?: number }) {
+  if (photo)
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={photo} alt={name} width={size} height={size} className="shrink-0 rounded-full object-cover" style={{ width: size, height: size }} />;
+  return (
+    <span
+      className="grid shrink-0 place-items-center rounded-full bg-emerald-100 font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+      style={{ width: size, height: size, fontSize: size * 0.42 }}
+    >
+      {name.trim().charAt(0) || "?"}
+    </span>
+  );
+}

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useReducer, type ReactNode } from "react";
 import { markPaid } from "./billing";
-import { DEFAULT_SETTINGS, type Day, type Game, type Level, type Player, type Settings, type Team } from "./types";
+import { DEFAULT_SETTINGS, type Day, type Game, type Player, type Settings, type Team } from "./types";
 
 export interface State {
   players: Player[];
@@ -11,7 +11,7 @@ export interface State {
 }
 
 export type Action =
-  | { type: "addPlayer"; name: string; level: Level; isMonthly: boolean }
+  | { type: "addPlayer"; player: Omit<Player, "id"> }
   | { type: "updatePlayer"; player: Player }
   | { type: "removePlayer"; id: string }
   | { type: "checkIn"; date: string; playerId: string }
@@ -63,7 +63,7 @@ export function reducer(state: State, a: Action): State {
     case "addPlayer":
       return {
         ...state,
-        players: [...state.players, { id: newId(), name: a.name.trim(), level: a.level, isMonthly: a.isMonthly }],
+        players: [...state.players, { ...a.player, id: newId() }],
       };
     case "updatePlayer":
       return { ...state, players: state.players.map((p) => (p.id === a.player.id ? a.player : p)) };

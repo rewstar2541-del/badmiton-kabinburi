@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useStore, useToday } from "@/lib/store";
-import { Button, Card, LevelBadge, inputClass } from "./ui";
+import { Avatar, Button, Card, LevelBadge, inputClass } from "./ui";
 import { PlayerForm } from "./PlayersTab";
 
 export function CheckInTab() {
@@ -29,8 +29,8 @@ export function CheckInTab() {
         <Card>
           <PlayerForm
             onCancel={() => setAdding(false)}
-            onSave={(p) => {
-              dispatch({ type: "addPlayer", ...p });
+            onSave={(player) => {
+              dispatch({ type: "addPlayer", player });
               setAdding(false);
             }}
           />
@@ -64,6 +64,7 @@ export function CheckInTab() {
                 >
                   {on ? "✓" : ""}
                 </span>
+                <Avatar name={p.name} photo={p.photo} />
                 <span className="flex-1 font-medium">{p.name}</span>
                 {p.isMonthly && <span className="text-xs text-emerald-600">รายเดือน</span>}
                 <LevelBadge level={p.level} />

@@ -1,8 +1,15 @@
 export type Level = 1 | 2 | 3 | 4 | 5;
 
+export type Gender = "male" | "female" | "other";
+
 export interface Player {
   id: string;
+  /** ชื่อเล่น */
   name: string;
+  /** รูปโปรไฟล์ขนาดเล็ก (data URL) */
+  photo?: string;
+  phone?: string;
+  gender?: Gender;
   /** 1 = มือใหม่, 5 = เก่งสุด */
   level: Level;
   /** สมาชิกรายเดือน ไม่ต้องจ่ายค่าสนามรายวัน */
