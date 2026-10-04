@@ -3,11 +3,14 @@
 import { useState } from "react";
 import { useStore, useToday } from "@/lib/store";
 import { presence } from "@/lib/matchmaking";
+import { BringGuest } from "./Guests";
 import type { SelfAction } from "@/lib/state";
 import { ClosedBanner, ClubCalendar } from "./Calendar";
-import { PickMe, savedPin, useMe } from "./PickMe";
-import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, inputClass } from "./ui";
+import { PendingNotice, PickMe, savedPin, useMe } from "./PickMe";
+import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle } from "./ui";
 import { t } from "@/lib/i18n";
+import { RestButton } from "./RestButton";
+import { Auto } from "@/lib/autoTranslate";
 
 /** ประกาศจัดก๊วนวันนี้ (ใช้ทั้งหน้าผู้เล่นและแอดมิน) */
 export function AnnouncementBanner({ message }: { message: string }) {
@@ -16,65 +19,62 @@ export function AnnouncementBanner({ message }: { message: string }) {
       <Icon.Megaphone className="shrink-0" />
       <div className="min-w-0">
         <div className="font-display font-semibold">{t("วันนี้มีจัดก๊วน")}</div>
-        {message && <p className="mt-0.5 text-sm whitespace-pre-line">{message}</p>}
+        {message && <p className="mt-0.5 text-sm whitespace-pre-line"><Auto text={message} /></p>}
       </div>
     </div>
   );
 }
 
-/** รายชื่อคนลงชื่อวันนี้ พร้อมสถานะมาถึงแล้ว */
-export function SignupList() {
-  const { state } = useStore();
+/** ยอดคนลงชื่อวันนี้ แสดงเป็นตัวเลข ไม่แสดงชื่อคนอื่น */
+function SignupCount() {
   const { day } = useToday();
-  const byId = new Map(state.players.map((p) => [p.id, p]));
   const checked = new Set(day.checkIns.map((c) => c.playerId));
-  const signups = (day.signups ?? []).filter((s) => byId.has(s.playerId));
+  const signups = day.signups ?? [];
   const arrived = signups.filter((s) => checked.has(s.playerId)).length;
-
   return (
-    <>
-      <SectionTitle right={t("{n} คน · มาแล้ว {m}", { n: signups.length, m: arrived })}>{t("ลงชื่อวันนี้")}</SectionTitle>
-      <Card className="p-2">
-        <ol>
-          {signups.map((s, i) => {
-            const p = byId.get(s.playerId)!;
-            const here = checked.has(p.id);
-            return (
-              <li key={p.id} className="flex items-center gap-3 rounded-2xl px-2 py-2">
-                <span className="w-5 text-center text-xs text-zinc-400">{i + 1}</span>
-                <Avatar name={p.name} photo={p.photo} size={32} />
-                <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
-                <LevelBadge level={p.level} />
-                <span
-                  className={`w-16 rounded-full py-0.5 text-center text-[11px] font-medium ${
-                    here ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"
-                  }`}
-                >
-                  {here ? t("มาแล้ว") : t("ยังไม่มา")}
-                </span>
-              </li>
-            );
-          })}
-          {signups.length === 0 && <li className="py-6 text-center text-sm text-zinc-500">{t("ยังไม่มีคนลงชื่อ")}</li>}
-        </ol>
-      </Card>
-    </>
+    <Card className="grid grid-cols-2 gap-2 text-center">
+      <div>
+        <div className="font-display text-2xl font-semibold">{signups.length}</div>
+        <div className="text-xs text-zinc-500">{t("ลงชื่อวันนี้")}</div>
+      </div>
+      <div>
+        <div className="font-display text-2xl font-semibold">{arrived}</div>
+        <div className="text-xs text-zinc-500">{t("มาแล้ว")}</div>
+      </div>
+    </Card>
   );
 }
 
 /** หน้าแรกของผู้เล่น: ดูประกาศ ลงชื่อ และเช็คอินเองเมื่อถึงสนาม */
 export function TodayTab() {
-  const { state, self, auth } = useStore();
+  const { state, self } = useStore();
   const { date, day } = useToday();
   const [me, setMe] = useMe();
   const closed = state.closed[date];
-  const [pin, setPin] = useState(savedPin.get);
+  const pin = savedPin.get();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const player = state.players.find((p) => p.id === me);
   const announced = day.announcement !== undefined;
+  const hereToday = Boolean(player && day.checkIns.some((c) => c.playerId === player.id));
 
-  if (!announced)
+  if (!player)
+    return (
+      <div className="space-y-4">
+        {announced && <AnnouncementBanner message={day.announcement ?? ""} />}
+        <PickMe onPick={setMe} hint={t("เข้าสู่ระบบครั้งเดียว เครื่องนี้จะจำไว้ แล้วลงชื่อ เช็คอิน และดูยอดของตัวเองได้")} />
+      </div>
+    );
+
+  if (player.pending)
+    return (
+      <div className="space-y-4">
+        {announced && <AnnouncementBanner message={day.announcement ?? ""} />}
+        <PendingNotice name={player.name} onNotMe={() => setMe(null)} />
+      </div>
+    );
+
+  if (!announced && !hereToday)
     return (
       <div className="space-y-4">
         {closed !== undefined ? (
@@ -86,15 +86,6 @@ export function TodayTab() {
             <p className="text-sm text-zinc-500">{t("เมื่อแอดมินประกาศ จะลงชื่อและเช็คอินได้ที่หน้านี้")}</p>
           </Card>
         )}
-        <ClubCalendar />
-      </div>
-    );
-
-  if (!player)
-    return (
-      <div className="space-y-4">
-        <AnnouncementBanner message={day.announcement ?? ""} />
-        <PickMe onPick={setMe} hint={t("เลือกชื่อของคุณเพื่อลงชื่อและเช็คอิน เครื่องนี้จะจำไว้ให้")} />
         <ClubCalendar />
       </div>
     );
@@ -115,7 +106,6 @@ export function TodayTab() {
     const err = await self(action, player.id, pin);
     setBusy(false);
     setError(err ? t(err) : "");
-    if (!err) savedPin.set(pin);
   };
 
   return (
@@ -135,23 +125,9 @@ export function TodayTab() {
             </div>
           </div>
           <button className="text-xs text-zinc-500 underline" onClick={() => setMe(null)}>
-            {t("ไม่ใช่ฉัน")}
+            {t("ออกจากระบบ")}
           </button>
         </div>
-
-        {(!checkedIn || status === "waiting" || status === "resting") && auth.online && (
-          <label className="block space-y-1.5 text-sm font-medium">
-            {t("เลข 4 ตัวท้ายเบอร์โทรของคุณ")}
-            <input
-              className={inputClass}
-              inputMode="numeric"
-              maxLength={4}
-              placeholder={t("ถ้าไม่ได้ลงเบอร์ไว้ ปล่อยว่างได้")}
-              value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-            />
-          </label>
-        )}
 
         {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
 
@@ -160,16 +136,7 @@ export function TodayTab() {
             <div className="flex items-center justify-center gap-1.5 rounded-2xl bg-emerald-50 py-3 font-semibold text-emerald-700">
               <Icon.Check width={18} height={18} /> {status === "home" ? t("จ่ายแล้ว ถือว่ากลับบ้านแล้ว") : t("มาถึงสนามแล้ว")}
             </div>
-            {status === "waiting" && (
-              <Button disabled={busy} onClick={() => act("rest")}>
-                {t("ขอพัก (ข้ามคิวไปก่อน)")}
-              </Button>
-            )}
-            {status === "resting" && (
-              <Button variant="accent" disabled={busy} onClick={() => act("unrest")}>
-                {t("พักพอแล้ว กลับเข้าคิว")}
-              </Button>
-            )}
+            {status !== "home" && <RestButton />}
           </div>
         ) : (
           <div className="grid gap-2">
@@ -189,7 +156,8 @@ export function TodayTab() {
         )}
       </Card>
 
-      <SignupList />
+      {checkedIn && status !== "home" && !player.guestOf && <BringGuest player={player} pin={pin} />}
+      <SignupCount />
       <ClubCalendar />
     </div>
   );

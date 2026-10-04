@@ -7,6 +7,7 @@ import { presence, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
 import type { Player } from "@/lib/types";
 import { Avatar, Icon, LevelBadge } from "./ui";
+import { Auto } from "@/lib/autoTranslate";
 
 function useClock() {
   const [now, setNow] = useState(() => Date.now());
@@ -126,7 +127,7 @@ export function TvView() {
 
       {day.announcement && (
         <div className="flex items-center gap-3 rounded-2xl bg-lime px-5 py-3 text-xl text-ink">
-          <Icon.Megaphone /> <span className="font-semibold">{day.announcement || t("วันนี้มีจัดก๊วน")}</span>
+          <Icon.Megaphone /> <span className="font-semibold">{day.announcement ? <Auto text={day.announcement} /> : t("วันนี้มีจัดก๊วน")}</span>
         </div>
       )}
 

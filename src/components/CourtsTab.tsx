@@ -7,6 +7,8 @@ import type { Game, Player, Team } from "@/lib/types";
 import { MatchBuilder } from "./MatchBuilder";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle } from "./ui";
 import { t } from "@/lib/i18n";
+import { MyRestCard } from "./RestButton";
+import { PendingNotice, PickMe, useMe } from "./PickMe";
 
 function useNow(intervalMs = 15000) {
   const [now, setNow] = useState(() => Date.now());
@@ -131,6 +133,8 @@ export function CourtsTab() {
   const home = day.checkIns.filter((c) => presence(day, c.playerId) === "home").length;
   const rest = (playerId: string, on: boolean) => dispatch({ type: "setResting", date, playerId, resting: on });
 
+  if (!auth.isAdmin) return <PlayerCourts />;
+
 
   return (
     <div className="space-y-4">
@@ -237,6 +241,82 @@ export function CourtsTab() {
         </>
       )}
       {home > 0 && <p className="px-1 text-xs text-zinc-500">{t("จ่ายเงินแล้วกลับบ้าน {n} คน", { n: home })}</p>}
+    </div>
+  );
+}
+
+/** หน้าสนามของผู้เล่น: เห็นแค่สนามและคิวของตัวเอง สนามอื่นแสดงแค่ว่าว่างหรือไม่ ไม่แสดงชื่อคนอื่น */
+function PlayerCourts() {
+  const { state } = useStore();
+  const { day } = useToday();
+  const [me, setMe] = useMe();
+  const now = useNow();
+  const player = state.players.find((p) => p.id === me);
+  if (!player) return <PickMe onPick={setMe} hint={t("เข้าสู่ระบบครั้งเดียว เครื่องนี้จะจำไว้ แล้วดูสนามและคิวของคุณได้")} />;
+  if (player.pending) return <PendingNotice name={player.name} onNotMe={() => setMe(null)} />;
+
+  const byId = new Map(state.players.map((p) => [p.id, p]));
+  const queue = waitingQueue(day, state.players);
+  const courts = Array.from({ length: state.settings.courtCount }, (_, i) => i + 1);
+  const active = new Map(day.games.filter((g) => !g.endedAt).map((g) => [g.court, g]));
+  const myGame = day.games.find((g) => !g.endedAt && g.playerIds.includes(player.id));
+  const myPos = queue.findIndex((e) => e.player.id === player.id);
+  const status = presence(day, player.id);
+
+  return (
+    <div className="space-y-4">
+      <SectionTitle>{t("สนามของฉัน")}</SectionTitle>
+      {myGame ? (
+        <Card className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="font-display text-lg font-semibold">{t("คุณอยู่สนาม {n}", { n: myGame.court })}</h3>
+            <span className="flex items-center gap-1.5 text-xs text-zinc-500">
+              <Icon.Clock width={14} height={14} />
+              {t("{n} นาที", { n: minutes(now - myGame.startedAt) })}
+            </span>
+          </div>
+          <div className="court-surface flex gap-1 rounded-2xl px-2">
+            <CourtSide ids={myGame.playerIds.slice(0, 2)} byId={byId} team="A" />
+            <CourtSide ids={myGame.playerIds.slice(2)} byId={byId} team="B" />
+          </div>
+        </Card>
+      ) : (
+        <Card className="py-6 text-center">
+          {status === "waiting" && myPos >= 0 ? (
+            <>
+              <div className="font-display text-4xl font-semibold">{myPos + 1}</div>
+              <div className="text-sm text-zinc-500">
+                {myPos < 4 ? t("คิวของคุณ ใกล้ได้ลงแล้ว") : t("คิวของคุณ จากที่รอ {n} คน", { n: queue.length })}
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-zinc-500">
+              {status === "resting"
+                ? t("พักอยู่ ระบบข้ามคิวให้")
+                : status === "home"
+                  ? t("จ่ายแล้ว ถือว่ากลับบ้านแล้ว")
+                  : t("วันนี้ยังไม่ได้เช็คอิน")}
+            </p>
+          )}
+        </Card>
+      )}
+      <MyRestCard />
+
+      <SectionTitle right={t("ว่าง {n} สนาม", { n: courts.length - active.size })}>{t("สนามทั้งหมด")}</SectionTitle>
+      <div className="grid grid-cols-2 gap-2">
+        {courts.map((c) => {
+          const g = active.get(c);
+          return (
+            <Card key={c} className="py-3">
+              <div className="font-semibold">{t("สนาม {n}", { n: c })}</div>
+              <div className={`text-xs ${g ? "text-emerald-700" : "text-zinc-500"}`}>
+                {g ? t("กำลังเล่น {n} นาที", { n: minutes(now - g.startedAt) }) : t("ว่าง")}
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+      <p className="px-1 text-xs text-zinc-500">{t("รอคิวทั้งหมด {n} คน", { n: queue.length })}</p>
     </div>
   );
 }

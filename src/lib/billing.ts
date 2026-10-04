@@ -69,13 +69,6 @@ export function guestsOf(players: Player[], hostId: string): Player[] {
   return players.filter((p) => p.guestOf === hostId);
 }
 
-/** ยอดของคนคนเดียว วันนี้ (ถ้ายังไม่จ่าย) + ยอดค้าง */
-function ownDue(days: Day[], day: Day, player: Player, s: Settings, monthly: MonthlyPayments): number {
-  const ci = day.checkIns.find((c) => c.playerId === player.id);
-  const today = ci && !ci.paidAt ? dayAmount(day, player, s, monthly).amount : 0;
-  return today + carriedOver(days, day.date, player, s, monthly);
-}
-
 /**
  * บิลของผู้เล่น ถ้าส่ง players มาด้วย จะรวมยอดของแขกที่ผู้เล่นคนนี้พามาไว้ใน total
  * (แขกไม่จ่ายเอง คนพามาจ่ายรวม)
@@ -84,14 +77,22 @@ export function billFor(days: Day[], day: Day, player: Player, s: Settings, mont
   const { amount, ...parts } = dayAmount(day, player, s, monthly);
   const prev = carriedOver(days, day.date, player, s, monthly);
   const ci = day.checkIns.find((c) => c.playerId === player.id);
-  const guests = guestsOf(players, player.id)
-    .map((g) => ({ playerId: g.id, name: g.name, amount: ownDue(days, day, g, s, monthly) }))
+  const guestDues = guestsOf(players, player.id).map((g) => {
+    const gci = day.checkIns.find((c) => c.playerId === g.id);
+    const today = gci ? dayAmount(day, g, s, monthly).amount : 0;
+    const gPrev = carriedOver(days, day.date, g, s, monthly);
+    return { playerId: g.id, name: g.name, full: today + gPrev, unpaid: (gci?.paidAt ? 0 : today) + gPrev };
+  });
+  const unpaid = guestDues.some((g) => g.unpaid > 0);
+  // ยังมียอดแขกค้าง แสดงเฉพาะที่ค้าง จ่ายครบแล้วแสดงยอดเต็มเป็นใบเสร็จ
+  const guests = guestDues
+    .map((g) => ({ playerId: g.playerId, name: g.name, amount: unpaid ? g.unpaid : g.full }))
     .filter((g) => g.amount > 0);
   const guestTotal = guests.reduce((sum, g) => sum + g.amount, 0);
   const selfPaid = Boolean(ci?.paidAt);
   // จ่ายของตัวเองไปแล้วแต่มีแขกค้าง (เช่นเพิ่มแขกทีหลัง) เหลือแค่ยอดแขก
-  const own = selfPaid && guestTotal > 0 ? 0 : amount + prev;
-  return { ...parts, carriedOver: prev, guests, total: own + guestTotal, paid: selfPaid && guestTotal === 0 };
+  const own = selfPaid && unpaid ? 0 : amount + prev;
+  return { ...parts, carriedOver: prev, guests, total: own + guestTotal, paid: selfPaid && !unpaid };
 }
 
 /**

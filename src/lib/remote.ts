@@ -20,6 +20,7 @@ export interface Rows {
     prefer?: string[] | null;
     avoid?: string[] | null;
     guest_of?: string | null;
+    pending?: boolean | null;
   }[];
   contacts: { player_id: string; phone: string }[];
   checkins: { date: string; player_id: string; at: string; paid_at: string | null; resting?: boolean }[];
@@ -66,6 +67,7 @@ export function rowsToState(r: Rows): State {
     ...(p.prefer?.length ? { prefer: p.prefer } : {}),
     ...(p.avoid?.length ? { avoid: p.avoid } : {}),
     ...(p.guest_of ? { guestOf: p.guest_of } : {}),
+    ...(p.pending ? { pending: true } : {}),
   }));
 
   const days = new Map<string, Day>();
@@ -130,42 +132,80 @@ export function rowsToState(r: Rows): State {
   };
 }
 
-async function all<T>(q: PromiseLike<{ data: T[] | null; error: { message: string } | null }>): Promise<T[]> {
-  const { data, error } = await q;
-  if (error) throw new Error(error.message);
-  return data ?? [];
+/** ดึงทุกแถว ทีละ 1000 (Supabase คืนได้ครั้งละไม่เกิน 1000 แถว) */
+async function all<T>(make: () => { range: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }> }): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await make().range(from, from + PAGE - 1);
+    if (error) throw new Error(error.message);
+    out.push(...(data ?? []));
+    if (!data || data.length < PAGE) return out;
+  }
+}
+const PAGE = 1000;
+
+/** ผู้เล่นทั่วไปโหลดย้อนหลังแค่ช่วงนี้ (แอดมินโหลดทั้งหมดเพื่อทำรายงาน) */
+export const PLAYER_HISTORY_DAYS = 120;
+
+function sinceDate(days: number): string {
+  const d = new Date(Date.now() - days * 86400000);
+  return d.toISOString().slice(0, 10);
+}
+
+/** ตารางที่แอพโหลด และ query ของแต่ละตาราง */
+export type TableKey = Exclude<keyof Rows, "settings"> | "settings";
+
+/** ชื่อตารางในฐานข้อมูล -> ส่วนของ Rows ที่ต้องโหลดใหม่เมื่อมีการเปลี่ยนแปลง */
+export const TABLE_OF: Record<string, TableKey> = {
+  players: "players",
+  player_contacts: "contacts",
+  checkins: "checkins",
+  games: "games",
+  drinks: "drinks",
+  monthly_payments: "monthly",
+  settings: "settings",
+  announcements: "announcements",
+  signups: "signups",
+  slips: "slips",
+  closed_days: "closed",
+};
+
+export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iterable<TableKey>, prev?: Rows): Promise<Rows> {
+  const since = isAdmin ? "0000-01-01" : sinceDate(PLAYER_HISTORY_DAYS);
+  const fetchers: { [K in TableKey]: () => Promise<Rows[K]> } = {
+    players: () => all(() => db.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of,pending").order("id")),
+    // เบอร์โทรเห็นเฉพาะแอดมิน
+    contacts: async () => (isAdmin ? all(() => db.from("player_contacts").select("player_id,phone").order("player_id")) : []),
+    checkins: () => all(() => db.from("checkins").select("date,player_id,at,paid_at,resting").gte("date", since).order("date").order("player_id")),
+    games: () => all(() => db.from("games").select("id,date,court,player_ids,started_at,ended_at,shuttles,winner").gte("date", since).order("id")),
+    // ค่าน้ำ ค่ารายเดือน และสลิป ผู้เล่นทั่วไปอ่านไม่ได้ (โหลดของตัวเองแยกผ่าน my_private)
+    drinks: async () => (isAdmin ? all(() => db.from("drinks").select("id,date,player_id,amount,note").order("id")) : []),
+    monthly: async () => (isAdmin ? all(() => db.from("monthly_payments").select("month,player_id,paid_at").order("month").order("player_id")) : []),
+    settings: async () => {
+      const r = await all(() =>
+        db.from("settings").select("court_count,court_fee,first_shuttle_fee,next_shuttle_fee,monthly_fee,promptpay_id").eq("id", 1),
+      );
+      return (r[0] as Rows["settings"]) ?? null;
+    },
+    announcements: () => all(() => db.from("announcements").select("date,message").gte("date", since).order("date")),
+    signups: () => all(() => db.from("signups").select("date,player_id,at").gte("date", since).order("date").order("player_id")),
+    slips: async () => (isAdmin ? all(() => db.from("slips").select("id,date,player_id,amount,created_at").order("id")) : []),
+    closed: () => all(() => db.from("closed_days").select("date,reason").order("date")),
+  };
+  const want = new Set<TableKey>(keys ?? (Object.keys(fetchers) as TableKey[]));
+  const rows = { ...(prev ?? ({} as Rows)) } as Record<TableKey, unknown>;
+  await Promise.all(
+    (Object.keys(fetchers) as TableKey[])
+      .filter((k) => want.has(k) || !prev)
+      .map(async (k) => {
+        rows[k] = await fetchers[k]();
+      }),
+  );
+  return rows as unknown as Rows;
 }
 
 export async function loadRemote(db: SupabaseClient, isAdmin: boolean): Promise<State> {
-  const [players, contacts, checkins, games, drinks, monthly, settings, announcements, signups, slips, closed] = await Promise.all([
-    all<Rows["players"][number]>(db.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of").order("name")),
-    // เบอร์โทรเห็นเฉพาะแอดมิน
-    isAdmin ? all<Rows["contacts"][number]>(db.from("player_contacts").select("player_id,phone")) : Promise.resolve([]),
-    all<Rows["checkins"][number]>(db.from("checkins").select("date,player_id,at,paid_at,resting")),
-    all<Rows["games"][number]>(db.from("games").select("id,date,court,player_ids,started_at,ended_at,shuttles,winner")),
-    all<Rows["drinks"][number]>(db.from("drinks").select("id,date,player_id,amount,note")),
-    all<Rows["monthly"][number]>(db.from("monthly_payments").select("month,player_id,paid_at")),
-    all<NonNullable<Rows["settings"]>>(
-      db.from("settings").select("court_count,court_fee,first_shuttle_fee,next_shuttle_fee,monthly_fee,promptpay_id").eq("id", 1),
-    ),
-    all<Rows["announcements"][number]>(db.from("announcements").select("date,message")),
-    all<Rows["signups"][number]>(db.from("signups").select("date,player_id,at")),
-    all<Rows["slips"][number]>(db.from("slips").select("id,date,player_id,amount,created_at")),
-    all<Rows["closed"][number]>(db.from("closed_days").select("date,reason")),
-  ]);
-  return rowsToState({
-    players,
-    contacts,
-    checkins,
-    games,
-    drinks,
-    monthly,
-    settings: settings[0] ?? null,
-    announcements,
-    signups,
-    slips,
-    closed,
-  });
+  return rowsToState(await loadRows(db, isAdmin));
 }
 
 function check(res: { error: { message: string } | null }) {
@@ -182,6 +222,7 @@ function playerRow(p: Omit<Player, "id"> & { id: string }) {
     prefer: p.prefer ?? [],
     avoid: p.avoid ?? [],
     guest_of: p.guestOf ?? null,
+    pending: p.pending ?? false,
   };
 }
 
@@ -203,6 +244,9 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       check(await db.from("players").update(playerRow(a.player)).eq("id", a.player.id));
       await saveContact(db, a.player.id, a.player.phone);
       return;
+    case "addGuest":
+      check(await db.from("players").insert({ id: a._id, name: a.name, level: a.level, guest_of: a.hostId }));
+      return check(await db.from("checkins").insert({ date: a.date, player_id: a._id, at: iso(a._at) }));
     case "removePlayer":
       return check(await db.from("players").delete().eq("id", a.playerId));
     case "checkIn":
@@ -344,6 +388,19 @@ export async function slipImage(db: SupabaseClient, slipId: string): Promise<str
 }
 
 /** ผู้เล่นตั้งคนที่อยากจับคู่/ไม่อยากเจอ คืนข้อความผิดพลาด หรือ null */
+/** ผู้เล่นสมัครเองครั้งแรก (รอแอดมินอนุมัติ) คืน id หรือข้อความผิดพลาด */
+export async function registerPlayer(db: SupabaseClient, p: Omit<Player, "id">): Promise<{ id?: string; error?: string }> {
+  const { data, error } = await db.rpc("register_player", {
+    p_name: p.name,
+    p_phone: p.phone ?? "",
+    p_gender: p.gender ?? "other",
+    p_level: p.level,
+    p_photo: p.photo ?? "",
+  });
+  if (error) return { error: error.message };
+  return data as { id?: string; error?: string };
+}
+
 /** สมาชิกพาเพื่อนมา: สร้างแขกและเช็คอินวันนี้ให้ คืนข้อความผิดพลาด หรือ null */
 export async function addGuest(db: SupabaseClient, hostId: string, pin: string, name: string, level: number) {
   const { data, error } = await db.rpc("add_guest", { p_host: hostId, p_pin: pin, p_name: name, p_level: level });
@@ -360,7 +417,7 @@ export async function setPartnerPrefs(db: SupabaseClient, playerId: string, pin:
 // ---------- จัดการแอดมิน (เฉพาะแอดมิน) ----------
 
 export async function listAdmins(db: SupabaseClient): Promise<string[]> {
-  const rows = await all<{ email: string }>(db.from("admins").select("email").order("email"));
+  const rows = await all<{ email: string }>(() => db.from("admins").select("email").order("email"));
   return rows.map((r) => r.email);
 }
 
@@ -370,4 +427,129 @@ export async function addAdmin(db: SupabaseClient, email: string) {
 
 export async function removeAdmin(db: SupabaseClient, email: string) {
   check(await db.from("admins").delete().eq("email", email));
+}
+
+/** อีเมลประจำบัญชี LINE ของผู้เล่นที่ผูก LINE แล้ว (แอดมินเท่านั้น) ใช้ตั้ง/ถอดแอดมิน */
+export async function playerLineEmails(db: SupabaseClient): Promise<Map<string, string>> {
+  const { data, error } = await db.rpc("player_line_emails");
+  if (error) throw new Error(error.message);
+  return new Map(((data ?? []) as { player_id: string; email: string }[]).map((r) => [r.player_id, r.email]));
+}
+
+// ---------- แจ้งเตือน LINE ----------
+
+export interface LineSettings {
+  group_id: string | null;
+  notify_signup: boolean;
+  notify_turn: boolean;
+  notify_turn_personal: boolean;
+}
+
+export async function getLineSettings(db: SupabaseClient): Promise<LineSettings | null> {
+  const { data, error } = await db.from("line_settings").select("group_id,notify_signup,notify_turn,notify_turn_personal").eq("id", 1).maybeSingle();
+  if (error) throw new Error(error.message);
+  return data as LineSettings | null;
+}
+
+export async function updateLineSettings(db: SupabaseClient, s: Partial<LineSettings>) {
+  check(await db.from("line_settings").update(s).eq("id", 1));
+}
+
+/** ส่งข้อความทดสอบเข้ากลุ่ม LINE คืนข้อความผิดพลาด หรือ null */
+export async function testLine(db: SupabaseClient): Promise<string | null> {
+  const { data, error } = await db.functions.invoke("line", { body: { action: "test" } });
+  if (error) return error.message;
+  return (data as { error?: string })?.error ?? null;
+}
+
+// ---------- ล็อกอินผู้เล่น ----------
+
+export type LoginResult = { token?: string; need_pin?: boolean; error?: string };
+
+/** ล็อกอินด้วย PIN (ครั้งแรกใช้ 4 ตัวท้ายเบอร์ แล้วตั้ง PIN ใหม่) */
+export async function playerLogin(db: SupabaseClient, playerId: string, pin: string, newPin?: string): Promise<LoginResult> {
+  const { data, error } = await db.rpc("player_login", { p_player: playerId, p_pin: pin, p_new_pin: newPin ?? null });
+  if (error) return { error: error.message };
+  return data as LoginResult;
+}
+
+export async function playerLogout(db: SupabaseClient, token: string) {
+  await db.rpc("player_logout", { p_token: token });
+}
+
+type PrivateRows = { error?: string; drinks: Rows["drinks"]; monthly: Rows["monthly"]; slips: Rows["slips"] };
+
+/** ค่าน้ำ ค่ารายเดือน และสลิปของผู้เล่นที่ล็อกอิน (คนอื่นมองไม่เห็น) รวมเข้า state */
+export async function loadPrivate(db: SupabaseClient, state: State, playerId: string, token: string): Promise<State | "expired"> {
+  const { data, error } = await db.rpc("my_private", { p_player: playerId, p_token: token });
+  if (error) throw new Error(error.message);
+  const r = data as PrivateRows;
+  if (r.error) return "expired";
+  return mergePrivate(state, r);
+}
+
+export function mergePrivate(state: State, r: Omit<PrivateRows, "error">): State {
+  const days = new Map(state.days.map((d) => [d.date, { ...d }]));
+  const day = (date: string) => {
+    let d = days.get(date);
+    if (!d) days.set(date, (d = { date, checkIns: [], games: [], drinks: [] }));
+    return d;
+  };
+  for (const x of r.drinks) {
+    const d = day(x.date);
+    if (!d.drinks.some((y) => y.id === x.id)) d.drinks = [...d.drinks, { id: x.id, playerId: x.player_id, amount: x.amount, note: x.note }];
+  }
+  for (const x of r.slips) {
+    const d = day(x.date);
+    if (!d.slips?.some((y) => y.id === x.id))
+      d.slips = [...(d.slips ?? []), { id: x.id, playerId: x.player_id, amount: x.amount, at: ms(x.created_at) }];
+  }
+  const monthly = { ...state.monthly };
+  for (const m of r.monthly) monthly[m.month] = { ...monthly[m.month], [m.player_id]: ms(m.paid_at) };
+  return { ...state, days: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)), monthly };
+}
+
+/** แอดมินรีเซ็ต PIN ของผู้เล่น คืนข้อความผิดพลาด หรือ null */
+export async function adminResetPin(db: SupabaseClient, playerId: string): Promise<string | null> {
+  const { data, error } = await db.rpc("admin_reset_pin", { p_player: playerId });
+  if (error) return error.message;
+  return (data as string | null) ?? null;
+}
+
+// ---------- เข้าสู่ระบบด้วย LINE ----------
+
+export type LineLoginResult = {
+  session?: { access_token: string; refresh_token: string };
+  pending?: boolean;
+  token?: string;
+  player_id?: string;
+  ticket?: string;
+  name?: string;
+  error?: string;
+};
+
+export async function lineLogin(db: SupabaseClient, code: string, redirectUri: string): Promise<LineLoginResult> {
+  const { data, error } = await db.functions.invoke("line-login", { body: { code, redirect_uri: redirectUri } });
+  if (error) return { error: error.message };
+  return data as LineLoginResult;
+}
+
+/** ผูกบัญชี LINE กับผู้เล่นที่มีอยู่ (ยืนยันด้วย PIN ครั้งเดียว) */
+export async function linkLine(db: SupabaseClient, ticket: string, playerId: string, pin: string, newPin?: string): Promise<LoginResult> {
+  const { data, error } = await db.rpc("link_line", { p_ticket: ticket, p_player: playerId, p_pin: pin, p_new_pin: newPin ?? null });
+  if (error) return { error: error.message };
+  return data as LoginResult;
+}
+
+export async function registerPlayerLine(db: SupabaseClient, ticket: string, p: Omit<Player, "id">): Promise<{ id?: string; error?: string }> {
+  const { data, error } = await db.rpc("register_player_line", {
+    p_ticket: ticket,
+    p_name: p.name,
+    p_phone: p.phone ?? "",
+    p_gender: p.gender ?? "other",
+    p_level: p.level,
+    p_photo: p.photo ?? "",
+  });
+  if (error) return { error: error.message };
+  return data as { id?: string; error?: string };
 }

@@ -8,7 +8,9 @@ import { monthOf, type Player } from "@/lib/types";
 import { ExportReport } from "./ExportReport";
 import { PayQr } from "./PayQr";
 import { SlipReview } from "./Slips";
-import { Avatar, Button, Card, Icon, SectionTitle, Sheet, baht, inputClass } from "./ui";
+import { Avatar, Button, Card, Icon, SearchInput, SectionTitle, Sheet, baht, inputClass } from "./ui";
+import { visibleRoster } from "@/lib/roster";
+import { Auto } from "@/lib/autoTranslate";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -25,6 +27,7 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState(() => t("น้ำ"));
   const drinks = day.drinks.filter((d) => d.playerId === player.id);
+  const host = player.guestOf ? state.players.find((p) => p.id === player.guestOf) : undefined;
   const s = state.settings;
 
   return (
@@ -51,6 +54,9 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
         />
         <Row label={t("ค่าน้ำ")} value={baht(bill.drinkFee)} />
         {bill.carriedOver > 0 && <Row label={t("ค้างจ่ายครั้งก่อน")} value={baht(bill.carriedOver)} />}
+        {bill.guests.map((g) => (
+          <Row key={g.playerId} label={t("แขก: {name}", { name: g.name })} value={baht(g.amount)} />
+        ))}
         <div className="flex items-baseline justify-between border-t border-dashed border-zinc-300 pt-3">
           <span className="font-medium">{t("รวม")}</span>
           <span className="font-display text-2xl font-semibold">{baht(bill.total)}</span>
@@ -62,7 +68,7 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
         {drinks.map((d) => (
           <div key={d.id} className="flex items-center justify-between rounded-2xl bg-zinc-50 px-3 py-2 text-sm">
             <span>
-              {d.note} · {baht(d.amount)}
+              <Auto text={d.note} /> · {baht(d.amount)}
             </span>
             <button className="text-xs text-red-500" onClick={() => dispatch({ type: "removeDrink", date, drinkId: d.id })}>
               {t("ลบ")}
@@ -102,14 +108,18 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
             {t("ยกเลิกสถานะจ่ายแล้ว")}
           </button>
         </div>
+      ) : host ? (
+        <p className="rounded-3xl bg-amber-50 p-4 text-center text-sm text-amber-900">
+          {t("แขกของ {name} ยอดนี้รวมในบิลของ {name} จ่ายพร้อมกัน", { name: host.name })}
+        </p>
       ) : (
         bill.total > 0 && (
           <div className="flex flex-col items-center gap-3">
             <PayQr promptPayId={s.promptPayId} amount={bill.total} />
             <Button variant="accent" className="w-full" onClick={() => dispatch({ type: "markPaid", date, playerId: player.id })}>
-              {t("ได้รับเงินแล้ว {amount}", { amount: baht(bill.total) })}
+              {t("บันทึกว่าจ่ายแล้ว {amount}", { amount: baht(bill.total) })}
             </Button>
-            <p className="text-center text-xs text-zinc-500">{t("กดรับเงินแล้ว ผู้เล่นจะออกจากคิว ถือว่ากลับบ้าน")}</p>
+            <p className="text-center text-xs text-zinc-500">{t("ปกติผู้เล่นกดจ่ายเองในหน้ายอดของฉัน ปุ่มนี้ไว้ใช้เมื่อผู้เล่นจ่ายเงินสดกับแอดมิน")}</p>
           </div>
         )
       )}
@@ -126,11 +136,13 @@ function DailyView() {
   const rows = day.checkIns
     .map((c) => byId.get(c.playerId))
     .filter((p): p is Player => Boolean(p))
-    .map((p) => ({ player: p, bill: billFor(state.days, day, p, state.settings, state.monthly) }))
+    .map((p) => ({ player: p, bill: billFor(state.days, day, p, state.settings, state.monthly, state.players) }))
     .sort((a, b) => Number(a.bill.paid) - Number(b.bill.paid) || a.player.name.localeCompare(b.player.name, "th"));
 
-  const total = rows.reduce((s, r) => s + r.bill.total, 0);
-  const received = rows.filter((r) => r.bill.paid).reduce((s, r) => s + r.bill.total, 0);
+  // นับยอดของแต่ละคนเอง ไม่รวมยอดแขกที่อยู่ในบิลคนพามา จะได้ไม่นับซ้ำ
+  const own = (b: Bill) => b.total - b.guests.reduce((s, g) => s + g.amount, 0);
+  const total = rows.reduce((s, r) => s + own(r.bill), 0);
+  const received = rows.filter((r) => r.bill.paid).reduce((s, r) => s + own(r.bill), 0);
   const shuttlesUsed = day.games.reduce((s, g) => s + g.shuttles, 0);
   const openRow = rows.find((r) => r.player.id === open);
   const withSlip = new Set(day.slips?.map((s) => s.playerId));
@@ -164,6 +176,8 @@ function DailyView() {
                   {bill.drinkFee > 0 && ` · ${t("น้ำ {n}", { n: bill.drinkFee })}`}
                   {bill.monthlyMember && ` · ${t("รายเดือน")}`}
                   {bill.carriedOver > 0 && ` · ${t("ค้าง {n}", { n: bill.carriedOver })}`}
+                  {bill.guests.length > 0 && ` · ${t("รวมแขก {n} คน", { n: bill.guests.length })}`}
+                  {player.guestOf && ` · ${t("แขกของ {name}", { name: byId.get(player.guestOf)?.name ?? "?" })}`}
                 </span>
               </span>
               {!bill.paid && withSlip.has(player.id) && (
@@ -171,6 +185,8 @@ function DailyView() {
               )}
               {bill.paid ? (
                 <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">{t("จ่ายแล้ว")}</span>
+              ) : player.guestOf ? (
+                <span className="text-xs text-zinc-400">{t("รวมในบิลคนพามา")}</span>
               ) : (
                 <span className="font-display text-lg font-semibold">{bill.total}฿</span>
               )}
@@ -202,13 +218,18 @@ function MonthlyView() {
   const { date } = useToday();
   const [month, setMonth] = useState(monthOf(date));
   const [payFor, setPayFor] = useState<Player | null>(null);
+  const [q, setQ] = useState("");
   const paid = state.monthly[month] ?? {};
   const fee = state.settings.monthlyFee;
 
-  const players = [...state.players].sort(
+  const members = state.players.filter((p) => !p.guestOf && !p.pending);
+  const count = members.filter((p) => paid[p.id]).length;
+  // แสดงคนที่จ่ายแล้วหรือมาเล่นในเดือนนี้ คนอื่นค้นหาชื่อ
+  const came = new Set(state.days.filter((d) => monthOf(d.date) === month).flatMap((d) => d.checkIns.map((c) => c.playerId)));
+  const players = visibleRoster(members, q, (p) => Boolean(paid[p.id]) || came.has(p.id)).sort(
     (a, b) => Number(Boolean(paid[b.id])) - Number(Boolean(paid[a.id])) || a.name.localeCompare(b.name, "th"),
   );
-  const count = players.filter((p) => paid[p.id]).length;
+  const hidden = members.length - players.length;
 
   return (
     <>
@@ -241,6 +262,10 @@ function MonthlyView() {
         {t("คนที่จ่ายเดือนนี้แล้ว ระบบไม่คิดค่าสนามรายวันให้อัตโนมัติ ถ้าบันทึกผิด แตะเพื่อแก้ได้เลย")}
       </p>
 
+      <SearchInput value={q} onChange={setQ} />
+      {!q.trim() && hidden > 0 && (
+        <p className="px-1 text-xs text-zinc-500">{t("แสดงเฉพาะคนที่จ่ายแล้วหรือมาเล่นเดือนนี้ อีก {n} คนพิมพ์ชื่อค้นหา", { n: hidden })}</p>
+      )}
       <ul className="space-y-2">
         {players.map((p) => {
           const at = paid[p.id];
@@ -273,7 +298,9 @@ function MonthlyView() {
             </li>
           );
         })}
-        {players.length === 0 && <Card className="py-10 text-center text-sm text-zinc-500">{t("ยังไม่มีผู้เล่น")}</Card>}
+        {players.length === 0 && (
+          <Card className="py-10 text-center text-sm text-zinc-500">{members.length ? t("ไม่พบชื่อที่ค้นหา") : t("ยังไม่มีผู้เล่น")}</Card>
+        )}
       </ul>
 
       {payFor && (

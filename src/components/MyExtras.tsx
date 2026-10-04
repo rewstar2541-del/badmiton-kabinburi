@@ -7,22 +7,27 @@ import { useStore, useToday } from "@/lib/store";
 import { badgesFor, monthSummary } from "@/lib/stats";
 import { monthOf, type Player } from "@/lib/types";
 import { savedPin } from "./PickMe";
-import { Avatar, Button, Card, Icon, SectionTitle, baht, inputClass } from "./ui";
+import { Avatar, Button, Card, Icon, SearchInput, SectionTitle, baht } from "./ui";
+import { nameMatch } from "@/lib/roster";
 
 const MAX = 5;
 type Pref = "prefer" | "avoid" | null;
 
 /** ผู้เล่นเลือกคนที่อยากจับคู่ด้วย และคนที่ไม่อยากเจอในเกมเดียวกัน */
 export function PartnerPrefs({ player }: { player: Player }) {
-  const { state, setPrefs, auth } = useStore();
+  const { state, setPrefs } = useStore();
   const [editing, setEditing] = useState(false);
   const [prefer, setPrefer] = useState<string[]>(player.prefer ?? []);
   const [avoid, setAvoid] = useState<string[]>(player.avoid ?? []);
-  const [pin, setPin] = useState(savedPin.get);
+  const pin = savedPin.get();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const byId = new Map(state.players.map((p) => [p.id, p]));
-  const others = state.players.filter((p) => p.id !== player.id).sort((a, b) => a.name.localeCompare(b.name, "th"));
+  const [q, setQ] = useState("");
+  // แสดงแค่คนที่เลือกไว้ คนอื่นต้องพิมพ์ชื่อค้นหา (ไม่แสดงรายชื่อทั้งก๊วน)
+  const pool = state.players.filter((p) => p.id !== player.id && !p.pending && !p.guestOf);
+  const others = (q.trim() ? pool.filter((p) => nameMatch(p, q)).slice(0, 10) : pool.filter((p) => prefer.includes(p.id) || avoid.includes(p.id)))
+    .sort((a, b) => a.name.localeCompare(b.name, "th"));
   const prefOf = (id: string): Pref => (prefer.includes(id) ? "prefer" : avoid.includes(id) ? "avoid" : null);
 
   // แตะวนสามสถานะ: ไม่ระบุ → อยากจับคู่ → ไม่อยากเจอ → ไม่ระบุ
@@ -82,6 +87,7 @@ export function PartnerPrefs({ player }: { player: Player }) {
         ) : (
           <>
             <p className="text-xs text-zinc-500">{t("แตะชื่อเพื่อเปลี่ยน: ไม่ระบุ → อยากจับคู่ → ไม่อยากเจอ (สูงสุดอย่างละ 5 คน)")}</p>
+            <SearchInput value={q} onChange={setQ} placeholder={t("พิมพ์ชื่อคนที่จะเลือก")} />
             <ul className="grid grid-cols-2 gap-1.5">
               {others.map((p) => {
                 const pref = prefOf(p.id);
@@ -107,19 +113,6 @@ export function PartnerPrefs({ player }: { player: Player }) {
                 );
               })}
             </ul>
-            {auth.online && (
-              <label className="block space-y-1.5 text-sm font-medium">
-                {t("เลข 4 ตัวท้ายเบอร์โทรของคุณ")}
-                <input
-                  className={inputClass}
-                  inputMode="numeric"
-                  maxLength={4}
-                  placeholder={t("ถ้าไม่ได้ลงเบอร์ไว้ ปล่อยว่างได้")}
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-                />
-              </label>
-            )}
             {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
             <div className="flex gap-2">
               <Button
@@ -131,7 +124,6 @@ export function PartnerPrefs({ player }: { player: Player }) {
                   const err = await setPrefs(player.id, pin, prefer, avoid);
                   setBusy(false);
                   if (err) return setError(t(err));
-                  savedPin.set(pin);
                   setEditing(false);
                 }}
               >
