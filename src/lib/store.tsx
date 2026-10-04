@@ -224,7 +224,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
 
   // แถวล่าสุดที่โหลดมา เวลามีการเปลี่ยนแปลงจะโหลดใหม่เฉพาะตารางนั้น (คนเยอะจะได้ไม่หนัก)
   const rowsRef = useRef<{ rows: Rows; admin: boolean } | null>(null);
-  const reload = useCallback(async (tables?: Set<TableKey>) => {
+  const loadOnce = useCallback(async (tables?: Set<TableKey>) => {
     try {
       const prev = rowsRef.current?.admin === adminRef.current && tables ? rowsRef.current.rows : undefined;
       const rows = await loadRows(db, adminRef.current, tables, prev);
@@ -245,6 +245,13 @@ function RemoteProvider({ children }: { children: ReactNode }) {
       setReady(true);
     }
   }, [db]);
+  // โหลดทีละครั้งตามลำดับ ไม่ให้ผลของรอบเก่าที่เสร็จช้ากว่ามาทับข้อมูลใหม่
+  const queue = useRef<Promise<void>>(Promise.resolve());
+  const reload = useCallback((tables?: Set<TableKey>) => {
+    const run = queue.current.then(() => loadOnce(tables));
+    queue.current = run.catch(() => {});
+    return run;
+  }, [loadOnce]);
 
   // สถานะล็อคอิน และเช็คว่าเป็นแอดมินไหม
   const check = useCallback(

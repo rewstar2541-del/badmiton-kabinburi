@@ -73,7 +73,7 @@ export function SettingsTab() {
           }}
         >
           <h2 className="font-display font-semibold">{t("ราคาและสนาม")}</h2>
-          <p className="text-xs text-zinc-500">{t("ราคาใหม่ใช้ตั้งแต่วันนี้ บิลของวันก่อนๆ คงราคาเดิม ถ้าจะแก้ยอดของคนใดคนหนึ่ง ไปที่แท็บคิดเงิน แล้วกดที่ชื่อ")}</p>
+          <p className="text-xs text-zinc-500">{t("ราคาใหม่ใช้ตั้งแต่วันนี้ (ถ้าวันนี้มีคนจ่ายแล้ว เริ่มพรุ่งนี้) บิลวันก่อนๆ คงราคาเดิม ถ้าจะแก้ยอดของคนใดคนหนึ่ง ไปที่แท็บคิดเงิน แล้วกดที่ชื่อ")}</p>
           {NUMBER_FIELDS.map((f) => (
             <label key={f.key} className="block text-sm">
               {t(f.label)}

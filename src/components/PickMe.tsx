@@ -17,9 +17,10 @@ export function useMe() {
   const setMe = useCallback(
     (id: string | null) => {
       // ออกจากระบบ: ล้างทั้งบัญชีผู้เล่นและตัวตน LINE บนเครื่องนี้
+      // (แอดมินที่สลับมาโหมดผู้เล่น ออกแค่ฝั่งผู้เล่น ยังเป็นแอดมินอยู่)
       if (!id) {
         writeSession(null);
-        void auth.signOut();
+        if (!auth.canAdmin) void auth.signOut();
       }
       setMeState(id);
     },

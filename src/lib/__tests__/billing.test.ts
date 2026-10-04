@@ -128,3 +128,17 @@ describe("ล้างประวัติ", () => {
     expect(st.days).toEqual([{ date: "2026-10-10", checkIns: [], games: [], drinks: [], announcement: "" }]);
   });
 });
+
+describe("บั๊กที่แก้", () => {
+  it("ยังไม่เช็คอิน ไม่คิดค่าสนาม", () => {
+    const d: Day = { date: "2026-10-04", checkIns: [], games: [], drinks: [] };
+    expect(billFor([d], d, daily, S, {}).total).toBe(0);
+  });
+});
+
+describe("เก็บราคาเดิมของวันนี้ถ้ามีคนจ่ายแล้ว", () => {
+  it("วันนี้มีคนจ่ายแล้ว ราคาใหม่เริ่มพรุ่งนี้", () => {
+    expect(datesToFreeze([day("2026-10-04", [], true)], "2026-10-04")).toEqual(["2026-10-04"]);
+    expect(datesToFreeze([day("2026-10-04", [])], "2026-10-04")).toEqual([]);
+  });
+});

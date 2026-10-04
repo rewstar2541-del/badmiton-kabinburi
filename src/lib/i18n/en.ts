@@ -506,4 +506,7 @@ export const en: Record<string, string> = {
   "เปลี่ยนระดับมือแล้วต้องรอแอดมินอนุมัติก่อน": "Level changes need admin approval",
   "ขอเปลี่ยนระดับมือ": "Level change requests",
   "กรุณาใส่ชื่อเล่น (ไม่เกิน 30 ตัวอักษร)": "Please enter a nickname (max 30 characters)",
+  "สนามนี้มีเกมอยู่แล้ว": "This court already has a game",
+  "ใช้ชื่อนี้บนเครื่องนี้": "Use on this device",
+  "ราคาใหม่ใช้ตั้งแต่วันนี้ (ถ้าวันนี้มีคนจ่ายแล้ว เริ่มพรุ่งนี้) บิลวันก่อนๆ คงราคาเดิม ถ้าจะแก้ยอดของคนใดคนหนึ่ง ไปที่แท็บคิดเงิน แล้วกดที่ชื่อ": "New prices apply from today (from tomorrow if someone already paid today); earlier bills keep the old prices. To adjust one player's bill, go to Billing and tap their name.",
 };
