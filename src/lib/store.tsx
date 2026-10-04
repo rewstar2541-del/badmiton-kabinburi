@@ -5,9 +5,9 @@ import { createContext, useCallback, useContext, useEffect, useReducer, useRef, 
 import { isDemo, demoState } from "./demo";
 import { randomToken, readSession, writeSession } from "./session";
 import { clearLineTicket, handleLineCallback, readLineTicket } from "./lineLogin";
-import { addGuest, claimPlayer, signUpDay, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, removeMySlip, supabase } from "./remote";
+import { addGuest, claimPlayer, signUpDay, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, removeMySlip, setMyPlan, supabase } from "./remote";
 import { EMPTY_STATE, guestCheck, prepare, reducer, today, type Intent, type SelfAction, type State } from "./state";
-import { DEFAULT_SETTINGS, monthOf, type Level, type Player } from "./types";
+import { DEFAULT_SETTINGS, monthOf, type Level, type Plan, type Player } from "./types";
 import { t } from "@/lib/i18n";
 
 export { today, newId } from "./state";
@@ -51,6 +51,8 @@ interface Ctx {
   removeSlip: (playerId: string, pin: string, slipId: string) => Promise<string | null>;
   /** ผู้เล่นตั้งคนที่อยากจับคู่/ไม่อยากเจอ คืนข้อความผิดพลาด หรือ null */
   setPrefs: (playerId: string, pin: string, prefer: string[], avoid: string[]) => Promise<string | null>;
+  /** ผู้เล่นเลือกสมาชิกรายวัน/รายเดือน คืนข้อความผิดพลาด หรือ null */
+  setPlan: (playerId: string, pin: string, plan: Plan) => Promise<string | null>;
   /**
    * "นี่คือฉัน" กับชื่อที่แอดมินลงไว้แล้ว: ของจริงส่งคำขอผูก LINE ให้แอดมินยืนยัน (pending)
    * โหมดทดลองเข้าเป็นคนนั้นได้เลย (token)
@@ -117,6 +119,14 @@ function LocalProvider({ children }: { children: ReactNode }) {
     },
     [dispatch, state.players],
   );
+  const setPlanLocal = useCallback(
+    async (playerId: string, _pin: string, plan: Plan) => {
+      const p = state.players.find((x) => x.id === playerId);
+      if (p) dispatch({ type: "updatePlayer", player: { ...p, plan } });
+      return null;
+    },
+    [dispatch, state.players],
+  );
   const addGuestLocal = useCallback(
     async (hostId: string, _pin: string, name: string, level: Level) => {
       const date = today();
@@ -174,7 +184,7 @@ function LocalProvider({ children }: { children: ReactNode }) {
       : undefined,
   };
   return (
-    <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, removeSlip: removeSlipLocal, setPrefs, addGuest: addGuestLocal, register: registerLocal, login: loginLocal, slipImage: getSlip, ready: true, error: null, auth }}>
+    <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, removeSlip: removeSlipLocal, setPrefs, setPlan: setPlanLocal, addGuest: addGuestLocal, register: registerLocal, login: loginLocal, slipImage: getSlip, ready: true, error: null, auth }}>
       {children}
     </StoreCtx.Provider>
   );
@@ -358,6 +368,15 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     [db, reload],
   );
 
+  const setPlanRemote = useCallback(
+    async (playerId: string, pin: string, plan: Plan) => {
+      const err = await setMyPlan(db, playerId, pin, plan);
+      if (!err) await reload();
+      return err;
+    },
+    [db, reload],
+  );
+
   const auth: Auth = {
     online: true,
     email: session?.user.email,
@@ -377,7 +396,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  return <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, removeSlip: removeSlipRemote, setPrefs, addGuest: addGuestRemote, register: registerRemote, login: loginRemote, slipImage: getSlip, ready, error, auth }}>{children}</StoreCtx.Provider>;
+  return <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, removeSlip: removeSlipRemote, setPrefs, setPlan: setPlanRemote, addGuest: addGuestRemote, register: registerRemote, login: loginRemote, slipImage: getSlip, ready, error, auth }}>{children}</StoreCtx.Provider>;
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {

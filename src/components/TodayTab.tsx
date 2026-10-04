@@ -12,6 +12,7 @@ import { t } from "@/lib/i18n";
 import { RestButton } from "./RestButton";
 import { Auto } from "@/lib/autoTranslate";
 import { EventPhotos } from "./EventPhotos";
+import { MonthlyReminder, PlanChoice } from "./Membership";
 
 /** ประกาศจัดก๊วนวันนี้ (ใช้ทั้งหน้าผู้เล่นและแอดมิน) */
 export function AnnouncementBanner({ message }: { message: string }) {
@@ -78,6 +79,8 @@ export function TodayTab() {
   if (!announced && !hereToday)
     return (
       <div className="space-y-4">
+        <PlanChoice player={player} />
+        <MonthlyReminder player={player} />
         {closed !== undefined ? (
           <ClosedBanner reason={closed} />
         ) : (
@@ -112,6 +115,8 @@ export function TodayTab() {
 
   return (
     <div className="space-y-4">
+      <PlanChoice player={player} />
+      <MonthlyReminder player={player} />
       <AnnouncementBanner message={day.announcement ?? ""} />
 
       <Card className="space-y-4">

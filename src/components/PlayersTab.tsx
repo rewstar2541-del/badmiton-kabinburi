@@ -228,6 +228,16 @@ export function PlayersTab() {
                   </Button>
                 </div>
                 <div className="flex flex-wrap justify-end gap-1.5">
+                  {!p.guestOf && (
+                    <Button
+                      variant="ghost"
+                      className={`px-3 py-2 text-xs ${p.plan === "monthly" ? "text-emerald-700" : "text-zinc-500"}`}
+                      title={t("กดเพื่อสลับรายวัน/รายเดือน")}
+                      onClick={() => dispatch({ type: "updatePlayer", player: { ...p, plan: p.plan === "monthly" ? "daily" : "monthly" } })}
+                    >
+                      {p.plan === "monthly" ? t("รายเดือน") : p.plan === "daily" ? t("รายวัน") : t("ยังไม่เลือกแบบสมาชิก")}
+                    </Button>
+                  )}
                   {p.guestOf && (
                     <Button
                       variant="ghost"

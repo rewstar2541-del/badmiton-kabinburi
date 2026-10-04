@@ -8,7 +8,7 @@ import { PendingNotice, PickMe, useMe } from "./PickMe";
 import { BadgesCard, MonthCard, PartnerPrefs } from "./MyExtras";
 import { SelfPay } from "./SelfPay";
 import { SlipUpload } from "./Slips";
-import { useState } from "react";
+import { MonthlyDueCard, PlanChoice, PlanSwitch } from "./Membership";
 import { Avatar, Card, Icon, LevelBadge, baht } from "./ui";
 import { t } from "@/lib/i18n";
 
@@ -51,6 +51,9 @@ export function MyBillTab() {
           {t("ออกจากระบบ")}
         </button>
       </Card>
+
+      <PlanChoice player={player} />
+      <MonthlyDueCard player={player} />
 
       {!checkedIn && bill.total === 0 ? (
         <Card className="py-8 text-center text-sm text-zinc-500">{t("วันนี้ยังไม่ได้เช็คอิน")}</Card>
@@ -96,35 +99,10 @@ export function MyBillTab() {
         </>
       )}
 
-      {!monthly && <MonthlyFee playerId={player.id} />}
       <MonthCard player={player} />
       <BadgesCard player={player} />
       <PartnerPrefs key={(player.prefer ?? []).join() + "|" + (player.avoid ?? []).join()} player={player} />
+      <PlanSwitch player={player} />
     </div>
-  );
-}
-
-/** สมัคร/จ่ายค่าสมาชิกรายเดือนเอง เดือนนี้ไม่ต้องจ่ายค่าสนามรายวัน */
-function MonthlyFee({ playerId }: { playerId: string }) {
-  const { state } = useStore();
-  const { date } = useToday();
-  const [open, setOpen] = useState(false);
-  const fee = state.settings.monthlyFee;
-  return (
-    <Card className="space-y-3">
-      <button className="flex w-full items-center justify-between text-left" onClick={() => setOpen(!open)}>
-        <span>
-          <span className="block font-display font-semibold">{t("ค่าสมาชิกรายเดือน {month}", { month: monthOf(date) })}</span>
-          <span className="block text-xs text-zinc-500">{t("จ่าย {amount} ไม่ต้องจ่ายค่าสนามทุกครั้งทั้งเดือน", { amount: baht(fee) })}</span>
-        </span>
-        <span className="text-sm text-zinc-400">{open ? "▲" : "▼"}</span>
-      </button>
-      {open && (
-        <div className="flex flex-col items-center gap-2">
-          <PayQr promptPayId={state.settings.promptPayId} amount={fee} />
-          <SelfPay playerId={playerId} amount={fee} action="payMonth" />
-        </div>
-      )}
-    </Card>
   );
 }
