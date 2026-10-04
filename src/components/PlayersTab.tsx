@@ -196,12 +196,16 @@ export function PlayersTab() {
                   }}
                 />
               ) : (
+                // ชื่ออยู่แถวบน ปุ่มอยู่แถวล่าง จอมือถือแคบจะได้ไม่บีบชื่อจนหาย
+                <div className="space-y-2">
                 <div className="flex items-center gap-3">
                   <Avatar name={p.name} photo={p.photo} size={44} />
                   <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-1.5">
-                      <span className="truncate font-semibold">{p.name}</span>
-                      <LevelBadge level={p.level} />
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <span className="min-w-0 truncate font-semibold">{p.name}</span>
+                      <span className="shrink-0">
+                        <LevelBadge level={p.level} />
+                      </span>
                     </span>
                     <span className="block text-xs text-zinc-500">
                       {[
@@ -212,10 +216,22 @@ export function PlayersTab() {
                         " "}
                     </span>
                   </span>
+                  <Button
+                    variant="ghost"
+                    className="shrink-0 px-2 text-red-500"
+                    aria-label={t("ลบ {name}", { name: p.name })}
+                    onClick={() => {
+                      if (confirm(t("ลบ {name}?", { name: p.name }))) dispatch({ type: "removePlayer", playerId: p.id });
+                    }}
+                  >
+                    <Icon.X width={18} height={18} />
+                  </Button>
+                </div>
+                <div className="flex flex-wrap justify-end gap-1.5">
                   {p.guestOf && (
                     <Button
                       variant="ghost"
-                      className="px-2 text-xs text-emerald-700"
+                      className="px-3 py-2 text-xs text-emerald-700"
                       onClick={() => {
                         const member = { ...p, guestOf: undefined };
                         dispatch({ type: "updatePlayer", player: member });
@@ -232,7 +248,7 @@ export function PlayersTab() {
                     return (
                       <Button
                         variant="ghost"
-                        className={`px-2 text-xs ${on ? "text-ink" : "text-zinc-500"}`}
+                        className={`px-3 py-2 text-xs ${on ? "text-ink" : "text-zinc-500"}`}
                         disabled={admin.busy || self}
                         onClick={() => {
                           const msg = on ? t("เอา {name} ออกจากแอดมิน?", { name: p.name }) : t("ตั้ง {name} เป็นแอดมิน?", { name: p.name });
@@ -243,19 +259,10 @@ export function PlayersTab() {
                       </Button>
                     );
                   })()}
-                  <Button variant="ghost" className="px-3" onClick={() => setEditing(p.id)}>
+                  <Button variant="ghost" className="px-3 py-2 text-xs" onClick={() => setEditing(p.id)}>
                     {t("แก้ไข")}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    className="px-2 text-red-500"
-                    aria-label={t("ลบ {name}", { name: p.name })}
-                    onClick={() => {
-                      if (confirm(t("ลบ {name}?", { name: p.name }))) dispatch({ type: "removePlayer", playerId: p.id });
-                    }}
-                  >
-                    <Icon.X width={18} height={18} />
-                  </Button>
+                </div>
                 </div>
               )}
             </Card>
