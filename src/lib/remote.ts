@@ -171,7 +171,7 @@ export const TABLE_OF: Record<string, TableKey> = {
 };
 
 export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iterable<TableKey>, prev?: Rows): Promise<Rows> {
-  const since = isAdmin ? "0000-01-01" : sinceDate(PLAYER_HISTORY_DAYS);
+  const since = isAdmin ? "2000-01-01" : sinceDate(PLAYER_HISTORY_DAYS);
   const fetchers: { [K in TableKey]: () => Promise<Rows[K]> } = {
     players: () => all(() => db.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of,pending").order("id")),
     // เบอร์โทรเห็นเฉพาะแอดมิน
