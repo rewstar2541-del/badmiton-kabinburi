@@ -1,5 +1,7 @@
 "use client";
 
+import { StockWarning } from "./Stock";
+import { PairRequests } from "./Pairs";
 import { useEffect, useState } from "react";
 import { presence, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
@@ -145,6 +147,8 @@ export function CourtsTab() {
 
   return (
     <div className="space-y-4">
+      <StockWarning />
+      <PairRequests />
       <SectionTitle right={t("ว่าง {n} สนาม", { n: courts.length - active.size })}>{t("สนาม")}</SectionTitle>
       <div className="grid gap-3 sm:grid-cols-2">
         {courts.map((c) => {

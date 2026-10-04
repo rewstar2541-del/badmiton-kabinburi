@@ -1,5 +1,7 @@
 "use client";
 
+import { PollAdmin } from "./Polls";
+import { StockWarning } from "./Stock";
 import { useState } from "react";
 import { useStore, useToday } from "@/lib/store";
 import { isMonthlyPaid, type Player } from "@/lib/types";
@@ -42,7 +44,9 @@ export function CheckInTab() {
 
   return (
     <div className="space-y-4">
+      <StockWarning />
       <AnnounceCard />
+      <PollAdmin compact />
       <SignupList />
       {waiting > 0 && (
         <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">

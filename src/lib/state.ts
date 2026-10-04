@@ -1,5 +1,5 @@
 import { guestsOf, markPaid } from "./billing";
-import { DEFAULT_SETTINGS, type Day, type DayPrices, type Expense, type Game, type Level, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
+import { DEFAULT_SETTINGS, type Day, type DayPrices, type Expense, type Game, type PairStatus, type Poll, type ShuttleStock, type Level, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
 
 export interface State {
   players: Player[];
@@ -12,6 +12,10 @@ export interface State {
   monthlyAmounts?: Record<string, Record<string, number>>;
   /** รายจ่ายของก๊วน (แอดมินเท่านั้น) */
   expenses?: Expense[];
+  /** สต็อกลูกแบด (แอดมินเท่านั้น) */
+  stock?: ShuttleStock;
+  /** โหวตวันตีพิเศษ */
+  polls?: Poll[];
 }
 
 /** ค่ารายเดือนที่คนนี้จ่ายในเดือนนั้น ใช้ราคาตอนจ่าย ไม่ใช่ราคาปัจจุบัน */
@@ -48,7 +52,7 @@ export type Action =
   /** freeze: เก็บราคาเดิมไว้กับวันก่อนๆ ตอนเปลี่ยนราคา บิลเก่าจะได้ไม่เปลี่ยนตาม */
   | { type: "updateSettings"; settings: Settings; freeze?: { dates: string[]; prices: DayPrices } }
   /** title: undefined = คงหัวข้อเดิม, null = จัดก๊วน (ค่าเริ่มต้น) */
-  | { type: "setAnnouncement"; date: string; message: string | null; title?: string | null }
+  | { type: "setAnnouncement"; date: string; message: string | null; title?: string | null; fee?: number | null }
   | { type: "setClosed"; date: string; reason: string | null }
   | { type: "signUp"; date: string; playerId: string; _at: number }
   | { type: "cancelSignUp"; date: string; playerId: string }
@@ -56,7 +60,18 @@ export type Action =
   | { type: "addSlip"; date: string; playerId: string; amount: number; _id: string; _at: number }
   /** ล้างประวัติทั้งหมด (ช่วงทดลองใช้) เก็บผู้เล่น ตั้งค่า วันงดเล่น และวันจัดก๊วนหลังวันนี้ไว้ */
   | { type: "clearHistory"; today: string }
-  | { type: "addExpense"; expense: Omit<Expense, "id">; _id: string }
+  | { type: "addExpense"; expense: Omit<Expense, "id" | "at">; _id: string; _at: number }
+  /** นับลูกจริงแล้ว ตั้งยอดใหม่ ณ ตอนนี้ / เปลี่ยนจุดเตือน */
+  | { type: "setStock"; base?: number; low?: number; _at: number }
+  | { type: "createPoll"; question: string; dates: string[]; _id: string; _at: number }
+  /** chosen: วันที่เลือก (เปิดประกาศวันนั้นแยกต่างหาก) */
+  | { type: "closePoll"; id: string; chosen?: string }
+  | { type: "removePoll"; id: string }
+  /** โหมดทดลองเท่านั้น ออนไลน์ผ่าน vote_poll */
+  | { type: "votePoll"; id: string; playerId: string; dates: string[] }
+  /** โหมดทดลองเท่านั้น ออนไลน์ผ่าน request_pair */
+  | { type: "requestPair"; date: string; from: string; to: string; _id: string; _at: number }
+  | { type: "setPairStatus"; date: string; id: string; status: PairStatus; _at: number }
   | { type: "removeExpense"; id: string }
   | { type: "replace"; state: State };
 
@@ -81,6 +96,8 @@ export function normalizeBackup(raw: unknown): State {
     closed: data.closed ?? {},
     monthlyAmounts: data.monthlyAmounts ?? {},
     expenses: Array.isArray(data.expenses) ? data.expenses : [],
+    stock: data.stock,
+    polls: Array.isArray(data.polls) ? data.polls : [],
   };
 }
 
@@ -254,6 +271,7 @@ export function reducer(state: State, a: Action): State {
         ...d,
         announcement: a.message ?? undefined,
         announcementTitle: a.message === null ? undefined : a.title === undefined ? d.announcementTitle : (a.title ?? undefined),
+        announcementFee: a.message === null ? undefined : a.fee === undefined ? d.announcementFee : (a.fee ?? undefined),
       }));
     case "signUp":
       return withDay(state, a.date, (d) =>
@@ -274,12 +292,58 @@ export function reducer(state: State, a: Action): State {
         players: state.players.filter((p) => !p.guestOf),
         monthly: {},
         expenses: [],
+        polls: [],
         days: state.days
           .filter((d) => d.date > a.today && d.announcement !== undefined)
           .map((d) => ({ date: d.date, checkIns: [], games: [], drinks: [], announcement: d.announcement })),
       };
     case "addExpense":
-      return { ...state, expenses: [...(state.expenses ?? []), { ...a.expense, id: a._id }] };
+      return { ...state, expenses: [...(state.expenses ?? []), { ...a.expense, id: a._id, at: a._at }] };
+    case "setStock": {
+      const cur = state.stock ?? { base: 0, countedAt: a._at, low: 12 };
+      return {
+        ...state,
+        stock: { low: a.low ?? cur.low, base: a.base ?? cur.base, countedAt: a.base === undefined ? cur.countedAt : a._at },
+      };
+    }
+    case "createPoll":
+      return { ...state, polls: [...(state.polls ?? []), { id: a._id, question: a.question, dates: a.dates, createdAt: a._at, closed: false, votes: {} }] };
+    case "closePoll":
+      return { ...state, polls: (state.polls ?? []).map((p) => (p.id === a.id ? { ...p, closed: true, chosen: a.chosen } : p)) };
+    case "removePoll":
+      return { ...state, polls: (state.polls ?? []).filter((p) => p.id !== a.id) };
+    case "votePoll":
+      return {
+        ...state,
+        polls: (state.polls ?? []).map((p) =>
+          p.id === a.id && !p.closed ? { ...p, votes: { ...p.votes, [a.playerId]: a.dates.filter((d) => p.dates.includes(d)) } } : p,
+        ),
+      };
+    case "requestPair":
+      return withDay(state, a.date, (d) => ({
+        ...d,
+        pairs: [
+          ...(d.pairs ?? []).map((x) => (x.from === a.from && (x.status === "pending" || x.status === "accepted") ? { ...x, status: "cancelled" as const } : x)),
+          { id: a._id, from: a.from, to: a.to, status: "pending", at: a._at },
+        ],
+      }));
+    case "setPairStatus":
+      return withDay(state, a.date, (d) => {
+        const r = d.pairs?.find((x) => x.id === a.id);
+        if (!r) return d;
+        const people = [r.from, r.to];
+        return {
+          ...d,
+          pairs: (d.pairs ?? []).map((x) =>
+            x.id === a.id
+              ? { ...x, status: a.status, at: a.status === "accepted" ? a._at : x.at }
+              : // ตอบรับแล้ว คำขออื่นของสองคนนี้ถูกยกเลิก
+                a.status === "accepted" && (x.status === "pending" || x.status === "accepted") && (people.includes(x.from) || people.includes(x.to))
+                ? { ...x, status: "cancelled" as const }
+                : x,
+          ),
+        };
+      });
     case "removeExpense":
       return { ...state, expenses: (state.expenses ?? []).filter((e) => e.id !== a.id) };
     case "replace":

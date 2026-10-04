@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Action, SelfAction, State } from "./state";
-import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type Gender, type Level, type MonthlyPayments, type Plan, type Player, type Settings } from "./types";
+import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type Gender, type Level, type MonthlyPayments, type Plan, type Player, type Settings } from "./types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -47,11 +47,15 @@ export interface Rows {
   }[];
   drinks: { id: string; date: string; player_id: string; amount: number; note: string }[];
   monthly: { month: string; player_id: string; paid_at: string; amount?: number | null }[];
-  announcements: { date: string; message: string; title?: string | null }[];
+  announcements: { date: string; message: string; title?: string | null; fee?: number | null }[];
   signups: { date: string; player_id: string; at: string }[];
   closed: { date: string; reason: string }[];
   slips: { id: string; date: string; player_id: string; amount: number; created_at: string }[];
-  expenses?: { id: string; date: string; category: Expense["category"]; amount: number; note: string }[];
+  expenses?: { id: string; date: string; category: Expense["category"]; amount: number; note: string; shuttles?: number | null; created_at?: string }[];
+  stock?: { base: number; counted_at: string; low: number } | null;
+  pairs?: { id: string; date: string; from_id: string; to_id: string; status: PairStatus; at: string }[];
+  polls?: { id: string; question: string; dates: string[]; created_at: string; chosen: string | null; closed: boolean }[];
+  votes?: { poll_id: string; player_id: string; dates: string[] }[];
   settings:
     | {
         court_count: number;
@@ -115,9 +119,12 @@ export function rowsToState(r: Rows): State {
       winner: (g.winner as Game["winner"]) ?? undefined,
     });
   for (const x of r.drinks) day(x.date).drinks.push({ id: x.id, playerId: x.player_id, amount: x.amount, note: x.note });
+  for (const x of r.pairs ?? [])
+    (day(x.date).pairs ??= []).push({ id: x.id, from: x.from_id, to: x.to_id, status: x.status, at: Date.parse(x.at) });
   for (const a of r.announcements) {
     day(a.date).announcement = a.message;
     if (a.title) day(a.date).announcementTitle = a.title;
+    if (a.fee != null) day(a.date).announcementFee = a.fee;
   }
   for (const s of r.signups) (day(s.date).signups ??= []).push({ playerId: s.player_id, at: ms(s.at) });
   for (const x of r.slips)
@@ -158,7 +165,27 @@ export function rowsToState(r: Rows): State {
     days: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)),
     monthly,
     monthlyAmounts,
-    expenses: (r.expenses ?? []).map((e) => ({ id: e.id, date: e.date, category: e.category, amount: e.amount, note: e.note })),
+    expenses: (r.expenses ?? []).map((e) => ({
+      id: e.id,
+      date: e.date,
+      category: e.category,
+      amount: e.amount,
+      note: e.note,
+      ...(e.shuttles ? { shuttles: e.shuttles } : {}),
+      ...(e.created_at ? { at: Date.parse(e.created_at) } : {}),
+    })),
+    stock: r.stock ? { base: r.stock.base, countedAt: Date.parse(r.stock.counted_at), low: r.stock.low } : undefined,
+    polls: (r.polls ?? []).map(
+      (p): Poll => ({
+        id: p.id,
+        question: p.question,
+        dates: p.dates,
+        createdAt: Date.parse(p.created_at),
+        closed: p.closed,
+        ...(p.chosen ? { chosen: p.chosen } : {}),
+        votes: Object.fromEntries((r.votes ?? []).filter((v) => v.poll_id === p.id).map((v) => [v.player_id, v.dates])),
+      }),
+    ),
   };
 }
 
@@ -199,6 +226,10 @@ export const TABLE_OF: Record<string, TableKey> = {
   closed_days: "closed",
   day_prices: "prices",
   expenses: "expenses",
+  shuttle_stock: "stock",
+  pair_requests: "pairs",
+  polls: "polls",
+  poll_votes: "votes",
 };
 
 export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iterable<TableKey>, prev?: Rows): Promise<Rows> {
@@ -221,11 +252,15 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
       );
       return (r[0] as Rows["settings"]) ?? null;
     },
-    announcements: () => all(() => db.from("announcements").select("date,message,title").gte("date", since).order("date")),
+    announcements: () => all(() => db.from("announcements").select("date,message,title,fee").gte("date", since).order("date")),
     signups: () => all(() => db.from("signups").select("date,player_id,at").gte("date", since).order("date").order("player_id")),
     slips: async () => (isAdmin ? all(() => db.from("slips").select("id,date,player_id,amount,created_at").is("removed_at", null).order("id")) : []),
     closed: () => all(() => db.from("closed_days").select("date,reason").order("date")),
-    expenses: async () => (isAdmin ? all(() => db.from("expenses").select("id,date,category,amount,note").order("date").order("id")) : []),
+    expenses: async () => (isAdmin ? all(() => db.from("expenses").select("id,date,category,amount,note,shuttles,created_at").order("date").order("id")) : []),
+    stock: async () => (isAdmin ? ((await db.from("shuttle_stock").select("base,counted_at,low").eq("id", 1).maybeSingle()).data ?? null) : null),
+    pairs: () => all(() => db.from("pair_requests").select("id,date,from_id,to_id,status,at").gte("date", sinceDate(1)).order("at")),
+    polls: () => all(() => db.from("polls").select("id,question,dates,created_at,chosen,closed").gte("created_at", sinceDate(120)).order("created_at")),
+    votes: () => all(() => db.from("poll_votes").select("poll_id,player_id,dates").gte("at", sinceDate(120)).order("poll_id")),
     prices: () => all(() => db.from("day_prices").select("date,court_fee,first_shuttle_fee,next_shuttle_fee").gte("date", since).order("date")),
   };
   const want = new Set<TableKey>(keys ?? (Object.keys(fetchers) as TableKey[]));
@@ -391,7 +426,12 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
         : check(
             await db
               .from("announcements")
-              .upsert({ date: a.date, message: a.message, ...(a.title === undefined ? {} : { title: a.title }) }),
+              .upsert({
+                date: a.date,
+                message: a.message,
+                ...(a.title === undefined ? {} : { title: a.title }),
+                ...(a.fee === undefined ? {} : { fee: a.fee }),
+              }),
           );
     case "signUp":
       return check(
@@ -402,7 +442,27 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
     case "addSlip":
       return; // ออนไลน์ใช้ submitSlip
     case "addExpense":
-      return check(await db.from("expenses").insert({ id: a._id, ...a.expense }));
+      return check(await db.from("expenses").insert({ id: a._id, ...a.expense, created_at: iso(a._at) }));
+    case "setStock":
+      return check(
+        await db.from("shuttle_stock").upsert({
+          id: 1,
+          ...(a.base === undefined ? {} : { base: a.base, counted_at: iso(a._at) }),
+          ...(a.low === undefined ? {} : { low: a.low }),
+        }),
+      );
+    case "createPoll":
+      return check(await db.from("polls").insert({ id: a._id, question: a.question, dates: a.dates, created_at: iso(a._at) }));
+    case "closePoll":
+      return check(await db.from("polls").update({ closed: true, chosen: a.chosen ?? null }).eq("id", a.id));
+    case "removePoll":
+      return check(await db.from("polls").delete().eq("id", a.id));
+    case "setPairStatus":
+      // แอดมินยกเลิกคำขอ (ผู้เล่นใช้ respond_pair / cancel_pair)
+      return check(await db.from("pair_requests").update({ status: a.status }).eq("id", a.id));
+    case "votePoll":
+    case "requestPair":
+      return; // ออนไลน์ผู้เล่นทำผ่านฟังก์ชันในฐานข้อมูล
     case "removeExpense":
       return check(await db.from("expenses").delete().eq("id", a.id));
     case "clearHistory": {
@@ -709,4 +769,25 @@ export async function registerPlayerLine(db: SupabaseClient, ticket: string, p: 
   });
   if (error) return { error: error.message };
   return data as { id?: string; error?: string };
+}
+
+/** สิ่งที่ผู้เล่นทำเองเกี่ยวกับเพื่อน: ขอจับคู่ ตอบรับ ยกเลิก และโหวตวัน */
+export type SocialRequest =
+  | { kind: "requestPair"; to: string }
+  | { kind: "respondPair"; id: string; accept: boolean }
+  | { kind: "cancelPair"; id: string }
+  | { kind: "vote"; poll: string; dates: string[] };
+
+export async function socialRpc(db: SupabaseClient, req: SocialRequest, playerId: string, pin: string): Promise<string | null> {
+  const base = { p_player: playerId, p_pin: pin };
+  const { data, error } =
+    req.kind === "requestPair"
+      ? await db.rpc("request_pair", { ...base, p_to: req.to })
+      : req.kind === "respondPair"
+        ? await db.rpc("respond_pair", { ...base, p_id: req.id, p_accept: req.accept })
+        : req.kind === "cancelPair"
+          ? await db.rpc("cancel_pair", { ...base, p_id: req.id })
+          : await db.rpc("vote_poll", { ...base, p_poll: req.poll, p_dates: req.dates });
+  if (error) return error.message;
+  return (data as string | null) ?? null;
 }

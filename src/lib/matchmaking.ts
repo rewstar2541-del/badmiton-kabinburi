@@ -1,3 +1,4 @@
+import { activePairs } from "./social";
 import { strength, type Day, type Player } from "./types";
 
 export interface QueueEntry {
@@ -67,7 +68,9 @@ export function hasAvoid(four: Player[]): boolean {
 export function splitTeams(
   four: Player[],
   partners: Map<string, number> = new Map(),
+  pairs: [string, string][] = [],
 ): { teams: [string, string, string, string]; cost: number } {
+  const paired = (a: Player, b: Player) => pairs.some(([x, y]) => (x === a.id && y === b.id) || (x === b.id && y === a.id));
   const [p0, p1, p2, p3] = four;
   const options: [Player, Player, Player, Player][] = [
     [p0, p1, p2, p3],
@@ -80,7 +83,9 @@ export function splitTeams(
     const repeat =
       (partners.get(pairKey(a1.id, a2.id)) ?? 0) + (partners.get(pairKey(b1.id, b2.id)) ?? 0);
     const liked = Number(wants(a1, a2)) + Number(wants(b1, b2));
-    const cost = gap * 10 + repeat * 4 - liked * 6;
+    // ขอจับคู่กันไว้ (ตอบรับแล้ว) ต้องอยู่ทีมเดียวกัน
+    const together = Number(paired(a1, a2)) + Number(paired(b1, b2));
+    const cost = gap * 10 + repeat * 4 - liked * 6 - together * 200;
     if (cost < best.cost) best = { teams: [a1.id, a2.id, b1.id, b2.id], cost };
   }
   return best;
@@ -99,7 +104,13 @@ export function nextMatch(
   if (queue.length < 4) return null;
 
   const head = queue[0].player;
-  const pool = queue.slice(1, Math.max(4, window)).map((e, i) => ({ p: e.player, rank: i + 1 }));
+  const pairs = activePairs(day).map((r) => [r.from, r.to] as [string, string]);
+  // คู่ที่ขอไว้ของคนต้นคิว ดึงเข้ามาพิจารณาด้วยแม้อยู่ท้ายคิว
+  const mates = new Set(pairs.flatMap(([a, b]) => (a === head.id ? [b] : b === head.id ? [a] : [])));
+  const pool = queue
+    .slice(1)
+    .map((e, i) => ({ p: e.player, rank: i + 1 }))
+    .filter((x) => x.rank < Math.max(4, window) || mates.has(x.p.id));
   const partners = partnerCounts(day);
 
   let best: { teams: [string, string, string, string]; score: number } | null = null;
@@ -109,11 +120,14 @@ export function nextMatch(
         const four = [head, pool[i].p, pool[j].p, pool[k].p];
         const levels = four.map((p) => strength(p.level));
         const spread = Math.max(...levels) - Math.min(...levels);
-        const split = splitTeams(four, partners);
+        const split = splitTeams(four, partners, pairs);
+        // ได้ลงพร้อมคู่ที่ขอไว้ = ดีมาก
+        const ids = new Set(four.map((p) => p.id));
+        const pairBonus = pairs.filter(([a, b]) => ids.has(a) && ids.has(b)).length * 40;
         // ให้น้ำหนักกับลำดับคิว เพื่อไม่ให้คนรอนานถูกข้าม
         const waitPenalty = pool[i].rank + pool[j].rank + pool[k].rank;
         // คนที่ไม่อยากเจอกัน เลี่ยงให้มากที่สุด แต่ถ้าไม่มีทางเลือกก็ยังจัดได้
-        const score = split.cost + spread * 3 + waitPenalty * 2 + (hasAvoid(four) ? 1000 : 0);
+        const score = split.cost + spread * 3 + waitPenalty * 2 + (hasAvoid(four) ? 1000 : 0) - pairBonus;
         if (!best || score < best.score) best = { teams: split.teams, score };
       }
   return best!.teams;

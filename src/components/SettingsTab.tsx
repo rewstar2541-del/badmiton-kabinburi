@@ -1,5 +1,6 @@
 "use client";
 
+import { PollAdmin } from "./Polls";
 import { useState } from "react";
 import { isValidPromptPayId } from "@/lib/promptpay";
 import { useStore } from "@/lib/store";
@@ -106,6 +107,7 @@ export function SettingsTab() {
         </form>
       </Card>
       <ClubCalendar />
+      <PollAdmin />
       <EventPhotos />
       <LineCard />
       <Card className="flex items-center gap-3">

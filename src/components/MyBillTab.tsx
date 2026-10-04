@@ -1,5 +1,6 @@
 "use client";
 
+import { PartnerStats } from "./PartnerStats";
 import { billFor, shuttleFormula } from "@/lib/billing";
 import { useStore, useToday } from "@/lib/store";
 import { isMonthlyPaid, monthOf } from "@/lib/types";
@@ -144,6 +145,7 @@ export function MyBillTab() {
       )}
 
       <MonthCard player={player} />
+      <PartnerStats player={player} />
       <BadgesCard player={player} />
       <PartnerPrefs key={(player.prefer ?? []).join() + "|" + (player.avoid ?? []).join()} player={player} />
     </div>

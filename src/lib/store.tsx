@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import { isDemo, demoState } from "./demo";
 import { randomToken, readSession, remember, restoreRemembered, writeSession } from "./session";
 import { clearLineTicket, handleLineCallback, readLineTicket } from "./lineLogin";
-import { addGuest, claimPlayer, signUpDay, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, removeMySlip, setMyPlan, updateMyProfile, type ProfileInput, supabase } from "./remote";
+import { socialRpc, type SocialRequest, addGuest, claimPlayer, signUpDay, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, removeMySlip, setMyPlan, updateMyProfile, type ProfileInput, supabase } from "./remote";
 import { EMPTY_STATE, guestCheck, prepare, reducer, today, type Intent, type SelfAction, type State } from "./state";
 import { DEFAULT_SETTINGS, monthOf, type Level, type Plan, type Player } from "./types";
 import { t } from "@/lib/i18n";
@@ -51,6 +51,8 @@ interface Ctx {
   dispatch: (i: Intent) => void;
   /** ผู้เล่นลงชื่อ/ยกเลิก/เช็คอินเองสำหรับวันนี้ (ลงชื่อ/ยกเลิกล่วงหน้าได้ด้วย date) คืนข้อความผิดพลาด หรือ null */
   self: (action: SelfAction, playerId: string, pin: string, date?: string) => Promise<string | null>;
+  /** ผู้เล่นขอจับคู่ / ตอบรับ / ยกเลิก และโหวตวันตีพิเศษ คืนข้อความผิดพลาด หรือ null */
+  social: (req: SocialRequest, playerId: string, pin: string) => Promise<string | null>;
   /** ผู้เล่นส่งรูปสลิปโอนเงิน คืนข้อความผิดพลาด หรือ null */
   sendSlip: (playerId: string, pin: string, amount: number, image: string) => Promise<string | null>;
   /** ผู้เล่นลบสลิปของตัวเองที่ส่งผิด (เฉพาะที่ส่งวันนี้) คืนข้อความผิดพลาด หรือ null */
@@ -124,6 +126,16 @@ function LocalProvider({ children }: { children: ReactNode }) {
       return null;
     },
     [dispatch, state.players, state.days],
+  );
+  const social = useCallback(
+    async (req: SocialRequest, playerId: string) => {
+      const date = today();
+      if (req.kind === "vote") dispatch({ type: "votePoll", id: req.poll, playerId, dates: req.dates });
+      else if (req.kind === "requestPair") dispatch({ type: "requestPair", date, from: playerId, to: req.to });
+      else dispatch({ type: "setPairStatus", date, id: req.id, status: req.kind === "cancelPair" ? "cancelled" : req.accept ? "accepted" : "declined" });
+      return null;
+    },
+    [dispatch],
   );
   const setPrefs = useCallback(
     async (playerId: string, _pin: string, prefer: string[], avoid: string[]) => {
@@ -208,7 +220,7 @@ function LocalProvider({ children }: { children: ReactNode }) {
       : undefined,
   };
   return (
-    <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, removeSlip: removeSlipLocal, setPrefs, setPlan: setPlanLocal, updateProfile: updateProfileLocal, addGuest: addGuestLocal, register: registerLocal, login: loginLocal, slipImage: getSlip, ready: true, error: null, auth }}>
+    <StoreCtx.Provider value={{ state, dispatch, self, social, sendSlip, removeSlip: removeSlipLocal, setPrefs, setPlan: setPlanLocal, updateProfile: updateProfileLocal, addGuest: addGuestLocal, register: registerLocal, login: loginLocal, slipImage: getSlip, ready: true, error: null, auth }}>
       {children}
     </StoreCtx.Provider>
   );
@@ -347,6 +359,15 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     [db, reload],
   );
 
+  const social = useCallback(
+    async (req: SocialRequest, playerId: string, pin: string) => {
+      const err = await socialRpc(db, req, playerId, pin);
+      if (!err) await reload();
+      return err;
+    },
+    [db, reload],
+  );
+
   const sendSlip = useCallback(
     async (playerId: string, pin: string, amount: number, image: string) => {
       const err = await submitSlip(db, playerId, pin, amount, image);
@@ -447,7 +468,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  return <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, removeSlip: removeSlipRemote, setPrefs, setPlan: setPlanRemote, updateProfile: updateProfileRemote, addGuest: addGuestRemote, register: registerRemote, login: loginRemote, slipImage: getSlip, ready, error, auth }}>{children}</StoreCtx.Provider>;
+  return <StoreCtx.Provider value={{ state, dispatch, self, social, sendSlip, removeSlip: removeSlipRemote, setPrefs, setPlan: setPlanRemote, updateProfile: updateProfileRemote, addGuest: addGuestRemote, register: registerRemote, login: loginRemote, slipImage: getSlip, ready, error, auth }}>{children}</StoreCtx.Provider>;
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
