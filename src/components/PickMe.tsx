@@ -30,6 +30,7 @@ export function useMe() {
   useEffect(() => {
     if (!me) {
       const id = readSession()?.playerId;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- อ่านค่าจากคุกกี้ที่เพิ่งกู้คืน
       if (id) setMeState(id);
     }
   }, [me, state]);
