@@ -115,6 +115,10 @@ export interface Drink {
   playerId: string;
   amount: number;
   note: string;
+  /** จำนวนลูกที่ซื้อ (เฉพาะซื้อลูกแบด) เข้าสต็อก */
+  shuttles?: number;
+  /** เวลาที่ลง ใช้เทียบกับเวลานับสต็อก */
+  at?: number;
 }
 
 export interface Day {
@@ -127,12 +131,48 @@ export interface Day {
   announcement?: string;
   /** หัวข้อประกาศ (ไม่มี = จัดก๊วน) เช่น กินเลี้ยง ทำความสะอาดสนาม */
   announcementTitle?: string;
+  /** ค่าใช้จ่ายต่อคนของอีเว้นพิเศษ (แจ้งให้รู้ล่วงหน้า) */
+  announcementFee?: number;
   /** คนที่ลงชื่อว่าจะมา */
   signups?: SignUp[];
+  /** คำขอจับคู่เกมถัดไปของวันนั้น */
+  pairs?: PairRequest[];
   /** สลิปโอนเงินที่ผู้เล่นส่งมา (รูปโหลดแยกเฉพาะแอดมิน) */
   slips?: Slip[];
   /** ราคาของวันนั้น (ไม่มี = ใช้ราคาปัจจุบันในตั้งค่า) */
   prices?: DayPrices;
+}
+
+export type PairStatus = "pending" | "accepted" | "declined" | "cancelled";
+
+/** ผู้เล่นขอคู่กับเพื่อนในเกมถัดไป เพื่อนต้องตอบรับก่อน */
+export interface PairRequest {
+  id: string;
+  from: string;
+  to: string;
+  status: PairStatus;
+  /** เวลาที่ขอ / ตอบรับ */
+  at: number;
+}
+
+/** โหวตวันตีพิเศษ */
+export interface Poll {
+  id: string;
+  question: string;
+  dates: string[];
+  createdAt: number;
+  chosen?: string;
+  closed: boolean;
+  /** ผู้เล่น -> วันที่ว่าง */
+  votes: Record<string, string[]>;
+}
+
+/** สต็อกลูกแบด: นับจริงล่าสุด (base ณ countedAt) แล้วบวกที่ซื้อ ลบที่ใช้ในเกมหลังจากนั้น */
+export interface ShuttleStock {
+  base: number;
+  countedAt: number;
+  /** เตือนเมื่อเหลือน้อยกว่านี้ */
+  low: number;
 }
 
 export interface Slip {
@@ -161,4 +201,8 @@ export interface Expense {
   category: ExpenseCategory;
   amount: number;
   note: string;
+  /** จำนวนลูกที่ซื้อ (เฉพาะซื้อลูกแบด) เข้าสต็อก */
+  shuttles?: number;
+  /** เวลาที่ลง ใช้เทียบกับเวลานับสต็อก */
+  at?: number;
 }

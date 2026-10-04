@@ -1,5 +1,7 @@
 "use client";
 
+import { PollVote } from "./Polls";
+import { PairCard } from "./Pairs";
 import { useState } from "react";
 import { useStore, useToday } from "@/lib/store";
 import { presence } from "@/lib/matchmaking";
@@ -7,7 +9,7 @@ import { BringGuest } from "./Guests";
 import type { SelfAction } from "@/lib/state";
 import { ClosedBanner, ClubCalendar } from "./Calendar";
 import { PendingNotice, PickMe, savedPin, useMe } from "./PickMe";
-import { Avatar, Button, Card, Icon, LevelBadge } from "./ui";
+import { Avatar, Button, Card, Icon, LevelBadge, baht } from "./ui";
 import { t } from "@/lib/i18n";
 import { RestButton } from "./RestButton";
 import { Auto } from "@/lib/autoTranslate";
@@ -15,12 +17,27 @@ import { EventPhotos } from "./EventPhotos";
 import { MonthlyReminder, PlanChoice, goToTab } from "./Membership";
 
 /** ประกาศจัดก๊วนวันนี้ (ใช้ทั้งหน้าผู้เล่นและแอดมิน) */
-export function AnnouncementBanner({ message, title }: { message: string; title?: string }) {
+export function AnnouncementBanner({ message, title, fee }: { message: string; title?: string; fee?: number }) {
+  // มีหัวข้อ = อีเว้นพิเศษ (กินเลี้ยง แข่ง ฯลฯ) ใช้สีต่างจากประกาศจัดก๊วนปกติ
+  if (title)
+    return (
+      <div className="flex gap-3 rounded-3xl border-2 border-amber-300 bg-amber-50 p-4 text-amber-950">
+        <Icon.Megaphone className="shrink-0 text-amber-600" />
+        <div className="min-w-0">
+          <span className="inline-block rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-bold text-ink">{t("อีเว้นพิเศษ")}</span>
+          <div className="mt-1 font-display text-lg font-semibold">
+            <Auto text={title} />
+          </div>
+          {!!fee && <div className="text-sm font-semibold">{t("ค่าใช้จ่ายคนละ {amount}", { amount: baht(fee) })}</div>}
+          {message && <p className="mt-0.5 text-sm whitespace-pre-line"><Auto text={message} /></p>}
+        </div>
+      </div>
+    );
   return (
     <div className="flex gap-3 rounded-3xl bg-lime p-4 text-ink">
       <Icon.Megaphone className="shrink-0" />
       <div className="min-w-0">
-        <div className="font-display font-semibold">{title ? <Auto text={title} /> : t("วันนี้มีจัดก๊วน")}</div>
+        <div className="font-display font-semibold">{t("วันนี้มีจัดก๊วน")}</div>
         {message && <p className="mt-0.5 text-sm whitespace-pre-line"><Auto text={message} /></p>}
       </div>
     </div>
@@ -44,7 +61,7 @@ export function TodayTab() {
   if (!player)
     return (
       <div className="space-y-4">
-        {announced && <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} />}
+        {announced && <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />}
         <PickMe onPick={setMe} hint={t("เข้าสู่ระบบครั้งเดียว เครื่องนี้จะจำไว้ แล้วลงชื่อ เช็คอิน และดูยอดของตัวเองได้")} />
       </div>
     );
@@ -52,7 +69,7 @@ export function TodayTab() {
   if (player.pending)
     return (
       <div className="space-y-4">
-        {announced && <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} />}
+        {announced && <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />}
         <PendingNotice name={player.name} onNotMe={() => setMe(null)} />
       </div>
     );
@@ -71,7 +88,8 @@ export function TodayTab() {
             <p className="text-sm text-zinc-500">{t("เมื่อแอดมินประกาศ จะลงชื่อและเช็คอินได้ที่หน้านี้")}</p>
           </Card>
         )}
-        <ClubCalendar />
+        <PollVote />
+      <ClubCalendar />
         <EventPhotos />
       </div>
     );
@@ -99,7 +117,7 @@ export function TodayTab() {
     <div className="space-y-4">
       <PlanChoice player={player} />
       <MonthlyReminder player={player} />
-      <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} />
+      <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />
 
       <Card className="space-y-4">
         <div className="flex items-center gap-3">
@@ -179,7 +197,7 @@ export function TodayTab() {
         ) : (
           <div className="grid gap-2">
             <Button variant="primary" disabled={busy} onClick={() => act("signUp")}>
-              {t("ลงชื่อว่าจะมา")}
+              {day.announcementTitle ? t("ลงชื่อไปร่วม") : t("ลงชื่อว่าจะมา")}
             </Button>
             <Button variant="accent" disabled={busy} onClick={() => act("checkIn")} className="flex items-center justify-center gap-1.5">
               <Icon.CheckIn width={18} height={18} /> {t("ถึงสนามแล้ว เช็คอิน")}
@@ -188,7 +206,9 @@ export function TodayTab() {
         )}
       </Card>
 
+      {checkedIn && status !== "home" && !player.guestOf && <PairCard />}
       {checkedIn && status !== "home" && !player.guestOf && <BringGuest player={player} pin={pin} />}
+      <PollVote />
       <ClubCalendar />
       <EventPhotos />
     </div>

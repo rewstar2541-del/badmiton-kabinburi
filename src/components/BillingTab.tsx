@@ -7,6 +7,7 @@ import { useStore, useToday } from "@/lib/store";
 import { monthOf, type Drink, type Player } from "@/lib/types";
 import { ExportReport } from "./ExportReport";
 import { Ledger } from "./Ledger";
+import { StockCard } from "./Stock";
 import { PayQr } from "./PayQr";
 import { SlipReview } from "./Slips";
 import { Avatar, Button, Card, Icon, SearchInput, SectionTitle, Sheet, baht, inputClass } from "./ui";
@@ -313,6 +314,7 @@ function DailyView() {
       </ul>
 
       {openRow && <BillDetail player={openRow.player} bill={openRow.bill} onClose={() => setOpen(null)} />}
+      <StockCard />
     </>
   );
 }

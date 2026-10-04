@@ -20,6 +20,7 @@ export function AnnounceCard() {
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState(day.announcement ?? DEFAULT_MESSAGE());
   const [title, setTitle] = useState<string | null>(day.announcementTitle ?? null);
+  const [fee, setFee] = useState(day.announcementFee ? String(day.announcementFee) : "");
   const custom = title !== null && !(PRESETS as readonly (string | null)[]).includes(title);
   const announced = day.announcement !== undefined;
 
@@ -35,13 +36,14 @@ export function AnnounceCard() {
   if (announced && !editing)
     return (
       <div className="space-y-2">
-        <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} />
+        <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />
         <div className="flex justify-end gap-4 px-1 text-xs text-zinc-500">
           <button
             className="underline-offset-2 active:underline"
             onClick={() => {
               setMessage(day.announcement ?? "");
               setTitle(day.announcementTitle ?? null);
+              setFee(day.announcementFee ? String(day.announcementFee) : "");
               setEditing(true);
             }}
           >
@@ -95,6 +97,20 @@ export function AnnounceCard() {
           />
         )}
       </div>
+      {title !== null && (
+        <label className="block text-sm font-medium">
+          {t("ค่าใช้จ่ายต่อคน (ไม่ใส่ก็ได้)")}
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            className={`${inputClass} mt-1`}
+            placeholder="0"
+            value={fee}
+            onChange={(e) => setFee(e.target.value)}
+          />
+        </label>
+      )}
       <textarea className={`${inputClass} min-h-20`} value={message} onChange={(e) => setMessage(e.target.value)} />
       <div className="flex gap-2">
         <Button
@@ -107,6 +123,7 @@ export function AnnounceCard() {
               date,
               message: message.trim() === DEFAULT_MESSAGE() ? DEFAULT_TH : message.trim(),
               title: title?.trim() || null,
+              fee: title?.trim() && Number(fee) > 0 ? Math.round(Number(fee)) : null,
             });
             setEditing(false);
           }}
@@ -115,7 +132,10 @@ export function AnnounceCard() {
         </Button>
         {editing && <Button onClick={() => setEditing(false)}>{t("ยกเลิก")}</Button>}
       </div>
-      <p className="text-xs text-zinc-500">{t("เมื่อประกาศแล้ว ผู้เล่นเปิดแอพจะลงชื่อและกดเช็คอินเองได้เมื่อถึงสนาม")}</p>
+      <p className="text-xs text-zinc-500">{title !== null
+          ? t("อีเว้นพิเศษจะขึ้นเป็นกรอบสีส้มแยกจากประกาศจัดก๊วน ผู้เล่นกด \"ลงชื่อไปร่วม\" ได้ ดูรายชื่อได้ที่ช่อง ลงชื่อ ด้านบน")
+          : t("เมื่อประกาศแล้ว ผู้เล่นเปิดแอพจะลงชื่อและกดเช็คอินเองได้เมื่อถึงสนาม")}
+      </p>
     </Card>
   );
 }

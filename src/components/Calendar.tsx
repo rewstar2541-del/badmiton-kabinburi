@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { locale, t } from "@/lib/i18n";
 import { today, useStore } from "@/lib/store";
-import { Button, Card, Icon, SectionTitle, inputClass } from "./ui";
+import { Button, Card, Icon, SectionTitle, baht, inputClass } from "./ui";
 import { Auto, useAuto } from "@/lib/autoTranslate";
 import { savedPin, useMe } from "./PickMe";
 
@@ -186,13 +186,14 @@ export function ClubCalendar() {
             ) : sessions.has(picked) ? (
               <>
                 <p className="text-sm text-zinc-600">
-                  {t("มีจัดก๊วน")}
+                  {pickedDay?.announcementTitle ? <><span className="font-semibold text-amber-700">{t("อีเว้นพิเศษ")}</span> · <Auto text={pickedDay.announcementTitle} /></> : t("มีจัดก๊วน")}
+                  {pickedDay?.announcementFee ? <> · {t("คนละ {amount}", { amount: baht(pickedDay.announcementFee) })}</> : null}
                   {pickedDay?.announcement ? <> · <Auto text={pickedDay.announcement} /></> : null}
                 </p>
                 <p className="text-xs text-zinc-500">{t("ลงชื่อแล้ว {n} คน", { n: signups.length })}</p>
                 {me && picked >= now && (
                   <Button variant={mine ? "ghost" : "primary"} className="w-full" disabled={busy} onClick={() => signUp(picked, !mine)}>
-                    {mine ? t("ยกเลิกลงชื่อ") : t("ลงชื่อว่าจะมา")}
+                    {mine ? t("ยกเลิกลงชื่อ") : pickedDay?.announcementTitle ? t("ลงชื่อไปร่วม") : t("ลงชื่อว่าจะมา")}
                   </Button>
                 )}
               </>
