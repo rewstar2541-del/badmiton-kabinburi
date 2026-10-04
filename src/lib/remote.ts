@@ -390,3 +390,28 @@ export async function addAdmin(db: SupabaseClient, email: string) {
 export async function removeAdmin(db: SupabaseClient, email: string) {
   check(await db.from("admins").delete().eq("email", email));
 }
+
+// ---------- แจ้งเตือน LINE ----------
+
+export interface LineSettings {
+  group_id: string | null;
+  notify_signup: boolean;
+  notify_turn: boolean;
+}
+
+export async function getLineSettings(db: SupabaseClient): Promise<LineSettings | null> {
+  const { data, error } = await db.from("line_settings").select("group_id,notify_signup,notify_turn").eq("id", 1).maybeSingle();
+  if (error) throw new Error(error.message);
+  return data as LineSettings | null;
+}
+
+export async function updateLineSettings(db: SupabaseClient, s: Partial<LineSettings>) {
+  check(await db.from("line_settings").update(s).eq("id", 1));
+}
+
+/** ส่งข้อความทดสอบเข้ากลุ่ม LINE คืนข้อความผิดพลาด หรือ null */
+export async function testLine(db: SupabaseClient): Promise<string | null> {
+  const { data, error } = await db.functions.invoke("line", { body: { action: "test" } });
+  if (error) return error.message;
+  return (data as { error?: string })?.error ?? null;
+}
