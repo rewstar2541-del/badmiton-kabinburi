@@ -6,6 +6,7 @@ import { useStore, type State } from "@/lib/store";
 import type { Settings } from "@/lib/types";
 import { LoginTab } from "./LoginTab";
 import { Button, Card, SectionTitle, inputClass } from "./ui";
+import { t } from "@/lib/i18n";
 
 const NUMBER_FIELDS: { key: keyof Settings; label: string }[] = [
   { key: "courtCount", label: "จำนวนสนาม" },
@@ -34,18 +35,18 @@ export function SettingsTab() {
     try {
       const data = JSON.parse(await file.text()) as State;
       if (!Array.isArray(data.players) || !Array.isArray(data.days)) throw new Error();
-      if (confirm(`นำเข้าข้อมูล ${data.players.length} คน ${data.days.length} วัน? ข้อมูลปัจจุบันจะถูกแทนที่`)) {
+      if (confirm(t("นำเข้าข้อมูล {p} คน {d} วัน? ข้อมูลปัจจุบันจะถูกแทนที่", { p: data.players.length, d: data.days.length }))) {
         dispatch({ type: "replace", state: data });
         setS(data.settings);
       }
     } catch {
-      alert("ไฟล์ไม่ถูกต้อง");
+      alert(t("ไฟล์ไม่ถูกต้อง"));
     }
   };
 
   return (
     <div className="space-y-4">
-      <SectionTitle>ตั้งค่า</SectionTitle>
+      <SectionTitle>{t("ตั้งค่า")}</SectionTitle>
       <Card>
         <form
           className="space-y-3"
@@ -56,10 +57,10 @@ export function SettingsTab() {
             setSaved(true);
           }}
         >
-          <h2 className="font-display font-semibold">ราคาและสนาม</h2>
+          <h2 className="font-display font-semibold">{t("ราคาและสนาม")}</h2>
           {NUMBER_FIELDS.map((f) => (
             <label key={f.key} className="block text-sm">
-              {f.label}
+              {t(f.label)}
               <input
                 className={inputClass}
                 inputMode="numeric"
@@ -72,7 +73,7 @@ export function SettingsTab() {
             </label>
           ))}
           <label className="block space-y-1.5 text-sm font-medium">
-            เบอร์ PromptPay ของสนาม (เบอร์มือถือ หรือเลขบัตร 13 หลัก)
+            {t("เบอร์ PromptPay ของสนาม (เบอร์มือถือ หรือเลขบัตร 13 หลัก)")}
             <input
               className={inputClass}
               inputMode="numeric"
@@ -82,27 +83,27 @@ export function SettingsTab() {
                 setS({ ...s, promptPayId: e.target.value });
               }}
             />
-            {!ppOk && <span className="text-xs text-red-600">ต้องเป็นตัวเลข 10, 13 หรือ 15 หลัก</span>}
+            {!ppOk && <span className="text-xs text-red-600">{t("ต้องเป็นตัวเลข 10, 13 หรือ 15 หลัก")}</span>}
           </label>
           <Button variant="primary" type="submit" className="w-full">
-            {saved ? "บันทึกแล้ว ✓" : "บันทึก"}
+            {saved ? t("บันทึกแล้ว ✓") : t("บันทึก")}
           </Button>
         </form>
       </Card>
 
       <Card className="space-y-3">
-        <h2 className="font-display font-semibold">สำรองข้อมูล</h2>
+        <h2 className="font-display font-semibold">{t("สำรองข้อมูล")}</h2>
         <p className="text-sm text-zinc-500">
           {auth.online
-            ? "ข้อมูลเก็บออนไลน์แล้ว ดาวน์โหลดไฟล์สำรองเก็บไว้เป็นครั้งคราวได้ นำเข้าไฟล์จะเพิ่มข้อมูลเข้าไป ไม่ลบของเดิม"
-            : "ตอนนี้ข้อมูลเก็บในเครื่องนี้เครื่องเดียว ควรกดสำรองไว้หลังเลิกเล่นทุกครั้ง"}
+            ? t("ข้อมูลเก็บออนไลน์แล้ว ดาวน์โหลดไฟล์สำรองเก็บไว้เป็นครั้งคราวได้ นำเข้าไฟล์จะเพิ่มข้อมูลเข้าไป ไม่ลบของเดิม")
+            : t("ตอนนี้ข้อมูลเก็บในเครื่องนี้เครื่องเดียว ควรกดสำรองไว้หลังเลิกเล่นทุกครั้ง")}
         </p>
         <div className="flex gap-2">
           <Button onClick={exportData} className="flex-1">
-            ดาวน์โหลดไฟล์สำรอง
+            {t("ดาวน์โหลดไฟล์สำรอง")}
           </Button>
           <label className="flex-1 cursor-pointer rounded-2xl bg-zinc-100 px-4 py-3 text-center text-sm font-semibold">
-            นำเข้าไฟล์
+            {t("นำเข้าไฟล์")}
             <input
               type="file"
               accept="application/json"

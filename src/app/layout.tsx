@@ -19,7 +19,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "ก๊วนแบดกบินทร์บุรี",
+  title: "แบดมินตันกบินทร์บุรี-สวนน้อมเกล้า",
   description: "เช็คอิน จัดคู่ลงสนาม และคิดเงินค่าลูกค่าน้ำ",
 };
 

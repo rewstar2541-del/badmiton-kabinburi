@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { AdminsCard } from "./AdminsCard";
 import { Button, Card, Icon, SectionTitle, inputClass } from "./ui";
+import { t } from "@/lib/i18n";
 
 export function LoginTab() {
   const { auth } = useStore();
@@ -15,19 +16,19 @@ export function LoginTab() {
   if (auth.email)
     return (
       <div className="space-y-4">
-        <SectionTitle>บัญชีแอดมิน</SectionTitle>
+        <SectionTitle>{t("บัญชีแอดมิน")}</SectionTitle>
         <Card className="space-y-3 text-center">
           <p className="text-sm">
-            ล็อคอินเป็น <span className="font-semibold">{auth.email}</span>
+            {t("ล็อคอินเป็น")} <span className="font-semibold">{auth.email}</span>
           </p>
           {!auth.isAdmin && !auth.noAdmins && (
             <p className="rounded-2xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              อีเมลนี้ยังไม่ได้เป็นแอดมิน ให้แอดมินเพิ่มอีเมลนี้ในหน้าตั้งค่า
+              {t("อีเมลนี้ยังไม่ได้เป็นแอดมิน ให้แอดมินเพิ่มอีเมลนี้ในหน้าตั้งค่า")}
             </p>
           )}
           {!auth.isAdmin && auth.noAdmins && (
             <div className="space-y-2 rounded-2xl bg-lime/30 p-3 text-sm">
-              <p>ระบบยังไม่มีแอดมินเลย ตั้งอีเมลนี้เป็นแอดมินคนแรกได้ (ทำได้ครั้งเดียว)</p>
+              <p>{t("ระบบยังไม่มีแอดมินเลย ตั้งอีเมลนี้เป็นแอดมินคนแรกได้ (ทำได้ครั้งเดียว)")}</p>
               {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-red-600">{error}</p>}
               <Button
                 variant="primary"
@@ -35,16 +36,17 @@ export function LoginTab() {
                 disabled={busy}
                 onClick={async () => {
                   setBusy(true);
-                  setError((await auth.claimFirstAdmin()) ?? "");
+                  const err = await auth.claimFirstAdmin();
+                  setError(err ? t(err) : "");
                   setBusy(false);
                 }}
               >
-                ตั้งฉันเป็นแอดมินคนแรก
+                {t("ตั้งฉันเป็นแอดมินคนแรก")}
               </Button>
             </div>
           )}
           <Button className="w-full" onClick={() => auth.signOut()}>
-            ออกจากระบบ
+            {t("ออกจากระบบ")}
           </Button>
         </Card>
         {auth.isAdmin && <AdminsCard />}
@@ -53,17 +55,17 @@ export function LoginTab() {
 
   return (
     <div className="space-y-4">
-      <SectionTitle>เข้าสู่ระบบแอดมิน</SectionTitle>
+      <SectionTitle>{t("เข้าสู่ระบบแอดมิน")}</SectionTitle>
       <Card>
         {sent ? (
           <div className="space-y-2 py-4 text-center">
             <div className="mx-auto grid size-12 place-items-center rounded-full bg-lime text-ink">
               <Icon.Check />
             </div>
-            <p className="font-semibold">ส่งลิงก์ไปที่ {email} แล้ว</p>
-            <p className="text-sm text-zinc-500">เปิดอีเมลบนเครื่องนี้แล้วกดลิงก์เพื่อเข้าสู่ระบบ</p>
+            <p className="font-semibold">{t("ส่งลิงก์ไปที่ {email} แล้ว", { email })}</p>
+            <p className="text-sm text-zinc-500">{t("เปิดอีเมลบนเครื่องนี้แล้วกดลิงก์เพื่อเข้าสู่ระบบ")}</p>
             <button className="text-xs text-zinc-500 underline" onClick={() => setSent(false)}>
-              ใช้อีเมลอื่น
+              {t("ใช้อีเมลอื่น")}
             </button>
           </div>
         ) : (
@@ -71,7 +73,7 @@ export function LoginTab() {
             className="space-y-3"
             onSubmit={async (e) => {
               e.preventDefault();
-              if (!/^\S+@\S+\.\S+$/.test(email.trim())) return setError("อีเมลไม่ถูกต้อง");
+              if (!/^\S+@\S+\.\S+$/.test(email.trim())) return setError(t("อีเมลไม่ถูกต้อง"));
               setBusy(true);
               const err = await auth.signIn(email);
               setBusy(false);
@@ -83,7 +85,7 @@ export function LoginTab() {
             }}
           >
             <label className="block space-y-1.5 text-sm font-medium">
-              อีเมลแอดมิน
+              {t("อีเมลแอดมิน")}
               <input
                 className={inputClass}
                 type="email"
@@ -96,7 +98,7 @@ export function LoginTab() {
             </label>
             {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
             <Button variant="primary" type="submit" className="w-full" disabled={busy}>
-              {busy ? "กำลังส่ง..." : "ส่งลิงก์เข้าสู่ระบบ"}
+              {busy ? t("กำลังส่ง...") : t("ส่งลิงก์เข้าสู่ระบบ")}
             </Button>
           </form>
         )}

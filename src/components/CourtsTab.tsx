@@ -6,6 +6,7 @@ import { useStore, useToday } from "@/lib/store";
 import type { Game, Player, Team } from "@/lib/types";
 import { MatchBuilder } from "./MatchBuilder";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle } from "./ui";
+import { t } from "@/lib/i18n";
 
 function useNow(intervalMs = 15000) {
   const [now, setNow] = useState(() => Date.now());
@@ -28,7 +29,7 @@ function CourtSide({ ids, byId, team }: { ids: string[]; byId: Map<string, Playe
           team === "A" ? "bg-lime text-ink" : "bg-sky-300 text-ink"
         }`}
       >
-        ทีม {team}
+        {t("ทีม {team}", { team })}
       </span>
       {ids.map((id) => {
         const p = byId.get(id);
@@ -59,18 +60,18 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 text-xs text-zinc-500">
           <Icon.Clock width={14} height={14} />
-          {minutes(now - game.startedAt)} นาที
+          {t("{n} นาที", { n: minutes(now - game.startedAt) })}
         </span>
         {!auth.isAdmin && (
           <span className="flex items-center gap-1 text-sm font-semibold">
-            <Icon.Shuttle width={16} height={16} /> {game.shuttles} ลูก
+            <Icon.Shuttle width={16} height={16} /> {t("{n} ลูก", { n: game.shuttles })}
           </span>
         )}
         {auth.isAdmin && <div className="flex items-center gap-1 rounded-full bg-zinc-100 p-1">
           <button
             className="grid size-8 place-items-center rounded-full bg-white shadow-sm active:scale-95"
             onClick={() => setShuttles(game.shuttles - 1)}
-            aria-label="ลดลูก"
+            aria-label={t("ลดลูก")}
           >
             <Icon.Minus width={16} height={16} />
           </button>
@@ -81,7 +82,7 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
           <button
             className="grid size-8 place-items-center rounded-full bg-white shadow-sm active:scale-95"
             onClick={() => setShuttles(game.shuttles + 1)}
-            aria-label="เพิ่มลูก"
+            aria-label={t("เพิ่มลูก")}
           >
             <Icon.Plus width={16} height={16} />
           </button>
@@ -92,23 +93,23 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
 
       <div className="grid grid-cols-2 gap-2">
         <Button variant="accent" onClick={() => end("A")} className="flex items-center justify-center gap-1.5">
-          <Icon.Trophy width={16} height={16} /> ทีม A ชนะ
+          <Icon.Trophy width={16} height={16} /> {t("ทีม {team} ชนะ", { team: "A" })}
         </Button>
         <Button onClick={() => end("B")} className="flex items-center justify-center gap-1.5 !bg-sky-300 text-ink">
-          <Icon.Trophy width={16} height={16} /> ทีม B ชนะ
+          <Icon.Trophy width={16} height={16} /> {t("ทีม {team} ชนะ", { team: "B" })}
         </Button>
       </div>
       <div className="flex justify-center gap-4 text-xs text-zinc-400">
         <button className="underline-offset-2 active:underline" onClick={() => end()}>
-          จบไม่บันทึกผล
+          {t("จบไม่บันทึกผล")}
         </button>
         <button
           className="text-red-500 underline-offset-2 active:underline"
           onClick={() => {
-            if (confirm("ยกเลิกเกมนี้? ลูกที่ใช้จะไม่ถูกคิดเงิน")) dispatch({ type: "cancelGame", date, gameId: game.id });
+            if (confirm(t("ยกเลิกเกมนี้? ลูกที่ใช้จะไม่ถูกคิดเงิน"))) dispatch({ type: "cancelGame", date, gameId: game.id });
           }}
         >
-          ยกเลิกเกม
+          {t("ยกเลิกเกม")}
         </button>
       </div>
         </>
@@ -130,28 +131,28 @@ export function CourtsTab() {
 
   return (
     <div className="space-y-4">
-      <SectionTitle right={`ว่าง ${courts.length - active.size} สนาม`}>สนาม</SectionTitle>
+      <SectionTitle right={t("ว่าง {n} สนาม", { n: courts.length - active.size })}>{t("สนาม")}</SectionTitle>
       <div className="grid gap-3 sm:grid-cols-2">
         {courts.map((c) => {
           const g = active.get(c);
           return (
             <Card key={c}>
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="font-display text-lg font-semibold">สนาม {c}</h3>
+                <h3 className="font-display text-lg font-semibold">{t("สนาม {n}", { n: c })}</h3>
                 <span
                   className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
                     g ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"
                   }`}
                 >
                   <span className={`size-1.5 rounded-full ${g ? "animate-pulse bg-emerald-500" : "bg-zinc-400"}`} />
-                  {g ? "กำลังเล่น" : "ว่าง"}
+                  {g ? t("กำลังเล่น") : t("ว่าง")}
                 </span>
               </div>
               {g ? (
                 <ActiveCourt game={g} byId={byId} date={date} now={now} />
               ) : !auth.isAdmin ? (
                 <div className="court-surface flex h-24 items-center justify-center rounded-2xl text-sm font-semibold text-white/80">
-                  ว่าง
+                  {t("ว่าง")}
                 </div>
               ) : (
                 <button
@@ -163,7 +164,7 @@ export function CourtsTab() {
                     <Icon.Plus width={22} height={22} strokeWidth={2.6} />
                   </span>
                   <span className="text-sm font-semibold">
-                    {queue.length < 4 ? `รอคนครบ 4 (มี ${queue.length})` : "จัดคู่ลงสนาม"}
+                    {queue.length < 4 ? t("รอคนครบ 4 (มี {n})", { n: queue.length }) : t("จัดคู่ลงสนาม")}
                   </span>
                 </button>
               )}
@@ -174,7 +175,7 @@ export function CourtsTab() {
 
       {building !== null && <MatchBuilder court={building} onClose={() => setBuilding(null)} />}
 
-      <SectionTitle right={`${queue.length} คน`}>คิวรอลงสนาม</SectionTitle>
+      <SectionTitle right={t("{n} คน", { n: queue.length })}>{t("คิวรอลงสนาม")}</SectionTitle>
       <Card className="p-2">
         <ol>
           {queue.map((e, i) => (
@@ -190,13 +191,13 @@ export function CourtsTab() {
               <span className="min-w-0 flex-1 truncate font-medium">{e.player.name}</span>
               <LevelBadge level={e.player.level} />
               <span className="w-20 text-right text-[11px] leading-tight text-zinc-500">
-                เล่น {e.gamesPlayed} เกม
+                {t("เล่น {n} เกม", { n: e.gamesPlayed })}
                 <br />
-                รอ {minutes(now - e.waitingSince)} นาที
+                {t("รอ {n} นาที", { n: minutes(now - e.waitingSince) })}
               </span>
             </li>
           ))}
-          {queue.length === 0 && <li className="py-6 text-center text-sm text-zinc-500">ไม่มีคนรอ</li>}
+          {queue.length === 0 && <li className="py-6 text-center text-sm text-zinc-500">{t("ไม่มีคนรอ")}</li>}
         </ol>
       </Card>
     </div>

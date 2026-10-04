@@ -234,6 +234,8 @@ export async function persist(db: SupabaseClient, a: Action): Promise<void> {
       );
     case "cancelSignUp":
       return check(await db.from("signups").delete().eq("date", a.date).eq("player_id", a.playerId));
+    case "addSlip":
+      return; // ออนไลน์ใช้ submitSlip
     case "replace":
       return importState(db, a.state);
   }

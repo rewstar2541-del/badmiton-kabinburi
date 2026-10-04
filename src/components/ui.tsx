@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode, SVGProps } from "react";
+import { locale, t } from "@/lib/i18n";
 import { LEVELS, type Level } from "@/lib/types";
 
 type Variant = "primary" | "accent" | "secondary" | "danger" | "ghost";
@@ -43,7 +44,7 @@ export function Sheet({ title, onClose, children }: { title: ReactNode; onClose:
         <div className="mx-auto h-1 w-10 rounded-full bg-zinc-200 sm:hidden" />
         <div className="flex items-center justify-between gap-3">
           {title}
-          <button onClick={onClose} className="grid size-9 place-items-center rounded-full bg-zinc-100" aria-label="ปิด">
+          <button onClick={onClose} className="grid size-9 place-items-center rounded-full bg-zinc-100" aria-label={t("ปิด")}>
             <Icon.X width={18} height={18} />
           </button>
         </div>
@@ -86,7 +87,7 @@ export function LevelBadge({ level }: { level: Level }) {
 }
 
 export function baht(n: number): string {
-  return `${n.toLocaleString("th-TH")} บาท`;
+  return t("{n} บาท", { n: n.toLocaleString(locale()) });
 }
 
 export const inputClass =

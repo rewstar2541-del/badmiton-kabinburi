@@ -31,6 +31,8 @@ export type Action =
   | { type: "setAnnouncement"; date: string; message: string | null }
   | { type: "signUp"; date: string; playerId: string; _at: number }
   | { type: "cancelSignUp"; date: string; playerId: string }
+  /** ใช้ในโหมดเก็บในเครื่องเท่านั้น ออนไลน์ส่งผ่าน submit_slip */
+  | { type: "addSlip"; date: string; playerId: string; amount: number; _id: string; _at: number }
   | { type: "replace"; state: State };
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
@@ -129,6 +131,11 @@ export function reducer(state: State, a: Action): State {
           ? d
           : { ...d, signups: [...(d.signups ?? []), { playerId: a.playerId, at: a._at }] },
       );
+    case "addSlip":
+      return withDay(state, a.date, (d) => ({
+        ...d,
+        slips: [...(d.slips ?? []), { id: a._id, playerId: a.playerId, amount: a.amount, at: a._at }],
+      }));
     case "cancelSignUp":
       return withDay(state, a.date, (d) => ({ ...d, signups: d.signups?.filter((x) => x.playerId !== a.playerId) }));
     case "replace":

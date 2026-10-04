@@ -7,6 +7,7 @@ import { PayQr } from "./PayQr";
 import { PickMe, useMe } from "./PickMe";
 import { SlipUpload } from "./Slips";
 import { Avatar, Card, Icon, LevelBadge, baht } from "./ui";
+import { t } from "@/lib/i18n";
 
 /** หน้าสำหรับผู้เล่น: เลือกชื่อตัวเอง แล้วดูยอดที่ต้องจ่ายวันนี้ */
 export function MyBillTab() {
@@ -15,7 +16,7 @@ export function MyBillTab() {
   const [me, setMe] = useMe();
   const player = state.players.find((p) => p.id === me);
 
-  if (!player) return <PickMe onPick={setMe} hint="เลือกชื่อของคุณเพื่อดูยอดที่ต้องจ่าย เครื่องนี้จะจำไว้ให้" />;
+  if (!player) return <PickMe onPick={setMe} hint={t("เลือกชื่อของคุณเพื่อดูยอดที่ต้องจ่าย เครื่องนี้จะจำไว้ให้")} />;
 
   const checkedIn = day.checkIns.some((c) => c.playerId === player.id);
   const bill = billFor(state.days, day, player, state.settings, state.monthly);
@@ -33,7 +34,8 @@ export function MyBillTab() {
             <LevelBadge level={player.level} />
           </div>
           <div className="text-xs text-zinc-500">
-            {monthly ? `สมาชิกรายเดือน ${monthOf(date)}` : "จ่ายรายวัน"} · เล่นวันนี้ {played.length} เกม
+            {monthly ? t("สมาชิกรายเดือน {month}", { month: monthOf(date) }) : t("จ่ายรายวัน")} ·{" "}
+            {t("เล่นวันนี้ {n} เกม", { n: played.length })}
           </div>
         </div>
         <button
@@ -42,26 +44,27 @@ export function MyBillTab() {
             setMe(null);
           }}
         >
-          ไม่ใช่ฉัน
+          {t("ไม่ใช่ฉัน")}
         </button>
       </Card>
 
       {!checkedIn && bill.carriedOver === 0 ? (
-        <Card className="py-8 text-center text-sm text-zinc-500">วันนี้ยังไม่ได้เช็คอิน</Card>
+        <Card className="py-8 text-center text-sm text-zinc-500">{t("วันนี้ยังไม่ได้เช็คอิน")}</Card>
       ) : (
         <>
           <div className="rounded-3xl bg-ink p-5 text-white">
-            <div className="text-xs text-white/60">ยอดที่ต้องจ่าย</div>
+            <div className="text-xs text-white/60">{t("ยอดที่ต้องจ่าย")}</div>
             <div className="font-display text-4xl font-semibold">{baht(bill.total)}</div>
             <div className="mt-4 space-y-1.5 text-sm">
               {[
-                [monthly ? "ค่าสนาม (จ่ายรายเดือนแล้ว)" : "ค่าสนาม", bill.courtFee],
+                [monthly ? t("ค่าสนาม (จ่ายรายเดือนแล้ว)") : t("ค่าสนาม"), bill.courtFee],
                 [
-                  `ค่าลูก ${bill.shuttleCount} ลูก${bill.shuttleCount > 0 ? ` (${s.firstShuttleFee} + ${s.nextShuttleFee}×${bill.shuttleCount - 1})` : ""}`,
+                  t("ค่าลูก {n} ลูก", { n: bill.shuttleCount }) +
+                    (bill.shuttleCount > 0 ? ` (${s.firstShuttleFee} + ${s.nextShuttleFee}×${bill.shuttleCount - 1})` : ""),
                   bill.shuttleFee,
                 ],
-                ["ค่าน้ำ", bill.drinkFee],
-                ...(bill.carriedOver > 0 ? [["ค้างจ่ายครั้งก่อน", bill.carriedOver] as const] : []),
+                [t("ค่าน้ำ"), bill.drinkFee],
+                ...(bill.carriedOver > 0 ? [[t("ค้างจ่ายครั้งก่อน"), bill.carriedOver] as const] : []),
               ].map(([label, v]) => (
                 <div key={label} className="flex justify-between text-white/80">
                   <span>{label}</span>
@@ -72,13 +75,13 @@ export function MyBillTab() {
           </div>
           {bill.paid ? (
             <Card className="flex items-center justify-center gap-1.5 py-6 font-semibold text-emerald-700">
-              <Icon.Check width={18} height={18} /> จ่ายแล้ว ขอบคุณครับ
+              <Icon.Check width={18} height={18} /> {t("จ่ายแล้ว ขอบคุณครับ")}
             </Card>
           ) : (
             bill.total > 0 && (
               <Card className="flex flex-col items-center gap-2">
                 <PayQr promptPayId={s.promptPayId} amount={bill.total} />
-                <p className="text-center text-xs text-zinc-500">สแกนจ่ายแล้วแนบสลิปไว้ แอดมินจะตรวจและกดรับเงินให้</p>
+                <p className="text-center text-xs text-zinc-500">{t("สแกนจ่ายแล้วแนบสลิปไว้ แอดมินจะตรวจและกดรับเงินให้")}</p>
                 <SlipUpload playerId={player.id} amount={bill.total} />
               </Card>
             )

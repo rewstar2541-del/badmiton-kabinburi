@@ -5,6 +5,7 @@ import { resizeToSquare } from "@/lib/image";
 import { today, useStore } from "@/lib/store";
 import { DEFAULT_LEVEL, LEVELS, isMonthlyPaid, type Gender, type Level, type Player } from "@/lib/types";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, inputClass } from "./ui";
+import { t } from "@/lib/i18n";
 
 const GENDERS: { value: Gender; label: string }[] = [
   { value: "male", label: "ชาย" },
@@ -34,8 +35,10 @@ function Segmented<T extends string | number>({
             value === o.value ? "bg-ink text-white shadow-sm" : "text-zinc-600"
           }`}
         >
-          {o.label}
-          {o.sub && <div className={`truncate text-[10px] font-normal ${value === o.value ? "text-white/70" : "text-zinc-400"}`}>{o.sub}</div>}
+          {t(o.label)}
+          {o.sub && (
+            <div className={`truncate text-[10px] font-normal ${value === o.value ? "text-white/70" : "text-zinc-400"}`}>{t(o.sub)}</div>
+          )}
         </button>
       ))}
     </div>
@@ -77,16 +80,16 @@ export function PlayerForm({
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
-        if (!name.trim()) return setError("กรุณาใส่ชื่อเล่น");
-        if (phoneDigits && phoneDigits.length !== 10) return setError("เบอร์โทรต้องมี 10 หลัก");
-        if (!gender) return setError("กรุณาเลือกเพศ");
+        if (!name.trim()) return setError(t("กรุณาใส่ชื่อเล่น"));
+        if (phoneDigits && phoneDigits.length !== 10) return setError(t("เบอร์โทรต้องมี 10 หลัก"));
+        if (!gender) return setError(t("กรุณาเลือกเพศ"));
         setError("");
         onSave({ name: name.trim(), photo, phone: phoneDigits || undefined, gender, level });
         if (!initial) reset();
       }}
     >
       <div className="flex items-center gap-4">
-        <button type="button" onClick={() => fileRef.current?.click()} className="relative shrink-0" aria-label="เลือกรูป">
+        <button type="button" onClick={() => fileRef.current?.click()} className="relative shrink-0" aria-label={t("เลือกรูป")}>
           {photo || name ? (
             <Avatar name={name} photo={photo} size={76} />
           ) : (
@@ -110,13 +113,13 @@ export function PlayerForm({
           }}
         />
         <label className="flex-1 space-y-1.5 text-sm font-medium">
-          ชื่อเล่น
-          <input className={inputClass} placeholder="เช่น ต้น" value={name} onChange={(e) => setName(e.target.value)} />
+          {t("ชื่อเล่น")}
+          <input className={inputClass} placeholder={t("เช่น ต้น")} value={name} onChange={(e) => setName(e.target.value)} />
         </label>
       </div>
 
       <label className="block space-y-1.5 text-sm font-medium">
-        เบอร์โทร
+        {t("เบอร์โทร")}
         <input
           className={inputClass}
           type="tel"
@@ -128,12 +131,12 @@ export function PlayerForm({
       </label>
 
       <div className="space-y-1.5 text-sm font-medium">
-        เพศ
+        {t("เพศ")}
         <Segmented options={GENDERS} value={gender} onChange={setGender} cols={3} />
       </div>
 
       <div className="space-y-1.5 text-sm font-medium">
-        ระดับมือ
+        {t("ระดับมือ")}
         <Segmented
           options={LEVELS.map((l) => ({ value: l.value, label: l.code, sub: l.label }))}
           value={level}
@@ -146,11 +149,11 @@ export function PlayerForm({
 
       <div className="flex gap-2">
         <Button variant="primary" type="submit" className="flex-1">
-          {initial ? "บันทึก" : "ลงทะเบียน"}
+          {initial ? t("บันทึก") : t("ลงทะเบียน")}
         </Button>
         {onCancel && (
           <Button type="button" onClick={onCancel}>
-            ยกเลิก
+            {t("ยกเลิก")}
           </Button>
         )}
       </div>
@@ -166,12 +169,12 @@ export function PlayersTab() {
 
   return (
     <div className="space-y-4">
-      <SectionTitle>ลงทะเบียนผู้เล่นใหม่</SectionTitle>
+      <SectionTitle>{t("ลงทะเบียนผู้เล่นใหม่")}</SectionTitle>
       <Card>
         <PlayerForm onSave={(player) => dispatch({ type: "addPlayer", player })} />
       </Card>
 
-      <SectionTitle right={`${players.length} คน`}>ผู้เล่นทั้งหมด</SectionTitle>
+      <SectionTitle right={t("{n} คน", { n: players.length })}>{t("ผู้เล่นทั้งหมด")}</SectionTitle>
       <ul className="space-y-2">
         {players.map((p) => (
           <li key={p.id}>
@@ -194,19 +197,19 @@ export function PlayersTab() {
                       <LevelBadge level={p.level} />
                     </span>
                     <span className="block text-xs text-zinc-500">
-                      {[p.phone, isMonthlyPaid(state.monthly, date, p.id) && "รายเดือนเดือนนี้"].filter(Boolean).join(" · ") ||
+                      {[p.phone, isMonthlyPaid(state.monthly, date, p.id) && t("รายเดือนเดือนนี้")].filter(Boolean).join(" · ") ||
                         " "}
                     </span>
                   </span>
                   <Button variant="ghost" className="px-3" onClick={() => setEditing(p.id)}>
-                    แก้ไข
+                    {t("แก้ไข")}
                   </Button>
                   <Button
                     variant="ghost"
                     className="px-2 text-red-500"
-                    aria-label={`ลบ ${p.name}`}
+                    aria-label={t("ลบ {name}", { name: p.name })}
                     onClick={() => {
-                      if (confirm(`ลบ ${p.name}?`)) dispatch({ type: "removePlayer", playerId: p.id });
+                      if (confirm(t("ลบ {name}?", { name: p.name }))) dispatch({ type: "removePlayer", playerId: p.id });
                     }}
                   >
                     <Icon.X width={18} height={18} />
