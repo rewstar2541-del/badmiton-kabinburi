@@ -4,6 +4,7 @@ import { useState } from "react";
 import { locale, t } from "@/lib/i18n";
 import { today, useStore } from "@/lib/store";
 import { Button, Card, Icon, SectionTitle, inputClass } from "./ui";
+import { Auto, useAuto } from "@/lib/autoTranslate";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const ymd = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;
@@ -18,6 +19,7 @@ export function ClubCalendar() {
   });
   const [picked, setPicked] = useState<string | null>(null);
   const [reason, setReason] = useState("");
+  const closedReason = useAuto((picked && state.closed[picked]) || "");
 
   const first = new Date(view.y, view.m, 1);
   const daysIn = new Date(view.y, view.m + 1, 0).getDate();
@@ -127,7 +129,7 @@ export function ClubCalendar() {
             ) : (
               <p className="text-sm text-zinc-600">
                 {picked in state.closed
-                  ? t("งดเล่น") + (state.closed[picked] ? `: ${state.closed[picked]}` : "")
+                  ? t("งดเล่น") + (closedReason ? `: ${closedReason}` : "")
                   : sessions.has(picked)
                     ? t("มีจัดก๊วน")
                     : t("ยังไม่มีประกาศ")}
@@ -161,7 +163,7 @@ export function ClosedBanner({ reason }: { reason: string }) {
       <Icon.X className="shrink-0" />
       <div>
         <div className="font-display font-semibold">{t("วันนี้งดเล่น")}</div>
-        {reason && <p className="text-sm">{reason}</p>}
+        {reason && <p className="text-sm"><Auto text={reason} /></p>}
       </div>
     </div>
   );

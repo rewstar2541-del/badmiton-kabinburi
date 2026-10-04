@@ -10,6 +10,7 @@ import { PayQr } from "./PayQr";
 import { SlipReview } from "./Slips";
 import { Avatar, Button, Card, Icon, SearchInput, SectionTitle, Sheet, baht, inputClass } from "./ui";
 import { visibleRoster } from "@/lib/roster";
+import { Auto } from "@/lib/autoTranslate";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -67,7 +68,7 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
         {drinks.map((d) => (
           <div key={d.id} className="flex items-center justify-between rounded-2xl bg-zinc-50 px-3 py-2 text-sm">
             <span>
-              {d.note} · {baht(d.amount)}
+              <Auto text={d.note} /> · {baht(d.amount)}
             </span>
             <button className="text-xs text-red-500" onClick={() => dispatch({ type: "removeDrink", date, drinkId: d.id })}>
               {t("ลบ")}

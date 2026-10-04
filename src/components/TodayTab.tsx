@@ -10,6 +10,7 @@ import { PendingNotice, PickMe, savedPin, useMe } from "./PickMe";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle } from "./ui";
 import { t } from "@/lib/i18n";
 import { RestButton } from "./RestButton";
+import { Auto } from "@/lib/autoTranslate";
 
 /** ประกาศจัดก๊วนวันนี้ (ใช้ทั้งหน้าผู้เล่นและแอดมิน) */
 export function AnnouncementBanner({ message }: { message: string }) {
@@ -18,7 +19,7 @@ export function AnnouncementBanner({ message }: { message: string }) {
       <Icon.Megaphone className="shrink-0" />
       <div className="min-w-0">
         <div className="font-display font-semibold">{t("วันนี้มีจัดก๊วน")}</div>
-        {message && <p className="mt-0.5 text-sm whitespace-pre-line">{message}</p>}
+        {message && <p className="mt-0.5 text-sm whitespace-pre-line"><Auto text={message} /></p>}
       </div>
     </div>
   );
