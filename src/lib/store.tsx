@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useReducer, useRef, 
 import { isDemo, demoState } from "./demo";
 import { randomToken, readSession, writeSession } from "./session";
 import { clearLineTicket, handleLineCallback, readLineTicket } from "./lineLogin";
-import { addGuest, adminResetPin, linkLine, registerPlayerLine, loadPrivate, playerLogin, registerPlayer, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, supabase } from "./remote";
+import { addGuest, claimPlayer, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, supabase } from "./remote";
 import { EMPTY_STATE, guestCheck, prepare, reducer, today, type Intent, type SelfAction, type State } from "./state";
 import { DEFAULT_SETTINGS, monthOf, type Level, type Player } from "./types";
 import { t } from "@/lib/i18n";
@@ -49,10 +49,11 @@ interface Ctx {
   sendSlip: (playerId: string, pin: string, amount: number, image: string) => Promise<string | null>;
   /** ผู้เล่นตั้งคนที่อยากจับคู่/ไม่อยากเจอ คืนข้อความผิดพลาด หรือ null */
   setPrefs: (playerId: string, pin: string, prefer: string[], avoid: string[]) => Promise<string | null>;
-  /** ผู้เล่นล็อกอินด้วย PIN (ครั้งแรกใช้ 4 ตัวท้ายเบอร์ แล้วตั้ง PIN ใหม่) สำเร็จแล้วเครื่องนี้จะจำไว้ */
-  login: (playerId: string, pin: string, newPin?: string) => Promise<LoginResult>;
-  /** แอดมินรีเซ็ต PIN ให้ผู้เล่นที่ลืม (กลับไปใช้ 4 ตัวท้ายเบอร์) */
-  resetPin: (playerId: string) => Promise<string | null>;
+  /**
+   * "นี่คือฉัน" กับชื่อที่แอดมินลงไว้แล้ว: ของจริงส่งคำขอผูก LINE ให้แอดมินยืนยัน (pending)
+   * โหมดทดลองเข้าเป็นคนนั้นได้เลย (token)
+   */
+  login: (playerId: string) => Promise<LoginResult>;
   /** ผู้เล่นสมัครเองครั้งแรก รอแอดมินอนุมัติ */
   register: (p: Omit<Player, "id">) => Promise<{ id?: string; error?: string }>;
   /** สมาชิกพาเพื่อนมา (สร้างแขกและเช็คอินวันนี้) คืนข้อความผิดพลาด หรือ null */
@@ -66,21 +67,6 @@ interface Ctx {
 
 const StoreCtx = createContext<Ctx | null>(null);
 
-const PINS_KEY = "badminton-kabinburi:demo-pins";
-function readPins(): Record<string, string> {
-  try {
-    return JSON.parse(localStorage.getItem(PINS_KEY) ?? "{}") as Record<string, string>;
-  } catch {
-    return {};
-  }
-}
-function writePins(v: Record<string, string>) {
-  try {
-    localStorage.setItem(PINS_KEY, JSON.stringify(v));
-  } catch {
-    // ไม่จำก็ได้
-  }
-}
 
 function LocalProvider({ children }: { children: ReactNode }) {
   // แอพถูกโหลดฝั่งเบราว์เซอร์เท่านั้น (ดู ClientApp) จึงอ่าน localStorage ตอนเริ่มได้เลย
@@ -141,25 +127,17 @@ function LocalProvider({ children }: { children: ReactNode }) {
     [state],
   );
   const loginLocal = useCallback(
-    async (playerId: string, pin: string, newPin?: string): Promise<LoginResult> => {
+    async (playerId: string): Promise<LoginResult> => {
       const p = state.players.find((x) => x.id === playerId);
       if (!p) return { error: "ไม่พบผู้เล่น" };
       if (p.pending) return { error: "รอแอดมินอนุมัติก่อน" };
-      // โหมดทดลองแทนการเข้าด้วย LINE: ยืนยันด้วย 4 ตัวท้ายเบอร์โทร
-      if (p.phone && p.phone.slice(-4) !== pin) return { error: "เลข 4 ตัวท้ายเบอร์โทรไม่ตรง" };
-      void newPin;
+      // โหมดทดลองไม่มี LINE: เลือกชื่อแล้วเข้าได้เลย
       const token = randomToken();
       writeSession({ playerId, token });
       return { token };
     },
     [state.players],
   );
-  const resetPinLocal = useCallback(async (playerId: string) => {
-    const { [playerId]: _, ...rest } = readPins();
-    void _;
-    writePins(rest);
-    return null;
-  }, []);
   const registerLocal = useCallback(async (p: Omit<Player, "id">) => {
     const a = prepare({ type: "addPlayer", player: { ...p, pending: true } });
     apply(a);
@@ -189,7 +167,7 @@ function LocalProvider({ children }: { children: ReactNode }) {
       : undefined,
   };
   return (
-    <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, setPrefs, addGuest: addGuestLocal, register: registerLocal, login: loginLocal, resetPin: resetPinLocal, slipImage: getSlip, ready: true, error: null, auth }}>
+    <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, setPrefs, addGuest: addGuestLocal, register: registerLocal, login: loginLocal, slipImage: getSlip, ready: true, error: null, auth }}>
       {children}
     </StoreCtx.Provider>
   );
@@ -321,24 +299,22 @@ function RemoteProvider({ children }: { children: ReactNode }) {
 
   const getSlip = useCallback((id: string) => slipImage(db, id), [db]);
   const loginRemote = useCallback(
-    async (playerId: string, pin: string, newPin?: string) => {
-      // ถ้าเพิ่งเข้าด้วย LINE แต่ยังไม่ผูก ให้ผูก LINE กับผู้เล่นคนนี้ไปพร้อมกัน
+    async (playerId: string): Promise<LoginResult> => {
+      // ต้องเพิ่งเข้าด้วย LINE ก่อน แล้วส่งคำขอผูกบัญชีนี้กับชื่อเดิม รอแอดมินยืนยัน
       const tk = readLineTicket();
-      const r = tk ? await linkLine(db, tk.ticket, playerId, pin, newPin) : await playerLogin(db, playerId, pin, newPin);
-      if (r.token) {
-        clearLineTicket();
-        writeSession({ playerId, token: r.token });
-        await reload();
-      }
-      return r;
+      if (!tk) return { error: "กรุณาเข้าสู่ระบบด้วย LINE ใหม่" };
+      const r = await claimPlayer(db, tk.ticket, playerId);
+      if (!r.ok) return { error: r.error ?? "บันทึกไม่สำเร็จ" };
+      clearLineTicket();
+      return { pending: true };
     },
-    [db, reload],
+    [db],
   );
-  const resetPinRemote = useCallback((playerId: string) => adminResetPin(db, playerId), [db]);
   const registerRemote = useCallback(
     async (p: Omit<Player, "id">) => {
       const tk = readLineTicket();
-      const r = tk ? await registerPlayerLine(db, tk.ticket, p) : await registerPlayer(db, p);
+      if (!tk) return { error: "กรุณาเข้าสู่ระบบด้วย LINE ใหม่" };
+      const r = await registerPlayerLine(db, tk.ticket, p);
       if (r.id) clearLineTicket();
       if (r.id) await reload();
       return r;
@@ -381,7 +357,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  return <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, setPrefs, addGuest: addGuestRemote, register: registerRemote, login: loginRemote, resetPin: resetPinRemote, slipImage: getSlip, ready, error, auth }}>{children}</StoreCtx.Provider>;
+  return <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, setPrefs, addGuest: addGuestRemote, register: registerRemote, login: loginRemote, slipImage: getSlip, ready, error, auth }}>{children}</StoreCtx.Provider>;
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {

@@ -22,7 +22,6 @@ export interface Rows {
     guest_of?: string | null;
     pending?: boolean | null;
   }[];
-  contacts: { player_id: string; phone: string }[];
   checkins: { date: string; player_id: string; at: string; paid_at: string | null; resting?: boolean }[];
   games: {
     id: string;
@@ -56,14 +55,12 @@ const ms = (t: string) => new Date(t).getTime();
 const iso = (n: number) => new Date(n).toISOString();
 
 export function rowsToState(r: Rows): State {
-  const phones = new Map(r.contacts.map((c) => [c.player_id, c.phone]));
   const players: Player[] = r.players.map((p) => ({
     id: p.id,
     name: p.name,
     photo: p.photo ?? undefined,
     gender: (p.gender as Gender | null) ?? undefined,
     level: p.level as Level,
-    phone: phones.get(p.id),
     ...(p.prefer?.length ? { prefer: p.prefer } : {}),
     ...(p.avoid?.length ? { avoid: p.avoid } : {}),
     ...(p.guest_of ? { guestOf: p.guest_of } : {}),
@@ -158,7 +155,6 @@ export type TableKey = Exclude<keyof Rows, "settings"> | "settings";
 /** ชื่อตารางในฐานข้อมูล -> ส่วนของ Rows ที่ต้องโหลดใหม่เมื่อมีการเปลี่ยนแปลง */
 export const TABLE_OF: Record<string, TableKey> = {
   players: "players",
-  player_contacts: "contacts",
   checkins: "checkins",
   games: "games",
   drinks: "drinks",
@@ -174,8 +170,6 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
   const since = isAdmin ? "2000-01-01" : sinceDate(PLAYER_HISTORY_DAYS);
   const fetchers: { [K in TableKey]: () => Promise<Rows[K]> } = {
     players: () => all(() => db.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of,pending").order("id")),
-    // เบอร์โทรเห็นเฉพาะแอดมิน
-    contacts: async () => (isAdmin ? all(() => db.from("player_contacts").select("player_id,phone").order("player_id")) : []),
     checkins: () => all(() => db.from("checkins").select("date,player_id,at,paid_at,resting").gte("date", since).order("date").order("player_id")),
     games: () => all(() => db.from("games").select("id,date,court,player_ids,started_at,ended_at,shuttles,winner").gte("date", since).order("id")),
     // ค่าน้ำ ค่ารายเดือน และสลิป ผู้เล่นทั่วไปอ่านไม่ได้ (โหลดของตัวเองแยกผ่าน my_private)
@@ -226,11 +220,6 @@ function playerRow(p: Omit<Player, "id"> & { id: string }) {
   };
 }
 
-async function saveContact(db: SupabaseClient, playerId: string, phone?: string) {
-  if (phone) check(await db.from("player_contacts").upsert({ player_id: playerId, phone }));
-  else check(await db.from("player_contacts").delete().eq("player_id", playerId));
-}
-
 /** บันทึกการเปลี่ยนแปลงหนึ่งครั้งลง Supabase (ต้องเป็นแอดมิน) */
 /** players ใช้หาแขกของคนที่จ่ายเงิน เพื่อปิดยอดของแขกไปพร้อมกัน */
 export async function persist(db: SupabaseClient, a: Action, players: Player[] = []): Promise<void> {
@@ -238,12 +227,9 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
   switch (a.type) {
     case "addPlayer":
       check(await db.from("players").insert(playerRow({ ...a.player, id: a._id })));
-      if (a.player.phone) await saveContact(db, a._id, a.player.phone);
       return;
     case "updatePlayer":
-      check(await db.from("players").update(playerRow(a.player)).eq("id", a.player.id));
-      await saveContact(db, a.player.id, a.player.phone);
-      return;
+      return check(await db.from("players").update(playerRow(a.player)).eq("id", a.player.id));
     case "addGuest":
       check(await db.from("players").insert({ id: a._id, name: a.name, level: a.level, guest_of: a.hostId }));
       return check(await db.from("checkins").insert({ date: a.date, player_id: a._id, at: iso(a._at) }));
@@ -331,8 +317,6 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
 /** นำเข้าไฟล์สำรอง (เพิ่ม/ทับข้อมูลเดิม ไม่ลบของที่ไม่มีในไฟล์) */
 async function importState(db: SupabaseClient, s: State) {
   check(await db.from("players").upsert(s.players.map(playerRow)));
-  const contacts = s.players.filter((p) => p.phone).map((p) => ({ player_id: p.id, phone: p.phone! }));
-  if (contacts.length) check(await db.from("player_contacts").upsert(contacts));
   const days = s.days;
   const checkins = days.flatMap((d) =>
     d.checkIns.map((c) => ({ date: d.date, player_id: c.playerId, at: iso(c.at), paid_at: c.paidAt ? iso(c.paidAt) : null,
@@ -366,7 +350,7 @@ async function importState(db: SupabaseClient, s: State) {
   await persist(db, { type: "updateSettings", settings: s.settings });
 }
 
-/** ผู้เล่นลงชื่อ/เช็คอินเอง ผ่านฟังก์ชันในฐานข้อมูลที่ตรวจเลข 4 ตัวท้ายเบอร์โทร คืนข้อความผิดพลาด หรือ null */
+/** ผู้เล่นลงชื่อ/เช็คอินเอง ผ่านฟังก์ชันในฐานข้อมูลที่ตรวจ token จากการเข้าด้วย LINE คืนข้อความผิดพลาด หรือ null */
 export async function selfService(db: SupabaseClient, action: SelfAction, playerId: string, pin: string) {
   const { data, error } = await db.rpc("self_service", { p_player: playerId, p_pin: pin, p_action: action });
   if (error) return error.message;
@@ -388,18 +372,6 @@ export async function slipImage(db: SupabaseClient, slipId: string): Promise<str
 }
 
 /** ผู้เล่นตั้งคนที่อยากจับคู่/ไม่อยากเจอ คืนข้อความผิดพลาด หรือ null */
-/** ผู้เล่นสมัครเองครั้งแรก (รอแอดมินอนุมัติ) คืน id หรือข้อความผิดพลาด */
-export async function registerPlayer(db: SupabaseClient, p: Omit<Player, "id">): Promise<{ id?: string; error?: string }> {
-  const { data, error } = await db.rpc("register_player", {
-    p_name: p.name,
-    p_phone: p.phone ?? "",
-    p_gender: p.gender ?? "other",
-    p_level: p.level,
-    p_photo: p.photo ?? "",
-  });
-  if (error) return { error: error.message };
-  return data as { id?: string; error?: string };
-}
 
 /** สมาชิกพาเพื่อนมา: สร้างแขกและเช็คอินวันนี้ให้ คืนข้อความผิดพลาด หรือ null */
 export async function addGuest(db: SupabaseClient, hostId: string, pin: string, name: string, level: number) {
@@ -464,14 +436,7 @@ export async function testLine(db: SupabaseClient): Promise<string | null> {
 
 // ---------- ล็อกอินผู้เล่น ----------
 
-export type LoginResult = { token?: string; need_pin?: boolean; error?: string };
-
-/** ล็อกอินด้วย PIN (ครั้งแรกใช้ 4 ตัวท้ายเบอร์ แล้วตั้ง PIN ใหม่) */
-export async function playerLogin(db: SupabaseClient, playerId: string, pin: string, newPin?: string): Promise<LoginResult> {
-  const { data, error } = await db.rpc("player_login", { p_player: playerId, p_pin: pin, p_new_pin: newPin ?? null });
-  if (error) return { error: error.message };
-  return data as LoginResult;
-}
+export type LoginResult = { token?: string; pending?: boolean; error?: string };
 
 export async function playerLogout(db: SupabaseClient, token: string) {
   await db.rpc("player_logout", { p_token: token });
@@ -509,22 +474,18 @@ export function mergePrivate(state: State, r: Omit<PrivateRows, "error">): State
   return { ...state, days: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)), monthly };
 }
 
-/** แอดมินรีเซ็ต PIN ของผู้เล่น คืนข้อความผิดพลาด หรือ null */
-export async function adminResetPin(db: SupabaseClient, playerId: string): Promise<string | null> {
-  const { data, error } = await db.rpc("admin_reset_pin", { p_player: playerId });
-  if (error) return error.message;
-  return (data as string | null) ?? null;
-}
-
 // ---------- เข้าสู่ระบบด้วย LINE ----------
 
 export type LineLoginResult = {
   session?: { access_token: string; refresh_token: string };
   pending?: boolean;
+  /** ขอผูกกับชื่อเดิมไว้ รอแอดมินยืนยัน */
+  claim?: boolean;
   token?: string;
   player_id?: string;
   ticket?: string;
   name?: string;
+  picture?: string | null;
   error?: string;
 };
 
@@ -534,18 +495,33 @@ export async function lineLogin(db: SupabaseClient, code: string, redirectUri: s
   return data as LineLoginResult;
 }
 
-/** ผูกบัญชี LINE กับผู้เล่นที่มีอยู่ (ยืนยันด้วย PIN ครั้งเดียว) */
-export async function linkLine(db: SupabaseClient, ticket: string, playerId: string, pin: string, newPin?: string): Promise<LoginResult> {
-  const { data, error } = await db.rpc("link_line", { p_ticket: ticket, p_player: playerId, p_pin: pin, p_new_pin: newPin ?? null });
+/** ขอผูกบัญชี LINE กับชื่อที่แอดมินลงไว้แล้ว (แอดมินต้องกดยืนยัน) */
+export async function claimPlayer(db: SupabaseClient, ticket: string, playerId: string): Promise<{ ok?: boolean; error?: string }> {
+  const { data, error } = await db.rpc("claim_player", { p_ticket: ticket, p_player: playerId });
   if (error) return { error: error.message };
-  return data as LoginResult;
+  return data as { ok?: boolean; error?: string };
+}
+
+export type LineClaim = { line_user_id: string; player_id: string; line_name: string | null; picture: string | null };
+
+/** คำขอผูก LINE ที่รอแอดมินยืนยัน */
+export async function listClaims(db: SupabaseClient): Promise<LineClaim[]> {
+  const { data, error } = await db.from("line_claims").select("line_user_id,player_id,line_name,picture").eq("status", "pending").order("created_at");
+  if (error) throw new Error(error.message);
+  return data as LineClaim[];
+}
+
+/** แอดมินยืนยัน (ok) หรือปฏิเสธคำขอ คืนข้อความผิดพลาด หรือ null */
+export async function resolveClaim(db: SupabaseClient, lineUserId: string, ok: boolean): Promise<string | null> {
+  const { data, error } = await db.rpc("resolve_claim", { p_line_user: lineUserId, p_ok: ok });
+  if (error) return error.message;
+  return (data as string | null) ?? null;
 }
 
 export async function registerPlayerLine(db: SupabaseClient, ticket: string, p: Omit<Player, "id">): Promise<{ id?: string; error?: string }> {
   const { data, error } = await db.rpc("register_player_line", {
     p_ticket: ticket,
     p_name: p.name,
-    p_phone: p.phone ?? "",
     p_gender: p.gender ?? "other",
     p_level: p.level,
     p_photo: p.photo ?? "",

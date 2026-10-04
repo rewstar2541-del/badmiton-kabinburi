@@ -6,11 +6,11 @@ import { lineLoginEnabled, readLineTicket, startLineLogin } from "@/lib/lineLogi
 import type { Player } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { PlayerForm } from "./PlayersTab";
-import { Avatar, Button, Card, Icon, SearchInput, SectionTitle, inputClass } from "./ui";
+import { Avatar, Button, Card, Icon, SearchInput, SectionTitle } from "./ui";
 import { t } from "@/lib/i18n";
 import { visibleRoster } from "@/lib/roster";
 
-/** ผู้เล่นที่ล็อกอินบนเครื่องนี้ (ต้องล็อกอินด้วย PIN ก่อน คนอื่นจึงเปิดดูบัญชีเราไม่ได้) */
+/** ผู้เล่นที่ล็อกอินบนเครื่องนี้ (ต้องเข้าด้วย LINE ก่อน คนอื่นจึงเปิดดูบัญชีเราไม่ได้) */
 export function useMe() {
   const { auth } = useStore();
   const [me, setMeState] = useState<string | null>(() => readSession()?.playerId ?? null);
@@ -28,15 +28,15 @@ export function useMe() {
   return [me, setMe] as const;
 }
 
-/** token ของการล็อกอิน ใช้แทน PIN เวลาเรียกคำสั่งของผู้เล่น */
+/** token ของการล็อกอิน ส่งไปกับคำสั่งของผู้เล่น */
 export const savedPin = {
   get: () => readSession()?.token ?? "",
 };
 
 /**
  * หน้าเข้าสู่ระบบ ใช้ทุกเมนู เข้าด้วย LINE ทางเดียว (ทั้งผู้เล่นและแอดมิน)
- * - LINE นี้ยังไม่มีชื่อในก๊วน: สมัครครั้งแรก หรือผูกกับชื่อเดิม (ยืนยัน 4 ตัวท้ายเบอร์โทรครั้งเดียว)
- * - โหมดทดลองไม่มี LINE: พิมพ์ชื่อแล้วใส่รหัสแทน
+ * - LINE นี้ยังไม่มีชื่อในก๊วน: สมัครครั้งแรก (ใช้ชื่อและรูปจาก LINE) หรือขอผูกกับชื่อเดิม (แอดมินยืนยัน)
+ * - โหมดทดลองไม่มี LINE: พิมพ์ชื่อแล้วเลือกเข้าเป็นคนนั้น
  */
 export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: string }) {
   const { state, auth } = useStore();
@@ -50,7 +50,7 @@ export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: s
   const list = q.trim() ? visibleRoster(members, q, () => false).slice(0, 6) : [];
   if (registering) return <Register onCancel={() => setRegistering(false)} />;
   const pickedPlayer = state.players.find((p) => p.id === picked);
-  if (pickedPlayer) return <Login player={pickedPlayer} onDone={() => onPick(pickedPlayer.id)} onCancel={() => setPicked(null)} />;
+  if (pickedPlayer) return <ClaimName player={pickedPlayer} onDone={() => onPick(pickedPlayer.id)} onCancel={() => setPicked(null)} />;
 
   const search = (
     <div className="space-y-2">
@@ -79,7 +79,10 @@ export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: s
   if (ticket)
     return (
       <div className="space-y-4">
-        <SectionTitle>{t("สวัสดีคุณ {name}", { name: ticket.name })}</SectionTitle>
+        <div className="flex items-center gap-3 px-1">
+          <Avatar name={ticket.name} photo={ticket.picture} size={44} />
+          <SectionTitle>{t("สวัสดีคุณ {name}", { name: ticket.name })}</SectionTitle>
+        </div>
         <Card className="space-y-3">
           <p className="text-sm text-zinc-600">{t("บัญชี LINE นี้ยังไม่มีชื่อในก๊วน ถ้ามาครั้งแรกให้สมัครก่อน (ทำครั้งเดียว)")}</p>
           <Button variant="accent" className="w-full" onClick={() => setRegistering(true)}>
@@ -91,7 +94,7 @@ export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: s
             </button>
           ) : (
             <>
-              <p className="text-xs text-zinc-500">{t("พิมพ์ชื่อของคุณ แล้วยืนยันด้วย 4 ตัวท้ายเบอร์โทรครั้งเดียว")}</p>
+              <p className="text-xs text-zinc-500">{t("พิมพ์ชื่อที่แอดมินลงไว้ให้ แล้วกดนี่คือฉัน แอดมินจะยืนยันให้ครั้งเดียว")}</p>
               {search}
             </>
           )}
@@ -165,72 +168,50 @@ export function FirstAdminCard() {
   );
 }
 
-/** ล็อกอินด้วย PIN ครั้งเดียวต่อเครื่อง ครั้งแรกใช้ 4 ตัวท้ายเบอร์โทร แล้วตั้ง PIN ของตัวเอง */
-function Login({ player, onDone, onCancel }: { player: Player; onDone: () => void; onCancel: () => void }) {
+/** "นี่คือฉัน": ของจริงส่งคำขอให้แอดมินยืนยัน (ครั้งเดียว) โหมดทดลองเข้าได้เลย */
+function ClaimName({ player, onDone, onCancel }: { player: Player; onDone: () => void; onCancel: () => void }) {
   const { login, auth } = useStore();
-  const [pin, setPin] = useState("");
-  const [newPin, setNewPin] = useState("");
-  const [needPin, setNeedPin] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  if (sent)
+    return (
+      <Card className="space-y-2 py-8 text-center">
+        <Icon.Clock className="mx-auto text-amber-500" width={32} height={32} />
+        <p className="font-semibold">{t("ส่งคำขอแล้ว รอแอดมินยืนยันว่าเป็นชื่อของคุณ")}</p>
+        <p className="text-sm text-zinc-500">{t("ยืนยันแล้วกดเข้าสู่ระบบด้วย LINE ได้เลย")}</p>
+      </Card>
+    );
 
   const submit = async () => {
-    if (needPin && !/^\d{4,6}$/.test(newPin)) return setError(t("PIN ต้องเป็นตัวเลข 4-6 หลัก"));
     setBusy(true);
-    const r = await login(player.id, pin, needPin ? newPin : undefined);
+    const r = await login(player.id);
     setBusy(false);
-    if (r.need_pin) {
-      setNeedPin(true);
-      setError("");
-    } else if (r.token) onDone();
+    if (r.token) onDone();
+    else if (r.pending) setSent(true);
     else setError(t(r.error ?? "บันทึกไม่สำเร็จ"));
   };
 
-  const digits = (v: string) => v.replace(/\D/g, "").slice(0, 6);
   return (
-    <div className="space-y-4">
-      <Card className="space-y-4">
-        <div className="flex items-center gap-3">
-          <Avatar name={player.name} photo={player.photo} size={52} />
-          <div className="min-w-0 flex-1">
-            <div className="truncate font-display text-lg font-semibold">{player.name}</div>
-            <div className="text-xs text-zinc-500">{t("ยืนยันตัวตนครั้งเดียว เครื่องนี้จะจำไว้")}</div>
+    <Card className="space-y-4">
+      <div className="flex items-center gap-3">
+        <Avatar name={player.name} photo={player.photo} size={52} />
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-display text-lg font-semibold">{player.name}</div>
+          <div className="text-xs text-zinc-500">
+            {auth.online ? t("แอดมินจะยืนยันว่าเป็นคุณ ทำครั้งเดียว") : t("โหมดทดลอง: เข้าเป็นคนนี้ได้เลย")}
           </div>
         </div>
-        <form
-          className="space-y-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            submit();
-          }}
-        >
-          {!needPin ? (
-            <label className="block space-y-1.5 text-sm font-medium">
-              {t("4 ตัวท้ายเบอร์โทรของคุณ")}
-              <input className={inputClass} type="password" inputMode="numeric" autoComplete="current-password" value={pin} onChange={(e) => setPin(digits(e.target.value))} />
-            </label>
-          ) : (
-            <label className="block space-y-1.5 text-sm font-medium">
-              {t("ตั้ง PIN ใหม่ของคุณ (ตัวเลข 4-6 หลัก ใช้ครั้งต่อไป)")}
-              <input className={inputClass} type="password" inputMode="numeric" autoComplete="new-password" value={newPin} onChange={(e) => setNewPin(digits(e.target.value))} />
-            </label>
-          )}
-          {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
-          <div className="flex gap-2">
-            <Button variant="primary" type="submit" className="flex-1" disabled={busy}>
-              {needPin ? t("ตั้ง PIN และเข้าสู่ระบบ") : t("เข้าสู่ระบบ")}
-            </Button>
-            <Button type="button" onClick={onCancel}>
-              {t("ยกเลิก")}
-            </Button>
-          </div>
-        </form>
-      </Card>
-      <p className="px-1 text-center text-xs text-zinc-500">{t("ไม่มีเบอร์ในระบบหรือจำไม่ได้ ให้แอดมินแก้เบอร์ให้")}</p>
-      {auth.demo && player.phone && (
-        <p className="px-1 text-center text-xs text-amber-700">{t("โหมดทดลอง: 4 ตัวท้ายเบอร์ของ {name} คือ {pin}", { name: player.name, pin: player.phone.slice(-4) })}</p>
-      )}
-    </div>
+      </div>
+      {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+      <div className="flex gap-2">
+        <Button variant="primary" className="flex-1" disabled={busy} onClick={submit}>
+          {auth.online ? t("ส่งคำขอ") : t("เข้าสู่ระบบ")}
+        </Button>
+        <Button onClick={onCancel}>{t("ยกเลิก")}</Button>
+      </div>
+    </Card>
   );
 }
 
@@ -247,7 +228,7 @@ function Register({ onCancel }: { onCancel: () => void }) {
         <Icon.Clock className="mx-auto text-amber-500" width={32} height={32} />
         <p className="font-semibold">{t("{name} สมัครแล้ว รอแอดมินอนุมัติ", { name: sent })}</p>
         <p className="text-sm text-zinc-500">
-          {ticket ? t("อนุมัติแล้วกดเข้าสู่ระบบด้วย LINE ได้เลย") : t("อนุมัติแล้วให้เลือกชื่อของคุณ แล้วเข้าสู่ระบบด้วย 4 ตัวท้ายเบอร์โทร")}
+          {ticket ? t("อนุมัติแล้วกดเข้าสู่ระบบด้วย LINE ได้เลย") : t("อนุมัติแล้วพิมพ์ชื่อของคุณเพื่อเข้าสู่ระบบ")}
         </p>
         <Button className="mx-auto" onClick={onCancel}>
           {t("กลับ")}
@@ -257,12 +238,12 @@ function Register({ onCancel }: { onCancel: () => void }) {
   return (
     <div className="space-y-4">
       <SectionTitle>{t("สมัครสมาชิกก๊วน")}</SectionTitle>
-      <p className="px-1 text-sm text-zinc-500">{t("กรอกข้อมูลของคุณ แอดมินจะตรวจและกดอนุมัติ จากนั้นลงชื่อและเช็คอินได้ เลข 4 ตัวท้ายเบอร์โทรใช้ยืนยันตัวตน")}</p>
+      <p className="px-1 text-sm text-zinc-500">{t("ชื่อและรูปดึงมาจาก LINE แก้ได้ตามต้องการ แอดมินจะตรวจและกดอนุมัติ จากนั้นลงชื่อและเช็คอินได้")}</p>
       <Card>
         {error && <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
         <PlayerForm
-          requirePhone
           defaultName={ticket?.name}
+          defaultPhoto={ticket?.picture}
           submitLabel={busy ? t("กำลังส่ง...") : t("ส่งใบสมัคร")}
           onCancel={onCancel}
           onSave={async (p) => {

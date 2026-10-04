@@ -17,9 +17,8 @@ export interface Player {
   id: string;
   /** ชื่อเล่น */
   name: string;
-  /** รูปโปรไฟล์ขนาดเล็ก (data URL) */
+  /** รูปโปรไฟล์ขนาดเล็ก (data URL หรือรูปโปรไฟล์ LINE) */
   photo?: string;
-  phone?: string;
   gender?: Gender;
   /** ดู LEVELS */
   level: Level;

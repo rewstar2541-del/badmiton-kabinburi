@@ -10,7 +10,6 @@ describe("rowsToState", () => {
       { id: "a", name: "ต้น", photo: null, gender: "male", level: 3 },
       { id: "b", name: "ฝน", photo: "data:x", gender: "female", level: 1 },
     ],
-    contacts: [{ player_id: "a", phone: "0812345678" }],
     checkins: [
       { date: "2026-10-04", player_id: "a", at: "2026-10-04T12:00:00Z", paid_at: null },
       { date: "2026-10-04", player_id: "b", at: "2026-10-04T11:00:00Z", paid_at: "2026-10-04T15:00:00Z" },
@@ -40,8 +39,7 @@ describe("rowsToState", () => {
   });
 
   it("แปลงแถวเป็นข้อมูลแอพ", () => {
-    expect(state.players.find((p) => p.id === "a")).toMatchObject({ phone: "0812345678", gender: "male" });
-    expect(state.players.find((p) => p.id === "b")?.phone).toBeUndefined();
+    expect(state.players.find((p) => p.id === "a")).toMatchObject({ gender: "male" });
     expect(state.days.map((d) => d.date)).toEqual(["2026-10-04", "2026-10-05"]);
     // เรียงตามเวลาเช็คอิน
     expect(state.days[0].checkIns.map((c) => c.playerId)).toEqual(["b", "a"]);

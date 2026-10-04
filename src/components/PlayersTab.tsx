@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { listClaims, resolveClaim, supabase, type LineClaim } from "@/lib/remote";
 import { resizeToSquare } from "@/lib/image";
 import { today, useStore } from "@/lib/store";
 import { DEFAULT_LEVEL, LEVELS, isMonthlyPaid, type Gender, type Level, type Player } from "@/lib/types";
@@ -54,31 +55,28 @@ export function PlayerForm({
   initial,
   onSave,
   onCancel,
-  requirePhone,
   submitLabel,
   defaultName,
+  defaultPhoto,
 }: {
+  /** ค่าตั้งต้นตอนสมัคร (ชื่อและรูปจาก LINE) */
   defaultName?: string;
-  requirePhone?: boolean;
+  defaultPhoto?: string;
   submitLabel?: string;
   initial?: Player;
   onSave: (p: PlayerInput) => void;
   onCancel?: () => void;
 }) {
   const [name, setName] = useState(initial?.name ?? defaultName ?? "");
-  const [photo, setPhoto] = useState(initial?.photo);
-  const [phone, setPhone] = useState(initial?.phone ?? "");
+  const [photo, setPhoto] = useState(initial?.photo ?? defaultPhoto);
   const [gender, setGender] = useState<Gender | undefined>(initial?.gender);
   const [level, setLevel] = useState<Level>(initial?.level ?? DEFAULT_LEVEL);
   const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const phoneDigits = phone.replace(/\D/g, "");
-
   const reset = () => {
     setName("");
     setPhoto(undefined);
-    setPhone("");
     setGender(undefined);
     setLevel(DEFAULT_LEVEL);
   };
@@ -89,10 +87,9 @@ export function PlayerForm({
       onSubmit={(e) => {
         e.preventDefault();
         if (!name.trim()) return setError(t("กรุณาใส่ชื่อเล่น"));
-        if ((phoneDigits || requirePhone) && phoneDigits.length !== 10) return setError(t("เบอร์โทรต้องมี 10 หลัก"));
         if (!gender) return setError(t("กรุณาเลือกเพศ"));
         setError("");
-        onSave({ name: name.trim(), photo, phone: phoneDigits || undefined, gender, level });
+        onSave({ name: name.trim(), photo, gender, level });
         if (!initial) reset();
       }}
     >
@@ -125,18 +122,6 @@ export function PlayerForm({
           <input className={inputClass} placeholder={t("เช่น ต้น")} value={name} onChange={(e) => setName(e.target.value)} />
         </label>
       </div>
-
-      <label className="block space-y-1.5 text-sm font-medium">
-        {t("เบอร์โทร")}
-        <input
-          className={inputClass}
-          type="tel"
-          inputMode="tel"
-          placeholder="08x-xxx-xxxx"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-        />
-      </label>
 
       <div className="space-y-1.5 text-sm font-medium">
         {t("เพศ")}
@@ -187,6 +172,7 @@ export function PlayersTab() {
 
   return (
     <div className="space-y-4">
+      <LineClaims />
       {pending.length > 0 && <PendingList players={pending} />}
       <SectionTitle>{t("ลงทะเบียนผู้เล่นใหม่")}</SectionTitle>
       <Card>
@@ -220,7 +206,7 @@ export function PlayersTab() {
                     <span className="block text-xs text-zinc-500">
                       {[
                         p.guestOf && t("แขกของ {name}", { name: state.players.find((h) => h.id === p.guestOf)?.name ?? "?" }),
-                        p.phone,
+                        admin.enabled && !admin.emailOf.has(p.id) && !p.guestOf && t("ยังไม่ได้ผูก LINE"),
                         isMonthlyPaid(state.monthly, date, p.id) && t("รายเดือนเดือนนี้"),
                       ].filter(Boolean).join(" · ") ||
                         " "}
@@ -305,7 +291,7 @@ function PendingList({ players }: { players: Player[] }) {
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-semibold">{p.name}</span>
                     <span className="block text-xs text-zinc-500">
-                      {[p.phone, p.gender && t(GENDER_LABEL[p.gender])].filter(Boolean).join(" · ")}
+                      {[p.gender && t(GENDER_LABEL[p.gender])].filter(Boolean).join(" · ")}
                     </span>
                   </span>
                 </div>
@@ -328,6 +314,73 @@ function PendingList({ players }: { players: Player[] }) {
                     }}
                   >
                     {t("ไม่อนุมัติ")}
+                  </Button>
+                </div>
+              </Card>
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
+}
+
+/** คนที่เข้าด้วย LINE แล้วกด "นี่คือฉัน" ที่ชื่อที่แอดมินลงไว้ รอแอดมินยืนยันว่าเป็นคนเดียวกัน */
+function LineClaims() {
+  const { state, auth } = useStore();
+  const [claims, setClaims] = useState<LineClaim[]>([]);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const enabled = auth.online && auth.isAdmin && Boolean(supabase);
+  const load = useCallback(async () => {
+    if (!supabase) return;
+    setClaims(await listClaims(supabase));
+  }, []);
+  // โหลดใหม่เมื่อรายชื่อผู้เล่นเปลี่ยน (มีคนสมัคร/ผูกใหม่)
+  const version = state.players.length;
+  useEffect(() => {
+    if (!enabled) return;
+    let live = true;
+    listClaims(supabase!)
+      .then((c) => live && setClaims(c))
+      .catch((e) => live && setError(String(e?.message ?? e)));
+    return () => {
+      live = false;
+    };
+  }, [enabled, version]);
+  if (!enabled || (claims.length === 0 && !error)) return null;
+
+  const resolve = async (c: LineClaim, ok: boolean) => {
+    setBusy(true);
+    const err = await resolveClaim(supabase!, c.line_user_id, ok);
+    setError(err ? t(err) : "");
+    await load().catch(() => {});
+    setBusy(false);
+  };
+
+  return (
+    <>
+      <SectionTitle right={t("{n} คน", { n: claims.length })}>{t("ขอผูกบัญชี LINE")}</SectionTitle>
+      {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+      <ul className="space-y-2">
+        {claims.map((c) => {
+          const p = state.players.find((x) => x.id === c.player_id);
+          return (
+            <li key={c.line_user_id}>
+              <Card className="space-y-3 ring-2 ring-amber-300">
+                <div className="flex items-center gap-3">
+                  <Avatar name={c.line_name ?? "?"} photo={c.picture ?? undefined} size={44} />
+                  <span className="min-w-0 flex-1 text-sm">
+                    {t("LINE \"{line}\" บอกว่าเป็น {name}", { line: c.line_name ?? "?", name: p?.name ?? "?" })}
+                  </span>
+                  {p && <Avatar name={p.name} photo={p.photo} size={44} />}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="accent" disabled={busy} onClick={() => resolve(c, true)}>
+                    {t("ใช่ คนเดียวกัน")}
+                  </Button>
+                  <Button disabled={busy} onClick={() => resolve(c, false)}>
+                    {t("ไม่ใช่")}
                   </Button>
                 </div>
               </Card>
