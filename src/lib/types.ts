@@ -23,6 +23,10 @@ export interface Player {
   gender?: Gender;
   /** ดู LEVELS */
   level: Level;
+  /** คนที่อยากจับคู่ด้วย (id) */
+  prefer?: string[];
+  /** คนที่ไม่อยากเจอในเกมเดียวกัน (id) */
+  avoid?: string[];
 }
 
 /** เดือน (YYYY-MM) -> ผู้เล่น -> เวลาที่จ่ายค่าสมาชิกรายเดือน */
@@ -74,7 +78,10 @@ export interface Game {
 export interface CheckIn {
   playerId: string;
   at: number;
+  /** จ่ายแล้ว ถือว่ากลับบ้าน ไม่อยู่ในคิว */
   paidAt?: number;
+  /** ขอพัก ระบบข้ามคิวไปก่อน */
+  resting?: boolean;
 }
 
 export interface Drink {

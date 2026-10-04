@@ -52,4 +52,22 @@ describe("matchmaking", () => {
     expect(nextMatch(dayWith(ps), ps)).not.toBeNull();
     expect(performance.now() - t).toBeLessThan(200);
   });
+
+  it("คนขอพักและคนที่จ่ายเงินแล้วไม่อยู่ในคิว", () => {
+    const ps = ["a", "b", "c", "d"].map((id) => p(id, 3));
+    const d = dayWith(ps);
+    d.checkIns[1].resting = true;
+    d.checkIns[2].paidAt = 100;
+    expect(waitingQueue(d, ps).map((e) => e.player.id)).toEqual(["a", "d"]);
+  });
+
+  it("เลี่ยงคนที่ไม่อยากเจอกัน และให้คนที่ขอคู่อยู่ทีมเดียวกัน", () => {
+    const ps = ["a", "b", "c", "d", "e"].map((id) => p(id, 3));
+    ps[0].avoid = ["b"];
+    ps[2].prefer = ["a"];
+    const m = nextMatch(dayWith(ps), ps)!;
+    expect(m).not.toContain("b");
+    const teamOf = (id: string) => (m.indexOf(id as never) < 2 ? "A" : "B");
+    expect(teamOf("a")).toBe(teamOf("c"));
+  });
 });

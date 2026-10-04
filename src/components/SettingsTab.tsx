@@ -47,6 +47,20 @@ export function SettingsTab() {
   return (
     <div className="space-y-4">
       <SectionTitle>{t("ตั้งค่า")}</SectionTitle>
+      <Card className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <h2 className="font-display font-semibold">{t("จอสนาม")}</h2>
+          <p className="text-xs text-zinc-500">{t("เปิดบนแท็บเล็ตหรือทีวีที่สนาม แสดงสนามและคิวถัดไป อัปเดตเอง")}</p>
+        </div>
+        <a
+          href={`?tv${auth.demo ? "&demo" : ""}`}
+          target="_blank"
+          rel="noreferrer"
+          className="shrink-0 rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white"
+        >
+          {t("เปิดจอสนาม")}
+        </a>
+      </Card>
       <Card>
         <form
           className="space-y-3"

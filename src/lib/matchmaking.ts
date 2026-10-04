@@ -7,7 +7,20 @@ export interface QueueEntry {
   waitingSince: number;
 }
 
-/** ผู้เล่นที่เช็คอินแล้วและไม่ได้อยู่บนสนาม เรียงตามสิทธิ์ลงก่อน */
+/** สถานะคนที่เช็คอินแล้ววันนี้ */
+export function presence(day: Day, playerId: string): "playing" | "resting" | "home" | "waiting" | "absent" {
+  const ci = day.checkIns.find((c) => c.playerId === playerId);
+  if (!ci) return "absent";
+  if (day.games.some((g) => !g.endedAt && g.playerIds.includes(playerId))) return "playing";
+  if (ci.paidAt) return "home";
+  if (ci.resting) return "resting";
+  return "waiting";
+}
+
+/**
+ * ผู้เล่นที่เช็คอินแล้วและรอลงสนาม เรียงตามสิทธิ์ลงก่อน
+ * ไม่รวมคนที่อยู่บนสนาม คนขอพัก และคนที่จ่ายเงินแล้ว (ถือว่ากลับบ้าน)
+ */
 export function waitingQueue(day: Day, players: Player[]): QueueEntry[] {
   const byId = new Map(players.map((p) => [p.id, p]));
   const onCourt = new Set(day.games.filter((g) => !g.endedAt).flatMap((g) => g.playerIds));
@@ -15,7 +28,7 @@ export function waitingQueue(day: Day, players: Player[]): QueueEntry[] {
   const entries: QueueEntry[] = [];
   for (const ci of day.checkIns) {
     const player = byId.get(ci.playerId);
-    if (!player || onCourt.has(player.id)) continue;
+    if (!player || onCourt.has(player.id) || ci.paidAt || ci.resting) continue;
     const played = day.games.filter((g) => g.endedAt && g.playerIds.includes(player.id));
     const lastEnd = Math.max(ci.at, ...played.map((g) => g.endedAt!));
     entries.push({ player, gamesPlayed: played.length, waitingSince: lastEnd });
@@ -42,7 +55,15 @@ function pairKey(x: string, y: string) {
   return x < y ? `${x}|${y}` : `${y}|${x}`;
 }
 
-/** แบ่ง 4 คนเป็น 2 ทีมให้ฝีมือรวมใกล้กันที่สุด และไม่ซ้ำคู่เดิม */
+const wants = (a: Player, b: Player) => Boolean(a.prefer?.includes(b.id) || b.prefer?.includes(a.id));
+const avoids = (a: Player, b: Player) => Boolean(a.avoid?.includes(b.id) || b.avoid?.includes(a.id));
+
+/** มีคู่ใน 4 คนนี้ที่ไม่อยากเจอกันไหม */
+export function hasAvoid(four: Player[]): boolean {
+  return four.some((a, i) => four.slice(i + 1).some((b) => avoids(a, b)));
+}
+
+/** แบ่ง 4 คนเป็น 2 ทีมให้ฝีมือรวมใกล้กันที่สุด ไม่ซ้ำคู่เดิม และให้คนที่ขอคู่กันได้อยู่ทีมเดียวกัน */
 export function splitTeams(
   four: Player[],
   partners: Map<string, number> = new Map(),
@@ -58,7 +79,8 @@ export function splitTeams(
     const gap = Math.abs(a1.level + a2.level - (b1.level + b2.level));
     const repeat =
       (partners.get(pairKey(a1.id, a2.id)) ?? 0) + (partners.get(pairKey(b1.id, b2.id)) ?? 0);
-    const cost = gap * 10 + repeat * 4;
+    const liked = Number(wants(a1, a2)) + Number(wants(b1, b2));
+    const cost = gap * 10 + repeat * 4 - liked * 6;
     if (cost < best.cost) best = { teams: [a1.id, a2.id, b1.id, b2.id], cost };
   }
   return best;
@@ -90,7 +112,8 @@ export function nextMatch(
         const split = splitTeams(four, partners);
         // ให้น้ำหนักกับลำดับคิว เพื่อไม่ให้คนรอนานถูกข้าม
         const waitPenalty = pool[i].rank + pool[j].rank + pool[k].rank;
-        const score = split.cost + spread * 3 + waitPenalty * 2;
+        // คนที่ไม่อยากเจอกัน เลี่ยงให้มากที่สุด แต่ถ้าไม่มีทางเลือกก็ยังจัดได้
+        const score = split.cost + spread * 3 + waitPenalty * 2 + (hasAvoid(four) ? 1000 : 0);
         if (!best || score < best.score) best = { teams: split.teams, score };
       }
   return best!.teams;

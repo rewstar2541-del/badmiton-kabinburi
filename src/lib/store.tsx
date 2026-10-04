@@ -3,7 +3,7 @@
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import { isDemo, demoState } from "./demo";
-import { loadRemote, persist, selfService, slipImage, submitSlip, supabase } from "./remote";
+import { loadRemote, persist, selfService, setPartnerPrefs, slipImage, submitSlip, supabase } from "./remote";
 import { EMPTY_STATE, prepare, reducer, today, type Intent, type SelfAction, type State } from "./state";
 import { DEFAULT_SETTINGS } from "./types";
 import { t } from "@/lib/i18n";
@@ -46,6 +46,8 @@ interface Ctx {
   self: (action: SelfAction, playerId: string, pin: string) => Promise<string | null>;
   /** ผู้เล่นส่งรูปสลิปโอนเงิน คืนข้อความผิดพลาด หรือ null */
   sendSlip: (playerId: string, pin: string, amount: number, image: string) => Promise<string | null>;
+  /** ผู้เล่นตั้งคนที่อยากจับคู่/ไม่อยากเจอ คืนข้อความผิดพลาด หรือ null */
+  setPrefs: (playerId: string, pin: string, prefer: string[], avoid: string[]) => Promise<string | null>;
   /** รูปสลิป (เฉพาะแอดมิน) */
   slipImage: (slipId: string) => Promise<string | null>;
   ready: boolean;
@@ -67,11 +69,38 @@ function LocalProvider({ children }: { children: ReactNode }) {
     }
   }, [state]);
 
+  // แท็บอื่นในเครื่องเดียวกัน (เช่นจอสนาม) แก้ข้อมูล ให้หน้านี้อัปเดตตาม
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== STORAGE_KEY || !e.newValue) return;
+      try {
+        apply({ type: "replace", state: JSON.parse(e.newValue) as State });
+      } catch {
+        // ข้อมูลเสีย ไม่ต้องทำอะไร
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   const dispatch = useCallback((i: Intent) => apply(prepare(i)), []);
-  const self = useCallback(async (action: SelfAction, playerId: string) => {
-    dispatch({ type: action, date: today(), playerId });
-    return null;
-  }, [dispatch]);
+  const self = useCallback(
+    async (action: SelfAction, playerId: string) => {
+      const date = today();
+      if (action === "rest" || action === "unrest") dispatch({ type: "setResting", date, playerId, resting: action === "rest" });
+      else dispatch({ type: action, date, playerId });
+      return null;
+    },
+    [dispatch],
+  );
+  const setPrefs = useCallback(
+    async (playerId: string, _pin: string, prefer: string[], avoid: string[]) => {
+      const p = state.players.find((x) => x.id === playerId);
+      if (p) dispatch({ type: "updatePlayer", player: { ...p, prefer, avoid } });
+      return null;
+    },
+    [dispatch, state.players],
+  );
   // รูปสลิปในโหมดเครื่องเดียว เก็บไว้ในหน่วยความจำ (หายเมื่อรีเฟรช)
   const images = useRef(new Map<string, string>());
   const sendSlip = useCallback(async (playerId: string, _pin: string, amount: number, image: string) => {
@@ -97,7 +126,7 @@ function LocalProvider({ children }: { children: ReactNode }) {
       : undefined,
   };
   return (
-    <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, slipImage: getSlip, ready: true, error: null, auth }}>
+    <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, setPrefs, slipImage: getSlip, ready: true, error: null, auth }}>
       {children}
     </StoreCtx.Provider>
   );
@@ -199,6 +228,14 @@ function RemoteProvider({ children }: { children: ReactNode }) {
   );
 
   const getSlip = useCallback((id: string) => slipImage(db, id), [db]);
+  const setPrefs = useCallback(
+    async (playerId: string, pin: string, prefer: string[], avoid: string[]) => {
+      const err = await setPartnerPrefs(db, playerId, pin, prefer, avoid);
+      if (!err) await reload();
+      return err;
+    },
+    [db, reload],
+  );
 
   const auth: Auth = {
     online: true,
@@ -223,7 +260,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  return <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, slipImage: getSlip, ready, error, auth }}>{children}</StoreCtx.Provider>;
+  return <StoreCtx.Provider value={{ state, dispatch, self, sendSlip, setPrefs, slipImage: getSlip, ready, error, auth }}>{children}</StoreCtx.Provider>;
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {

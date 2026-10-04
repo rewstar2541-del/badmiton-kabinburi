@@ -18,6 +18,7 @@ export type Action =
   | { type: "removePlayer"; playerId: string }
   | { type: "checkIn"; date: string; playerId: string; _at: number }
   | { type: "undoCheckIn"; date: string; playerId: string }
+  | { type: "setResting"; date: string; playerId: string; resting: boolean }
   | { type: "startGame"; date: string; court: number; playerIds: Game["playerIds"]; _id: string; _at: number }
   | { type: "setShuttles"; date: string; gameId: string; shuttles: number }
   | { type: "endGame"; date: string; gameId: string; winner?: Team; _at: number }
@@ -53,7 +54,7 @@ export function today(): string {
 }
 
 /** สิ่งที่ผู้เล่นทำเองได้โดยไม่ต้องเป็นแอดมิน */
-export type SelfAction = "signUp" | "cancelSignUp" | "checkIn";
+export type SelfAction = "signUp" | "cancelSignUp" | "checkIn" | "rest" | "unrest";
 
 export function prepare(i: Intent, now = Date.now(), id = newId): Action {
   return { ...i, _id: id(), _at: now } as Action;
@@ -88,6 +89,11 @@ export function reducer(state: State, a: Action): State {
           ? d
           : { ...d, checkIns: [...d.checkIns, { playerId: a.playerId, at: a._at }] },
       );
+    case "setResting":
+      return withDay(state, a.date, (d) => ({
+        ...d,
+        checkIns: d.checkIns.map((c) => (c.playerId === a.playerId ? { ...c, resting: a.resting || undefined } : c)),
+      }));
     case "undoCheckIn":
       return withDay(state, a.date, (d) => ({ ...d, checkIns: d.checkIns.filter((c) => c.playerId !== a.playerId) }));
     case "startGame":

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useStore, useToday } from "@/lib/store";
+import { presence } from "@/lib/matchmaking";
 import type { SelfAction } from "@/lib/state";
 import { PickMe, savedPin, useMe } from "./PickMe";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, inputClass } from "./ui";
@@ -92,6 +93,14 @@ export function TodayTab() {
 
   const signedUp = day.signups?.some((s) => s.playerId === player.id) ?? false;
   const checkedIn = day.checkIns.some((c) => c.playerId === player.id);
+  const status = presence(day, player.id);
+  const statusText = {
+    playing: t("กำลังเล่นอยู่"),
+    resting: t("พักอยู่ ระบบข้ามคิวให้"),
+    home: t("จ่ายแล้ว ถือว่ากลับบ้านแล้ว"),
+    waiting: t("เช็คอินแล้ว รอคิวลงสนามได้เลย"),
+    absent: signedUp ? t("ลงชื่อแล้ว มาถึงสนามแล้วกดเช็คอิน") : t("ยังไม่ได้ลงชื่อ"),
+  }[status];
 
   const act = async (action: SelfAction) => {
     setBusy(true);
@@ -114,11 +123,7 @@ export function TodayTab() {
               <LevelBadge level={player.level} />
             </div>
             <div className="text-xs text-zinc-500">
-              {checkedIn
-                ? t("เช็คอินแล้ว รอคิวลงสนามได้เลย")
-                : signedUp
-                  ? t("ลงชื่อแล้ว มาถึงสนามแล้วกดเช็คอิน")
-                  : t("ยังไม่ได้ลงชื่อ")}
+              {statusText}
             </div>
           </div>
           <button className="text-xs text-zinc-500 underline" onClick={() => setMe(null)}>
@@ -126,7 +131,7 @@ export function TodayTab() {
           </button>
         </div>
 
-        {!checkedIn && auth.online && (
+        {(!checkedIn || status === "waiting" || status === "resting") && auth.online && (
           <label className="block space-y-1.5 text-sm font-medium">
             {t("เลข 4 ตัวท้ายเบอร์โทรของคุณ")}
             <input
@@ -143,8 +148,20 @@ export function TodayTab() {
         {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
 
         {checkedIn ? (
-          <div className="flex items-center justify-center gap-1.5 rounded-2xl bg-emerald-50 py-3 font-semibold text-emerald-700">
-            <Icon.Check width={18} height={18} /> {t("มาถึงสนามแล้ว")}
+          <div className="grid gap-2">
+            <div className="flex items-center justify-center gap-1.5 rounded-2xl bg-emerald-50 py-3 font-semibold text-emerald-700">
+              <Icon.Check width={18} height={18} /> {status === "home" ? t("จ่ายแล้ว ถือว่ากลับบ้านแล้ว") : t("มาถึงสนามแล้ว")}
+            </div>
+            {status === "waiting" && (
+              <Button disabled={busy} onClick={() => act("rest")}>
+                {t("ขอพัก (ข้ามคิวไปก่อน)")}
+              </Button>
+            )}
+            {status === "resting" && (
+              <Button variant="accent" disabled={busy} onClick={() => act("unrest")}>
+                {t("พักพอแล้ว กลับเข้าคิว")}
+              </Button>
+            )}
           </div>
         ) : (
           <div className="grid gap-2">

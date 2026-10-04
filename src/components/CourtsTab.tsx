@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { waitingQueue } from "@/lib/matchmaking";
+import { presence, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
 import type { Game, Player, Team } from "@/lib/types";
 import { MatchBuilder } from "./MatchBuilder";
@@ -119,7 +119,7 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
 }
 
 export function CourtsTab() {
-  const { state, auth } = useStore();
+  const { state, auth, dispatch } = useStore();
   const { date, day } = useToday();
   const [building, setBuilding] = useState<number | null>(null);
   const now = useNow();
@@ -127,6 +127,9 @@ export function CourtsTab() {
   const queue = waitingQueue(day, state.players);
   const courts = Array.from({ length: state.settings.courtCount }, (_, i) => i + 1);
   const active = new Map(day.games.filter((g) => !g.endedAt).map((g) => [g.court, g]));
+  const resting = day.checkIns.filter((c) => presence(day, c.playerId) === "resting").map((c) => byId.get(c.playerId)).filter((p) => p !== undefined);
+  const home = day.checkIns.filter((c) => presence(day, c.playerId) === "home").length;
+  const rest = (playerId: string, on: boolean) => dispatch({ type: "setResting", date, playerId, resting: on });
 
 
   return (
@@ -195,11 +198,45 @@ export function CourtsTab() {
                 <br />
                 {t("รอ {n} นาที", { n: minutes(now - e.waitingSince) })}
               </span>
+              {auth.isAdmin && (
+                <button
+                  onClick={() => rest(e.player.id, true)}
+                  className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-semibold text-zinc-600 active:bg-zinc-200"
+                >
+                  {t("พัก")}
+                </button>
+              )}
             </li>
           ))}
           {queue.length === 0 && <li className="py-6 text-center text-sm text-zinc-500">{t("ไม่มีคนรอ")}</li>}
         </ol>
       </Card>
+
+      {resting.length > 0 && (
+        <>
+          <SectionTitle right={t("{n} คน", { n: resting.length })}>{t("พักอยู่")}</SectionTitle>
+          <Card className="p-2">
+            <ul>
+              {resting.map((p) => (
+                <li key={p.id} className="flex items-center gap-3 rounded-2xl px-2 py-2 opacity-80">
+                  <Avatar name={p.name} photo={p.photo} size={32} />
+                  <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
+                  <LevelBadge level={p.level} />
+                  {auth.isAdmin && (
+                    <button
+                      onClick={() => rest(p.id, false)}
+                      className="rounded-full bg-lime px-2.5 py-1 text-[11px] font-semibold text-ink"
+                    >
+                      {t("กลับมาเล่น")}
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </>
+      )}
+      {home > 0 && <p className="px-1 text-xs text-zinc-500">{t("จ่ายเงินแล้วกลับบ้าน {n} คน", { n: home })}</p>}
     </div>
   );
 }

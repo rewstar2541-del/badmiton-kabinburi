@@ -108,6 +108,7 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
             <Button variant="accent" className="w-full" onClick={() => dispatch({ type: "markPaid", date, playerId: player.id })}>
               {t("ได้รับเงินแล้ว {amount}", { amount: baht(bill.total) })}
             </Button>
+            <p className="text-center text-xs text-zinc-500">{t("กดรับเงินแล้ว ผู้เล่นจะออกจากคิว ถือว่ากลับบ้าน")}</p>
           </div>
         )
       )}
