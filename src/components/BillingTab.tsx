@@ -6,6 +6,7 @@ import { locale, t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
 import { monthOf, type Drink, type Player } from "@/lib/types";
 import { ExportReport } from "./ExportReport";
+import { Ledger } from "./Ledger";
 import { PayQr } from "./PayQr";
 import { SlipReview } from "./Slips";
 import { Avatar, Button, Card, Icon, SearchInput, SectionTitle, Sheet, baht, inputClass } from "./ui";
@@ -397,6 +398,7 @@ function MonthlyView() {
           </ul>
         </div>
       )}
+      <Ledger key={month} month={month} />
       <ExportReport month={month} />
       <p className="px-1 text-xs text-zinc-500">
         {t("คนที่จ่ายเดือนนี้แล้ว ระบบไม่คิดค่าสนามรายวันให้อัตโนมัติ ถ้าบันทึกผิด แตะเพื่อแก้ได้เลย")}

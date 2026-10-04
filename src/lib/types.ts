@@ -146,3 +146,19 @@ export interface SignUp {
   playerId: string;
   at: number;
 }
+
+export type ExpenseCategory = "court" | "shuttle" | "other";
+export const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string }[] = [
+  { value: "court", label: "ค่าเช่าสนาม" },
+  { value: "shuttle", label: "ซื้อลูกแบด" },
+  { value: "other", label: "อื่นๆ" },
+];
+
+/** รายจ่ายของก๊วน (แอดมินลงเอง) */
+export interface Expense {
+  id: string;
+  date: string;
+  category: ExpenseCategory;
+  amount: number;
+  note: string;
+}

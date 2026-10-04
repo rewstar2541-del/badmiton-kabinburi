@@ -1,6 +1,5 @@
 "use client";
 
-import { InstallApp } from "./InstallApp";
 import { billFor, shuttleFormula } from "@/lib/billing";
 import { useStore, useToday } from "@/lib/store";
 import { isMonthlyPaid, monthOf } from "@/lib/types";
@@ -147,7 +146,6 @@ export function MyBillTab() {
       <MonthCard player={player} />
       <BadgesCard player={player} />
       <PartnerPrefs key={(player.prefer ?? []).join() + "|" + (player.avoid ?? []).join()} player={player} />
-      <InstallApp compact />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { appName } from "@/lib/brand";
 import { locale, t } from "@/lib/i18n";
 import { monthReport } from "@/lib/report";
+import { EXPENSE_CATEGORIES } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { Button, Icon } from "./ui";
 
@@ -28,6 +29,9 @@ export function ExportReport({ month }: { month: string }) {
         [bold(`${appName().join("-")} · ${label}`)],
         [],
         [bold(t("รายรับที่เก็บได้แล้ว")), money(tot.income)],
+        [bold(t("รายจ่าย")), money(tot.expenses)],
+        [bold(tot.profit >= 0 ? t("กำไร") : t("ขาดทุน")), money(Math.abs(tot.profit))],
+        [],
         [t("ค่าสมาชิกรายเดือน"), money(tot.monthlyFees)],
         [t("ค่าสนามรายวัน"), money(tot.courtFee)],
         [t("ค่าลูก"), money(tot.shuttleFee)],
@@ -72,12 +76,24 @@ export function ExportReport({ month }: { month: string }) {
       const monthlyHead = [t("ชื่อ"), t("วันที่จ่าย"), t("จำนวนเงิน")].map(bold);
       const monthlyRows = r.monthlyFees.map((f) => [f.name, new Date(f.paidAt).toLocaleDateString(locale()), money(f.amount)]);
 
+      const catLabel = (c: string) => t(EXPENSE_CATEGORIES.find((x) => x.value === c)?.label ?? "อื่นๆ");
+      const expenseHead = [t("วันที่"), t("ประเภท"), t("หมายเหตุ"), t("จำนวนเงิน")].map(bold);
+      const expenseRows = r.expenses.map((e) => [e.date, catLabel(e.category), e.note, money(e.amount)]);
+      const expenseByRows = EXPENSE_CATEGORIES.map((c) => ["", bold(t(c.label)), "", money(r.expenseBy[c.value])]);
+      const expenseTotal = [bold(t("รวม")), "", "", money(tot.expenses)];
+
       await writeXlsxFile(
         [
           { sheet: t("สรุป"), data: summary, columns: [{ width: 28 }, { width: 14 }] },
           { sheet: t("รายวัน"), data: [dayHead, ...dayRows, dayTotal], columns: Array(10).fill({ width: 11 }), stickyRowsCount: 1 },
           { sheet: t("รายคน"), data: [playerHead, ...playerRows], columns: [{ width: 16 }, ...Array(8).fill({ width: 11 })], stickyRowsCount: 1 },
           { sheet: t("ค่ารายเดือน"), data: [monthlyHead, ...monthlyRows], columns: [{ width: 16 }, { width: 14 }, { width: 12 }] },
+          {
+            sheet: t("รายจ่าย"),
+            data: [expenseHead, ...expenseRows, expenseTotal, [], ...expenseByRows],
+            columns: [{ width: 12 }, { width: 16 }, { width: 28 }, { width: 12 }],
+            stickyRowsCount: 1,
+          },
         ],
         {},
       ).toFile(`badminton-${month}.xlsx`);

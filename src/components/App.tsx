@@ -1,6 +1,5 @@
 "use client";
 
-import { InstallApp } from "./InstallApp";
 import { Fragment, useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { waitingQueue } from "@/lib/matchmaking";
 import { PlayerModeProvider, StoreProvider, useStore, useToday } from "@/lib/store";
@@ -193,14 +192,14 @@ function Header() {
               {new Date().toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" })}
             </p>
           </div>
-          {/* ปุ่มซ้อนกันทางขวา เรียงตามความสำคัญจากบนลงล่าง: โหมดแอดมิน/ผู้เล่น ภาษา คู่มือกับธีม */}
+          {/* ปุ่มซ้อนกันทางขวา จากบนลงล่าง: คู่มือกับธีม ภาษา โหมดแอดมิน/ผู้เล่น */}
           <div className="flex shrink-0 flex-col items-end gap-1.5 self-start">
-            <ModeSwitch />
-            <LangSwitch />
             <div className="flex gap-1.5">
               <GuideButton />
               <ThemeSwitch />
             </div>
+            <LangSwitch />
+            <ModeSwitch />
           </div>
         </div>
         <div className="mt-5 grid grid-cols-4 gap-2">
@@ -281,11 +280,6 @@ function Shell() {
         {!auth.isAdmin && (
           <div className="mb-4 empty:hidden">
             <FirstAdminCard />
-          </div>
-        )}
-        {(tab === "today" || tab === "checkin") && (
-          <div className="mb-4 empty:hidden">
-            <InstallApp />
           </div>
         )}
         {tab === "today" && <TodayTab />}
