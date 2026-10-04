@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { APP_NAME } from "@/lib/brand";
+import { appName } from "@/lib/brand";
 import { locale, t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
 import { badgesFor, monthSummary } from "@/lib/stats";
@@ -158,7 +158,7 @@ export function MonthCard({ player }: { player: Player }) {
     ...stats.map((x) => `${x.label}: ${x.value}`),
     `${t("ค่าใช้จ่าย")}: ${baht(s.spent)}`,
     ...(partner ? [`${t("คู่ประจำ")}: ${partner.name}`] : []),
-    APP_NAME.join("-"),
+    appName().join("-"),
   ].join("\n");
 
   const share = async () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { APP_NAME } from "@/lib/brand";
+import { appName } from "@/lib/brand";
 import { locale, t } from "@/lib/i18n";
 import { monthReport } from "@/lib/report";
 import { useStore } from "@/lib/store";
@@ -25,7 +25,7 @@ export function ExportReport({ month }: { month: string }) {
       const tot = r.totals;
 
       const summary = [
-        [bold(`${APP_NAME.join("-")} · ${label}`)],
+        [bold(`${appName().join("-")} · ${label}`)],
         [],
         [bold(t("รายรับที่เก็บได้แล้ว")), money(tot.income)],
         [t("ค่าสมาชิกรายเดือน"), money(tot.monthlyFees)],

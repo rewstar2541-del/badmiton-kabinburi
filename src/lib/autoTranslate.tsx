@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useLang, type Lang } from "./i18n";
+import { t, useLang, type Lang } from "./i18n";
 import { supabase } from "./remote";
 
 /**
@@ -10,7 +10,10 @@ import { supabase } from "./remote";
  * เรียก edge function `translate` (แปลและเก็บแคชบนเซิร์ฟเวอร์) รวมหลายข้อความในครั้งเดียว
  * ระหว่างรอ หรือแปลไม่ได้ (เช่นโหมดทดลอง) แสดงต้นฉบับ
  */
-const CACHE_KEY = "badminton-kabinburi:auto-tr";
+// v2: รุ่นก่อนเก็บผลที่แปลไม่สำเร็จ (ได้ภาษาไทยกลับมา) ไว้ถาวร เลยไม่แปลอีกเลย
+const CACHE_KEY = "badminton-kabinburi:auto-tr2";
+/** แปลไม่สำเร็จในรอบนี้ ไม่ขอซ้ำจนกว่าจะเปิดแอพใหม่ และไม่บันทึกลงเครื่อง */
+const failed = new Set<string>();
 const THAI = /[฀-๿]/;
 const cache = new Map<string, string>();
 const listeners = new Set<() => void>();
@@ -49,9 +52,12 @@ async function flush() {
     try {
       const { data } = await supabase.functions.invoke("translate", { body: { texts: chunk, lang: job.lang } });
       const out = (data as { translations?: string[] } | null)?.translations ?? [];
-      chunk.forEach((s, j) => cache.set(keyOf(job.lang, s), out[j] || s));
+      chunk.forEach((s, j) => {
+        if (out[j] && out[j] !== s) cache.set(keyOf(job.lang, s), out[j]);
+        else failed.add(keyOf(job.lang, s));
+      });
     } catch {
-      chunk.forEach((s) => cache.set(keyOf(job.lang, s), s));
+      chunk.forEach((s) => failed.add(keyOf(job.lang, s)));
     }
   }
   save();
@@ -71,14 +77,17 @@ function request(lang: Exclude<Lang, "th">, text: string) {
 export function autoTranslate(text: string, lang: Lang): string | null {
   if (lang === "th" || !text.trim() || !THAI.test(text)) return text;
   load();
-  return cache.get(keyOf(lang, text)) ?? null;
+  const k = keyOf(lang, text);
+  return cache.get(k) ?? (failed.has(k) ? text : null);
 }
 
 /** คืนข้อความที่แปลแล้วตามภาษาปัจจุบัน (ระหว่างรอคืนต้นฉบับ) */
 export function useAuto(text: string): string {
   const lang = useLang();
   const [, bump] = useState(0);
-  const hit = autoTranslate(text, lang);
+  // ข้อความสำเร็จรูปของแอพ (เช่นประกาศเริ่มต้น) มีคำแปลอยู่แล้ว ไม่ต้องส่งไปแปล
+  const known = lang === "th" ? text : t(text);
+  const hit = known !== text ? known : autoTranslate(text, lang);
   useEffect(() => {
     if (hit !== null || lang === "th" || !supabase) return;
     const f = () => bump((n) => n + 1);
