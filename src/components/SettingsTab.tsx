@@ -5,6 +5,7 @@ import { isValidPromptPayId } from "@/lib/promptpay";
 import { useStore, type State } from "@/lib/store";
 import type { Settings } from "@/lib/types";
 import { ClubCalendar } from "./Calendar";
+import { EventPhotos } from "./EventPhotos";
 import { LineCard } from "./LineCard";
 import { LoginTab } from "./LoginTab";
 import { Button, Card, SectionTitle, inputClass } from "./ui";
@@ -50,6 +51,7 @@ export function SettingsTab() {
     <div className="space-y-4">
       <SectionTitle>{t("ตั้งค่า")}</SectionTitle>
       <ClubCalendar />
+      <EventPhotos />
       <LineCard />
       <Card className="flex items-center gap-3">
         <div className="min-w-0 flex-1">

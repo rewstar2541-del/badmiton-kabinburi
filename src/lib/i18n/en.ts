@@ -438,4 +438,13 @@ export const en: Record<string, string> = {
   "ไม่พบคำขอ": "Request not found",
   "บันทึกรูป QR": "Save QR image",
   "บันทึกลงเครื่อง แล้วเปิดแอพธนาคาร เลือกสแกนจากรูปในเครื่อง": "Save it to your phone, then open your banking app and scan from your photos",
+  "ธีมสว่าง": "Light theme",
+  "ธีมมืด": "Dark theme",
+  "รูปกิจกรรม": "Event photos",
+  "คำบรรยาย (ไม่ใส่ก็ได้)": "Caption (optional)",
+  "กำลังอัปโหลด...": "Uploading...",
+  "เพิ่มรูปกิจกรรม": "Add event photos",
+  "เลือกได้ครั้งละหลายรูป (สูงสุด 10) ระบบย่อรูปให้อัตโนมัติ": "Pick several at once (up to 10). Photos are resized automatically",
+  "อัปโหลดไม่สำเร็จ": "Upload failed",
+  "ลบรูปนี้?": "Delete this photo?",
 };
