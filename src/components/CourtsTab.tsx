@@ -7,6 +7,7 @@ import type { Game, Player, Team } from "@/lib/types";
 import { MatchBuilder } from "./MatchBuilder";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle } from "./ui";
 import { t } from "@/lib/i18n";
+import { MyRestCard } from "./RestButton";
 
 function useNow(intervalMs = 15000) {
   const [now, setNow] = useState(() => Date.now());
@@ -134,6 +135,7 @@ export function CourtsTab() {
 
   return (
     <div className="space-y-4">
+      <MyRestCard />
       <SectionTitle right={t("ว่าง {n} สนาม", { n: courts.length - active.size })}>{t("สนาม")}</SectionTitle>
       <div className="grid gap-3 sm:grid-cols-2">
         {courts.map((c) => {

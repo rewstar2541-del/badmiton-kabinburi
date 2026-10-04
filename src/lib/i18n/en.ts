@@ -382,4 +382,7 @@ export const en: Record<string, string> = {
   "แสดงเฉพาะคนที่ลงชื่อหรือมาวันนี้ คนอื่นพิมพ์ชื่อค้นหา": "Showing only today's sign-ups and arrivals. Search to find others",
   "พิมพ์ชื่อของคุณเพื่อค้นหา": "Type your name to find yourself",
   "แสดงคนที่ไม่ได้มาเกิน 60 วัน ({n} คน)": "Show people who haven't come in 60+ days ({n})",
+  "จะพักหลังจบเกมนี้ ระบบจะข้ามคิวให้": "You'll rest after this game; the queue will skip you",
+  "ยกเลิกพัก": "Cancel rest",
+  "ขอพักหลังจบเกมนี้": "Rest after this game",
 };

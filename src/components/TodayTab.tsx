@@ -9,6 +9,7 @@ import { ClosedBanner, ClubCalendar } from "./Calendar";
 import { PendingNotice, PickMe, savedPin, useMe } from "./PickMe";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle } from "./ui";
 import { t } from "@/lib/i18n";
+import { RestButton } from "./RestButton";
 
 /** ประกาศจัดก๊วนวันนี้ (ใช้ทั้งหน้าผู้เล่นและแอดมิน) */
 export function AnnouncementBanner({ message }: { message: string }) {
@@ -74,8 +75,9 @@ export function TodayTab() {
   const [error, setError] = useState("");
   const player = state.players.find((p) => p.id === me);
   const announced = day.announcement !== undefined;
+  const hereToday = Boolean(player && day.checkIns.some((c) => c.playerId === player.id));
 
-  if (!announced)
+  if (!announced && !hereToday)
     return (
       <div className="space-y-4">
         {closed !== undefined ? (
@@ -154,16 +156,7 @@ export function TodayTab() {
             <div className="flex items-center justify-center gap-1.5 rounded-2xl bg-emerald-50 py-3 font-semibold text-emerald-700">
               <Icon.Check width={18} height={18} /> {status === "home" ? t("จ่ายแล้ว ถือว่ากลับบ้านแล้ว") : t("มาถึงสนามแล้ว")}
             </div>
-            {status === "waiting" && (
-              <Button disabled={busy} onClick={() => act("rest")}>
-                {t("ขอพัก (ข้ามคิวไปก่อน)")}
-              </Button>
-            )}
-            {status === "resting" && (
-              <Button variant="accent" disabled={busy} onClick={() => act("unrest")}>
-                {t("พักพอแล้ว กลับเข้าคิว")}
-              </Button>
-            )}
+            {status !== "home" && <RestButton />}
           </div>
         ) : (
           <div className="grid gap-2">
