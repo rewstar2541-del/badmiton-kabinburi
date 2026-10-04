@@ -20,10 +20,28 @@ export function LoginTab() {
           <p className="text-sm">
             ล็อคอินเป็น <span className="font-semibold">{auth.email}</span>
           </p>
-          {!auth.isAdmin && (
+          {!auth.isAdmin && !auth.noAdmins && (
             <p className="rounded-2xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              อีเมลนี้ยังไม่ได้เป็นแอดมิน ให้แอดมินเพิ่มอีเมลนี้ก่อน
+              อีเมลนี้ยังไม่ได้เป็นแอดมิน ให้แอดมินเพิ่มอีเมลนี้ในหน้าตั้งค่า
             </p>
+          )}
+          {!auth.isAdmin && auth.noAdmins && (
+            <div className="space-y-2 rounded-2xl bg-lime/30 p-3 text-sm">
+              <p>ระบบยังไม่มีแอดมินเลย ตั้งอีเมลนี้เป็นแอดมินคนแรกได้ (ทำได้ครั้งเดียว)</p>
+              {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-red-600">{error}</p>}
+              <Button
+                variant="primary"
+                className="w-full"
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  setError((await auth.claimFirstAdmin()) ?? "");
+                  setBusy(false);
+                }}
+              >
+                ตั้งฉันเป็นแอดมินคนแรก
+              </Button>
+            </div>
           )}
           <Button className="w-full" onClick={() => auth.signOut()}>
             ออกจากระบบ
