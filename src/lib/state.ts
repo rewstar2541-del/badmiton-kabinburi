@@ -66,7 +66,18 @@ export function today(): string {
 }
 
 /** สิ่งที่ผู้เล่นทำเองได้โดยไม่ต้องเป็นแอดมิน */
-export type SelfAction = "signUp" | "cancelSignUp" | "checkIn" | "rest" | "unrest" | "pay" | "payMonth";
+export type SelfAction =
+  | "signUp"
+  | "cancelSignUp"
+  | "checkIn"
+  /** ยกเลิกเช็คอิน (กดผิด) ยังลงชื่ออยู่ */
+  | "undoCheckIn"
+  /** ยกเลิกเช็คอินและยกเลิกลงชื่อ (ไม่มาแล้ว) */
+  | "notComing"
+  | "rest"
+  | "unrest"
+  | "pay"
+  | "payMonth";
 
 /** พาแขกได้ไม่เกินกี่คนต่อวัน */
 export const MAX_GUESTS = 3;

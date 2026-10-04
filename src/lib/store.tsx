@@ -114,10 +114,16 @@ function LocalProvider({ children }: { children: ReactNode }) {
       if (action === "rest" || action === "unrest") dispatch({ type: "setResting", date, playerId, resting: action === "rest" });
       else if (action === "pay") dispatch({ type: "markPaid", date, playerId });
       else if (action === "payMonth") dispatch({ type: "setMonthlyPaid", month: monthOf(date), playerId, paid: true });
-      else dispatch({ type: action, date, playerId });
+      else if (action === "undoCheckIn" || action === "notComing") {
+        const day = state.days.find((d) => d.date === date);
+        if (day?.games.some((g) => g.playerIds.includes(playerId))) return "เล่นไปแล้ว ยกเลิกเช็คอินไม่ได้ ให้แอดมินช่วย";
+        if (day?.checkIns.some((c) => c.playerId === playerId && c.paidAt)) return "จ่ายเงินแล้ว ยกเลิกเช็คอินไม่ได้ ให้แอดมินช่วย";
+        dispatch({ type: "undoCheckIn", date, playerId });
+        if (action === "notComing") dispatch({ type: "cancelSignUp", date, playerId });
+      } else dispatch({ type: action, date, playerId });
       return null;
     },
-    [dispatch, state.players],
+    [dispatch, state.players, state.days],
   );
   const setPrefs = useCallback(
     async (playerId: string, _pin: string, prefer: string[], avoid: string[]) => {

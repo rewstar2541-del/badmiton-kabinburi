@@ -151,6 +151,7 @@ function Header() {
   const waiting = waitingQueue(day, state.players).length;
 
   const stats = [
+    { label: t("ลงชื่อ"), value: day.signups?.length ?? 0 },
     { label: t("มาแล้ว"), value: day.checkIns.length },
     { label: t("กำลังเล่น"), value: playing },
     { label: t("รอคิว"), value: waiting },
@@ -178,7 +179,7 @@ function Header() {
           <LangSwitch />
         </div>
         <ModeSwitch />
-        <div className="mt-5 grid grid-cols-3 gap-2">
+        <div className="mt-5 grid grid-cols-4 gap-2">
           {stats.map((s) => (
             <div key={s.label} className="rounded-2xl bg-white/[0.07] px-3 py-2.5 ring-1 ring-white/10">
               <div className="font-display text-2xl leading-none font-semibold">{s.value}</div>
