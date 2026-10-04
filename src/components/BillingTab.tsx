@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { billFor, shuttleFormula, type Bill } from "@/lib/billing";
+import { billFor, dayAmount, shuttleFormula, type Bill } from "@/lib/billing";
 import { locale, t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
 import { monthOf, type Drink, type Player } from "@/lib/types";
@@ -252,10 +252,12 @@ function DailyView() {
     .map((p) => ({ player: p, bill: billFor(state.days, day, p, state.settings, state.monthly, state.players) }))
     .sort((a, b) => Number(a.bill.paid) - Number(b.bill.paid) || a.player.name.localeCompare(b.player.name, "th"));
 
-  // นับยอดของแต่ละคนเอง ไม่รวมยอดแขกที่อยู่ในบิลคนพามา จะได้ไม่นับซ้ำ
-  const own = (b: Bill) => b.total - b.guests.reduce((s, g) => s + g.amount, 0);
-  const total = rows.reduce((s, r) => s + own(r.bill), 0);
-  const received = rows.filter((r) => r.bill.paid).reduce((s, r) => s + own(r.bill), 0);
+  // นับยอดวันนี้ของแต่ละคนเอง (แขกนับในแถวของแขก ไม่นับซ้ำในบิลคนพามา)
+  // รับแล้ว = คนที่เช็คอินวันนี้ถูกปิดยอดแล้ว ไม่ขึ้นกับว่าคนพามายังค้างยอดแขกที่เพิ่มทีหลังไหม
+  const paidToday = new Set(day.checkIns.filter((c) => c.paidAt).map((c) => c.playerId));
+  const own = (p: Player) => dayAmount(day, p, state.settings, state.monthly).amount;
+  const total = rows.reduce((s, r) => s + own(r.player) + (paidToday.has(r.player.id) ? 0 : r.bill.carriedOver), 0);
+  const received = rows.filter((r) => paidToday.has(r.player.id)).reduce((s, r) => s + own(r.player), 0);
   const shuttlesUsed = day.games.reduce((s, g) => s + g.shuttles, 0);
   const openRow = rows.find((r) => r.player.id === open);
   const withSlip = new Set(day.slips?.map((s) => s.playerId));
@@ -338,13 +340,15 @@ function MonthlyView() {
   const members = state.players.filter((p) => !p.guestOf && !p.pending);
   const count = members.filter((p) => paid[p.id]).length;
   // สมาชิกรายเดือนที่ยังไม่จ่ายเดือนนี้
-  const owing = members.filter((p) => p.plan === "monthly" && !paid[p.id]).sort((a, b) => a.name.localeCompare(b.name, "th"));
+  // ใช้แบบสมาชิกปัจจุบัน จึงแสดงเฉพาะเดือนนี้ (เดือนก่อนๆ บางคนอาจยังเป็นรายวัน)
+  const owing = members.filter((p) => month === monthOf(date) && p.plan === "monthly" && !paid[p.id]).sort((a, b) => a.name.localeCompare(b.name, "th"));
   // แสดงคนที่จ่ายแล้วหรือมาเล่นในเดือนนี้ คนอื่นค้นหาชื่อ
   const came = new Set(state.days.filter((d) => monthOf(d.date) === month).flatMap((d) => d.checkIns.map((c) => c.playerId)));
   const players = visibleRoster(members, q, (p) => Boolean(paid[p.id]) || came.has(p.id) || p.plan === "monthly").sort(
     (a, b) => Number(Boolean(paid[b.id])) - Number(Boolean(paid[a.id])) || a.name.localeCompare(b.name, "th"),
   );
   const hidden = members.length - players.length;
+  const slipIn = new Set(state.days.filter((d) => monthOf(d.date) === month).flatMap((d) => (d.slips ?? []).map((x) => x.playerId)));
 
   return (
     <>
@@ -416,6 +420,9 @@ function MonthlyView() {
                     : t("ยังไม่จ่าย")}
                 </span>
               </span>
+              {!at && slipIn.has(p.id) && (
+                <span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">{t("มีสลิป")}</span>
+              )}
               {at ? (
                 <button
                   className="flex items-center gap-1 rounded-full bg-lime px-3 py-1.5 text-xs font-semibold text-ink"
@@ -449,6 +456,7 @@ function MonthlyView() {
             </div>
           }
         >
+          <SlipReview playerId={payFor.id} month={month} />
           <div className="flex flex-col items-center gap-3">
             <PayQr promptPayId={state.settings.promptPayId} amount={fee} />
             <Button

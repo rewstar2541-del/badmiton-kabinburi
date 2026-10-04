@@ -114,10 +114,16 @@ function LocalProvider({ children }: { children: ReactNode }) {
       if (action === "rest" || action === "unrest") dispatch({ type: "setResting", date, playerId, resting: action === "rest" });
       else if (action === "pay") dispatch({ type: "markPaid", date, playerId });
       else if (action === "payMonth") dispatch({ type: "setMonthlyPaid", month: monthOf(date), playerId, paid: true });
-      else dispatch({ type: action, date, playerId });
+      else if (action === "undoCheckIn" || action === "notComing") {
+        const day = state.days.find((d) => d.date === date);
+        if (day?.games.some((g) => g.playerIds.includes(playerId))) return "เล่นไปแล้ว ยกเลิกเช็คอินไม่ได้ ให้แอดมินช่วย";
+        if (day?.checkIns.some((c) => c.playerId === playerId && c.paidAt)) return "จ่ายเงินแล้ว ยกเลิกเช็คอินไม่ได้ ให้แอดมินช่วย";
+        dispatch({ type: "undoCheckIn", date, playerId });
+        if (action === "notComing") dispatch({ type: "cancelSignUp", date, playerId });
+      } else dispatch({ type: action, date, playerId });
       return null;
     },
-    [dispatch, state.players],
+    [dispatch, state.players, state.days],
   );
   const setPrefs = useCallback(
     async (playerId: string, _pin: string, prefer: string[], avoid: string[]) => {
@@ -224,7 +230,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
 
   // แถวล่าสุดที่โหลดมา เวลามีการเปลี่ยนแปลงจะโหลดใหม่เฉพาะตารางนั้น (คนเยอะจะได้ไม่หนัก)
   const rowsRef = useRef<{ rows: Rows; admin: boolean } | null>(null);
-  const reload = useCallback(async (tables?: Set<TableKey>) => {
+  const loadOnce = useCallback(async (tables?: Set<TableKey>) => {
     try {
       const prev = rowsRef.current?.admin === adminRef.current && tables ? rowsRef.current.rows : undefined;
       const rows = await loadRows(db, adminRef.current, tables, prev);
@@ -245,6 +251,13 @@ function RemoteProvider({ children }: { children: ReactNode }) {
       setReady(true);
     }
   }, [db]);
+  // โหลดทีละครั้งตามลำดับ ไม่ให้ผลของรอบเก่าที่เสร็จช้ากว่ามาทับข้อมูลใหม่
+  const queue = useRef<Promise<void>>(Promise.resolve());
+  const reload = useCallback((tables?: Set<TableKey>) => {
+    const run = queue.current.then(() => loadOnce(tables));
+    queue.current = run.catch(() => {});
+    return run;
+  }, [loadOnce]);
 
   // สถานะล็อคอิน และเช็คว่าเป็นแอดมินไหม
   const check = useCallback(

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { adminLinkMe, supabase } from "@/lib/remote";
 import { nameMatch } from "@/lib/roster";
-import { writeSession } from "@/lib/session";
+import { readSession, writeSession } from "@/lib/session";
 import { useStore } from "@/lib/store";
 import { AdminsCard, useAdmins } from "./AdminsCard";
 import { Avatar, Button, Card, SearchInput, SectionTitle } from "./ui";
@@ -38,16 +38,9 @@ function LinkMyLine() {
   const [error, setError] = useState("");
   if (!enabled) return null;
   const myEmail = auth.email?.toLowerCase();
-  const mineId = [...emailOf].find(([, e]) => e === myEmail)?.[0];
+  const mineId = [...emailOf].find(([, e]) => e.toLowerCase() === myEmail)?.[0];
   const mine = state.players.find((p) => p.id === mineId);
 
-  if (mine)
-    return (
-      <Card className="flex items-center gap-3">
-        <Avatar name={mine.name} photo={mine.photo} size={40} />
-        <p className="min-w-0 flex-1 text-sm">{t("LINE ของคุณผูกกับชื่อ {name} แล้ว", { name: mine.name })}</p>
-      </Card>
-    );
 
   const free = state.players.filter((p) => !p.pending && !p.guestOf && !emailOf.has(p.id));
   const list = q.trim() ? free.filter((p) => nameMatch(p, q)).slice(0, 8) : [];
@@ -61,6 +54,25 @@ function LinkMyLine() {
     setPicked(null);
     await reload();
   };
+
+  if (mine) {
+    // เครื่องนี้ยังไม่จำว่าเป็นใคร (เช่น เปิดเครื่องใหม่) กดใช้ชื่อนี้บนเครื่องนี้ได้
+    const here = readSession()?.playerId === mine.id;
+    return (
+      <Card className="space-y-2">
+        <div className="flex items-center gap-3">
+          <Avatar name={mine.name} photo={mine.photo} size={40} />
+          <p className="min-w-0 flex-1 text-sm">{t("LINE ของคุณผูกกับชื่อ {name} แล้ว", { name: mine.name })}</p>
+          {!here && (
+            <Button className="shrink-0 px-3 py-1.5 text-xs" disabled={busy} onClick={() => link(mine.id)}>
+              {t("ใช้ชื่อนี้บนเครื่องนี้")}
+            </Button>
+          )}
+        </div>
+        {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+      </Card>
+    );
+  }
 
   return (
     <Card className="space-y-3">

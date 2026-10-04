@@ -99,13 +99,15 @@ export function SlipUpload({ playerId, amount }: { playerId: string; amount: num
 }
 
 /** แอดมินดูสลิปที่ผู้เล่นส่งมาวันนี้ */
-export function SlipReview({ playerId }: { playerId: string }) {
-  const { slipImage, dispatch } = useStore();
-  const { date, day } = useToday();
+export function SlipReview({ playerId, month }: { playerId: string; month?: string }) {
+  const { state, slipImage, dispatch } = useStore();
+  const { day } = useToday();
   const [removing, setRemoving] = useState<string | null>(null);
   const [images, setImages] = useState<Record<string, string | null>>({});
   const [error, setError] = useState("");
-  const slips = (day.slips ?? []).filter((s) => s.playerId === playerId);
+  // ไม่ส่ง month = สลิปวันนี้ ส่ง month = สลิปทั้งเดือน (ค่ารายเดือน)
+  const days = month ? state.days.filter((d) => d.date.startsWith(month)) : [day];
+  const slips = days.flatMap((d) => (d.slips ?? []).filter((s) => s.playerId === playerId).map((s) => ({ ...s, date: d.date })));
   if (!slips.length) return null;
 
   const show = async (id: string) => {
@@ -137,7 +139,7 @@ export function SlipReview({ playerId }: { playerId: string }) {
                 <button
                   className="rounded-full bg-red-500 px-3 py-1 text-xs font-semibold text-white"
                   onClick={() => {
-                    dispatch({ type: "removeSlip", date, slipId: s.id });
+                    dispatch({ type: "removeSlip", date: s.date, slipId: s.id });
                     setRemoving(null);
                   }}
                 >

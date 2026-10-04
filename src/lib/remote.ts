@@ -416,6 +416,11 @@ async function importState(db: SupabaseClient, s: State) {
 
 /** ผู้เล่นลงชื่อ/เช็คอินเอง ผ่านฟังก์ชันในฐานข้อมูลที่ตรวจ token จากการเข้าด้วย LINE คืนข้อความผิดพลาด หรือ null */
 export async function selfService(db: SupabaseClient, action: SelfAction, playerId: string, pin: string) {
+  if (action === "undoCheckIn" || action === "notComing") {
+    const { data, error } = await db.rpc("undo_my_check_in", { p_player: playerId, p_pin: pin, p_cancel_signup: action === "notComing" });
+    if (error) return error.code === "PGRST202" ? "ยังยกเลิกเช็คอินเองไม่ได้ ให้แอดมินช่วยก่อน" : error.message;
+    return (data as string | null) ?? null;
+  }
   const { data, error } = await db.rpc("self_service", { p_player: playerId, p_pin: pin, p_action: action });
   if (error) return error.message;
   return (data as string | null) ?? null;

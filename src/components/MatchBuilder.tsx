@@ -19,18 +19,23 @@ export function MatchBuilder({ court, onClose }: { court: number; onClose: () =>
   const queue = waitingQueue(day, state.players);
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const suggest = (): Slots => nextMatch(day, state.players) ?? [0, 1, 2, 3].map((i) => queue[i]?.player.id ?? null);
-  const [slots, setSlots] = useState<Slots>(suggest);
+  const [picked, setSlots] = useState<Slots>(suggest);
   const [selected, setSelected] = useState<number | null>(null);
+  // แอดมินอีกเครื่องอาจส่งคนในช่องลงสนามอื่นไปแล้ว หรือใช้สนามนี้ไปแล้ว: เอาคนนั้นออกจากช่องเสมอ
+  const onCourt = new Set(day.games.filter((g) => !g.endedAt).flatMap((g) => g.playerIds));
+  const courtTaken = day.games.some((g) => !g.endedAt && g.court === court);
+  const slots = picked.map((id) => (id && onCourt.has(id) ? null : id));
 
   const tapSlot = (i: number) => {
     if (selected === i) {
-      setSlots((s) => s.map((x, j) => (j === i ? null : x)));
+      setSlots(slots.map((x, j) => (j === i ? null : x)));
       setSelected(null);
     } else setSelected(i);
   };
 
   const pick = (id: string) => {
-    setSlots((s) => {
+    setSlots(() => {
+      const s = slots;
       const target = selected ?? s.findIndex((x) => x === null);
       if (target < 0) return s;
       const next = [...s];
@@ -131,13 +136,14 @@ export function MatchBuilder({ court, onClose }: { court: number; onClose: () =>
         <Button
           variant="accent"
           className="flex-1"
-          disabled={!full}
+          disabled={!full || courtTaken}
           onClick={() => {
+            if (!full || courtTaken) return;
             dispatch({ type: "startGame", date, court, playerIds: slots as Game["playerIds"] });
             onClose();
           }}
         >
-          {full ? t("เริ่มเกม") : t("ต้องมีครบ 4 คน")}
+          {courtTaken ? t("สนามนี้มีเกมอยู่แล้ว") : full ? t("เริ่มเกม") : t("ต้องมีครบ 4 คน")}
         </Button>
       </div>
     </Sheet>

@@ -40,7 +40,10 @@ export function pricesFor(day: Day, s: Settings): DayPrices {
 
 /** ราคาเดิมยังไม่ได้เก็บไว้กับวันไหนบ้าง (วันก่อนวันนี้ที่มีคนเช็คอิน) ใช้ตอนแอดมินเปลี่ยนราคา */
 export function datesToFreeze(days: Day[], today: string): string[] {
-  return days.filter((d) => d.date < today && !d.prices && d.checkIns.length > 0).map((d) => d.date);
+  // วันนี้มีคนจ่ายไปแล้ว: เก็บราคาเดิมของวันนี้ด้วย ราคาใหม่เริ่มพรุ่งนี้ ยอดที่เก็บไปแล้วจะได้ไม่เปลี่ยน
+  return days
+    .filter((d) => !d.prices && d.checkIns.length > 0 && (d.date < today || (d.date === today && d.checkIns.some((c) => c.paidAt))))
+    .map((d) => d.date);
 }
 
 /** วิธีคิดค่าลูก เช่น " (30 + 25×2)" ว่างถ้าไม่มีลูก หรือแอดมินแก้ยอดเอง */
@@ -59,7 +62,8 @@ export function dayAmount(
   const monthlyMember = isMonthlyPaid(monthly, day.date, player.id);
   const p = pricesFor(day, s);
   const ci = day.checkIns.find((c) => c.playerId === player.id);
-  const courtFee = ci?.courtFee ?? (monthlyMember ? 0 : p.courtFee);
+  // ยังไม่เช็คอิน = ยังไม่ได้มาเล่นวันนี้ ไม่คิดค่าสนาม
+  const courtFee = !ci ? 0 : (ci.courtFee ?? (monthlyMember ? 0 : p.courtFee));
   const shuttleCount = shuttleCountFor(day, player.id);
   const sFee = ci?.shuttleFee ?? shuttleFee(shuttleCount, p);
   const drinkFee = day.drinks
