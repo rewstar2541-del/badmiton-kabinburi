@@ -11,7 +11,7 @@ import { isMonthlyPaid, type Player } from "@/lib/types";
 import { AnnounceCard } from "./AnnounceCard";
 import { AdminAddGuest } from "./Guests";
 import { PlayerForm } from "./PlayersTab";
-import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, inputClass } from "./ui";
+import { Avatar, Button, Card, Fold, Icon, LevelBadge, SectionTitle, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
 import { daysBefore, nameMatch, rosterCompare, visitCounts } from "@/lib/roster";
 import { LevelGroups, RosterSortSwitch, useRosterSort } from "./RosterSort";
@@ -44,15 +44,13 @@ export function CheckInTab() {
     </ul>
   );
   const members = state.players.filter((p) => !p.pending && !p.guestOf).length;
+  const announced = day.announcement !== undefined;
 
   return (
     <div className="space-y-4">
       <StockWarning />
-      <NoticeBanners />
-      <BirthdayBanner />
-      <AnnounceCard />
-      <NoticeComposer />
-      <PollAdmin compact />
+      {/* ยังไม่ได้ประกาศ: ให้เห็นก่อนเลย ประกาศแล้ว: พับเก็บไว้ท้ายหน้า */}
+      {!announced && <AnnounceCard />}
       <SignupList />
       {waiting > 0 && (
         <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
@@ -112,6 +110,13 @@ export function CheckInTab() {
           {state.players.length === 0 ? t("ยังไม่มีผู้เล่น กด + เพื่อเพิ่ม") : t("ไม่พบชื่อที่ค้นหา")}
         </Card>
       )}
+      <BirthdayBanner />
+      <Fold id="checkin-news" icon="📣" title={t("ประกาศและข่าว")} hint={announced ? t("แก้ประกาศวันนี้ ข่าวทั่วไป โหวต") : t("ข่าวทั่วไป โหวต")}>
+        {announced && <AnnounceCard />}
+        <NoticeBanners />
+        <NoticeComposer />
+        <PollAdmin compact />
+      </Fold>
     </div>
   );
 }

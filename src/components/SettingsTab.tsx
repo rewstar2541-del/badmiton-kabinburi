@@ -3,7 +3,7 @@
 import { BoardCard } from "./Board";
 import { ClearData } from "./ClearData";
 import { PollAdmin } from "./Polls";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { isValidPromptPayId } from "@/lib/promptpay";
 import { useStore } from "@/lib/store";
 import type { Settings } from "@/lib/types";
@@ -12,7 +12,7 @@ import { normalizeBackup, today } from "@/lib/state";
 import { ClubCalendar } from "./Calendar";
 import { EventPhotos } from "./EventPhotos";
 import { LoginTab } from "./LoginTab";
-import { Button, Card, SectionTitle, inputClass } from "./ui";
+import { Button, Card, Fold, SectionTitle, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
 
 const NUMBER_FIELDS: { key: keyof Settings; label: string }[] = [
@@ -53,11 +53,11 @@ export function SettingsTab() {
   return (
     <div className="space-y-3">
       <SectionTitle>{t("ตั้งค่า")}</SectionTitle>
-      <Section id="calendar" icon="📅" title={t("ปฏิทินและอีเว้น")} hint={t("สร้างอีเว้น วันงดเล่น โหวตวันตี")} defaultOpen>
+      <Fold id="calendar" icon="📅" title={t("ปฏิทินและอีเว้น")} hint={t("สร้างอีเว้น วันงดเล่น โหวตวันตี")} defaultOpen>
         <ClubCalendar bare />
         <PollAdmin />
-      </Section>
-      <Section id="prices" icon="💰" title={t("ราคาและสนาม")} hint={t("ค่าสนาม ค่าลูก รายเดือน PromptPay จอทีวี")}>
+      </Fold>
+      <Fold id="prices" icon="💰" title={t("ราคาและสนาม")} hint={t("ค่าสนาม ค่าลูก รายเดือน PromptPay จอทีวี")}>
           <Card>
             <form
               className="space-y-3"
@@ -126,17 +126,17 @@ export function SettingsTab() {
               {t("เปิดจอสนาม")}
             </a>
           </Card>
-      </Section>
-      <Section id="board" icon="📸" title={t("บอร์ดและรูปกิจกรรม")} hint={t("ของหาย ขายของ รูปภาพ")}>
+      </Fold>
+      <Fold id="board" icon="📸" title={t("บอร์ดและรูปกิจกรรม")} hint={t("ของหาย ขายของ รูปภาพ")}>
         <BoardCard />
         <EventPhotos bare />
-      </Section>
+      </Fold>
       {auth.online && (
-        <Section id="admins" icon="👤" title={t("แอดมินและบัญชีของฉัน")} hint={t("ผูก LINE ตั้ง/ถอดแอดมิน ออกจากระบบ")}>
+        <Fold id="admins" icon="👤" title={t("แอดมินและบัญชีของฉัน")} hint={t("ผูก LINE ตั้ง/ถอดแอดมิน ออกจากระบบ")}>
           <LoginTab bare />
-        </Section>
+        </Fold>
       )}
-      <Section id="data" icon="🗂️" title={t("ข้อมูลและล้างประวัติ")} hint={t("สำรองไฟล์ ล้างข้อมูล")} danger>
+      <Fold id="data" icon="🗂️" title={t("ข้อมูลและล้างประวัติ")} hint={t("สำรองไฟล์ ล้างข้อมูล")} danger>
           <Card className="space-y-3">
             <h2 className="font-display font-semibold">{t("สำรองข้อมูล")}</h2>
             <p className="text-sm text-zinc-500">
@@ -161,67 +161,12 @@ export function SettingsTab() {
           </Card>
         <ClearData />
         <ClearHistory />
-      </Section>
+      </Fold>
     </div>
   );
 }
 
 /** หมวดในหน้าตั้งค่า กดเปิด/ปิดได้ จำสถานะไว้ในเครื่อง */
-function Section({
-  id,
-  icon,
-  title,
-  hint,
-  defaultOpen,
-  danger,
-  children,
-}: {
-  id: string;
-  icon: string;
-  title: string;
-  hint: string;
-  defaultOpen?: boolean;
-  danger?: boolean;
-  children: ReactNode;
-}) {
-  const key = "badminton-kabinburi:settings:" + id;
-  const [open, setOpen] = useState(() => {
-    try {
-      const v = localStorage.getItem(key);
-      return v === null ? !!defaultOpen : v === "1";
-    } catch {
-      return !!defaultOpen;
-    }
-  });
-  const toggle = () => {
-    setOpen(!open);
-    try {
-      localStorage.setItem(key, open ? "0" : "1");
-    } catch {}
-  };
-  return (
-    <section className={`rounded-3xl ${open ? "bg-zinc-100 p-2" : ""}`}>
-      <button
-        onClick={toggle}
-        aria-expanded={open}
-        className={`flex w-full items-center gap-3 rounded-2xl bg-white px-4 py-3.5 text-left shadow-sm ${danger ? "ring-1 ring-red-200" : ""}`}
-      >
-        <span className="text-2xl" aria-hidden>
-          {icon}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className={`block font-display font-semibold ${danger ? "text-red-600" : ""}`}>{title}</span>
-          <span className="block truncate text-xs text-zinc-500">{hint}</span>
-        </span>
-        <span className={`shrink-0 text-zinc-400 transition-transform ${open ? "rotate-90" : ""}`} aria-hidden>
-          ›
-        </span>
-      </button>
-      {open && <div className="space-y-4 pt-3">{children}</div>}
-    </section>
-  );
-}
-
 const CONFIRM_WORD = "ล้างข้อมูล";
 
 /** ล้างประวัติทั้งหมด ใช้ตอนทดลองใช้เสร็จ ก่อนเริ่มใช้จริง */
