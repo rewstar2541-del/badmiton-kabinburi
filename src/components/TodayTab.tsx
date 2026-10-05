@@ -1,5 +1,7 @@
 "use client";
 
+import { BoardCard } from "./Board";
+import { BirthdayBanner } from "./Birthday";
 import { PollVote } from "./Polls";
 import { PairCard } from "./Pairs";
 import { useState } from "react";
@@ -61,6 +63,7 @@ export function TodayTab() {
   if (!player)
     return (
       <div className="space-y-4">
+        <BirthdayBanner />
         {announced && <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />}
         <PickMe onPick={setMe} hint={t("เข้าสู่ระบบครั้งเดียว เครื่องนี้จะจำไว้ แล้วลงชื่อ เช็คอิน และดูยอดของตัวเองได้")} />
       </div>
@@ -69,6 +72,7 @@ export function TodayTab() {
   if (player.pending)
     return (
       <div className="space-y-4">
+        <BirthdayBanner />
         {announced && <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />}
         <PendingNotice name={player.name} onNotMe={() => setMe(null)} />
       </div>
@@ -77,6 +81,7 @@ export function TodayTab() {
   if (!announced && !hereToday)
     return (
       <div className="space-y-4">
+        <BirthdayBanner />
         <PlanChoice player={player} />
         <MonthlyReminder player={player} />
         {closed !== undefined ? (
@@ -89,6 +94,7 @@ export function TodayTab() {
           </Card>
         )}
         <PollVote />
+        <BoardCard />
       <ClubCalendar />
         <EventPhotos />
       </div>
@@ -115,6 +121,7 @@ export function TodayTab() {
 
   return (
     <div className="space-y-4">
+      <BirthdayBanner />
       <PlanChoice player={player} />
       <MonthlyReminder player={player} />
       <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />
@@ -209,6 +216,7 @@ export function TodayTab() {
       {checkedIn && status !== "home" && !player.guestOf && <PairCard />}
       {checkedIn && status !== "home" && !player.guestOf && <BringGuest player={player} pin={pin} />}
       <PollVote />
+      <BoardCard />
       <ClubCalendar />
       <EventPhotos />
     </div>

@@ -61,6 +61,10 @@ export function demoState(): State {
     run({ type: "endGame", date, gameId: g.id, winner }, start + 8 * 60000);
   });
   run({ type: "setStock", base: 30, low: 24 }, now - 3 * 3600000);
+  // วันเกิดวันนี้ และบอร์ดของหาย / ฝากขาย ตัวอย่าง
+  s = { ...s, players: s.players.map((p, i) => (i === 7 ? { ...p, birthday: date.slice(5) } : p)) };
+  run({ type: "addBoardPost", post: { playerId: ids[2], kind: "sell", title: "ไม้ Yonex Astrox 77 มือสอง", detail: "ใช้มา 6 เดือน เอ็นใหม่", price: 2500 } }, now - 2 * 86400000);
+  run({ type: "addBoardPost", post: { playerId: ids[1], kind: "lost", title: "ผ้าเช็ดตัวสีชมพู", detail: "ลืมไว้ที่ม้านั่งสนาม 3 เมื่อวาน" } }, now - 86400000);
   // วันงดเล่นตัวอย่าง: อีก 3 วัน
   const off = new Date(now + 3 * 86400000);
   const pad = (n: number) => String(n).padStart(2, "0");

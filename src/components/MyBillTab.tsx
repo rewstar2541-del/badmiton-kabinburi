@@ -1,5 +1,6 @@
 "use client";
 
+import { BirthdayEdit } from "./Birthday";
 import { PartnerStats } from "./PartnerStats";
 import { billFor, shuttleFormula } from "@/lib/billing";
 import { useStore, useToday } from "@/lib/store";
@@ -74,6 +75,7 @@ export function MyBillTab() {
           <>
             {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
             <PlanSwitch player={player} bare />
+            <BirthdayEdit player={player} />
             <PlayerForm
               self
               initial={player}

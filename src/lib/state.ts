@@ -1,5 +1,5 @@
 import { guestsOf, markPaid } from "./billing";
-import { DEFAULT_SETTINGS, type Day, type DayPrices, type Expense, type Game, type PairStatus, type Poll, type ShuttleStock, type Level, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
+import { DEFAULT_SETTINGS, type Day, type DayPrices, type Expense, type Game, type PairStatus, type Poll, type ShuttleStock, type BoardPost, type Level, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
 
 export interface State {
   players: Player[];
@@ -16,6 +16,8 @@ export interface State {
   stock?: ShuttleStock;
   /** โหวตวันตีพิเศษ */
   polls?: Poll[];
+  /** บอร์ดของหาย / ฝากขาย (เฉพาะที่ยังเปิดอยู่และเพิ่งปิด) */
+  board?: BoardPost[];
 }
 
 /** ค่ารายเดือนที่คนนี้จ่ายในเดือนนั้น ใช้ราคาตอนจ่าย ไม่ใช่ราคาปัจจุบัน */
@@ -73,6 +75,8 @@ export type Action =
   | { type: "requestPair"; date: string; from: string; to: string; _id: string; _at: number }
   | { type: "setPairStatus"; date: string; id: string; status: PairStatus; _at: number }
   | { type: "removeExpense"; id: string }
+  | { type: "addBoardPost"; post: Omit<BoardPost, "id" | "at" | "hasPhoto">; _id: string; _at: number }
+  | { type: "closeBoardPost"; id: string; _at: number }
   | { type: "replace"; state: State };
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
@@ -98,6 +102,7 @@ export function normalizeBackup(raw: unknown): State {
     expenses: Array.isArray(data.expenses) ? data.expenses : [],
     stock: data.stock,
     polls: Array.isArray(data.polls) ? data.polls : [],
+    board: Array.isArray(data.board) ? data.board : [],
   };
 }
 
@@ -293,6 +298,7 @@ export function reducer(state: State, a: Action): State {
         monthly: {},
         expenses: [],
         polls: [],
+        board: [],
         days: state.days
           .filter((d) => d.date > a.today && d.announcement !== undefined)
           .map((d) => ({ date: d.date, checkIns: [], games: [], drinks: [], announcement: d.announcement })),
@@ -310,6 +316,10 @@ export function reducer(state: State, a: Action): State {
       return { ...state, polls: [...(state.polls ?? []), { id: a._id, question: a.question, dates: a.dates, createdAt: a._at, closed: false, votes: {} }] };
     case "closePoll":
       return { ...state, polls: (state.polls ?? []).map((p) => (p.id === a.id ? { ...p, closed: true, chosen: a.chosen } : p)) };
+    case "addBoardPost":
+      return { ...state, board: [{ ...a.post, id: a._id, at: a._at, hasPhoto: !!a.post.photo }, ...(state.board ?? [])] };
+    case "closeBoardPost":
+      return { ...state, board: (state.board ?? []).map((b) => (b.id === a.id ? { ...b, closedAt: a._at } : b)) };
     case "removePoll":
       return { ...state, polls: (state.polls ?? []).filter((p) => p.id !== a.id) };
     case "votePoll":

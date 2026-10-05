@@ -1,5 +1,6 @@
 "use client";
 
+import { BirthdayBanner } from "./Birthday";
 import { PollAdmin } from "./Polls";
 import { StockWarning } from "./Stock";
 import { useState } from "react";
@@ -45,6 +46,7 @@ export function CheckInTab() {
   return (
     <div className="space-y-4">
       <StockWarning />
+      <BirthdayBanner />
       <AnnounceCard />
       <PollAdmin compact />
       <SignupList />

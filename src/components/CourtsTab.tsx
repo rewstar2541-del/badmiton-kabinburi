@@ -1,5 +1,6 @@
 "use client";
 
+import { ClubCorner } from "./ClubCorner";
 import { StockWarning } from "./Stock";
 import { PairRequests } from "./Pairs";
 import { useEffect, useState } from "react";
@@ -142,7 +143,13 @@ export function CourtsTab() {
   const home = day.checkIns.filter((c) => presence(day, c.playerId) === "home").length;
   const rest = (playerId: string, on: boolean) => dispatch({ type: "setResting", date, playerId, resting: on });
 
-  if (!auth.isAdmin) return <PlayerCourts />;
+  if (!auth.isAdmin)
+    return (
+      <div className="space-y-4">
+        <PlayerCourts />
+        <ClubCorner />
+      </div>
+    );
 
 
   return (
@@ -252,6 +259,7 @@ export function CourtsTab() {
         </>
       )}
       {home > 0 && <p className="px-1 text-xs text-zinc-500">{t("จ่ายเงินแล้วกลับบ้าน {n} คน", { n: home })}</p>}
+      <ClubCorner />
     </div>
   );
 }

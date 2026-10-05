@@ -46,6 +46,24 @@ export interface Player {
   levelRequest?: Level;
   /** สมาชิกรายวันหรือรายเดือน (ไม่มี = ยังไม่ได้เลือก) */
   plan?: Plan;
+  /** วันเกิด MM-DD (ไม่เก็บปี) */
+  birthday?: string;
+}
+
+export type BoardKind = "lost" | "found" | "sell";
+/** บอร์ดของหาย / ของเจอ / ฝากขาย (รูปโหลดแยกทีหลัง) */
+export interface BoardPost {
+  id: string;
+  playerId: string;
+  kind: BoardKind;
+  title: string;
+  detail?: string;
+  price?: number;
+  hasPhoto: boolean;
+  /** รูปในโหมดทดลอง (ของจริงโหลดผ่าน boardPhoto) */
+  photo?: string;
+  at: number;
+  closedAt?: number;
 }
 
 /** เดือน (YYYY-MM) -> ผู้เล่น -> เวลาที่จ่ายค่าสมาชิกรายเดือน */
