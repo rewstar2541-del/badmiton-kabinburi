@@ -112,7 +112,7 @@ export function ExportReport({ month }: { month: string }) {
         <Icon.Wallet width={18} height={18} />
         {busy ? t("กำลังสร้างไฟล์...") : t("โหลด Excel เดือนนี้")}
       </Button>
-      {inLine && <OpenOutside />}
+      {inLine && <OpenOutside menu={t("คิดเงิน")} />}
     </>
   );
 }

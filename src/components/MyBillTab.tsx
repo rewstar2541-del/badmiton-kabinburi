@@ -140,7 +140,7 @@ export function MyBillTab() {
                 <PayQr promptPayId={s.promptPayId} amount={bill.total} />
                 <p className="text-center text-xs text-zinc-500">{t("สแกนจ่ายหรือจ่ายสด แล้วกดปุ่มด้านล่าง")}</p>
                 <SelfPay playerId={player.id} amount={bill.total} action="pay" />
-                <SlipUpload action="pay" playerId={player.id} amount={bill.total} />
+                <SlipUpload playerId={player.id} amount={bill.total} />
               </Card>
             )
           )}

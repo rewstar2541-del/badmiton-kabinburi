@@ -792,7 +792,9 @@ export const en: Record<string, string> = {
   "ตั้งเป็นวันงดเล่น {n} วัน": "Set {n} days off",
   "ยกเลิกอีเว้น {n} วัน?": "Cancel events on {n} days?",
   "ยกเลิกอีเว้นในวันที่เลือก ({n})": "Cancel events on selected days ({n})",
-  "แอพ LINE โหลดไฟล์ไม่ได้ เปิดหน้านี้ใน Chrome / Safari แล้วกดอีกครั้ง": "LINE can't download files. Open this page in Chrome / Safari and tap again",
   "เปิดใน Chrome / Safari": "Open in Chrome / Safari",
   "หมดเวลาเข้าสู่ระบบ กรุณาเข้าสู่ระบบด้วย LINE ใหม่": "Your login has expired. Please log in with LINE again",
+  "แอพ LINE โหลดไฟล์ไม่ได้ กดปุ่มด้านล่างเพื่อเปิดใน Chrome / Safari แล้วเข้าสู่ระบบด้วย LINE ไปที่เมนู {menu} แล้วกดอีกครั้ง": "LINE can't download files. Tap below to open in Chrome / Safari, log in with LINE, go to {menu} and tap again",
+  "แอพนี้โหลดไฟล์ไม่ได้ กดเมนู ⋯ มุมจอ เลือกเปิดในเบราว์เซอร์ แล้วเข้าสู่ระบบด้วย LINE ไปที่เมนู {menu} แล้วกดอีกครั้ง": "This app can't download files. Tap the ⋯ menu, choose open in browser, log in with LINE, go to {menu} and tap again",
+  "ยอดจะขึ้นว่าจ่ายแล้วเมื่อแอดมินตรวจสลิป ไม่ต้องโอนซ้ำ": "Your bill will show as paid once an admin checks the slip. No need to transfer again",
 };

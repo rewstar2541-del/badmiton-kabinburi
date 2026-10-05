@@ -33,7 +33,8 @@ export function SettingsTab() {
 
   const [inLine, setInLine] = useState(false);
   const exportData = () => {
-    if (inAppBrowser()) return setInLine(true);
+    // ข้อมูลแบบออฟไลน์อยู่ในเครื่องนี้เท่านั้น เปิดเบราว์เซอร์อื่นจะไม่เห็นข้อมูลชุดนี้ จึงลองโหลดตรงๆ
+    if (auth.online && inAppBrowser()) return setInLine(true);
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
     downloadBlob(blob, `badminton-backup-${new Date().toISOString().slice(0, 10)}.json`);
   };
@@ -158,7 +159,7 @@ export function SettingsTab() {
                 />
               </label>
             </div>
-            {inLine && <OpenOutside />}
+            {inLine && <OpenOutside menu={t("ตั้งค่า")} />}
           </Card>
         <ClearData />
         <ClearHistory />
