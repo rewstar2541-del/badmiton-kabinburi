@@ -281,6 +281,7 @@ export const en: Record<string, string> = {
   "{n} บาท": "{n} baht",
   "ส่งสลิปได้เฉพาะเมื่อต่อ Supabase": "Slips can only be sent when online",
   "บันทึกไม่สำเร็จ: {msg}": "Couldn't save: {msg}",
+  "บันทึกไม่สำเร็จ ข้อมูลถูกย้อนกลับ ลองใหม่อีกครั้ง ({msg})": "Couldn't save. Your change was undone, please try again ({msg})",
   "มือใหม่": "Beginner",
   "เริ่มตีได้": "Basic",
   "เกือบทั่วไป": "Near intermediate",
@@ -791,4 +792,7 @@ export const en: Record<string, string> = {
   "ตั้งเป็นวันงดเล่น {n} วัน": "Set {n} days off",
   "ยกเลิกอีเว้น {n} วัน?": "Cancel events on {n} days?",
   "ยกเลิกอีเว้นในวันที่เลือก ({n})": "Cancel events on selected days ({n})",
+  "แอพ LINE โหลดไฟล์ไม่ได้ เปิดหน้านี้ใน Chrome / Safari แล้วกดอีกครั้ง": "LINE can't download files. Open this page in Chrome / Safari and tap again",
+  "เปิดใน Chrome / Safari": "Open in Chrome / Safari",
+  "หมดเวลาเข้าสู่ระบบ กรุณาเข้าสู่ระบบด้วย LINE ใหม่": "Your login has expired. Please log in with LINE again",
 };

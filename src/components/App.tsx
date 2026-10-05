@@ -236,7 +236,7 @@ function Header() {
 }
 
 function Shell() {
-  const { auth, ready, error, state } = useStore();
+  const { auth, ready, error, clearError, state } = useStore();
   const { date } = useToday();
   const lang = useLang();
   // เข้าด้วย LINE แล้วเป็นแอดมิน เมนูแอดมินจะขึ้นเอง
@@ -272,7 +272,14 @@ function Shell() {
       <DemoBar />
       <Header />
       <main className="mx-auto -mt-2 w-full max-w-3xl flex-1 rounded-t-[28px] bg-background px-4 pt-5 pb-32">
-        {error && <div className="mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+        {error && (
+          <div role="alert" className="sticky top-2 z-30 mb-4 flex items-start gap-3 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700 shadow">
+            <span className="flex-1">{error}</span>
+            <button type="button" onClick={clearError} className="-my-1 min-h-9 shrink-0 rounded-xl px-3 font-semibold underline">
+              {t("ปิด")}
+            </button>
+          </div>
+        )}
         {auth.playerMode && auth.online && !readSession() && (
           <p className="mb-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
             {t("ต้องผูก LINE กับชื่อก่อน: โหมดแอดมิน > ตั้งค่า > ผูก LINE ของฉัน")}

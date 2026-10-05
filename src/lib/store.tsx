@@ -81,6 +81,8 @@ interface Ctx {
   history: (from: string) => Promise<State>;
   ready: boolean;
   error: string | null;
+  /** ปิดข้อความผิดพลาด (ข้อความบันทึกไม่สำเร็จจะค้างไว้จนผู้ใช้กดปิด) */
+  clearError: () => void;
   auth: Auth;
 }
 
@@ -241,7 +243,7 @@ function LocalProvider({ children }: { children: ReactNode }) {
       : undefined,
   };
   return (
-    <StoreCtx.Provider value={{ state, dispatch, self, social, sendSlip, removeSlip: removeSlipLocal, setPrefs, setPlan: setPlanLocal, updateProfile: updateProfileLocal, addGuest: addGuestLocal, register: registerLocal, login: loginLocal, slipImage: getSlip, boardPhoto: async (id) => state.board?.find((b) => b.id === id)?.photo ?? null, history: async () => state, ready: true, error: null, auth }}>
+    <StoreCtx.Provider value={{ state, dispatch, self, social, sendSlip, removeSlip: removeSlipLocal, setPrefs, setPlan: setPlanLocal, updateProfile: updateProfileLocal, addGuest: addGuestLocal, register: registerLocal, login: loginLocal, slipImage: getSlip, boardPhoto: async (id) => state.board?.find((b) => b.id === id)?.photo ?? null, history: async () => state, ready: true, error: null, clearError: () => {}, auth }}>
       {children}
     </StoreCtx.Provider>
   );
@@ -256,6 +258,8 @@ function RemoteProvider({ children }: { children: ReactNode }) {
   }, [state.players]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // แยกจาก error ตอนโหลด: โหลดใหม่สำเร็จแล้วต้องไม่ลบข้อความนี้ ไม่งั้นแอดมินจะไม่รู้ว่าบันทึกไม่ติด
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [noAdmins, setNoAdmins] = useState(false);
@@ -273,8 +277,10 @@ function RemoteProvider({ children }: { children: ReactNode }) {
       const me = readSession();
       if (!adminRef.current && me) {
         const mine = await loadPrivate(db, s, me.playerId, me.token);
-        if (mine === "expired") writeSession(null);
-        else s = mine;
+        if (mine === "expired") {
+          writeSession(null);
+          setSaveError(t("หมดเวลาเข้าสู่ระบบ กรุณาเข้าสู่ระบบด้วย LINE ใหม่"));
+        } else s = mine;
       }
       apply({ type: "replace", state: s });
       setError(null);
@@ -363,7 +369,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
       const a = prepare(i);
       apply(a);
       persist(db, a, playersRef.current).catch((e) => {
-        setError(t("บันทึกไม่สำเร็จ: {msg}", { msg: e instanceof Error ? e.message : String(e) }));
+        setSaveError(t("บันทึกไม่สำเร็จ ข้อมูลถูกย้อนกลับ ลองใหม่อีกครั้ง ({msg})", { msg: e instanceof Error ? e.message : String(e) }));
         reload();
       });
     },
@@ -491,7 +497,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  return <StoreCtx.Provider value={{ state, dispatch, self, social, sendSlip, removeSlip: removeSlipRemote, setPrefs, setPlan: setPlanRemote, updateProfile: updateProfileRemote, addGuest: addGuestRemote, register: registerRemote, login: loginRemote, slipImage: getSlip, boardPhoto: getBoardPhoto, history, ready, error, auth }}>{children}</StoreCtx.Provider>;
+  return <StoreCtx.Provider value={{ state, dispatch, self, social, sendSlip, removeSlip: removeSlipRemote, setPrefs, setPlan: setPlanRemote, updateProfile: updateProfileRemote, addGuest: addGuestRemote, register: registerRemote, login: loginRemote, slipImage: getSlip, boardPhoto: getBoardPhoto, history, ready, error: saveError ?? error, clearError: () => { setSaveError(null); setError(null); }, auth }}>{children}</StoreCtx.Provider>;
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {

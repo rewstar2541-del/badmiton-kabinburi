@@ -27,12 +27,11 @@ export function useMe() {
     [auth],
   );
   // การเข้าสู่ระบบอาจถูกดึงคืนจากคุกกี้สำรองหลังหน้าโหลดแล้ว
+  // หรือหมดอายุแล้วถูกล้างทิ้ง (ต้องเข้าใหม่ ไม่งั้นยอดเงินที่เห็นจะขาดค่าน้ำ/ค่ารายเดือน)
   useEffect(() => {
-    if (!me) {
-      const id = readSession()?.playerId;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- อ่านค่าจากคุกกี้ที่เพิ่งกู้คืน
-      if (id) setMeState(id);
-    }
+    const id = readSession()?.playerId ?? null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- อ่านค่าจากคุกกี้ที่เพิ่งกู้คืน หรือที่เพิ่งถูกล้าง
+    if (id !== me) setMeState(id);
   }, [me, state]);
   return [me, setMe] as const;
 }
