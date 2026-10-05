@@ -760,12 +760,70 @@ export interface LineSettings {
   notify_signup: boolean;
   notify_turn: boolean;
   notify_turn_personal: boolean;
+  notify_announce: boolean;
+  monthly_limit: number;
+  turn_reserve: number;
+  oa_basic_id: string | null;
+  last_error: string | null;
+  last_error_at: string | null;
 }
 
 export async function getLineSettings(db: SupabaseClient): Promise<LineSettings | null> {
-  const { data, error } = await db.from("line_settings").select("group_id,notify_signup,notify_turn,notify_turn_personal").eq("id", 1).maybeSingle();
+  const { data, error } = await db
+    .from("line_settings")
+    .select("group_id,notify_signup,notify_turn,notify_turn_personal,notify_announce,monthly_limit,turn_reserve,oa_basic_id,last_error,last_error_at")
+    .eq("id", 1)
+    .maybeSingle();
   if (error) throw new Error(error.message);
   return data as LineSettings | null;
+}
+
+export interface LineStatus {
+  token: boolean;
+  secret: boolean;
+  tokenOk: boolean;
+  name: string | null;
+  basicId: string | null;
+  lineLimit: number | null;
+  lineUsed: number | null;
+  usage: { month: string; sent: number; turn: number; announce: number; skipped: number };
+  error?: string;
+}
+
+/** สถานะ LINE OA: ใส่ token แล้วหรือยัง ชื่อบัญชี และโควตาเดือนนี้ (แอดมิน) */
+export async function lineStatus(db: SupabaseClient): Promise<LineStatus> {
+  const { data, error } = await db.functions.invoke("line", { body: { action: "status" } });
+  if (error) throw new Error(error.message);
+  return data as LineStatus;
+}
+
+export interface MyLine {
+  linked: boolean;
+  turn: boolean;
+  announce: boolean;
+  oa: string | null;
+  turn_on: boolean;
+  announce_on: boolean;
+  error?: string;
+}
+
+export async function myLine(db: SupabaseClient, playerId: string, token: string): Promise<MyLine> {
+  const { data, error } = await db.rpc("my_line", { p_player: playerId, p_pin: token });
+  if (error) throw new Error(error.message);
+  return data as MyLine;
+}
+
+export async function setLinePrefs(db: SupabaseClient, playerId: string, token: string, turn: boolean, announce: boolean): Promise<string | null> {
+  const { data, error } = await db.rpc("set_line_prefs", { p_player: playerId, p_pin: token, p_turn: turn, p_announce: announce });
+  if (error) return error.message;
+  return (data as string | null) ?? null;
+}
+
+/** ผู้เล่นเพิ่มเพื่อน LINE ของก๊วนแล้วหรือยัง (null = เช็คไม่ได้) */
+export async function lineFriend(db: SupabaseClient, playerId: string, token: string): Promise<boolean | null> {
+  const { data, error } = await db.functions.invoke("line", { body: { action: "friend", player: playerId, token } });
+  if (error) return null;
+  return (data as { friend?: boolean | null })?.friend ?? null;
 }
 
 export async function updateLineSettings(db: SupabaseClient, s: Partial<LineSettings>) {
@@ -779,7 +837,7 @@ export async function newLineLinkCode(db: SupabaseClient): Promise<string> {
   return data as string;
 }
 
-/** ส่งข้อความทดสอบเข้ากลุ่ม LINE คืนข้อความผิดพลาด หรือ null */
+/** ส่งข้อความทดสอบหาแอดมินที่กด (หรือเข้ากลุ่ม) คืนข้อความผิดพลาด หรือ null */
 export async function testLine(db: SupabaseClient): Promise<string | null> {
   const { data, error } = await db.functions.invoke("line", { body: { action: "test" } });
   if (error) return error.message;

@@ -1,6 +1,7 @@
 "use client";
 
 import { BirthdayEdit } from "./Birthday";
+import { PlayerLineAlerts } from "./LineCard";
 import { PartnerStats } from "./PartnerStats";
 import { billFor, shuttleFormula } from "@/lib/billing";
 import { useStore, useToday } from "@/lib/store";
@@ -150,6 +151,7 @@ export function MyBillTab() {
       <PartnerStats player={player} />
       <BadgesCard player={player} />
       <PartnerPrefs key={(player.prefer ?? []).join() + "|" + (player.avoid ?? []).join()} player={player} />
+      <PlayerLineAlerts playerId={player.id} />
     </div>
   );
 }
