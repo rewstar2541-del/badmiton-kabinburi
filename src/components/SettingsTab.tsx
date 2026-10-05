@@ -1,5 +1,7 @@
 "use client";
 
+import { downloadBlob, inAppBrowser } from "@/lib/download";
+import { OpenOutside } from "./OpenOutside";
 import { BoardCard } from "./Board";
 import { ClearData } from "./ClearData";
 import { PollAdmin } from "./Polls";
@@ -29,13 +31,11 @@ export function SettingsTab() {
   const [saved, setSaved] = useState(false);
   const ppOk = !s.promptPayId || isValidPromptPayId(s.promptPayId);
 
+  const [inLine, setInLine] = useState(false);
   const exportData = () => {
+    if (inAppBrowser()) return setInLine(true);
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `badminton-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    downloadBlob(blob, `badminton-backup-${new Date().toISOString().slice(0, 10)}.json`);
   };
 
   const importData = async (file: File) => {
@@ -158,6 +158,7 @@ export function SettingsTab() {
                 />
               </label>
             </div>
+            {inLine && <OpenOutside />}
           </Card>
         <ClearData />
         <ClearHistory />

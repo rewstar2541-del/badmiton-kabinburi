@@ -123,7 +123,7 @@ export function MonthlyDueCard({ player }: { player: Player }) {
       </div>
       <div className="flex flex-col items-center gap-2 rounded-2xl bg-white p-3">
         <PayQr promptPayId={state.settings.promptPayId} amount={fee} />
-        <SlipUpload playerId={player.id} amount={fee} />
+        <SlipUpload action="payMonth" playerId={player.id} amount={fee} />
         <SelfPay playerId={player.id} amount={fee} action="payMonth" />
       </div>
     </div>

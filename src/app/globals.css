@@ -69,5 +69,21 @@ html.dark {
 .dark .text-emerald-700, .dark .text-emerald-800 { color: #6ee7b7; }
 .dark .text-amber-700, .dark .text-amber-800, .dark .text-amber-900 { color: #fcd34d; }
 .dark .text-sky-700, .dark .text-sky-800 { color: #7dd3fc; }
+.dark .text-sky-900, .dark .text-sky-950 { color: #bae6fd; }
+.dark .text-amber-950 { color: #fde68a; }
+.dark .text-emerald-900 { color: #a7f3d0; }
+.dark .text-zinc-700 { color: #cbd2dd; }
+/* ป้ายสีพาสเทล (ระดับมือ รูปย่อ ป้ายบอร์ด): พื้นเป็นสีโปร่ง ตัวอักษรสว่าง ไม่ให้เป็นตัวสว่างบนพื้นสว่าง */
+.dark .bg-amber-100, .dark .bg-amber-200 { background-color: rgba(245, 158, 11, 0.22); }
+.dark .bg-sky-200 { background-color: rgba(14, 165, 233, 0.22); }
+.dark .bg-teal-100, .dark .bg-teal-200 { background-color: rgba(20, 184, 166, 0.22); }
+.dark .bg-orange-50, .dark .bg-orange-100, .dark .bg-orange-200 { background-color: rgba(249, 115, 22, 0.2); }
+.dark .bg-rose-100, .dark .bg-rose-200 { background-color: rgba(244, 63, 94, 0.2); }
+.dark .bg-violet-50, .dark .bg-violet-200 { background-color: rgba(139, 92, 246, 0.22); }
+.dark .bg-emerald-100 { background-color: rgba(16, 185, 129, 0.2); }
+.dark .text-teal-700, .dark .text-teal-900 { color: #5eead4; }
+.dark .text-orange-700, .dark .text-orange-950 { color: #fdba74; }
+.dark .text-rose-700, .dark .text-rose-900 { color: #fda4af; }
+.dark .text-violet-900, .dark .text-violet-950 { color: #c4b5fd; }
 .dark .bg-lime\/30 { background-color: rgba(198, 244, 50, 0.16); }
 .dark .bg-lime\/40, .dark .bg-lime\/25 { background-color: rgba(198, 244, 50, 0.2); }

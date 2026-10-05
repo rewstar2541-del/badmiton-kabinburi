@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { resizeSlip } from "@/lib/image";
+import type { SelfAction } from "@/lib/state";
 import { locale, t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
 import { savedPin } from "./PickMe";
@@ -11,9 +12,9 @@ function time(at: number) {
   return new Date(at).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
 }
 
-/** ผู้เล่นแนบรูปสลิปหลังโอน ให้แอดมินตรวจ */
-export function SlipUpload({ playerId, amount }: { playerId: string; amount: number }) {
-  const { sendSlip, removeSlip } = useStore();
+/** ผู้เล่นแนบรูปสลิปหลังโอน ให้แอดมินตรวจ ส่งสำเร็จแล้วนับว่าจ่ายทันที (เหมือนกด "ฉันจ่ายแล้ว") ไม่ให้ยอดค้างจนจ่ายซ้ำ */
+export function SlipUpload({ playerId, amount, action }: { playerId: string; amount: number; action: Extract<SelfAction, "pay" | "payMonth"> }) {
+  const { sendSlip, removeSlip, self } = useStore();
   const { day } = useToday();
   const pin = savedPin.get();
   const [busy, setBusy] = useState(false);
@@ -85,7 +86,7 @@ export function SlipUpload({ playerId, amount }: { playerId: string; amount: num
           if (!f) return;
           setBusy(true);
           try {
-            const err = await sendSlip(playerId, pin, amount, await resizeSlip(f));
+            const err = (await sendSlip(playerId, pin, amount, await resizeSlip(f))) ?? (await self(action, playerId, pin));
             setError(err ? t(err) : "");
           } catch {
             setError(t("อ่านรูปไม่ได้ ลองเลือกรูปใหม่"));

@@ -1,5 +1,6 @@
 "use client";
 
+import { downloadBlob, inAppBrowser } from "@/lib/download";
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -133,11 +134,6 @@ async function qrImage(promptPayId: string, amount: number): Promise<Blob> {
   return new Promise((ok, fail) => c.toBlob((b) => (b ? ok(b) : fail(new Error("toBlob"))), "image/png"));
 }
 
-/** เว็บที่เปิดในแอพ LINE / Facebook / Instagram ดาวน์โหลดไฟล์ไม่ได้ */
-function inAppBrowser() {
-  return /\bLine\/|FBAN|FBAV|Instagram/i.test(navigator.userAgent);
-}
-
 /** บันทึกรูป QR: แชร์/ดาวน์โหลด หรือคืนรูป (data URL) ให้แสดงเต็มจอเมื่อบันทึกเองไม่ได้ */
 async function saveQr(promptPayId: string, amount: number, forceDownload = false): Promise<string | null> {
   const blob = await qrImage(promptPayId, amount);
@@ -152,14 +148,7 @@ async function saveQr(promptPayId: string, amount: number, forceDownload = false
       if ((e as Error).name === "AbortError") return null;
     }
   }
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = file.name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  downloadBlob(blob, file.name);
   return null;
 }
 

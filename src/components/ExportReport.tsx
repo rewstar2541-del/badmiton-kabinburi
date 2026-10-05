@@ -6,6 +6,8 @@ import { locale, t } from "@/lib/i18n";
 import { monthReport } from "@/lib/report";
 import { EXPENSE_CATEGORIES } from "@/lib/types";
 import { useStore } from "@/lib/store";
+import { inAppBrowser } from "@/lib/download";
+import { OpenOutside } from "./OpenOutside";
 import { Button, Icon } from "./ui";
 
 const bold = (value: string) => ({ value, fontWeight: "bold" as const });
@@ -15,8 +17,10 @@ const money = (value: number) => ({ value, type: Number, format: "#,##0" });
 export function ExportReport({ month }: { month: string }) {
   const { state } = useStore();
   const [busy, setBusy] = useState(false);
+  const [inLine, setInLine] = useState(false);
 
   const download = async () => {
+    if (inAppBrowser()) return setInLine(true);
     setBusy(true);
     try {
       const { default: writeXlsxFile } = await import("write-excel-file/browser");
@@ -103,9 +107,12 @@ export function ExportReport({ month }: { month: string }) {
   };
 
   return (
-    <Button variant="secondary" className="flex w-full items-center justify-center gap-1.5" disabled={busy} onClick={download}>
-      <Icon.Wallet width={18} height={18} />
-      {busy ? t("กำลังสร้างไฟล์...") : t("โหลด Excel เดือนนี้")}
-    </Button>
+    <>
+      <Button variant="secondary" className="flex w-full items-center justify-center gap-1.5" disabled={busy} onClick={download}>
+        <Icon.Wallet width={18} height={18} />
+        {busy ? t("กำลังสร้างไฟล์...") : t("โหลด Excel เดือนนี้")}
+      </Button>
+      {inLine && <OpenOutside />}
+    </>
   );
 }
