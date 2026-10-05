@@ -97,6 +97,14 @@ export function BoardCard() {
     } else dispatch({ type: "closeBoardPost", id: b.id });
   };
 
+  const remove = async (b: BoardPost) => {
+    if (!confirm(t("ลบโพสต์นี้และรูปทิ้ง? กู้คืนไม่ได้"))) return;
+    if (b.playerId === me) {
+      const err = await social({ kind: "boardRemove", id: b.id }, me, savedPin.get());
+      setError(err ? t(err) : "");
+    } else dispatch({ type: "removeBoardPost", id: b.id });
+  };
+
   const row = (b: BoardPost) => {
     const k = kindOf(b.kind);
     const p = byId.get(b.playerId);
@@ -121,10 +129,17 @@ export function BoardCard() {
             {p?.name ?? "?"} · {new Date(b.at).toLocaleDateString(locale(), { day: "numeric", month: "short" })}
           </div>
         </div>
-        {!b.closedAt && (b.playerId === me || isAdmin) && (
-          <button className="h-fit shrink-0 rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-600" onClick={() => close(b)}>
-            {t(k.done)}
-          </button>
+        {(b.playerId === me || isAdmin) && (
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            {!b.closedAt && (
+              <button className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-600" onClick={() => close(b)}>
+                {t(k.done)}
+              </button>
+            )}
+            <button className="flex items-center gap-1 px-1 text-xs font-semibold text-red-500" onClick={() => remove(b)}>
+              <Icon.X width={13} height={13} /> {t("ลบ")}
+            </button>
+          </div>
         )}
       </li>
     );

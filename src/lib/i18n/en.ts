@@ -777,4 +777,5 @@ export const en: Record<string, string> = {
   "ผูก LINE ตั้ง/ถอดแอดมิน ออกจากระบบ": "Link LINE, admins, sign out",
   "ข้อมูลและล้างประวัติ": "Data & clearing history",
   "สำรองไฟล์ ล้างข้อมูล": "Backup, clear data",
+  "ลบโพสต์นี้และรูปทิ้ง? กู้คืนไม่ได้": "Delete this post and its photo? This cannot be undone",
 };

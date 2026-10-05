@@ -152,6 +152,7 @@ function LocalProvider({ children }: { children: ReactNode }) {
           post: { playerId, kind, title: title.trim(), ...(detail.trim() ? { detail: detail.trim() } : {}), ...(kind === "sell" && price != null ? { price } : {}), ...(photo ? { photo } : {}) },
         });
       } else if (req.kind === "boardClose") dispatch({ type: "closeBoardPost", id: req.id });
+      else if (req.kind === "boardRemove") dispatch({ type: "removeBoardPost", id: req.id });
       else dispatch({ type: "setPairStatus", date, id: req.id, status: req.kind === "cancelPair" ? "cancelled" : req.accept ? "accepted" : "declined" });
       return null;
     },
