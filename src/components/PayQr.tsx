@@ -26,7 +26,7 @@ export function PayQr({ promptPayId, amount }: { promptPayId: string; amount: nu
   }, [promptPayId, amount, valid]);
 
   if (!valid)
-    return <p className="text-sm text-amber-700">{t("ยังไม่ได้ตั้งเบอร์ PromptPay ไปที่แท็บ \"ตั้งค่า\"")}</p>;
+    return <p className="text-sm text-amber-700">{t("ยังไม่ได้ตั้ง PromptPay (ไปที่ ตั้งค่า)")}</p>;
   if (!src) return <div className="size-[280px] animate-pulse rounded-xl bg-zinc-100" />;
   return (
     <div className="flex flex-col items-center gap-2">
@@ -46,13 +46,13 @@ export function PayQr({ promptPayId, amount }: { promptPayId: string; amount: nu
       >
         {t("บันทึกรูป QR")}
       </Button>
-      <p className="text-center text-xs text-zinc-500">{t("บันทึกลงเครื่อง แล้วเปิดแอพธนาคาร เลือกสแกนจากรูปในเครื่อง")}</p>
+      <p className="text-center text-xs text-zinc-500">{t("บันทึกรูป แล้วสแกนจากรูปในแอพธนาคาร")}</p>
       {preview &&
         createPortal(
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-black p-4" onClick={() => setPreview(null)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={preview} alt="PromptPay QR" className="max-h-[70vh] max-w-full rounded-xl" onClick={(e) => e.stopPropagation()} />
-          <p className="max-w-xs text-center text-sm text-white">{t("กดค้างที่รูป แล้วเลือก \"บันทึกรูปภาพ\" (หรือแคปหน้าจอ)")}</p>
+          <p className="max-w-xs text-center text-sm text-white">{t("กดค้างที่รูป > บันทึกรูปภาพ (หรือแคปจอ)")}</p>
           {/* LINE เปิดลิงก์ที่มี openExternalBrowser=1 ใน Chrome / Safari ซึ่งบันทึกไฟล์ได้ */}
           <a
             href={externalQrUrl(amount)}
@@ -105,8 +105,8 @@ export function QrOnlyPage({ promptPayId }: { promptPayId: string }) {
       </Button>
       <p className="max-w-xs text-center text-sm text-zinc-500">
         {done
-          ? t("บันทึกแล้ว เปิดแอพธนาคาร เลือกสแกนจากรูปในเครื่อง แล้วกลับไปกด \"ฉันจ่ายแล้ว\" ในแอพก๊วน")
-          : t("ถ้ากดแล้วไม่มีอะไรเกิดขึ้น ให้กดค้างที่รูปแล้วเลือกบันทึกรูปภาพ")}
+          ? t("บันทึกแล้ว สแกนจากรูปในแอพธนาคาร แล้วกลับมากด \"ฉันจ่ายแล้ว\"")
+          : t("กดแล้วไม่ได้? กดค้างที่รูป > บันทึกรูปภาพ")}
       </p>
     </div>
   );

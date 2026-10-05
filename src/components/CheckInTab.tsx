@@ -56,7 +56,7 @@ export function CheckInTab() {
       <SignupList />
       {waiting > 0 && (
         <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
-          {t("มีคนสมัครใหม่รออนุมัติ {n} คน ดูที่หน้าผู้เล่น", { n: waiting })}
+          {t("สมัครใหม่รออนุมัติ {n} คน (หน้าผู้เล่น)", { n: waiting })}
         </p>
       )}
       <SectionTitle right={t("{a}/{b} คน", { a: checked.size, b: members }) + (signed.size ? ` · ${t("ลงชื่อ {n}", { n: signed.size })}` : "")}>
@@ -109,7 +109,7 @@ export function CheckInTab() {
       )}
       {list.length === 0 && (
         <Card className="py-10 text-center text-sm text-zinc-500">
-          {state.players.length === 0 ? t("ยังไม่มีผู้เล่น กดปุ่ม + เพื่อลงทะเบียน") : t("ไม่พบชื่อที่ค้นหา")}
+          {state.players.length === 0 ? t("ยังไม่มีผู้เล่น กด + เพื่อเพิ่ม") : t("ไม่พบชื่อที่ค้นหา")}
         </Card>
       )}
     </div>
@@ -126,9 +126,9 @@ function PlayerTile({ p, on, signed, visits }: { p: Player; on: boolean; signed:
           if (!on) return dispatch({ type: "checkIn", date, playerId: p.id });
           const day = state.days.find((d) => d.date === date);
           if (day?.checkIns.find((c) => c.playerId === p.id)?.paidAt)
-            return alert(t("{name} จ่ายเงินแล้ว ต้องกดยกเลิกการจ่ายในหน้าคิดเงินก่อน", { name: p.name }));
+            return alert(t("{name} จ่ายแล้ว ยกเลิกการจ่ายที่หน้าคิดเงินก่อน", { name: p.name }));
           const games = day?.games.filter((g) => g.playerIds.includes(p.id)).length ?? 0;
-          if (games > 0 && !confirm(t("{name} เล่นไปแล้ว {n} เกม ยกเลิกเช็คอินแล้วจะไม่คิดค่าสนาม ยืนยันไหม?", { name: p.name, n: games })))
+          if (games > 0 && !confirm(t("{name} เล่นแล้ว {n} เกม ยกเลิกเช็คอิน? (ไม่คิดค่าสนาม)", { name: p.name, n: games })))
             return;
           dispatch({ type: "undoCheckIn", date, playerId: p.id });
         }}
@@ -208,7 +208,7 @@ export function SignupList({ bare }: { bare?: boolean }) {
           })}
         </ul>
       )}
-      {list.some((s) => !checked.has(s.playerId)) && <p className="text-xs text-zinc-500">{t("แตะชื่อคนที่ยังไม่มา เพื่อเช็คอินให้")}</p>}
+      {list.some((s) => !checked.has(s.playerId)) && <p className="text-xs text-zinc-500">{t("แตะชื่อเพื่อเช็คอินให้")}</p>}
     </>
   );
   return bare ? <div className="space-y-3">{body}</div> : <Card className="space-y-3">{body}</Card>;

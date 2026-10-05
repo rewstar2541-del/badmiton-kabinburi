@@ -24,7 +24,7 @@ export function ClearData() {
   return (
     <Card className="space-y-3 border border-red-200">
       <h2 className="font-display font-semibold text-red-600">{t("ล้างข้อมูลแยกประเภท")}</h2>
-      <p className="text-sm text-zinc-500">{t("เลือกประเภทและช่วงวันที่ที่จะลบ รายชื่อผู้เล่น แอดมิน ราคาและตั้งค่าจะไม่ถูกลบ")}</p>
+      <p className="text-sm text-zinc-500">{t("เลือกประเภทและช่วงวันที่ (ผู้เล่น แอดมิน ตั้งค่า ไม่ถูกลบ)")}</p>
       {done && <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{done}</p>}
       {!open ? (
         <Button className="w-full !text-red-600" onClick={() => { setOpen(true); setDone(""); }}>
@@ -75,7 +75,7 @@ export function ClearData() {
             })}
           </ul>
           <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
-            {t("ลบแล้วกู้คืนไม่ได้ ควรกด \"ดาวน์โหลดไฟล์สำรอง\" ด้านบนเก็บไว้ก่อน พิมพ์คำว่า {word} เพื่อยืนยัน", { word: CONFIRM_WORD })}
+            {t("ลบแล้วกู้ไม่ได้ โหลดไฟล์สำรองก่อน พิมพ์ {word} เพื่อยืนยัน", { word: CONFIRM_WORD })}
           </p>
           <input className={inputClass} value={word} onChange={(e) => setWord(e.target.value)} placeholder={CONFIRM_WORD} aria-label={t("คำยืนยัน")} />
           <div className="flex gap-2">

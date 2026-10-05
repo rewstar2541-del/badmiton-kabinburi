@@ -218,10 +218,14 @@ export interface SignUp {
   at: number;
 }
 
-export type ExpenseCategory = "court" | "shuttle" | "other";
+export type ExpenseCategory = "court" | "shuttle" | "maintenance" | "cleaning" | "drinks" | "equipment" | "other";
 export const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string }[] = [
   { value: "court", label: "ค่าเช่าสนาม" },
-  { value: "shuttle", label: "ซื้อลูกแบด" },
+  { value: "shuttle", label: "ค่าลูกแบด" },
+  { value: "maintenance", label: "ค่าบำรุงรักษา" },
+  { value: "cleaning", label: "ค่าทำความสะอาด" },
+  { value: "drinks", label: "ค่าเครื่องดื่ม" },
+  { value: "equipment", label: "ค่าอุปกรณ์สนาม" },
   { value: "other", label: "อื่นๆ" },
 ];
 

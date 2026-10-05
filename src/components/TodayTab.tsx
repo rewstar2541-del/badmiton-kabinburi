@@ -69,7 +69,7 @@ export function TodayTab() {
         <NoticeBanners />
         <BirthdayBanner />
         {announced && <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />}
-        <PickMe onPick={setMe} hint={t("เข้าสู่ระบบครั้งเดียว เครื่องนี้จะจำไว้ แล้วลงชื่อ เช็คอิน และดูยอดของตัวเองได้")} />
+        <PickMe onPick={setMe} hint={t("เข้าครั้งเดียว เครื่องจะจำไว้")} />
       </div>
     );
 
@@ -96,7 +96,7 @@ export function TodayTab() {
           <Card className="space-y-1 py-10 text-center">
             <Icon.Megaphone className="mx-auto text-zinc-300" width={32} height={32} />
             <p className="font-semibold">{t("วันนี้ยังไม่มีประกาศจัดก๊วน")}</p>
-            <p className="text-sm text-zinc-500">{t("เมื่อแอดมินประกาศ จะลงชื่อและเช็คอินได้ที่หน้านี้")}</p>
+            <p className="text-sm text-zinc-500">{t("แอดมินประกาศแล้ว จะลงชื่อได้ที่นี่")}</p>
           </Card>
         )}
         <PollVote />
@@ -114,8 +114,8 @@ export function TodayTab() {
     playing: t("กำลังเล่นอยู่"),
     resting: t("พักอยู่ ระบบข้ามคิวให้"),
     home: t("จ่ายแล้ว ถือว่ากลับบ้านแล้ว"),
-    waiting: t("เช็คอินแล้ว รอคิวลงสนามได้เลย"),
-    absent: signedUp ? t("ลงชื่อแล้ว มาถึงสนามแล้วกดเช็คอิน") : t("ยังไม่ได้ลงชื่อ"),
+    waiting: t("เช็คอินแล้ว รอคิวได้เลย"),
+    absent: signedUp ? t("ลงชื่อแล้ว ถึงสนามแล้วกดเช็คอิน") : t("ยังไม่ได้ลงชื่อ"),
   }[status];
 
   const act = async (action: SelfAction) => {
@@ -178,7 +178,7 @@ export function TodayTab() {
                   {t("เลิกเล่นแล้ว ไปจ่ายเงิน")}
                 </Button>
                 {played ? (
-                  <p className="text-center text-xs text-zinc-500">{t("เล่นไปแล้ว ถ้าเช็คอินผิด ให้แอดมินช่วยยกเลิก")}</p>
+                  <p className="text-center text-xs text-zinc-500">{t("เล่นแล้ว เช็คอินผิดให้แอดมินยกเลิก")}</p>
                 ) : undo ? (
                   <div className="space-y-2 rounded-2xl bg-red-50 p-3">
                     <p className="text-center text-sm font-medium text-red-700">{t("กดเช็คอินผิดใช่ไหม?")}</p>
@@ -207,7 +207,7 @@ export function TodayTab() {
             {waitPos > 0 ? (
               <div className="rounded-2xl bg-amber-50 px-3 py-3 text-center text-amber-900">
                 <div className="font-semibold">{t("คุณอยู่รายชื่อสำรองลำดับที่ {n}", { n: waitPos })}</div>
-                <div className="text-xs">{t("มีคนยกเลิกจะเลื่อนขึ้นให้เอง ถ้ายังเต็มอยู่ ให้แอดมินเช็คอินให้ที่สนาม")}</div>
+                <div className="text-xs">{t("มีคนยกเลิกจะเลื่อนขึ้นเอง หรือให้แอดมินเช็คอินให้")}</div>
               </div>
             ) : (
               <div className="flex items-center justify-center gap-1.5 rounded-2xl bg-sky-50 py-3 font-semibold text-sky-700">
@@ -229,7 +229,7 @@ export function TodayTab() {
             <Button variant="accent" disabled={busy || !selfIn} onClick={() => act("checkIn")} className="flex items-center justify-center gap-1.5">
               <Icon.CheckIn width={18} height={18} /> {t("ถึงสนามแล้ว เช็คอิน")}
             </Button>
-            {!selfIn && <p className="text-center text-xs text-zinc-500">{t("วันนี้เต็มแล้ว ลงชื่อสำรองไว้ได้ ถ้ามาที่สนามให้แอดมินเช็คอินให้")}</p>}
+            {!selfIn && <p className="text-center text-xs text-zinc-500">{t("เต็มแล้ว ลงชื่อสำรองได้")}</p>}
           </div>
         )}
       </Card>

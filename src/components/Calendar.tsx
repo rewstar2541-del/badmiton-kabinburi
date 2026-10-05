@@ -142,7 +142,7 @@ export function ClubCalendar() {
                 <div className="space-y-2">
                   <input
                     className={inputClass}
-                    placeholder={t("ข้อความประกาศ เช่น 1 ทุ่ม ถึง 4 ทุ่ม (ไม่ใส่ก็ได้)")}
+                    placeholder={t("ข้อความ เช่น 1 ทุ่ม ถึง 4 ทุ่ม")}
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                   />
@@ -163,7 +163,7 @@ export function ClubCalendar() {
                     {sessions.has(picked) && (
                       <Button
                         onClick={() => {
-                          if (confirm(t("ยกเลิกวันจัดก๊วนนี้? คนที่ลงชื่อไว้จะไม่เห็นวันนี้แล้ว"))) setSession(picked, null);
+                          if (confirm(t("ยกเลิกวันจัดก๊วนนี้?"))) setSession(picked, null);
                         }}
                       >
                         {t("ยกเลิกจัดก๊วน")}
@@ -175,7 +175,7 @@ export function ClubCalendar() {
                 <div className="space-y-2 border-t border-zinc-200 pt-2">
                   <input
                     className={inputClass}
-                    placeholder={t("เหตุผล เช่น สนามปิด, วันหยุดยาว")}
+                    placeholder={t("เหตุผล เช่น สนามปิด")}
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                   />

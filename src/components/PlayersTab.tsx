@@ -130,7 +130,7 @@ export function PlayerForm({
 
       {self && photo?.startsWith("data:") && (
         <button type="button" className="text-xs font-semibold text-sky-700 underline" onClick={() => setPhoto(undefined)}>
-          {t("ใช้รูปจาก LINE แทน (อัปเดตตอนเข้าสู่ระบบครั้งถัดไป)")}
+          {t("ใช้รูปจาก LINE")}
         </button>
       )}
 
@@ -154,7 +154,7 @@ export function PlayerForm({
 
       <div className="space-y-1.5 text-sm font-medium">
         {t("ระดับมือ")}
-        {self && <p className="text-xs font-normal text-zinc-500">{t("เปลี่ยนระดับมือแล้วต้องรอแอดมินอนุมัติก่อน")}</p>}
+        {self && <p className="text-xs font-normal text-zinc-500">{t("เปลี่ยนระดับมือต้องรออนุมัติ")}</p>}
         <Segmented
           options={LEVELS.map((l) => ({ value: l.value, label: l.code, sub: l.label }))}
           value={level}
@@ -320,7 +320,7 @@ export function PlayersTab() {
       )}
       {hidden > 0 && (
         <button className="w-full text-center text-sm font-semibold text-zinc-600 underline" onClick={() => setShowAll(true)}>
-          {t("แสดงคนที่ไม่ได้มาเกิน 60 วัน ({n} คน)", { n: hidden })}
+          {t("คนที่ไม่มาเกิน 60 วัน ({n} คน)", { n: hidden })}
         </button>
       )}
     </div>

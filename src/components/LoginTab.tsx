@@ -79,7 +79,7 @@ function LinkMyLine() {
       <div>
         <h2 className="font-display font-semibold">{t("ผูก LINE ของฉันกับชื่อในก๊วน")}</h2>
         <p className="text-xs text-zinc-500">
-          {t("พิมพ์ชื่อเล่นของคุณแล้วกดเลือก ถ้ายังไม่มีชื่อ ไปเพิ่มชื่อตัวเองที่แท็บผู้เล่นก่อน")}
+          {t("พิมพ์ชื่อเล่นแล้วกดเลือก (ไม่มีชื่อ เพิ่มที่หน้าผู้เล่น)")}
         </p>
       </div>
       <SearchInput value={q} onChange={setQ} placeholder={t("พิมพ์ชื่อเล่นของคุณ")} />

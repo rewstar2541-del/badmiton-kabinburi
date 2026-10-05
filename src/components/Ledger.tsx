@@ -58,7 +58,7 @@ export function Ledger({ month }: { month: string }) {
         </div>
       </dl>
       <p className="text-xs text-zinc-500">
-        {t("รายรับ = เงินที่เก็บได้แล้ว (รายวันที่จ่ายแล้ว + ค่าสมาชิกรายเดือน) ยังไม่รวมยอดค้าง {amount}", { amount: baht(tot.unpaid) })}
+        {t("รายรับ = เงินที่เก็บแล้ว (ยังไม่รวมค้างจ่าย {amount})", { amount: baht(tot.unpaid) })}
       </p>
 
       {r.expenses.length > 0 && (
@@ -132,7 +132,7 @@ export function Ledger({ month }: { month: string }) {
               inputMode="numeric"
               min={0}
               className={inputClass}
-              placeholder={t("จำนวนหลอด (หลอดละ {n} ลูก) เพิ่มเข้าสต็อก", { n: TUBE })}
+              placeholder={t("กี่หลอด (หลอดละ {n} ลูก) เข้าสต็อก", { n: TUBE })}
               value={tubeCount}
               onChange={(e) => setTubeCount(e.target.value)}
             />

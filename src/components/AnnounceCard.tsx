@@ -8,7 +8,7 @@ import { AnnouncementBanner, CapLine } from "./TodayTab";
 import { Button, Card, Icon, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
 
-const DEFAULT_TH = "ลงชื่อกันได้เลย มาถึงสนามแล้วกดเช็คอินเองในแอพ";
+const DEFAULT_TH = "ลงชื่อได้เลย ถึงสนามแล้วกดเช็คอิน";
 const DEFAULT_MESSAGE = () => t(DEFAULT_TH);
 
 /** หัวข้อสำเร็จรูป เก็บเป็นภาษาไทย แสดงตามภาษาที่เลือก (null = จัดก๊วน) */
@@ -31,7 +31,7 @@ export function AnnounceCard() {
     return (
       <div className="space-y-1">
         <ClosedBanner reason={closed} />
-        <p className="px-1 text-xs text-zinc-500">{t("ถ้าจะเปิดเล่น ไปที่ ตั้งค่า > ปฏิทินก๊วน แล้วแตะวันนี้")}</p>
+        <p className="px-1 text-xs text-zinc-500">{t("จะเปิดเล่น: ตั้งค่า > ปฏิทินก๊วน แตะวันนี้")}</p>
       </div>
     );
 
@@ -56,7 +56,7 @@ export function AnnounceCard() {
           <button
             className="text-red-500 underline-offset-2 active:underline"
             onClick={() => {
-              if (confirm(t("ยกเลิกประกาศวันนี้? ผู้เล่นจะลงชื่อและเช็คอินเองไม่ได้"))) dispatch({ type: "setAnnouncement", date, message: null });
+              if (confirm(t("ยกเลิกประกาศวันนี้? ผู้เล่นจะลงชื่อเองไม่ได้"))) dispatch({ type: "setAnnouncement", date, message: null });
             }}
           >
             {t("ยกเลิกประกาศ")}
@@ -103,7 +103,7 @@ export function AnnounceCard() {
       </div>
       {title !== null && (
         <label className="block text-sm font-medium">
-          {t("ค่าใช้จ่ายต่อคน (ไม่ใส่ก็ได้)")}
+          {t("ค่าใช้จ่ายต่อคน")}
           <input
             type="number"
             inputMode="numeric"
@@ -126,7 +126,7 @@ export function AnnounceCard() {
           value={cap}
           onChange={(e) => setCap(e.target.value)}
         />
-        <span className="mt-1 block text-xs font-normal text-zinc-500">{t("ลงชื่อเกินจำนวนจะเข้ารายชื่อสำรอง มีคนยกเลิกจะเลื่อนขึ้นให้เอง")}</span>
+        <span className="mt-1 block text-xs font-normal text-zinc-500">{t("เกินจำนวนจะเป็นสำรอง มีคนยกเลิกจะเลื่อนขึ้นเอง")}</span>
       </label>
       <textarea className={`${inputClass} min-h-20`} value={message} onChange={(e) => setMessage(e.target.value)} />
       <div className="flex gap-2">
@@ -151,8 +151,8 @@ export function AnnounceCard() {
         {editing && <Button onClick={() => setEditing(false)}>{t("ยกเลิก")}</Button>}
       </div>
       <p className="text-xs text-zinc-500">{title !== null
-          ? t("อีเว้นพิเศษจะขึ้นเป็นกรอบสีส้มแยกจากประกาศจัดก๊วน ผู้เล่นกด \"ลงชื่อไปร่วม\" ได้ ดูรายชื่อได้ที่ช่อง ลงชื่อ ด้านบน")
-          : t("เมื่อประกาศแล้ว ผู้เล่นเปิดแอพจะลงชื่อและกดเช็คอินเองได้เมื่อถึงสนาม")}
+          ? t("อีเว้นพิเศษขึ้นเป็นกรอบสี ผู้เล่นกด \"ลงชื่อไปร่วม\" ได้")
+          : t("ประกาศแล้ว ผู้เล่นลงชื่อและเช็คอินเองได้")}
       </p>
     </Card>
   );

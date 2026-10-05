@@ -83,7 +83,7 @@ export function NoticeComposer() {
     <Card className="space-y-3">
       <div>
         <h3 className="font-display font-semibold">{t("ข่าวประกาศทั่วไป")}</h3>
-        <p className="text-sm text-zinc-500">{t("เรื่องที่ไม่ใช่วันเล่น เช่น เปลี่ยนเวลาสนาม เก็บเงินค่าเสื้อ ขึ้นบนสุดของแอพและจอทีวีจนถึงวันที่กำหนด")}</p>
+        <p className="text-sm text-zinc-500">{t("ข่าวทั่วไป เช่น เก็บเงินค่าเสื้อ ขึ้นบนสุดของแอพและทีวี")}</p>
       </div>
       {open ? (
         <div className="space-y-2 rounded-2xl bg-zinc-50 p-3">
@@ -99,10 +99,10 @@ export function NoticeComposer() {
               </button>
             ))}
           </div>
-          <input className={inputClass} maxLength={80} placeholder={t("หัวข้อ เช่น เสาร์นี้สนามเปิด 6 โมงเย็น")} value={title} onChange={(e) => setTitle(e.target.value)} />
+          <input className={inputClass} maxLength={80} placeholder={t("หัวข้อข่าว")} value={title} onChange={(e) => setTitle(e.target.value)} />
           <textarea className={`${inputClass} min-h-16`} maxLength={500} placeholder={t("รายละเอียด (ไม่ใส่ก็ได้)")} value={body} onChange={(e) => setBody(e.target.value)} />
           <label className="block text-sm font-medium">
-            {t("แสดงถึงวันที่ (ไม่ใส่ = จนกว่าจะลบ)")}
+            {t("แสดงถึงวันที่ (ว่าง = จนกว่าจะลบ)")}
             <input type="date" min={today()} className={`${inputClass} mt-1`} value={until} onChange={(e) => setUntil(e.target.value)} />
           </label>
           <div className="grid grid-cols-2 gap-2">

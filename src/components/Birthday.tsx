@@ -26,7 +26,7 @@ export function BirthdayBanner({ tv }: { tv?: boolean }) {
       </div>
       <div className="min-w-0">
         <div className="font-display font-semibold">{t("สุขสันต์วันเกิด {name}", { name: names })}</div>
-        <div className={tv ? "text-base" : "text-sm"}>{t("ขอให้ตีแบดสนุก สุขภาพแข็งแรง ชนะทุกเกม")}</div>
+        <div className={tv ? "text-base" : "text-sm"}>{t("ตีสนุก แข็งแรง ชนะทุกเกม")}</div>
       </div>
     </div>
   );
@@ -54,7 +54,7 @@ export function BirthdayEdit({ player }: { player: Player }) {
   const sel = "rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm";
   return (
     <div className="space-y-1.5 text-sm font-medium">
-      {t("วันเกิด (ไม่ใส่ก็ได้ ใส่แล้ววันนั้นแอพจะอวยพรให้)")}
+      {t("วันเกิด (ไม่ใส่ก็ได้)")}
       <div className="flex gap-2">
         <select className={sel} aria-label={t("วัน")} value={day} onChange={(e) => save(month, Number(e.target.value))}>
           <option value={0}>{t("วัน")}</option>

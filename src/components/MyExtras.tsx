@@ -68,10 +68,10 @@ export function PartnerPrefs({ player }: { player: Player }) {
               {chips(player.prefer ?? [], "bg-emerald-50 text-emerald-700")}
             </div>
             <div className="space-y-1.5">
-              <div className="text-xs font-semibold text-red-600">{t("ไม่อยากคู่ด้วย (จะไม่จัดลงเกมเดียวกัน)")}</div>
+              <div className="text-xs font-semibold text-red-600">{t("ไม่อยากคู่ด้วย (ไม่จัดเกมเดียวกัน)")}</div>
               {chips(player.avoid ?? [], "bg-red-50 text-red-600")}
             </div>
-            <p className="text-xs text-zinc-500">{t("ระบบจัดคู่จะพยายามทำตาม แต่ถ้าคนรอไม่พอ อาจต้องจัดรวมกัน")}</p>
+            <p className="text-xs text-zinc-500">{t("ระบบพยายามจัดตามนี้ ถ้าคนน้อยอาจจัดรวมกัน")}</p>
             <Button
               className="w-full"
               onClick={() => {
@@ -85,7 +85,7 @@ export function PartnerPrefs({ player }: { player: Player }) {
           </>
         ) : (
           <>
-            <p className="text-xs text-zinc-500">{t("ค้นหาชื่อ แล้วกด อยากคู่ หรือ ไม่อยากคู่ (สูงสุดอย่างละ 5 คน) กดซ้ำเพื่อเอาออก")}</p>
+            <p className="text-xs text-zinc-500">{t("ค้นชื่อ แล้วกด อยากคู่ / ไม่อยากคู่ (อย่างละ 5 คน)")}</p>
             <SearchInput value={q} onChange={setQ} placeholder={t("พิมพ์ชื่อคนที่จะเลือก")} />
             <ul className="space-y-1.5">
               {others.map((p) => {
@@ -206,7 +206,7 @@ export function MonthCard({ player }: { player: Player }) {
           )}
         </div>
         <Button variant="accent" className="w-full" onClick={share}>
-          {copied ? t("คัดลอกแล้ว ไปวางในไลน์ได้เลย") : t("แชร์สรุป")}
+          {copied ? t("คัดลอกแล้ว วางในไลน์ได้เลย") : t("แชร์สรุป")}
         </Button>
       </Card>
     </>

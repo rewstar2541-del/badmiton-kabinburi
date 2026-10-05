@@ -114,7 +114,7 @@ function DemoBar() {
   const demo = auth.demo;
   return (
     <div className="flex items-center gap-2 bg-amber-300 px-3 py-1.5 text-xs text-ink">
-      <span className="min-w-0 flex-1 truncate font-semibold">{t("โหมดทดลอง ข้อมูลเก็บในเครื่องนี้เท่านั้น")}</span>
+      <span className="min-w-0 flex-1 truncate font-semibold">{t("โหมดทดลอง (ข้อมูลอยู่ในเครื่องนี้)")}</span>
       <div className="flex shrink-0 rounded-full bg-ink/10 p-0.5">
         {[false, true].map((admin) => (
           <button
@@ -275,7 +275,7 @@ function Shell() {
         {error && <div className="mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
         {auth.playerMode && auth.online && !readSession() && (
           <p className="mb-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            {t("โหมดผู้เล่นต้องผูก LINE กับชื่อของคุณก่อน: สลับเป็นแอดมิน แล้วไปที่ ตั้งค่า > ผูก LINE ของฉันกับชื่อในก๊วน")}
+            {t("ต้องผูก LINE กับชื่อก่อน: โหมดแอดมิน > ตั้งค่า > ผูก LINE ของฉัน")}
           </p>
         )}
         {!auth.isAdmin && (

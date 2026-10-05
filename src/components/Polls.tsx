@@ -93,7 +93,7 @@ export function PollAdmin({ compact }: { compact?: boolean }) {
     setDates(["", ""]);
   };
   const choose = (p: Poll, date: string) => {
-    if (!confirm(t("เลือก {day} แล้วเปิดประกาศให้ลงชื่อวันนั้น?", { day: dayLabel(date) }))) return;
+    if (!confirm(t("เลือก {day} แล้วเปิดลงชื่อ?", { day: dayLabel(date) }))) return;
     dispatch({ type: "closePoll", id: p.id, chosen: date });
     const day = state.days.find((d) => d.date === date);
     if (day?.announcement === undefined) dispatch({ type: "setAnnouncement", date, message: "ตีเพิ่มตามผลโหวต", title: null });
@@ -139,7 +139,7 @@ export function PollAdmin({ compact }: { compact?: boolean }) {
           </div>
         </div>
       )}
-      {polls.length === 0 && !creating && <p className="text-sm text-zinc-500">{t("ยังไม่มีโหวตที่เปิดอยู่ สร้างโหวตเพื่อถามว่าวันไหนคนว่างมากที่สุด")}</p>}
+      {polls.length === 0 && !creating && <p className="text-sm text-zinc-500">{t("ยังไม่มีโหวต สร้างเพื่อถามว่าวันไหนคนว่าง")}</p>}
       {polls.map((p) => {
         const voters = Object.keys(p.votes).filter((id) => p.votes[id].length).length;
         const best = Math.max(0, ...p.dates.map((d) => count(p, d)));

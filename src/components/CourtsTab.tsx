@@ -118,7 +118,7 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
         <button
           className="text-red-500 underline-offset-2 active:underline"
           onClick={() => {
-            if (confirm(t("ยกเลิกเกมนี้? ลูกที่ใช้จะไม่ถูกคิดเงิน"))) dispatch({ type: "cancelGame", date, gameId: game.id });
+            if (confirm(t("ยกเลิกเกมนี้? (ไม่คิดค่าลูก)"))) dispatch({ type: "cancelGame", date, gameId: game.id });
           }}
         >
           {t("ยกเลิกเกม")}
@@ -271,7 +271,7 @@ function PlayerCourts() {
   const [me, setMe] = useMe();
   const now = useNow();
   const player = state.players.find((p) => p.id === me);
-  if (!player) return <PickMe onPick={setMe} hint={t("เข้าสู่ระบบครั้งเดียว เครื่องนี้จะจำไว้ แล้วดูสนามและคิวของคุณได้")} />;
+  if (!player) return <PickMe onPick={setMe} hint={t("เข้าครั้งเดียว เครื่องจะจำไว้")} />;
   if (player.pending) return <PendingNotice name={player.name} onNotMe={() => setMe(null)} />;
 
   const byId = new Map(state.players.map((p) => [p.id, p]));

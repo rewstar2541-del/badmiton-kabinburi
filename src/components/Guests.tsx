@@ -67,7 +67,7 @@ export function BringGuest({ player, pin }: { player: Player; pin: string }) {
     <Card className="space-y-3">
       <div>
         <h2 className="font-display font-semibold">{t("พาเพื่อนมาเล่น")}</h2>
-        <p className="text-xs text-zinc-500">{t("เพื่อนเข้าคิวได้เลยไม่ต้องลงทะเบียน ค่าสนาม ค่าลูก ค่าน้ำของเพื่อนรวมในยอดของคุณ")}</p>
+        <p className="text-xs text-zinc-500">{t("เพื่อนเข้าคิวได้เลย ค่าใช้จ่ายรวมในบิลคุณ")}</p>
       </div>
       {guests.length > 0 && (
         <ul className="space-y-1.5">
@@ -120,12 +120,12 @@ export function AdminAddGuest({ onClose }: { onClose: () => void }) {
     <Card className="space-y-3">
       <div>
         <h3 className="font-display font-semibold">{t("เพิ่มแขก")}</h3>
-        <p className="text-xs text-zinc-500">{t("ค่าใช้จ่ายของแขกรวมในบิลของคนที่พามา")}</p>
+        <p className="text-xs text-zinc-500">{t("ค่าแขกรวมในบิลคนที่พามา")}</p>
       </div>
       <label className="block space-y-1.5 text-sm font-medium">
         {t("ใครพามา")}
         <select className={inputClass} value={host} onChange={(e) => setHost(e.target.value)}>
-          <option value="">{t("เลือกคนที่พามา (ต้องเช็คอินแล้ว)")}</option>
+          <option value="">{t("ใครพามา (ต้องเช็คอินแล้ว)")}</option>
           {hosts.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}

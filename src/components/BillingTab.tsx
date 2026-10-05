@@ -84,7 +84,7 @@ function FeeEditor({ player, bill }: { player: Player; bill: Bill }) {
   if (!open)
     return (
       <button className="w-full rounded-2xl border border-dashed border-zinc-300 px-3 py-2.5 text-sm font-medium text-zinc-600" onClick={() => setOpen(true)}>
-        {adjusted ? t("แก้ยอดค่าสนาม / ค่าลูกแล้ว (กดเพื่อดู)") : t("แก้ยอดค่าสนาม / ค่าลูก ของคนนี้วันนี้")}
+        {adjusted ? t("แก้ยอดแล้ว (กดดู)") : t("แก้ยอดคนนี้ (วันนี้)")}
       </button>
     );
   return (
@@ -115,7 +115,7 @@ function FeeEditor({ player, bill }: { player: Player; bill: Bill }) {
           <input className={inputClass} inputMode="numeric" value={shuttle} onChange={(e) => setShuttle(clean(e.target.value))} />
         </label>
       </div>
-      <p className="text-xs text-zinc-500">{t("ใช้เฉพาะบิลของคนนี้วันนี้ ราคาปกติแก้ที่แท็บตั้งค่า")}</p>
+      <p className="text-xs text-zinc-500">{t("เฉพาะบิลนี้ (ราคาปกติแก้ที่ตั้งค่า)")}</p>
       <div className="flex gap-2">
         <Button type="submit" variant="primary" className="flex-1">
           {t("บันทึก")}
@@ -225,7 +225,7 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
         </div>
       ) : host ? (
         <p className="rounded-3xl bg-amber-50 p-4 text-center text-sm text-amber-900">
-          {t("แขกของ {name} ยอดนี้รวมในบิลของ {name} จ่ายพร้อมกัน", { name: host.name })}
+          {t("แขกของ {name} (รวมในบิล {name})", { name: host.name })}
         </p>
       ) : (
         bill.total > 0 && (
@@ -234,7 +234,7 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
             <Button variant="accent" className="w-full" onClick={() => dispatch({ type: "markPaid", date, playerId: player.id })}>
               {t("บันทึกว่าจ่ายแล้ว {amount}", { amount: baht(bill.total) })}
             </Button>
-            <p className="text-center text-xs text-zinc-500">{t("ปกติผู้เล่นกดจ่ายเองในหน้ายอดของฉัน ปุ่มนี้ไว้ใช้เมื่อผู้เล่นจ่ายเงินสดกับแอดมิน")}</p>
+            <p className="text-center text-xs text-zinc-500">{t("ใช้เมื่อผู้เล่นจ่ายเงินสดกับแอดมิน")}</p>
           </div>
         )
       )}
@@ -403,12 +403,12 @@ function MonthlyView() {
       <Ledger key={month} month={month} />
       <ExportReport month={month} />
       <p className="px-1 text-xs text-zinc-500">
-        {t("คนที่จ่ายเดือนนี้แล้ว ระบบไม่คิดค่าสนามรายวันให้อัตโนมัติ ถ้าบันทึกผิด แตะเพื่อแก้ได้เลย")}
+        {t("จ่ายเดือนนี้แล้วไม่คิดค่าสนามรายวัน แตะเพื่อแก้")}
       </p>
 
       <SearchInput value={q} onChange={setQ} />
       {!q.trim() && hidden > 0 && (
-        <p className="px-1 text-xs text-zinc-500">{t("แสดงเฉพาะคนที่จ่ายแล้วหรือมาเล่นเดือนนี้ อีก {n} คนพิมพ์ชื่อค้นหา", { n: hidden })}</p>
+        <p className="px-1 text-xs text-zinc-500">{t("แสดงคนที่มาหรือจ่ายเดือนนี้ อีก {n} คนพิมพ์ค้นหา", { n: hidden })}</p>
       )}
       <ul className="space-y-2">
         {players.map((p) => {
@@ -431,7 +431,7 @@ function MonthlyView() {
                 <button
                   className="flex items-center gap-1 rounded-full bg-lime px-3 py-1.5 text-xs font-semibold text-ink"
                   onClick={() => {
-                    if (confirm(t("ยกเลิกรายเดือน {month} ของ {name}? ระบบจะกลับมาคิดค่าสนามรายวัน", { month: monthLabel(month), name: p.name })))
+                    if (confirm(t("ยกเลิกรายเดือน {month} ของ {name}? (กลับไปคิดรายวัน)", { month: monthLabel(month), name: p.name })))
                       dispatch({ type: "setMonthlyPaid", month, playerId: p.id, paid: false });
                   }}
                 >

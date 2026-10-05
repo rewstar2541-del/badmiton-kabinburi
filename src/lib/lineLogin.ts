@@ -69,7 +69,7 @@ export async function handleLineCallback(db: SupabaseClient): Promise<string | "
   const r = await lineLogin(db, code, redirectUri());
   // session ของ Supabase Auth ใช้ตัดสินว่าเป็นแอดมินไหม (ทุกคนเข้าด้วย LINE ทางเดียว)
   if (r.session) await db.auth.setSession(r.session);
-  if (r.claim) return "ส่งคำขอแล้ว รอแอดมินยืนยันว่าเป็นชื่อของคุณ";
+  if (r.claim) return "ส่งแล้ว รอแอดมินยืนยัน";
   if (r.pending) return "รอแอดมินอนุมัติก่อน";
   if (r.token && r.player_id) {
     writeSession({ playerId: r.player_id, token: r.token });

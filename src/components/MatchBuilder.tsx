@@ -95,11 +95,11 @@ export function MatchBuilder({ court, onClose }: { court: number; onClose: () =>
         ))}
       </div>
       <p className="text-xs text-zinc-500">
-        {t("แตะช่องที่ต้องการเปลี่ยน แล้วแตะชื่อจากคิว แตะช่องเดิมซ้ำเพื่อเอาออก ตัวเลขข้างทีมคือผลรวมระดับมือ")}
+        {t("แตะช่อง แล้วแตะชื่อจากคิว (แตะซ้ำ = เอาออก) ตัวเลขข้างทีม = ผลรวมระดับมือ")}
       </p>
 
       {clash && (
-        <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">{t("มีคนในเกมนี้ที่ขอไม่เจอกัน ลองเปลี่ยนคนดูก่อน")}</p>
+        <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">{t("มีคู่ที่ไม่อยากเจอกันในเกมนี้")}</p>
       )}
 
       <ul className="grid grid-cols-2 gap-1.5">

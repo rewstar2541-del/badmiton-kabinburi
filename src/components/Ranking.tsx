@@ -79,7 +79,7 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
       {!data ? (
         <p className="text-sm text-zinc-500">{failed ? t("โหลดข้อมูลไม่สำเร็จ ลองใหม่อีกครั้ง") : t("กำลังโหลด...")}</p>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-zinc-500">{t("เดือนนี้ยังไม่มีเกมที่บันทึกผลแพ้ชนะ")}</p>
+        <p className="text-sm text-zinc-500">{t("เดือนนี้ยังไม่มีผลแพ้ชนะ")}</p>
       ) : (
         <>
           {mine >= 0 && (
@@ -112,7 +112,7 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
         </>
       )}
       <p className="text-xs text-zinc-500">
-        {t("แต้มขึ้นลงตามผลแพ้ชนะ ชนะทีมที่แต้มสูงกว่าได้แต้มมากกว่า เรียงตามแต้มที่ได้ในเดือนนั้น นับเฉพาะเกมที่แอดมินกดบันทึกผล")}
+        {t("แต้มขึ้นลงตามผลแพ้ชนะ ชนะทีมเก่งกว่าได้แต้มมากกว่า")}
       </p>
       {onYear && (
         <button className="w-full rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white" onClick={onYear}>

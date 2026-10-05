@@ -18,7 +18,7 @@ import { t } from "@/lib/i18n";
 
 const NUMBER_FIELDS: { key: keyof Settings; label: string }[] = [
   { key: "courtCount", label: "จำนวนสนาม" },
-  { key: "courtFee", label: "ค่าสนามต่อครั้ง (คนที่ไม่ได้จ่ายรายเดือน)" },
+  { key: "courtFee", label: "ค่าสนามต่อครั้ง (คนไม่จ่ายรายเดือน)" },
   { key: "firstShuttleFee", label: "ค่าลูกแรกของวัน ต่อคน" },
   { key: "nextShuttleFee", label: "ค่าลูกถัดไป ต่อคน ต่อลูก" },
   { key: "monthlyFee", label: "ค่าสมาชิกรายเดือน" },
@@ -42,7 +42,7 @@ export function SettingsTab() {
   const importData = async (file: File) => {
     try {
       const data = normalizeBackup(JSON.parse(await file.text()));
-      if (confirm(t("นำเข้าข้อมูล {p} คน {d} วัน? ข้อมูลปัจจุบันจะถูกแทนที่", { p: data.players.length, d: data.days.length }))) {
+      if (confirm(t("นำเข้า {p} คน {d} วัน? (แทนที่ข้อมูลเดิม)", { p: data.players.length, d: data.days.length }))) {
         dispatch({ type: "replace", state: data });
         setS(data.settings);
       }
@@ -75,7 +75,7 @@ export function SettingsTab() {
           }}
         >
           <h2 className="font-display font-semibold">{t("ราคาและสนาม")}</h2>
-          <p className="text-xs text-zinc-500">{t("ราคาใหม่ใช้ตั้งแต่วันนี้ (ถ้าวันนี้มีคนจ่ายแล้ว เริ่มพรุ่งนี้) บิลวันก่อนๆ คงราคาเดิม ถ้าจะแก้ยอดของคนใดคนหนึ่ง ไปที่แท็บคิดเงิน แล้วกดที่ชื่อ")}</p>
+          <p className="text-xs text-zinc-500">{t("ราคาใหม่ใช้ตั้งแต่วันนี้ (มีคนจ่ายแล้วเริ่มพรุ่งนี้) บิลเก่าไม่เปลี่ยน แก้ยอดรายคนที่ คิดเงิน > กดชื่อ")}</p>
           {NUMBER_FIELDS.map((f) => (
             <label key={f.key} className="block text-sm">
               {t(f.label)}
@@ -91,7 +91,7 @@ export function SettingsTab() {
             </label>
           ))}
           <label className="block space-y-1.5 text-sm font-medium">
-            {t("เบอร์ PromptPay ของสนาม (เบอร์มือถือ หรือเลขบัตร 13 หลัก)")}
+            {t("PromptPay ของก๊วน (เบอร์มือถือ / เลขบัตร 13 หลัก)")}
             <input
               className={inputClass}
               inputMode="numeric"
@@ -116,7 +116,7 @@ export function SettingsTab() {
       <Card className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
           <h2 className="font-display font-semibold">{t("จอสนาม")}</h2>
-          <p className="text-xs text-zinc-500">{t("เปิดบนแท็บเล็ตหรือทีวีที่สนาม แสดงสนามและคิวถัดไป อัปเดตเอง")}</p>
+          <p className="text-xs text-zinc-500">{t("เปิดบนทีวีที่สนาม ดูสนามและคิว อัปเดตเอง")}</p>
         </div>
         <a
           href={`?tv${auth.demo ? "&demo" : ""}`}
@@ -132,8 +132,8 @@ export function SettingsTab() {
         <h2 className="font-display font-semibold">{t("สำรองข้อมูล")}</h2>
         <p className="text-sm text-zinc-500">
           {auth.online
-            ? t("ข้อมูลเก็บออนไลน์แล้ว ดาวน์โหลดไฟล์สำรองเก็บไว้เป็นครั้งคราวได้ นำเข้าไฟล์จะเพิ่มข้อมูลเข้าไป ไม่ลบของเดิม")
-            : t("ตอนนี้ข้อมูลเก็บในเครื่องนี้เครื่องเดียว ควรกดสำรองไว้หลังเลิกเล่นทุกครั้ง")}
+            ? t("ข้อมูลอยู่ออนไลน์แล้ว โหลดไฟล์สำรองเก็บไว้บ้าง นำเข้าไฟล์จะเพิ่มข้อมูล ไม่ลบของเดิม")
+            : t("ข้อมูลอยู่ในเครื่องนี้เท่านั้น สำรองไว้หลังเลิกเล่นทุกครั้ง")}
         </p>
         <div className="flex gap-2">
           <Button onClick={exportData} className="flex-1">
@@ -171,10 +171,10 @@ function ClearHistory() {
     <Card className="space-y-3 border border-red-200">
       <h2 className="font-display font-semibold text-red-600">{t("ล้างประวัติทั้งหมด")}</h2>
       <p className="text-sm text-zinc-500">
-        {t("ใช้ตอนทดลองใช้เสร็จ ก่อนเริ่มใช้จริง ลบ: การลงชื่อ เช็คอิน เกมและคิว ค่าลูก ค่าน้ำ การจ่ายเงิน ค่ารายเดือน สลิป แขก และประกาศจัดก๊วนถึงวันนี้")}
+        {t("ใช้หลังทดลองเสร็จ ลบ: ลงชื่อ เช็คอิน เกม ค่าลูก ค่าน้ำ การจ่าย รายเดือน สลิป แขก ประกาศถึงวันนี้")}
       </p>
       <p className="text-sm text-zinc-500">
-        {t("เก็บไว้: รายชื่อผู้เล่น (ระดับมือ รูป และ LINE ที่ผูกไว้) แอดมิน ราคาและตั้งค่า วันงดเล่น วันจัดก๊วนหลังวันนี้ และรูปกิจกรรม")}
+        {t("ไม่ลบ: ผู้เล่น แอดมิน ราคา ตั้งค่า วันงดเล่น วันจัดก๊วนข้างหน้า รูปกิจกรรม")}
       </p>
       {done ? (
         <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{t("ล้างประวัติแล้ว")}</p>
@@ -193,7 +193,7 @@ function ClearHistory() {
           }}
         >
           <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
-            {t("ลบแล้วกู้คืนไม่ได้ ควรกด \"ดาวน์โหลดไฟล์สำรอง\" ด้านบนเก็บไว้ก่อน พิมพ์คำว่า {word} เพื่อยืนยัน", { word: CONFIRM_WORD })}
+            {t("ลบแล้วกู้ไม่ได้ โหลดไฟล์สำรองก่อน พิมพ์ {word} เพื่อยืนยัน", { word: CONFIRM_WORD })}
           </p>
           <input className={inputClass} value={word} onChange={(e) => setWord(e.target.value)} placeholder={CONFIRM_WORD} aria-label={t("คำยืนยัน")} />
           <div className="flex gap-2">
