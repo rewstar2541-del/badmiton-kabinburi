@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Action, SelfAction, State } from "./state";
-import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Gender, type Level, type MonthlyPayments, type Plan, type Player, type Settings } from "./types";
+import { endOf, startOf, type ClearKind } from "./clear";
+import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Notice, type Gender, type Level, type MonthlyPayments, type Plan, type Player, type Settings } from "./types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -48,7 +49,7 @@ export interface Rows {
   }[];
   drinks: { id: string; date: string; player_id: string; amount: number; note: string }[];
   monthly: { month: string; player_id: string; paid_at: string; amount?: number | null }[];
-  announcements: { date: string; message: string; title?: string | null; fee?: number | null }[];
+  announcements: { date: string; message: string; title?: string | null; fee?: number | null; cap?: number | null }[];
   signups: { date: string; player_id: string; at: string }[];
   closed: { date: string; reason: string }[];
   slips: { id: string; date: string; player_id: string; amount: number; created_at: string }[];
@@ -57,6 +58,7 @@ export interface Rows {
   pairs?: { id: string; date: string; from_id: string; to_id: string; status: PairStatus; at: string }[];
   polls?: { id: string; question: string; dates: string[]; created_at: string; chosen: string | null; closed: boolean }[];
   votes?: { poll_id: string; player_id: string; dates: string[] }[];
+  notices?: { id: string; kind: Notice["kind"]; title: string; body: string | null; until: string | null; created_at: string }[];
   board?: { id: string; player_id: string; kind: BoardKind; title: string; detail: string | null; price: number | null; has_photo: boolean; created_at: string; closed_at: string | null }[];
   settings:
     | {
@@ -128,6 +130,7 @@ export function rowsToState(r: Rows): State {
     day(a.date).announcement = a.message;
     if (a.title) day(a.date).announcementTitle = a.title;
     if (a.fee != null) day(a.date).announcementFee = a.fee;
+    if (a.cap != null) day(a.date).announcementCap = a.cap;
   }
   for (const s of r.signups) (day(s.date).signups ??= []).push({ playerId: s.player_id, at: ms(s.at) });
   for (const x of r.slips)
@@ -189,6 +192,16 @@ export function rowsToState(r: Rows): State {
         votes: Object.fromEntries((r.votes ?? []).filter((v) => v.poll_id === p.id).map((v) => [v.player_id, v.dates])),
       }),
     ),
+    notices: (r.notices ?? []).map(
+      (n): Notice => ({
+        id: n.id,
+        kind: n.kind,
+        title: n.title,
+        ...(n.body ? { body: n.body } : {}),
+        ...(n.until ? { until: n.until } : {}),
+        at: Date.parse(n.created_at),
+      }),
+    ),
     board: (r.board ?? []).map(
       (b): BoardPost => ({
         id: b.id,
@@ -247,6 +260,7 @@ export const TABLE_OF: Record<string, TableKey> = {
   polls: "polls",
   poll_votes: "votes",
   board_posts: "board",
+  notices: "notices",
 };
 
 export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iterable<TableKey>, prev?: Rows): Promise<Rows> {
@@ -269,7 +283,7 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
       );
       return (r[0] as Rows["settings"]) ?? null;
     },
-    announcements: () => all(() => db.from("announcements").select("date,message,title,fee").gte("date", since).order("date")),
+    announcements: () => all(() => db.from("announcements").select("date,message,title,fee,cap").gte("date", since).order("date")),
     signups: () => all(() => db.from("signups").select("date,player_id,at").gte("date", since).order("date").order("player_id")),
     slips: async () => (isAdmin ? all(() => db.from("slips").select("id,date,player_id,amount,created_at").is("removed_at", null).order("id")) : []),
     closed: () => all(() => db.from("closed_days").select("date,reason").order("date")),
@@ -278,6 +292,10 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
     pairs: () => all(() => db.from("pair_requests").select("id,date,from_id,to_id,status,at").gte("date", sinceDate(1)).order("at")),
     polls: () => all(() => db.from("polls").select("id,question,dates,created_at,chosen,closed").gte("created_at", sinceDate(120)).order("created_at")),
     votes: () => all(() => db.from("poll_votes").select("poll_id,player_id,dates").gte("at", sinceDate(120)).order("poll_id")),
+    notices: () =>
+      all(() =>
+        db.from("notices").select("id,kind,title,body,until,created_at").or(`until.is.null,until.gte.${sinceDate(1)}`).order("created_at", { ascending: false }),
+      ),
     // รูปโหลดแยกตอนเปิดดู (boardPhoto) โพสต์ที่ปิดแล้วเก็บไว้ดู 7 วัน
     board: () =>
       all(() =>
@@ -459,6 +477,7 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
                 message: a.message,
                 ...(a.title === undefined ? {} : { title: a.title }),
                 ...(a.fee === undefined ? {} : { fee: a.fee }),
+                ...(a.cap === undefined ? {} : { cap: a.cap }),
               }),
           );
     case "signUp":
@@ -485,6 +504,19 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       return check(await db.from("polls").update({ closed: true, chosen: a.chosen ?? null }).eq("id", a.id));
     case "removePoll":
       return check(await db.from("polls").delete().eq("id", a.id));
+    case "addNotice":
+      return check(
+        await db.from("notices").insert({
+          id: a._id,
+          kind: a.notice.kind,
+          title: a.notice.title,
+          body: a.notice.body ?? null,
+          until: a.notice.until ?? null,
+          created_at: iso(a._at),
+        }),
+      );
+    case "removeNotice":
+      return check(await db.from("notices").delete().eq("id", a.id));
     case "closeBoardPost":
       return check(await db.from("board_posts").update({ closed_at: iso(a._at) }).eq("id", a.id));
     case "addBoardPost":
@@ -506,8 +538,41 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       check(await db.from("announcements").delete().lte("date", a.today));
       return check(await db.from("players").delete().not("guest_of", "is", null));
     }
+    case "clearData":
+      return clearRemote(db, a.kinds, a.from, a.to);
     case "replace":
       return importState(db, a.state);
+  }
+}
+
+/** ล้างข้อมูลตามประเภทและช่วงวันที่ (แอดมินลบได้ตามสิทธิ์ของแต่ละตาราง) */
+async function clearRemote(db: SupabaseClient, kinds: ClearKind[], from: string, to: string) {
+  const k = new Set(kinds);
+  const byDate = async (table: string) => check(await db.from(table).delete().gte("date", from).lte("date", to));
+  const byTime = async (table: string, col: string) => check(await db.from(table).delete().gte(col, startOf(from)).lte(col, endOf(to)));
+  // ลำดับ: ของที่อ้างอิงวันก่อน แล้วค่อยเช็คอิน
+  if (k.has("games")) await byDate("games");
+  if (k.has("signups")) {
+    await byDate("pair_requests");
+    await byDate("signups");
+    await byDate("announcements");
+  }
+  if (k.has("bills")) {
+    for (const t of ["drinks", "slips", "checkins", "day_prices"]) await byDate(t);
+  }
+  if (k.has("monthly")) check(await db.from("monthly_payments").delete().gte("month", from.slice(0, 7)).lte("month", to.slice(0, 7)));
+  if (k.has("expenses")) await byDate("expenses");
+  if (k.has("polls")) await byTime("polls", "created_at");
+  if (k.has("board")) await byTime("board_posts", "created_at");
+  if (k.has("closed")) await byDate("closed_days");
+  if (k.has("stock")) check(await db.from("shuttle_stock").delete().eq("id", 1));
+  if (k.has("photos")) {
+    const { data, error } = await db.from("event_photos").select("id,path").gte("date", from).lte("date", to);
+    if (error) throw new Error(error.message);
+    if (data?.length) {
+      await db.storage.from("event-photos").remove(data.map((p) => p.path as string));
+      check(await db.from("event_photos").delete().in("id", data.map((p) => p.id)));
+    }
   }
 }
 
@@ -695,12 +760,70 @@ export interface LineSettings {
   notify_signup: boolean;
   notify_turn: boolean;
   notify_turn_personal: boolean;
+  notify_announce: boolean;
+  monthly_limit: number;
+  turn_reserve: number;
+  oa_basic_id: string | null;
+  last_error: string | null;
+  last_error_at: string | null;
 }
 
 export async function getLineSettings(db: SupabaseClient): Promise<LineSettings | null> {
-  const { data, error } = await db.from("line_settings").select("group_id,notify_signup,notify_turn,notify_turn_personal").eq("id", 1).maybeSingle();
+  const { data, error } = await db
+    .from("line_settings")
+    .select("group_id,notify_signup,notify_turn,notify_turn_personal,notify_announce,monthly_limit,turn_reserve,oa_basic_id,last_error,last_error_at")
+    .eq("id", 1)
+    .maybeSingle();
   if (error) throw new Error(error.message);
   return data as LineSettings | null;
+}
+
+export interface LineStatus {
+  token: boolean;
+  secret: boolean;
+  tokenOk: boolean;
+  name: string | null;
+  basicId: string | null;
+  lineLimit: number | null;
+  lineUsed: number | null;
+  usage: { month: string; sent: number; turn: number; announce: number; skipped: number };
+  error?: string;
+}
+
+/** สถานะ LINE OA: ใส่ token แล้วหรือยัง ชื่อบัญชี และโควตาเดือนนี้ (แอดมิน) */
+export async function lineStatus(db: SupabaseClient): Promise<LineStatus> {
+  const { data, error } = await db.functions.invoke("line", { body: { action: "status" } });
+  if (error) throw new Error(error.message);
+  return data as LineStatus;
+}
+
+export interface MyLine {
+  linked: boolean;
+  turn: boolean;
+  announce: boolean;
+  oa: string | null;
+  turn_on: boolean;
+  announce_on: boolean;
+  error?: string;
+}
+
+export async function myLine(db: SupabaseClient, playerId: string, token: string): Promise<MyLine> {
+  const { data, error } = await db.rpc("my_line", { p_player: playerId, p_pin: token });
+  if (error) throw new Error(error.message);
+  return data as MyLine;
+}
+
+export async function setLinePrefs(db: SupabaseClient, playerId: string, token: string, turn: boolean, announce: boolean): Promise<string | null> {
+  const { data, error } = await db.rpc("set_line_prefs", { p_player: playerId, p_pin: token, p_turn: turn, p_announce: announce });
+  if (error) return error.message;
+  return (data as string | null) ?? null;
+}
+
+/** ผู้เล่นเพิ่มเพื่อน LINE ของก๊วนแล้วหรือยัง (null = เช็คไม่ได้) */
+export async function lineFriend(db: SupabaseClient, playerId: string, token: string): Promise<boolean | null> {
+  const { data, error } = await db.functions.invoke("line", { body: { action: "friend", player: playerId, token } });
+  if (error) return null;
+  return (data as { friend?: boolean | null })?.friend ?? null;
 }
 
 export async function updateLineSettings(db: SupabaseClient, s: Partial<LineSettings>) {
@@ -714,7 +837,7 @@ export async function newLineLinkCode(db: SupabaseClient): Promise<string> {
   return data as string;
 }
 
-/** ส่งข้อความทดสอบเข้ากลุ่ม LINE คืนข้อความผิดพลาด หรือ null */
+/** ส่งข้อความทดสอบหาแอดมินที่กด (หรือเข้ากลุ่ม) คืนข้อความผิดพลาด หรือ null */
 export async function testLine(db: SupabaseClient): Promise<string | null> {
   const { data, error } = await db.functions.invoke("line", { body: { action: "test" } });
   if (error) return error.message;

@@ -1,6 +1,6 @@
 import { dayAmount } from "./billing";
 import { monthlyAmount, type State } from "./state";
-import { monthOf, type Expense, type ExpenseCategory } from "./types";
+import { EXPENSE_CATEGORIES, monthOf, type Expense, type ExpenseCategory } from "./types";
 
 export interface DayRow {
   date: string;
@@ -99,7 +99,7 @@ export function monthReport(state: State, month: string): MonthReport {
   const sum = (k: keyof DayRow) => days.reduce((s, r) => s + (r[k] as number), 0);
   const monthlyTotal = monthlyFees.reduce((s, m) => s + m.amount, 0);
   const expenses = (state.expenses ?? []).filter((e) => monthOf(e.date) === month).sort((a, b) => a.date.localeCompare(b.date));
-  const expenseBy: Record<ExpenseCategory, number> = { court: 0, shuttle: 0, other: 0 };
+  const expenseBy = Object.fromEntries(EXPENSE_CATEGORIES.map((c) => [c.value, 0])) as Record<ExpenseCategory, number>;
   for (const e of expenses) expenseBy[e.category] += e.amount;
   const expenseTotal = expenses.reduce((s, e) => s + e.amount, 0);
   const income = sum("received") + monthlyTotal;

@@ -38,6 +38,6 @@ describe("monthReport", () => {
       ["เอ", 95, false],
     ]);
     expect(r.totals).toMatchObject({ monthlyFees: 150, income: 95 + 150, expenses: 230, profit: 245 - 230 });
-    expect(r.expenseBy).toEqual({ court: 200, shuttle: 30, other: 0 });
+    expect(r.expenseBy).toEqual({ court: 200, shuttle: 30, maintenance: 0, cleaning: 0, drinks: 0, equipment: 0, other: 0 });
   });
 });

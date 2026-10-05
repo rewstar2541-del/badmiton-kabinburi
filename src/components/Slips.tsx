@@ -28,7 +28,7 @@ export function SlipUpload({ playerId, amount }: { playerId: string; amount: num
         <div className="flex items-center gap-2 rounded-2xl bg-sky-50 px-3 py-2.5 text-sm text-sky-800">
           <Icon.Check width={16} height={16} className="shrink-0" />
           <span>
-            {t("ส่งสลิปแล้ว {n} รูป (ล่าสุด {time}) รอแอดมินตรวจ", { n: mine.length, time: time(mine[mine.length - 1].at) })}
+            {t("ส่งสลิปแล้ว {n} รูป ({time}) รอตรวจ", { n: mine.length, time: time(mine[mine.length - 1].at) })}
           </span>
         </div>
       )}
@@ -160,7 +160,7 @@ export function SlipReview({ playerId, month }: { playerId: string; month?: stri
         </div>
       ))}
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
-      <p className="text-xs text-zinc-500">{t("ตรวจยอดเข้าบัญชีให้ตรงกับสลิป ถ้าไม่ตรงกดยกเลิกสถานะจ่ายแล้ว")}</p>
+      <p className="text-xs text-zinc-500">{t("เช็คยอดให้ตรงสลิป ไม่ตรงกดยกเลิกจ่าย")}</p>
     </div>
   );
 }

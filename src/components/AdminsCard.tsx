@@ -72,7 +72,7 @@ export function AdminsCard() {
       <Card className="space-y-3">
         <ul className="space-y-1">
           {admins.map((a) => {
-            const name = nameOf.get(a) ?? t("บัญชี LINE ที่ยังไม่ได้สมัครเป็นผู้เล่น");
+            const name = nameOf.get(a) ?? t("LINE ที่ยังไม่ได้สมัคร");
             return (
               <li key={a} className="flex items-center gap-2 rounded-2xl px-1 py-1.5">
                 <span className="min-w-0 flex-1 truncate text-sm">{name}</span>
@@ -96,7 +96,7 @@ export function AdminsCard() {
           })}
         </ul>
         {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
-        <p className="text-xs text-zinc-500">{t("ตั้งแอดมินเพิ่มได้ที่หน้าผู้เล่น กด \"ตั้งเป็นแอดมิน\" ที่ชื่อคนนั้น (ต้องเคยเข้าด้วย LINE แล้ว) ลบตัวเองไม่ได้")}</p>
+        <p className="text-xs text-zinc-500">{t("เพิ่มแอดมิน: หน้าผู้เล่น > กดชื่อ > \"ตั้งเป็นแอดมิน\" (ต้องเคยเข้าด้วย LINE)")}</p>
       </Card>
     </div>
   );

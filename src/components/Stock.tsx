@@ -49,17 +49,17 @@ export function StockCard() {
             <span className="ml-2 text-sm font-medium text-zinc-500">({tubes(info.left)})</span>
           </div>
           <div className="mt-1 text-xs text-zinc-500">
-            {t("ซื้อเพิ่ม {a} · ใช้ไป {b} ตั้งแต่นับครั้งล่าสุด", { a: info.bought, b: info.used })}
+            {t("ซื้อเพิ่ม {a} · ใช้ไป {b}", { a: info.bought, b: info.used })}
           </div>
           {low && <p className="mt-1 text-sm font-semibold">{t("ลูกใกล้หมดแล้ว ซื้อเพิ่มด้วย")}</p>}
         </div>
       ) : (
-        <p className="text-sm text-zinc-500">{t("ยังไม่ได้เริ่มนับ กด \"นับลูกจริง\" แล้วใส่จำนวนลูกที่มีตอนนี้ หลังจากนั้นระบบหักตามลูกที่ใช้ในเกม และบวกเมื่อลงรายจ่ายซื้อลูกแบด")}</p>
+        <p className="text-sm text-zinc-500">{t("ยังไม่เริ่มนับ กด \"นับลูกจริง\" แล้วใส่จำนวนที่มี ระบบจะหักและบวกให้เอง")}</p>
       )}
       {mode ? (
         <div className="space-y-2 rounded-2xl bg-zinc-50 p-3">
           <label className="block text-sm font-medium">
-            {mode === "low" ? t("เตือนเมื่อเหลือไม่ถึงกี่ลูก") : t("ตอนนี้มีลูกทั้งหมดกี่ลูก (นับจริง)")}
+            {mode === "low" ? t("เตือนเมื่อเหลือไม่ถึงกี่ลูก") : t("มีลูกกี่ลูก (นับจริง)")}
             <input type="number" inputMode="numeric" min={0} className={`${inputClass} mt-1`} value={value} onChange={(e) => setValue(e.target.value)} autoFocus />
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -77,7 +77,7 @@ export function StockCard() {
           </Button>
         </div>
       )}
-      <p className="text-xs text-zinc-500">{t("ซื้อลูกเพิ่ม: ลงรายจ่าย \"ซื้อลูกแบด\" ใน คิดเงิน > รายเดือน แล้วใส่จำนวนหลอด สต็อกจะเพิ่มให้เอง")}</p>
+      <p className="text-xs text-zinc-500">{t("ซื้อลูกเพิ่ม: คิดเงิน > รายเดือน > ลงรายจ่าย \"ค่าลูกแบด\" ใส่จำนวนหลอด")}</p>
     </Card>
   );
 }

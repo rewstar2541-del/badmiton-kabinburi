@@ -10,12 +10,12 @@ import { Avatar, Button, Card, SearchInput, SectionTitle } from "./ui";
 import { t } from "@/lib/i18n";
 
 /** บัญชีของแอดมิน (เข้าด้วย LINE) ในหน้าตั้งค่า: ออกจากระบบ และรายชื่อแอดมิน */
-export function LoginTab() {
+export function LoginTab({ bare }: { bare?: boolean } = {}) {
   const { auth } = useStore();
   if (!auth.email) return null;
   return (
     <div className="space-y-4">
-      <SectionTitle>{t("บัญชีแอดมิน")}</SectionTitle>
+      {!bare && <SectionTitle>{t("บัญชีแอดมิน")}</SectionTitle>}
       <Card className="space-y-3 text-center">
         <p className="text-sm">{t("เข้าสู่ระบบด้วย LINE แล้ว")}</p>
         <Button className="w-full" onClick={() => auth.signOut()}>
@@ -79,7 +79,7 @@ function LinkMyLine() {
       <div>
         <h2 className="font-display font-semibold">{t("ผูก LINE ของฉันกับชื่อในก๊วน")}</h2>
         <p className="text-xs text-zinc-500">
-          {t("พิมพ์ชื่อเล่นของคุณแล้วกดเลือก ถ้ายังไม่มีชื่อ ไปเพิ่มชื่อตัวเองที่แท็บผู้เล่นก่อน")}
+          {t("พิมพ์ชื่อเล่นแล้วกดเลือก (ไม่มีชื่อ เพิ่มที่หน้าผู้เล่น)")}
         </p>
       </div>
       <SearchInput value={q} onChange={setQ} placeholder={t("พิมพ์ชื่อเล่นของคุณ")} />

@@ -50,6 +50,17 @@ export interface Player {
   birthday?: string;
 }
 
+/** ข่าวประกาศทั่วไป (ไม่ผูกกับวันเล่น) แสดงบนสุดจนถึงวันที่กำหนด */
+export interface Notice {
+  id: string;
+  kind: "news" | "urgent";
+  title: string;
+  body?: string;
+  /** แสดงถึงวันนี้ (รวม) ไม่มี = จนกว่าจะลบ */
+  until?: string;
+  at: number;
+}
+
 export type BoardKind = "lost" | "found" | "sell";
 /** บอร์ดของหาย / ของเจอ / ฝากขาย (รูปโหลดแยกทีหลัง) */
 export interface BoardPost {
@@ -151,6 +162,8 @@ export interface Day {
   announcementTitle?: string;
   /** ค่าใช้จ่ายต่อคนของอีเว้นพิเศษ (แจ้งให้รู้ล่วงหน้า) */
   announcementFee?: number;
+  /** รับกี่คน (ลงชื่อเกินเข้ารายชื่อสำรอง) ไม่มี = ไม่จำกัด */
+  announcementCap?: number;
   /** คนที่ลงชื่อว่าจะมา */
   signups?: SignUp[];
   /** คำขอจับคู่เกมถัดไปของวันนั้น */
@@ -205,10 +218,14 @@ export interface SignUp {
   at: number;
 }
 
-export type ExpenseCategory = "court" | "shuttle" | "other";
+export type ExpenseCategory = "court" | "shuttle" | "maintenance" | "cleaning" | "drinks" | "equipment" | "other";
 export const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string }[] = [
   { value: "court", label: "ค่าเช่าสนาม" },
-  { value: "shuttle", label: "ซื้อลูกแบด" },
+  { value: "shuttle", label: "ค่าลูกแบด" },
+  { value: "maintenance", label: "ค่าบำรุงรักษา" },
+  { value: "cleaning", label: "ค่าทำความสะอาด" },
+  { value: "drinks", label: "ค่าเครื่องดื่ม" },
+  { value: "equipment", label: "ค่าอุปกรณ์สนาม" },
   { value: "other", label: "อื่นๆ" },
 ];
 

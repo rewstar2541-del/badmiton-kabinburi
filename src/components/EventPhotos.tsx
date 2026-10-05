@@ -30,7 +30,7 @@ async function listPhotos(): Promise<Photo[]> {
   return (data as Omit<Photo, "url">[]).map((p) => ({ ...p, url: supabase!.storage.from(BUCKET).getPublicUrl(p.path).data.publicUrl }));
 }
 
-export function EventPhotos() {
+export function EventPhotos({ bare }: { bare?: boolean } = {}) {
   const { auth } = useStore();
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [open, setOpen] = useState<Photo | null>(null);
@@ -106,7 +106,7 @@ export function EventPhotos() {
 
   return (
     <div className="space-y-3">
-      <SectionTitle>{t("รูปกิจกรรม")}</SectionTitle>
+      {!bare && <SectionTitle>{t("รูปกิจกรรม")}</SectionTitle>}
       {auth.isAdmin && (
         <Card className="space-y-2">
           <input
@@ -130,7 +130,7 @@ export function EventPhotos() {
           <Button variant="primary" className="flex w-full items-center justify-center gap-1.5" disabled={busy} onClick={() => fileRef.current?.click()}>
             <Icon.Camera width={18} height={18} /> {busy ? t("กำลังอัปโหลด...") : t("เพิ่มรูปกิจกรรม")}
           </Button>
-          <p className="text-xs text-zinc-500">{t("เลือกได้ครั้งละหลายรูป (สูงสุด 10) ระบบย่อรูปให้อัตโนมัติ")}</p>
+          <p className="text-xs text-zinc-500">{t("เลือกได้ครั้งละ 10 รูป")}</p>
         </Card>
       )}
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}

@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import { isDemo, demoState } from "./demo";
 import { randomToken, readSession, remember, restoreRemembered, writeSession } from "./session";
 import { clearLineTicket, handleLineCallback, readLineTicket } from "./lineLogin";
+import { canSelfCheckIn } from "./social";
 import { boardPhoto, loadHistory, socialRpc, type SocialRequest, addGuest, claimPlayer, signUpDay, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, removeMySlip, setMyPlan, updateMyProfile, type ProfileInput, supabase } from "./remote";
 import { EMPTY_STATE, guestCheck, prepare, reducer, today, type Intent, type SelfAction, type State } from "./state";
 import { DEFAULT_SETTINGS, monthOf, type Level, type Plan, type Player } from "./types";
@@ -117,6 +118,10 @@ function LocalProvider({ children }: { children: ReactNode }) {
     async (action: SelfAction, playerId: string, _pin?: string, on?: string) => {
       if (state.players.find((p) => p.id === playerId)?.pending) return "รอแอดมินอนุมัติก่อน";
       const date = on ?? today();
+      if (action === "checkIn") {
+        const day = state.days.find((d) => d.date === date);
+        if (day && !canSelfCheckIn(day, playerId)) return "วันนี้เต็มแล้ว คุณอยู่ในรายชื่อสำรอง ให้แอดมินเช็คอินให้";
+      }
       if (action === "rest" || action === "unrest") dispatch({ type: "setResting", date, playerId, resting: action === "rest" });
       else if (action === "pay") dispatch({ type: "markPaid", date, playerId });
       else if (action === "payMonth") dispatch({ type: "setMonthlyPaid", month: monthOf(date), playerId, paid: true });

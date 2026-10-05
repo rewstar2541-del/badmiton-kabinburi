@@ -39,12 +39,12 @@ export function PairCard() {
     <Card className="space-y-3">
       <div>
         <h3 className="font-display font-semibold">{t("ขอคู่กับเพื่อนเกมถัดไป")}</h3>
-        <p className="text-sm text-zinc-500">{t("เพื่อนกดตอบรับแล้ว ระบบจะจัดให้อยู่ทีมเดียวกันในเกมถัดไป ใช้ได้เฉพาะวันนี้")}</p>
+        <p className="text-sm text-zinc-500">{t("เพื่อนตอบรับแล้วจะได้ลงทีมเดียวกันเกมถัดไป")}</p>
       </div>
       {r ? (
         <div className="space-y-2 rounded-2xl bg-sky-50 p-3">
           {r.status === "accepted" ? (
-            <p className="text-sm font-medium text-sky-800">{t("คุณกับ {name} จะได้ลงทีมเดียวกันเกมถัดไป", { name: name(r.from === me ? r.to : r.from) })}</p>
+            <p className="text-sm font-medium text-sky-800">{t("คุณกับ {name} ได้ลงทีมเดียวกันเกมหน้า", { name: name(r.from === me ? r.to : r.from) })}</p>
           ) : r.from === me ? (
             <p className="text-sm font-medium text-sky-800">{t("รอ {name} ตอบรับ", { name: name(r.to) })}</p>
           ) : (
@@ -129,7 +129,7 @@ export function PairRequests() {
           </li>
         ))}
       </ul>
-      <p className="text-xs text-zinc-500">{t("ปุ่มจัดคู่ลงสนามจะให้สองคนนี้อยู่ทีมเดียวกัน ได้เล่นคู่กันหนึ่งเกมแล้วคำขอจะหมดไปเอง")}</p>
+      <p className="text-xs text-zinc-500">{t("จัดคู่แล้วสองคนนี้จะอยู่ทีมเดียวกัน 1 เกม")}</p>
     </Card>
   );
 }

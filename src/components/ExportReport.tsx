@@ -105,7 +105,7 @@ export function ExportReport({ month }: { month: string }) {
   return (
     <Button variant="secondary" className="flex w-full items-center justify-center gap-1.5" disabled={busy} onClick={download}>
       <Icon.Wallet width={18} height={18} />
-      {busy ? t("กำลังสร้างไฟล์...") : t("ดาวน์โหลดรายงาน Excel เดือนนี้")}
+      {busy ? t("กำลังสร้างไฟล์...") : t("โหลด Excel เดือนนี้")}
     </Button>
   );
 }

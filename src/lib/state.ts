@@ -1,5 +1,6 @@
+import { clearState, type ClearKind } from "./clear";
 import { guestsOf, markPaid } from "./billing";
-import { DEFAULT_SETTINGS, type Day, type DayPrices, type Expense, type Game, type PairStatus, type Poll, type ShuttleStock, type BoardPost, type Level, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
+import { DEFAULT_SETTINGS, type Day, type DayPrices, type Expense, type Game, type PairStatus, type Poll, type ShuttleStock, type BoardPost, type Notice, type Level, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
 
 export interface State {
   players: Player[];
@@ -18,6 +19,8 @@ export interface State {
   polls?: Poll[];
   /** บอร์ดของหาย / ฝากขาย (เฉพาะที่ยังเปิดอยู่และเพิ่งปิด) */
   board?: BoardPost[];
+  /** ข่าวประกาศทั่วไป */
+  notices?: Notice[];
 }
 
 /** ค่ารายเดือนที่คนนี้จ่ายในเดือนนั้น ใช้ราคาตอนจ่าย ไม่ใช่ราคาปัจจุบัน */
@@ -54,7 +57,7 @@ export type Action =
   /** freeze: เก็บราคาเดิมไว้กับวันก่อนๆ ตอนเปลี่ยนราคา บิลเก่าจะได้ไม่เปลี่ยนตาม */
   | { type: "updateSettings"; settings: Settings; freeze?: { dates: string[]; prices: DayPrices } }
   /** title: undefined = คงหัวข้อเดิม, null = จัดก๊วน (ค่าเริ่มต้น) */
-  | { type: "setAnnouncement"; date: string; message: string | null; title?: string | null; fee?: number | null }
+  | { type: "setAnnouncement"; date: string; message: string | null; title?: string | null; fee?: number | null; cap?: number | null }
   | { type: "setClosed"; date: string; reason: string | null }
   | { type: "signUp"; date: string; playerId: string; _at: number }
   | { type: "cancelSignUp"; date: string; playerId: string }
@@ -62,6 +65,8 @@ export type Action =
   | { type: "addSlip"; date: string; playerId: string; amount: number; _id: string; _at: number }
   /** ล้างประวัติทั้งหมด (ช่วงทดลองใช้) เก็บผู้เล่น ตั้งค่า วันงดเล่น และวันจัดก๊วนหลังวันนี้ไว้ */
   | { type: "clearHistory"; today: string }
+  /** ล้างเฉพาะประเภทที่เลือก ในช่วงวันที่ */
+  | { type: "clearData"; kinds: ClearKind[]; from: string; to: string }
   | { type: "addExpense"; expense: Omit<Expense, "id" | "at">; _id: string; _at: number }
   /** นับลูกจริงแล้ว ตั้งยอดใหม่ ณ ตอนนี้ / เปลี่ยนจุดเตือน */
   | { type: "setStock"; base?: number; low?: number; _at: number }
@@ -75,6 +80,8 @@ export type Action =
   | { type: "requestPair"; date: string; from: string; to: string; _id: string; _at: number }
   | { type: "setPairStatus"; date: string; id: string; status: PairStatus; _at: number }
   | { type: "removeExpense"; id: string }
+  | { type: "addNotice"; notice: Omit<Notice, "id" | "at">; _id: string; _at: number }
+  | { type: "removeNotice"; id: string }
   | { type: "addBoardPost"; post: Omit<BoardPost, "id" | "at" | "hasPhoto">; _id: string; _at: number }
   | { type: "closeBoardPost"; id: string; _at: number }
   | { type: "replace"; state: State };
@@ -103,6 +110,7 @@ export function normalizeBackup(raw: unknown): State {
     stock: data.stock,
     polls: Array.isArray(data.polls) ? data.polls : [],
     board: Array.isArray(data.board) ? data.board : [],
+    notices: Array.isArray(data.notices) ? data.notices : [],
   };
 }
 
@@ -277,6 +285,7 @@ export function reducer(state: State, a: Action): State {
         announcement: a.message ?? undefined,
         announcementTitle: a.message === null ? undefined : a.title === undefined ? d.announcementTitle : (a.title ?? undefined),
         announcementFee: a.message === null ? undefined : a.fee === undefined ? d.announcementFee : (a.fee ?? undefined),
+        announcementCap: a.message === null ? undefined : a.cap === undefined ? d.announcementCap : (a.cap ?? undefined),
       }));
     case "signUp":
       return withDay(state, a.date, (d) =>
@@ -303,6 +312,12 @@ export function reducer(state: State, a: Action): State {
           .filter((d) => d.date > a.today && d.announcement !== undefined)
           .map((d) => ({ date: d.date, checkIns: [], games: [], drinks: [], announcement: d.announcement })),
       };
+    case "addNotice":
+      return { ...state, notices: [{ ...a.notice, id: a._id, at: a._at }, ...(state.notices ?? [])] };
+    case "removeNotice":
+      return { ...state, notices: (state.notices ?? []).filter((n) => n.id !== a.id) };
+    case "clearData":
+      return clearState(state, a.kinds, a.from, a.to);
     case "addExpense":
       return { ...state, expenses: [...(state.expenses ?? []), { ...a.expense, id: a._id, at: a._at }] };
     case "setStock": {

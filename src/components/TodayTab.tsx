@@ -1,47 +1,50 @@
 "use client";
 
+import { eventStyle } from "@/lib/eventKinds";
+import { NoticeBanners } from "./Notices";
+import { canSelfCheckIn, signupQueue, waitingPosition } from "@/lib/social";
 import { BoardCard } from "./Board";
 import { BirthdayBanner } from "./Birthday";
 import { PollVote } from "./Polls";
 import { PairCard } from "./Pairs";
 import { useState } from "react";
-import { useStore, useToday } from "@/lib/store";
+import { today, useStore, useToday } from "@/lib/store";
 import { presence } from "@/lib/matchmaking";
 import { BringGuest } from "./Guests";
 import type { SelfAction } from "@/lib/state";
 import { ClosedBanner, ClubCalendar } from "./Calendar";
 import { PendingNotice, PickMe, savedPin, useMe } from "./PickMe";
 import { Avatar, Button, Card, Icon, LevelBadge, baht } from "./ui";
-import { t } from "@/lib/i18n";
+import { locale, t } from "@/lib/i18n";
 import { RestButton } from "./RestButton";
 import { Auto } from "@/lib/autoTranslate";
 import { EventPhotos } from "./EventPhotos";
 import { MonthlyReminder, PlanChoice, goToTab } from "./Membership";
 
-/** ประกาศจัดก๊วนวันนี้ (ใช้ทั้งหน้าผู้เล่นและแอดมิน) */
-export function AnnouncementBanner({ message, title, fee }: { message: string; title?: string; fee?: number }) {
-  // มีหัวข้อ = อีเว้นพิเศษ (กินเลี้ยง แข่ง ฯลฯ) ใช้สีต่างจากประกาศจัดก๊วนปกติ
-  if (title)
-    return (
-      <div className="flex gap-3 rounded-3xl border-2 border-amber-300 bg-amber-50 p-4 text-amber-950">
-        <Icon.Megaphone className="shrink-0 text-amber-600" />
-        <div className="min-w-0">
-          <span className="inline-block rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-bold text-ink">{t("อีเว้นพิเศษ")}</span>
-          <div className="mt-1 font-display text-lg font-semibold">
-            <Auto text={title} />
+/** ประกาศวันนี้ (ใช้ทั้งหน้าผู้เล่นและแอดมิน) สีและไอคอนตามประเภท จัดก๊วน / อีเว้นพิเศษแต่ละแบบ */
+export function AnnouncementBanner({ message, title, fee, date }: { message: string; title?: string; fee?: number; date?: string }) {
+  const st = eventStyle(title);
+  const when = new Date((date ?? today()) + "T00:00:00").toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" });
+  return (
+    <div className={`overflow-hidden rounded-3xl p-4 shadow-sm ${st.box}`}>
+      <div className="flex items-start gap-3">
+        <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-white/70 text-3xl shadow-sm" aria-hidden>
+          {st.emoji}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold tracking-wide ${st.badge}`}>{title ? t("อีเว้นพิเศษ") : t("ประกาศ")}</span>
+            <span className="text-xs font-medium opacity-70">{when}</span>
           </div>
-          {!!fee && <div className="text-sm font-semibold">{t("ค่าใช้จ่ายคนละ {amount}", { amount: baht(fee) })}</div>}
-          {message && <p className="mt-0.5 text-sm whitespace-pre-line"><Auto text={message} /></p>}
+          <div className="mt-1 font-display text-xl leading-tight font-semibold">{title ? <Auto text={title} /> : t("วันนี้มีจัดก๊วน")}</div>
+          {!!fee && <div className="mt-1 inline-block rounded-full bg-white/70 px-2.5 py-0.5 text-sm font-semibold">{t("ค่าใช้จ่ายคนละ {amount}", { amount: baht(fee) })}</div>}
         </div>
       </div>
-    );
-  return (
-    <div className="flex gap-3 rounded-3xl bg-lime p-4 text-ink">
-      <Icon.Megaphone className="shrink-0" />
-      <div className="min-w-0">
-        <div className="font-display font-semibold">{t("วันนี้มีจัดก๊วน")}</div>
-        {message && <p className="mt-0.5 text-sm whitespace-pre-line"><Auto text={message} /></p>}
-      </div>
+      {message && (
+        <p className="mt-3 rounded-2xl bg-white/60 px-3 py-2 text-[15px] leading-snug font-medium whitespace-pre-line">
+          <Auto text={message} />
+        </p>
+      )}
     </div>
   );
 }
@@ -63,15 +66,17 @@ export function TodayTab() {
   if (!player)
     return (
       <div className="space-y-4">
+        <NoticeBanners />
         <BirthdayBanner />
         {announced && <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />}
-        <PickMe onPick={setMe} hint={t("เข้าสู่ระบบครั้งเดียว เครื่องนี้จะจำไว้ แล้วลงชื่อ เช็คอิน และดูยอดของตัวเองได้")} />
+        <PickMe onPick={setMe} hint={t("เข้าครั้งเดียว เครื่องจะจำไว้")} />
       </div>
     );
 
   if (player.pending)
     return (
       <div className="space-y-4">
+        <NoticeBanners />
         <BirthdayBanner />
         {announced && <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />}
         <PendingNotice name={player.name} onNotMe={() => setMe(null)} />
@@ -81,6 +86,7 @@ export function TodayTab() {
   if (!announced && !hereToday)
     return (
       <div className="space-y-4">
+        <NoticeBanners />
         <BirthdayBanner />
         <PlanChoice player={player} />
         <MonthlyReminder player={player} />
@@ -90,7 +96,7 @@ export function TodayTab() {
           <Card className="space-y-1 py-10 text-center">
             <Icon.Megaphone className="mx-auto text-zinc-300" width={32} height={32} />
             <p className="font-semibold">{t("วันนี้ยังไม่มีประกาศจัดก๊วน")}</p>
-            <p className="text-sm text-zinc-500">{t("เมื่อแอดมินประกาศ จะลงชื่อและเช็คอินได้ที่หน้านี้")}</p>
+            <p className="text-sm text-zinc-500">{t("แอดมินประกาศแล้ว จะลงชื่อได้ที่นี่")}</p>
           </Card>
         )}
         <PollVote />
@@ -108,8 +114,8 @@ export function TodayTab() {
     playing: t("กำลังเล่นอยู่"),
     resting: t("พักอยู่ ระบบข้ามคิวให้"),
     home: t("จ่ายแล้ว ถือว่ากลับบ้านแล้ว"),
-    waiting: t("เช็คอินแล้ว รอคิวลงสนามได้เลย"),
-    absent: signedUp ? t("ลงชื่อแล้ว มาถึงสนามแล้วกดเช็คอิน") : t("ยังไม่ได้ลงชื่อ"),
+    waiting: t("เช็คอินแล้ว รอคิวได้เลย"),
+    absent: signedUp ? t("ลงชื่อแล้ว ถึงสนามแล้วกดเช็คอิน") : t("ยังไม่ได้ลงชื่อ"),
   }[status];
 
   const act = async (action: SelfAction) => {
@@ -119,12 +125,19 @@ export function TodayTab() {
     setError(err ? t(err) : "");
   };
 
+  const q = signupQueue(day);
+  const waitPos = waitingPosition(day, player.id);
+  const full = !!q.cap && q.confirmed.length >= q.cap;
+  const selfIn = canSelfCheckIn(day, player.id);
+
   return (
     <div className="space-y-4">
+      <NoticeBanners />
       <BirthdayBanner />
       <PlanChoice player={player} />
       <MonthlyReminder player={player} />
       <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />
+      <CapLine />
 
       <Card className="space-y-4">
         <div className="flex items-center gap-3">
@@ -165,7 +178,7 @@ export function TodayTab() {
                   {t("เลิกเล่นแล้ว ไปจ่ายเงิน")}
                 </Button>
                 {played ? (
-                  <p className="text-center text-xs text-zinc-500">{t("เล่นไปแล้ว ถ้าเช็คอินผิด ให้แอดมินช่วยยกเลิก")}</p>
+                  <p className="text-center text-xs text-zinc-500">{t("เล่นแล้ว เช็คอินผิดให้แอดมินยกเลิก")}</p>
                 ) : undo ? (
                   <div className="space-y-2 rounded-2xl bg-red-50 p-3">
                     <p className="text-center text-sm font-medium text-red-700">{t("กดเช็คอินผิดใช่ไหม?")}</p>
@@ -191,10 +204,17 @@ export function TodayTab() {
           </div>
         ) : signedUp ? (
           <div className="grid gap-2">
-            <div className="flex items-center justify-center gap-1.5 rounded-2xl bg-sky-50 py-3 font-semibold text-sky-700">
-              <Icon.Check width={18} height={18} /> {t("ลงชื่อแล้ว")}
-            </div>
-            <Button variant="accent" disabled={busy} onClick={() => act("checkIn")} className="flex items-center justify-center gap-1.5">
+            {waitPos > 0 ? (
+              <div className="rounded-2xl bg-amber-50 px-3 py-3 text-center text-amber-900">
+                <div className="font-semibold">{t("คุณอยู่รายชื่อสำรองลำดับที่ {n}", { n: waitPos })}</div>
+                <div className="text-xs">{t("มีคนยกเลิกจะเลื่อนขึ้นเอง หรือให้แอดมินเช็คอินให้")}</div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-1.5 rounded-2xl bg-sky-50 py-3 font-semibold text-sky-700">
+                <Icon.Check width={18} height={18} /> {t("ลงชื่อแล้ว")}
+              </div>
+            )}
+            <Button variant="accent" disabled={busy || !selfIn} onClick={() => act("checkIn")} className="flex items-center justify-center gap-1.5">
               <Icon.CheckIn width={18} height={18} /> {t("ถึงสนามแล้ว เช็คอิน")}
             </Button>
             <Button variant="ghost" disabled={busy} className="!text-red-600" onClick={() => act("cancelSignUp")}>
@@ -204,11 +224,12 @@ export function TodayTab() {
         ) : (
           <div className="grid gap-2">
             <Button variant="primary" disabled={busy} onClick={() => act("signUp")}>
-              {day.announcementTitle ? t("ลงชื่อไปร่วม") : t("ลงชื่อว่าจะมา")}
+              {full ? t("เต็มแล้ว ลงชื่อสำรอง") : day.announcementTitle ? t("ลงชื่อไปร่วม") : t("ลงชื่อว่าจะมา")}
             </Button>
-            <Button variant="accent" disabled={busy} onClick={() => act("checkIn")} className="flex items-center justify-center gap-1.5">
+            <Button variant="accent" disabled={busy || !selfIn} onClick={() => act("checkIn")} className="flex items-center justify-center gap-1.5">
               <Icon.CheckIn width={18} height={18} /> {t("ถึงสนามแล้ว เช็คอิน")}
             </Button>
+            {!selfIn && <p className="text-center text-xs text-zinc-500">{t("เต็มแล้ว ลงชื่อสำรองได้")}</p>}
           </div>
         )}
       </Card>
@@ -220,5 +241,20 @@ export function TodayTab() {
       <ClubCalendar />
       <EventPhotos />
     </div>
+  );
+}
+
+/** รับกี่คน ลงชื่อแล้วกี่คน สำรองกี่คน (แสดงเมื่อแอดมินจำกัดจำนวน) */
+export function CapLine() {
+  const { day } = useToday();
+  const q = signupQueue(day);
+  if (!q.cap) return null;
+  const left = Math.max(0, q.cap - q.confirmed.length);
+  return (
+    <p className={`-mt-2 rounded-2xl px-4 py-2 text-sm font-medium ${left ? "bg-zinc-100 text-zinc-700" : "bg-amber-50 text-amber-900"}`}>
+      {t("รับ {cap} คน · ลงชื่อแล้ว {n}", { cap: q.cap, n: q.confirmed.length })}
+      {left ? ` · ${t("ว่าง {n} ที่", { n: left })}` : ` · ${t("เต็มแล้ว")}`}
+      {q.waiting.length > 0 && ` · ${t("สำรอง {n} คน", { n: q.waiting.length })}`}
+    </p>
   );
 }

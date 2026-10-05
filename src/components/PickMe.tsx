@@ -93,17 +93,17 @@ export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: s
           <SectionTitle>{t("สวัสดีคุณ {name}", { name: ticket.name })}</SectionTitle>
         </div>
         <Card className="space-y-3">
-          <p className="text-sm text-zinc-600">{t("บัญชี LINE นี้ยังไม่มีชื่อในก๊วน ถ้ามาครั้งแรกให้สมัครก่อน (ทำครั้งเดียว)")}</p>
+          <p className="text-sm text-zinc-600">{t("LINE นี้ยังไม่มีชื่อในก๊วน มาครั้งแรกให้สมัครก่อน")}</p>
           <Button variant="accent" className="w-full" onClick={() => setRegistering(true)}>
             {t("สมัครครั้งแรก")}
           </Button>
           {!linking ? (
             <button className="w-full text-center text-sm text-zinc-500 underline" onClick={() => setLinking(true)}>
-              {t("แอดมินเคยลงชื่อให้แล้ว? ผูกกับชื่อเดิม")}
+              {t("แอดมินเพิ่มชื่อให้แล้ว? ผูกชื่อเดิม")}
             </button>
           ) : (
             <>
-              <p className="text-xs text-zinc-500">{t("พิมพ์ชื่อที่แอดมินลงไว้ให้ แล้วกดนี่คือฉัน แอดมินจะยืนยันให้ครั้งเดียว")}</p>
+              <p className="text-xs text-zinc-500">{t("พิมพ์ชื่อที่แอดมินเพิ่มไว้ แล้วกด นี่คือฉัน")}</p>
               {search}
             </>
           )}
@@ -118,7 +118,7 @@ export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: s
         <SectionTitle>{t("เข้าสู่ระบบ")}</SectionTitle>
         <p className="px-1 text-sm text-zinc-500">{hint}</p>
         <Card className="space-y-3">
-          <p className="text-xs text-amber-700">{t("โหมดทดลอง: ของจริงกดเข้าสู่ระบบด้วย LINE ตรงนี้แทน")}</p>
+          <p className="text-xs text-amber-700">{t("โหมดทดลอง (ของจริงเข้าด้วย LINE)")}</p>
           {search}
           <Button variant="primary" className="w-full" onClick={() => setRegistering(true)}>
             {t("มาครั้งแรก ยังไม่มีชื่อ? สมัครเลย")}
@@ -140,7 +140,7 @@ export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: s
             >
               {t("เข้าสู่ระบบด้วย LINE")}
             </button>
-            <p className="text-center text-xs text-zinc-500">{t("มาครั้งแรกก็กดปุ่มนี้ แล้วสมัครต่อได้เลย")}</p>
+            <p className="text-center text-xs text-zinc-500">{t("มาครั้งแรกก็กดปุ่มนี้")}</p>
           </>
         ) : (
           <p className="rounded-2xl bg-amber-50 px-3 py-2.5 text-sm text-amber-900">{t("ยังไม่ได้ตั้งค่า LINE Login ให้แอพ")}</p>
@@ -158,7 +158,7 @@ export function FirstAdminCard() {
   if (!auth.online || auth.isAdmin || !auth.noAdmins || !auth.email) return null;
   return (
     <Card className="space-y-2 bg-lime/30">
-      <p className="text-sm">{t("ระบบยังไม่มีแอดมินเลย ตั้งตัวเองเป็นแอดมินคนแรกได้ (ทำได้ครั้งเดียว)")}</p>
+      <p className="text-sm">{t("ยังไม่มีแอดมิน ตั้งตัวเองเป็นคนแรกได้")}</p>
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
       <Button
         variant="primary"
@@ -188,7 +188,7 @@ function ClaimName({ player, onDone, onCancel }: { player: Player; onDone: () =>
     return (
       <Card className="space-y-2 py-8 text-center">
         <Icon.Clock className="mx-auto text-amber-500" width={32} height={32} />
-        <p className="font-semibold">{t("ส่งคำขอแล้ว รอแอดมินยืนยันว่าเป็นชื่อของคุณ")}</p>
+        <p className="font-semibold">{t("ส่งแล้ว รอแอดมินยืนยัน")}</p>
         <p className="text-sm text-zinc-500">{t("ยืนยันแล้วกดเข้าสู่ระบบด้วย LINE ได้เลย")}</p>
       </Card>
     );
@@ -209,7 +209,7 @@ function ClaimName({ player, onDone, onCancel }: { player: Player; onDone: () =>
         <div className="min-w-0 flex-1">
           <div className="truncate font-display text-lg font-semibold">{player.name}</div>
           <div className="text-xs text-zinc-500">
-            {auth.online ? t("แอดมินจะยืนยันว่าเป็นคุณ ทำครั้งเดียว") : t("โหมดทดลอง: เข้าเป็นคนนี้ได้เลย")}
+            {auth.online ? t("แอดมินยืนยันให้ครั้งเดียว") : t("โหมดทดลอง: เข้าเป็นคนนี้ได้เลย")}
           </div>
         </div>
       </div>
@@ -247,7 +247,7 @@ function Register({ onCancel }: { onCancel: () => void }) {
   return (
     <div className="space-y-4">
       <SectionTitle>{t("สมัครสมาชิกก๊วน")}</SectionTitle>
-      <p className="px-1 text-sm text-zinc-500">{t("ชื่อและรูปดึงมาจาก LINE แก้ได้ตามต้องการ แอดมินจะตรวจและกดอนุมัติ จากนั้นลงชื่อและเช็คอินได้")}</p>
+      <p className="px-1 text-sm text-zinc-500">{t("ชื่อและรูปมาจาก LINE แก้ได้ รอแอดมินอนุมัติ")}</p>
       <Card>
         {error && <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
         <PlayerForm
@@ -275,7 +275,7 @@ export function PendingNotice({ name, onNotMe }: { name: string; onNotMe: () => 
     <Card className="space-y-2 py-8 text-center">
       <Icon.Clock className="mx-auto text-amber-500" width={32} height={32} />
       <p className="font-semibold">{t("{name} สมัครแล้ว รอแอดมินอนุมัติ", { name })}</p>
-      <p className="text-sm text-zinc-500">{t("เมื่ออนุมัติแล้ว หน้านี้จะลงชื่อและเช็คอินได้เอง")}</p>
+      <p className="text-sm text-zinc-500">{t("อนุมัติแล้วจะลงชื่อได้ที่นี่")}</p>
       <button className="text-xs text-zinc-500 underline" onClick={onNotMe}>
         {t("ออกจากระบบ")}
       </button>

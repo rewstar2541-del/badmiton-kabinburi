@@ -1,5 +1,7 @@
 "use client";
 
+import { NoticeBanners } from "./Notices";
+import { eventStyle } from "@/lib/eventKinds";
 import { BirthdayBanner } from "./Birthday";
 import { useEffect, useRef, useState } from "react";
 import { appName } from "@/lib/brand";
@@ -130,10 +132,14 @@ export function TvView() {
         </div>
       </header>
 
+      <NoticeBanners tv />
       <BirthdayBanner tv />
       {day.announcement && (
-        <div className="flex items-center gap-3 rounded-2xl bg-lime px-5 py-3 text-xl text-ink">
-          <Icon.Megaphone /> <span className="font-semibold">{day.announcementTitle && (
+        <div className={`flex items-center gap-3 rounded-2xl px-5 py-3 text-xl ${eventStyle(day.announcementTitle).box}`}>
+          <span className="text-3xl" aria-hidden>
+            {eventStyle(day.announcementTitle).emoji}
+          </span>{" "}
+          <span className="font-semibold">{day.announcementTitle && (
             <>
               <Auto text={day.announcementTitle} /> ·{" "}
             </>

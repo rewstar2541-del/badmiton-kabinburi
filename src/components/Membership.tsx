@@ -73,7 +73,7 @@ export function PlanChoice({ player }: { player: Player }) {
           }}
         >
           <span className="block font-display font-semibold">{t("รายเดือน")}</span>
-          <span className="block text-xs">{t("{amount} ต่อเดือน ไม่ต้องจ่ายค่าสนามรายวัน", { amount: baht(s.monthlyFee) })}</span>
+          <span className="block text-xs">{t("{amount}/เดือน ไม่ต้องจ่ายค่าสนามรายวัน", { amount: baht(s.monthlyFee) })}</span>
         </button>
       </div>
     </Card>
@@ -92,9 +92,9 @@ export function MonthlyReminder({ player }: { player: Player }) {
     >
       <Icon.Wallet className="shrink-0" />
       <span className="min-w-0 flex-1">
-        <span className="block font-display font-semibold">{t("ถึงรอบจ่ายค่าสมาชิกรายเดือนแล้ว")}</span>
+        <span className="block font-display font-semibold">{t("ถึงรอบจ่ายรายเดือนแล้ว")}</span>
         <span className="block text-sm">
-          {t("เดือน {month} {amount} กดเพื่อไปจ่ายที่หน้ายอดของฉัน", { month: monthOf(date), amount: baht(state.settings.monthlyFee) })}
+          {t("เดือน {month} {amount} กดเพื่อจ่าย", { month: monthOf(date), amount: baht(state.settings.monthlyFee) })}
         </span>
       </span>
       <span className="shrink-0 text-lg">›</span>

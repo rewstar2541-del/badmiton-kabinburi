@@ -30,7 +30,7 @@ export function PartnerStats({ player }: { player: Player }) {
         <span className="shrink-0 text-xs text-zinc-500">{t("จาก {n} เกมที่บันทึกผล", { n: s.decided })}</span>
       </div>
       {s.decided === 0 ? (
-        <p className="text-sm text-zinc-500">{t("ยังไม่มีเกมที่บันทึกผลแพ้ชนะ แอดมินกด \"ทีม A ชนะ\" หรือ \"ทีม B ชนะ\" ตอนจบเกม แล้วสถิติจะขึ้นที่นี่")}</p>
+        <p className="text-sm text-zinc-500">{t("ยังไม่มีผลแพ้ชนะ (แอดมินกดผลตอนจบเกม)")}</p>
       ) : (
         <>
           <div className="space-y-2">

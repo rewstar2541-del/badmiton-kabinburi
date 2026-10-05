@@ -1,6 +1,7 @@
 "use client";
 
 import { BirthdayEdit } from "./Birthday";
+import { PlayerLineAlerts } from "./LineCard";
 import { PartnerStats } from "./PartnerStats";
 import { billFor, shuttleFormula } from "@/lib/billing";
 import { useStore, useToday } from "@/lib/store";
@@ -26,7 +27,7 @@ export function MyBillTab() {
   const [error, setError] = useState("");
   const player = state.players.find((p) => p.id === me);
 
-  if (!player) return <PickMe onPick={setMe} hint={t("เข้าสู่ระบบครั้งเดียว เครื่องนี้จะจำไว้ แล้วลงชื่อ เช็คอิน และดูยอดของตัวเองได้")} />;
+  if (!player) return <PickMe onPick={setMe} hint={t("เข้าครั้งเดียว เครื่องจะจำไว้")} />;
   if (player.pending) return <PendingNotice name={player.name} onNotMe={() => setMe(null)} />;
 
   const checkedIn = day.checkIns.some((c) => c.playerId === player.id);
@@ -66,7 +67,7 @@ export function MyBillTab() {
         )}
         {player.levelRequest && (
           <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
-            {t("ขอเปลี่ยนระดับมือเป็น {level} รอแอดมินอนุมัติ", {
+            {t("ขอเปลี่ยนเป็น {level} รออนุมัติ", {
               level: levelCode(player.levelRequest),
             })}
           </p>
@@ -137,7 +138,7 @@ export function MyBillTab() {
             bill.total > 0 && (
               <Card className="flex flex-col items-center gap-2">
                 <PayQr promptPayId={s.promptPayId} amount={bill.total} />
-                <p className="text-center text-xs text-zinc-500">{t("สแกนจ่ายหรือจ่ายเงินสด แล้วกดปุ่มด้านล่าง นับว่าจ่ายทันที")}</p>
+                <p className="text-center text-xs text-zinc-500">{t("สแกนจ่ายหรือจ่ายสด แล้วกดปุ่มด้านล่าง")}</p>
                 <SelfPay playerId={player.id} amount={bill.total} action="pay" />
                 <SlipUpload playerId={player.id} amount={bill.total} />
               </Card>
@@ -150,6 +151,7 @@ export function MyBillTab() {
       <PartnerStats player={player} />
       <BadgesCard player={player} />
       <PartnerPrefs key={(player.prefer ?? []).join() + "|" + (player.avoid ?? []).join()} player={player} />
+      <PlayerLineAlerts playerId={player.id} />
     </div>
   );
 }

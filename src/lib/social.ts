@@ -74,3 +74,28 @@ export function partnerStats(state: State, playerId: string): { partners: MateSt
   const byLosses = (a: MateStat, b: MateStat) => b.games - b.wins - (a.games - a.wins) || b.games - a.games;
   return { partners: [...partners.values()].sort(byWins), rivals: [...rivals.values()].sort(byLosses), decided };
 }
+
+/**
+ * จำกัดจำนวนคนลงชื่อ: คนที่ลงชื่อก่อนตามจำนวนที่รับได้ที่ ที่เหลือเป็นรายชื่อสำรอง
+ * มีคนยกเลิก คนสำรองลำดับแรกเลื่อนขึ้นเอง (คำนวณจากลำดับการลงชื่อ ไม่ต้องเก็บสถานะ)
+ */
+export function signupQueue(day: Day) {
+  const list = [...(day.signups ?? [])].sort((a, b) => a.at - b.at || (a.playerId < b.playerId ? -1 : 1)).map((s) => s.playerId);
+  const cap = day.announcementCap;
+  if (!cap) return { cap: undefined, confirmed: list, waiting: [] as string[] };
+  return { cap, confirmed: list.slice(0, cap), waiting: list.slice(cap) };
+}
+
+/** ลำดับสำรอง (1 = คนแรก) หรือ 0 ถ้าได้ที่แล้ว/ไม่ได้ลงชื่อ */
+export function waitingPosition(day: Day, playerId: string) {
+  return signupQueue(day).waiting.indexOf(playerId) + 1;
+}
+
+/** ผู้เล่นเช็คอินเองได้ไหม (ตรงกับ signup_cap_guard ในฐานข้อมูล) */
+export function canSelfCheckIn(day: Day, playerId: string) {
+  const q = signupQueue(day);
+  if (!q.cap || q.confirmed.includes(playerId)) return true;
+  const checked = new Set(day.checkIns.map((c) => c.playerId));
+  const taken = checked.size + q.confirmed.filter((id) => !checked.has(id)).length;
+  return taken < q.cap;
+}

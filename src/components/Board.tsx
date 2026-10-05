@@ -134,7 +134,7 @@ export function BoardCard() {
     <Card className="space-y-3">
       <div>
         <h3 className="font-display font-semibold">{t("ของหาย / ฝากขาย")}</h3>
-        <p className="text-sm text-zinc-500">{t("ลืมของไว้ที่สนาม เจอของ หรืออยากขายไม้ รองเท้ามือสอง ลงไว้ที่นี่ ติดต่อกันที่สนามหรือในกลุ่ม LINE")}</p>
+        <p className="text-sm text-zinc-500">{t("ของหาย เจอของ หรือขายของมือสอง ลงไว้ที่นี่")}</p>
       </div>
       <div className="flex flex-wrap gap-1.5">
         {[null, ...KINDS.map((k) => k.value)].map((k) => (
