@@ -54,7 +54,7 @@ export type Action =
   /** freeze: เก็บราคาเดิมไว้กับวันก่อนๆ ตอนเปลี่ยนราคา บิลเก่าจะได้ไม่เปลี่ยนตาม */
   | { type: "updateSettings"; settings: Settings; freeze?: { dates: string[]; prices: DayPrices } }
   /** title: undefined = คงหัวข้อเดิม, null = จัดก๊วน (ค่าเริ่มต้น) */
-  | { type: "setAnnouncement"; date: string; message: string | null; title?: string | null; fee?: number | null }
+  | { type: "setAnnouncement"; date: string; message: string | null; title?: string | null; fee?: number | null; cap?: number | null }
   | { type: "setClosed"; date: string; reason: string | null }
   | { type: "signUp"; date: string; playerId: string; _at: number }
   | { type: "cancelSignUp"; date: string; playerId: string }
@@ -277,6 +277,7 @@ export function reducer(state: State, a: Action): State {
         announcement: a.message ?? undefined,
         announcementTitle: a.message === null ? undefined : a.title === undefined ? d.announcementTitle : (a.title ?? undefined),
         announcementFee: a.message === null ? undefined : a.fee === undefined ? d.announcementFee : (a.fee ?? undefined),
+        announcementCap: a.message === null ? undefined : a.cap === undefined ? d.announcementCap : (a.cap ?? undefined),
       }));
     case "signUp":
       return withDay(state, a.date, (d) =>

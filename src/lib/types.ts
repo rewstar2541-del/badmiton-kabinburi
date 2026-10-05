@@ -151,6 +151,8 @@ export interface Day {
   announcementTitle?: string;
   /** ค่าใช้จ่ายต่อคนของอีเว้นพิเศษ (แจ้งให้รู้ล่วงหน้า) */
   announcementFee?: number;
+  /** รับกี่คน (ลงชื่อเกินเข้ารายชื่อสำรอง) ไม่มี = ไม่จำกัด */
+  announcementCap?: number;
   /** คนที่ลงชื่อว่าจะมา */
   signups?: SignUp[];
   /** คำขอจับคู่เกมถัดไปของวันนั้น */

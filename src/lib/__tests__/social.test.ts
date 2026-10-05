@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { nextMatch } from "../matchmaking";
-import { activePairs, partnerStats, shuttleStock } from "../social";
+import { activePairs, canSelfCheckIn, partnerStats, shuttleStock, signupQueue, waitingPosition } from "../social";
 import { EMPTY_STATE, type State } from "../state";
 import type { Day, Player } from "../types";
 
@@ -64,5 +64,32 @@ describe("partner stats", () => {
     expect(s.partners[0]).toEqual({ id: "b", games: 2, wins: 2 });
     // y: เจอ 2 แพ้ 1, c: เจอ 1 แพ้ 1 (แพ้เท่ากัน คนที่เจอบ่อยกว่าขึ้นก่อน)
     expect(s.rivals.slice(0, 2)).toEqual([{ id: "y", games: 2, wins: 1 }, { id: "c", games: 1, wins: 0 }]);
+  });
+});
+
+describe("sign-up cap", () => {
+  const day = (cap?: number, checked: string[] = []): Day => ({
+    date: "2026-10-05",
+    checkIns: checked.map((id) => ({ playerId: id, at: 0 })),
+    games: [],
+    drinks: [],
+    announcementCap: cap,
+    signups: ["a", "b", "c", "d"].map((id, i) => ({ playerId: id, at: i })),
+  });
+  it("puts sign-ups past the cap on a waiting list in order", () => {
+    expect(signupQueue(day(2))).toMatchObject({ confirmed: ["a", "b"], waiting: ["c", "d"] });
+    expect(waitingPosition(day(2), "d")).toBe(2);
+    expect(signupQueue(day()).waiting).toEqual([]);
+  });
+  it("moves the first waiting player up when someone cancels", () => {
+    const d = { ...day(2), signups: day(2).signups!.filter((s) => s.playerId !== "a") };
+    expect(signupQueue(d)).toMatchObject({ confirmed: ["b", "c"], waiting: ["d"] });
+  });
+  it("lets waiting players check in only while there is room", () => {
+    expect(canSelfCheckIn(day(2), "a")).toBe(true);
+    expect(canSelfCheckIn(day(2), "c")).toBe(false);
+    expect(canSelfCheckIn(day(3, ["a", "b"]), "d")).toBe(false);
+    expect(canSelfCheckIn(day(4, ["a"]), "x")).toBe(false);
+    expect(canSelfCheckIn(day(5, ["a"]), "x")).toBe(true);
   });
 });

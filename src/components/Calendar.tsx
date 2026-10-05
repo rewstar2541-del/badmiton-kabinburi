@@ -1,5 +1,6 @@
 "use client";
 
+import { waitingPosition } from "@/lib/social";
 import { useState } from "react";
 import { locale, t } from "@/lib/i18n";
 import { today, useStore } from "@/lib/store";
@@ -19,6 +20,7 @@ export function ClubCalendar() {
   const { state, dispatch, auth, self } = useStore();
   const [me] = useMe();
   const [note, setNote] = useState("");
+  const [capText, setCapText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const now = today();
@@ -54,7 +56,7 @@ export function ClubCalendar() {
   const mine = Boolean(me && signups.some((x) => x.playerId === me));
   const setSession = (date: string, message: string | null) => {
     if (message !== null && date in state.closed) dispatch({ type: "setClosed", date, reason: null });
-    dispatch({ type: "setAnnouncement", date, message });
+    dispatch({ type: "setAnnouncement", date, message, ...(message === null ? {} : { cap: Number(capText) >= 1 ? Math.min(500, Math.round(Number(capText))) : null }) });
     setPicked(null);
   };
   const signUp = async (date: string, on: boolean) => {
@@ -98,6 +100,7 @@ export function ClubCalendar() {
                   setPicked(picked === date ? null : date);
                   setReason(state.closed[date] ?? "");
                   setNote(state.days.find((x) => x.date === date)?.announcement ?? "");
+                  setCapText(String(state.days.find((x) => x.date === date)?.announcementCap ?? ""));
                   setError("");
                 }}
                 className={`relative grid aspect-square place-items-center rounded-xl text-sm tabular-nums ${
@@ -132,6 +135,16 @@ export function ClubCalendar() {
                     placeholder={t("ข้อความประกาศ เช่น 1 ทุ่ม ถึง 4 ทุ่ม (ไม่ใส่ก็ได้)")}
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
+                  />
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    className={inputClass}
+                    aria-label={t("รับกี่คน (ไม่ใส่ = ไม่จำกัด)")}
+                    placeholder={t("รับกี่คน (ไม่ใส่ = ไม่จำกัด)")}
+                    value={capText}
+                    onChange={(e) => setCapText(e.target.value)}
                   />
                   <div className="flex gap-2">
                     <Button variant="accent" className="flex-1" onClick={() => setSession(picked, note.trim())}>
@@ -190,10 +203,24 @@ export function ClubCalendar() {
                   {pickedDay?.announcementFee ? <> · {t("คนละ {amount}", { amount: baht(pickedDay.announcementFee) })}</> : null}
                   {pickedDay?.announcement ? <> · <Auto text={pickedDay.announcement} /></> : null}
                 </p>
-                <p className="text-xs text-zinc-500">{t("ลงชื่อแล้ว {n} คน", { n: signups.length })}</p>
+                <p className="text-xs text-zinc-500">
+                  {pickedDay?.announcementCap
+                    ? t("ลงชื่อแล้ว {n}/{cap} คน", { n: Math.min(signups.length, pickedDay.announcementCap), cap: pickedDay.announcementCap }) +
+                      (signups.length > pickedDay.announcementCap ? ` · ${t("สำรอง {n} คน", { n: signups.length - pickedDay.announcementCap })}` : "")
+                    : t("ลงชื่อแล้ว {n} คน", { n: signups.length })}
+                </p>
+                {me && pickedDay && waitingPosition(pickedDay, me) > 0 && (
+                  <p className="text-xs font-semibold text-amber-700">{t("คุณอยู่รายชื่อสำรองลำดับที่ {n}", { n: waitingPosition(pickedDay, me) })}</p>
+                )}
                 {me && picked >= now && (
                   <Button variant={mine ? "ghost" : "primary"} className="w-full" disabled={busy} onClick={() => signUp(picked, !mine)}>
-                    {mine ? t("ยกเลิกลงชื่อ") : pickedDay?.announcementTitle ? t("ลงชื่อไปร่วม") : t("ลงชื่อว่าจะมา")}
+                    {mine
+                      ? t("ยกเลิกลงชื่อ")
+                      : pickedDay?.announcementCap && signups.length >= pickedDay.announcementCap
+                        ? t("เต็มแล้ว ลงชื่อสำรอง")
+                        : pickedDay?.announcementTitle
+                          ? t("ลงชื่อไปร่วม")
+                          : t("ลงชื่อว่าจะมา")}
                   </Button>
                 )}
               </>
@@ -214,6 +241,7 @@ export function ClubCalendar() {
                     onClick={() => {
                       setPicked(d);
                       setNote(state.days.find((x) => x.date === d)?.announcement ?? "");
+                      setCapText(String(state.days.find((x) => x.date === d)?.announcementCap ?? ""));
                       setReason("");
                       setError("");
                     }}

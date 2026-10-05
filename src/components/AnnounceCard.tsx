@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useStore, useToday } from "@/lib/store";
 import { ClosedBanner } from "./Calendar";
-import { AnnouncementBanner } from "./TodayTab";
+import { AnnouncementBanner, CapLine } from "./TodayTab";
 import { Button, Card, Icon, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
 
@@ -21,6 +21,7 @@ export function AnnounceCard() {
   const [message, setMessage] = useState(day.announcement ?? DEFAULT_MESSAGE());
   const [title, setTitle] = useState<string | null>(day.announcementTitle ?? null);
   const [fee, setFee] = useState(day.announcementFee ? String(day.announcementFee) : "");
+  const [cap, setCap] = useState(day.announcementCap ? String(day.announcementCap) : "");
   const custom = title !== null && !(PRESETS as readonly (string | null)[]).includes(title);
   const announced = day.announcement !== undefined;
 
@@ -37,6 +38,7 @@ export function AnnounceCard() {
     return (
       <div className="space-y-2">
         <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />
+        <CapLine />
         <div className="flex justify-end gap-4 px-1 text-xs text-zinc-500">
           <button
             className="underline-offset-2 active:underline"
@@ -44,6 +46,7 @@ export function AnnounceCard() {
               setMessage(day.announcement ?? "");
               setTitle(day.announcementTitle ?? null);
               setFee(day.announcementFee ? String(day.announcementFee) : "");
+              setCap(day.announcementCap ? String(day.announcementCap) : "");
               setEditing(true);
             }}
           >
@@ -111,6 +114,19 @@ export function AnnounceCard() {
           />
         </label>
       )}
+      <label className="block text-sm font-medium">
+        {t("รับกี่คน (ไม่ใส่ = ไม่จำกัด)")}
+        <input
+          type="number"
+          inputMode="numeric"
+          min={1}
+          className={`${inputClass} mt-1`}
+          placeholder={t("ไม่จำกัด")}
+          value={cap}
+          onChange={(e) => setCap(e.target.value)}
+        />
+        <span className="mt-1 block text-xs font-normal text-zinc-500">{t("ลงชื่อเกินจำนวนจะเข้ารายชื่อสำรอง มีคนยกเลิกจะเลื่อนขึ้นให้เอง")}</span>
+      </label>
       <textarea className={`${inputClass} min-h-20`} value={message} onChange={(e) => setMessage(e.target.value)} />
       <div className="flex gap-2">
         <Button
@@ -124,6 +140,7 @@ export function AnnounceCard() {
               message: message.trim() === DEFAULT_MESSAGE() ? DEFAULT_TH : message.trim(),
               title: title?.trim() || null,
               fee: title?.trim() && Number(fee) > 0 ? Math.round(Number(fee)) : null,
+              cap: Number(cap) >= 1 ? Math.min(500, Math.round(Number(cap))) : null,
             });
             setEditing(false);
           }}

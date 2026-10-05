@@ -41,7 +41,7 @@ export function demoState(): State {
   NAMES.forEach(([name, gender, level]) =>
     run({ type: "addPlayer", player: { name, gender, level } }),
   );
-  run({ type: "setAnnouncement", date, message: "วันนี้ 1 ทุ่ม ถึง 4 ทุ่ม" });
+  run({ type: "setAnnouncement", date, message: "วันนี้ 1 ทุ่ม ถึง 4 ทุ่ม", cap: 9 });
   s.players.slice(0, 10).forEach((p, i) => run({ type: "signUp", date, playerId: p.id }, now - (60 - i) * 60000));
   s.players.slice(0, 8).forEach((p, i) => run({ type: "checkIn", date, playerId: p.id }, now - (40 - i * 3) * 60000));
   run({ type: "setMonthlyPaid", month: date.slice(0, 7), playerId: s.players[0].id, paid: true });

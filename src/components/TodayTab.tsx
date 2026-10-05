@@ -1,5 +1,6 @@
 "use client";
 
+import { canSelfCheckIn, signupQueue, waitingPosition } from "@/lib/social";
 import { BoardCard } from "./Board";
 import { BirthdayBanner } from "./Birthday";
 import { PollVote } from "./Polls";
@@ -119,12 +120,18 @@ export function TodayTab() {
     setError(err ? t(err) : "");
   };
 
+  const q = signupQueue(day);
+  const waitPos = waitingPosition(day, player.id);
+  const full = !!q.cap && q.confirmed.length >= q.cap;
+  const selfIn = canSelfCheckIn(day, player.id);
+
   return (
     <div className="space-y-4">
       <BirthdayBanner />
       <PlanChoice player={player} />
       <MonthlyReminder player={player} />
       <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />
+      <CapLine />
 
       <Card className="space-y-4">
         <div className="flex items-center gap-3">
@@ -191,10 +198,17 @@ export function TodayTab() {
           </div>
         ) : signedUp ? (
           <div className="grid gap-2">
-            <div className="flex items-center justify-center gap-1.5 rounded-2xl bg-sky-50 py-3 font-semibold text-sky-700">
-              <Icon.Check width={18} height={18} /> {t("ลงชื่อแล้ว")}
-            </div>
-            <Button variant="accent" disabled={busy} onClick={() => act("checkIn")} className="flex items-center justify-center gap-1.5">
+            {waitPos > 0 ? (
+              <div className="rounded-2xl bg-amber-50 px-3 py-3 text-center text-amber-900">
+                <div className="font-semibold">{t("คุณอยู่รายชื่อสำรองลำดับที่ {n}", { n: waitPos })}</div>
+                <div className="text-xs">{t("มีคนยกเลิกจะเลื่อนขึ้นให้เอง ถ้ายังเต็มอยู่ ให้แอดมินเช็คอินให้ที่สนาม")}</div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-1.5 rounded-2xl bg-sky-50 py-3 font-semibold text-sky-700">
+                <Icon.Check width={18} height={18} /> {t("ลงชื่อแล้ว")}
+              </div>
+            )}
+            <Button variant="accent" disabled={busy || !selfIn} onClick={() => act("checkIn")} className="flex items-center justify-center gap-1.5">
               <Icon.CheckIn width={18} height={18} /> {t("ถึงสนามแล้ว เช็คอิน")}
             </Button>
             <Button variant="ghost" disabled={busy} className="!text-red-600" onClick={() => act("cancelSignUp")}>
@@ -204,11 +218,12 @@ export function TodayTab() {
         ) : (
           <div className="grid gap-2">
             <Button variant="primary" disabled={busy} onClick={() => act("signUp")}>
-              {day.announcementTitle ? t("ลงชื่อไปร่วม") : t("ลงชื่อว่าจะมา")}
+              {full ? t("เต็มแล้ว ลงชื่อสำรอง") : day.announcementTitle ? t("ลงชื่อไปร่วม") : t("ลงชื่อว่าจะมา")}
             </Button>
-            <Button variant="accent" disabled={busy} onClick={() => act("checkIn")} className="flex items-center justify-center gap-1.5">
+            <Button variant="accent" disabled={busy || !selfIn} onClick={() => act("checkIn")} className="flex items-center justify-center gap-1.5">
               <Icon.CheckIn width={18} height={18} /> {t("ถึงสนามแล้ว เช็คอิน")}
             </Button>
+            {!selfIn && <p className="text-center text-xs text-zinc-500">{t("วันนี้เต็มแล้ว ลงชื่อสำรองไว้ได้ ถ้ามาที่สนามให้แอดมินเช็คอินให้")}</p>}
           </div>
         )}
       </Card>
@@ -220,5 +235,20 @@ export function TodayTab() {
       <ClubCalendar />
       <EventPhotos />
     </div>
+  );
+}
+
+/** รับกี่คน ลงชื่อแล้วกี่คน สำรองกี่คน (แสดงเมื่อแอดมินจำกัดจำนวน) */
+export function CapLine() {
+  const { day } = useToday();
+  const q = signupQueue(day);
+  if (!q.cap) return null;
+  const left = Math.max(0, q.cap - q.confirmed.length);
+  return (
+    <p className={`-mt-2 rounded-2xl px-4 py-2 text-sm font-medium ${left ? "bg-zinc-100 text-zinc-700" : "bg-amber-50 text-amber-900"}`}>
+      {t("รับ {cap} คน · ลงชื่อแล้ว {n}", { cap: q.cap, n: q.confirmed.length })}
+      {left ? ` · ${t("ว่าง {n} ที่", { n: left })}` : ` · ${t("เต็มแล้ว")}`}
+      {q.waiting.length > 0 && ` · ${t("สำรอง {n} คน", { n: q.waiting.length })}`}
+    </p>
   );
 }

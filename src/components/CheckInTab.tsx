@@ -1,5 +1,6 @@
 "use client";
 
+import { signupQueue } from "@/lib/social";
 import { BirthdayBanner } from "./Birthday";
 import { PollAdmin } from "./Polls";
 import { StockWarning } from "./Stock";
@@ -163,13 +164,18 @@ export function SignupList({ bare }: { bare?: boolean }) {
   const { date, day } = useToday();
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const checked = new Set(day.checkIns.map((c) => c.playerId));
-  const list = [...(day.signups ?? [])].sort((a, b) => a.at - b.at);
+  const q = signupQueue(day);
+  const waiting = new Set(q.waiting);
+  const list = [...q.confirmed, ...q.waiting].map((playerId) => ({ playerId }));
   if (!list.length && !bare) return null;
   const arrived = list.filter((s) => checked.has(s.playerId)).length;
   const body = (
     <>
       <div className="flex items-baseline justify-between gap-2">
-        <h3 className="font-display font-semibold">{t("ลงชื่อว่าจะมา {n} คน", { n: list.length })}</h3>
+        <h3 className="font-display font-semibold">
+          {q.cap ? t("ลงชื่อแล้ว {n}/{cap} คน", { n: q.confirmed.length, cap: q.cap }) : t("ลงชื่อว่าจะมา {n} คน", { n: list.length })}
+          {q.waiting.length > 0 && <span className="ml-1 text-sm font-medium text-amber-700">· {t("สำรอง {n} คน", { n: q.waiting.length })}</span>}
+        </h3>
         <span className="text-xs text-zinc-500">{t("มาแล้ว {n} คน", { n: arrived })}</span>
       </div>
       {list.length === 0 ? (
@@ -186,11 +192,12 @@ export function SignupList({ bare }: { bare?: boolean }) {
                   onClick={() => dispatch({ type: "checkIn", date, playerId: s.playerId })}
                   title={on ? t("มาแล้ว") : t("แตะเพื่อเช็คอิน")}
                   className={`flex items-center gap-1.5 rounded-full py-1 pr-3 pl-1 text-sm font-medium ${
-                    on ? "bg-emerald-50 text-emerald-700" : "bg-sky-50 text-sky-800"
+                    on ? "bg-emerald-50 text-emerald-700" : waiting.has(s.playerId) ? "bg-amber-50 text-amber-900" : "bg-sky-50 text-sky-800"
                   }`}
                 >
                   <Avatar name={p?.name ?? "?"} photo={p?.photo} size={22} />
                   {p?.name ?? "?"}
+                  {waiting.has(s.playerId) && <span className="text-[11px] font-semibold">{t("สำรอง {n}", { n: q.waiting.indexOf(s.playerId) + 1 })}</span>}
                   {on && <Icon.Check width={14} height={14} strokeWidth={3} />}
                 </button>
               </li>

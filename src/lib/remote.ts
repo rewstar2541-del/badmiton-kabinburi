@@ -48,7 +48,7 @@ export interface Rows {
   }[];
   drinks: { id: string; date: string; player_id: string; amount: number; note: string }[];
   monthly: { month: string; player_id: string; paid_at: string; amount?: number | null }[];
-  announcements: { date: string; message: string; title?: string | null; fee?: number | null }[];
+  announcements: { date: string; message: string; title?: string | null; fee?: number | null; cap?: number | null }[];
   signups: { date: string; player_id: string; at: string }[];
   closed: { date: string; reason: string }[];
   slips: { id: string; date: string; player_id: string; amount: number; created_at: string }[];
@@ -128,6 +128,7 @@ export function rowsToState(r: Rows): State {
     day(a.date).announcement = a.message;
     if (a.title) day(a.date).announcementTitle = a.title;
     if (a.fee != null) day(a.date).announcementFee = a.fee;
+    if (a.cap != null) day(a.date).announcementCap = a.cap;
   }
   for (const s of r.signups) (day(s.date).signups ??= []).push({ playerId: s.player_id, at: ms(s.at) });
   for (const x of r.slips)
@@ -269,7 +270,7 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
       );
       return (r[0] as Rows["settings"]) ?? null;
     },
-    announcements: () => all(() => db.from("announcements").select("date,message,title,fee").gte("date", since).order("date")),
+    announcements: () => all(() => db.from("announcements").select("date,message,title,fee,cap").gte("date", since).order("date")),
     signups: () => all(() => db.from("signups").select("date,player_id,at").gte("date", since).order("date").order("player_id")),
     slips: async () => (isAdmin ? all(() => db.from("slips").select("id,date,player_id,amount,created_at").is("removed_at", null).order("id")) : []),
     closed: () => all(() => db.from("closed_days").select("date,reason").order("date")),
@@ -459,6 +460,7 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
                 message: a.message,
                 ...(a.title === undefined ? {} : { title: a.title }),
                 ...(a.fee === undefined ? {} : { fee: a.fee }),
+                ...(a.cap === undefined ? {} : { cap: a.cap }),
               }),
           );
     case "signUp":
