@@ -11,7 +11,7 @@ Run this every round, after the change is committed on its branch and before ask
 
 1. **Scope.** Get the changed files: `git diff --name-only origin/main...HEAD`. If the owner asked for a full check, or there is no diff, scope = "whole app" (`src/`, `supabase/`).
 2. **Run the checks** (the reviewers are read-only and cannot run commands):
-   `npm ci` if `node_modules` is missing, then `npm run lint`, `npx tsc --noEmit`, `npm test`, `npm run build`. Keep only pass/fail plus the first ~20 lines of each failure.
+   `npm ci` if `node_modules` is missing, then `npm run lint`, `npx next typegen && npx tsc --noEmit` (typegen creates the `LayoutProps`/`PageProps` types; tsc fails without it on a fresh clone), `npm test`, `npm run build`. Keep only pass/fail plus the first ~20 lines of each failure.
 3. **Fan out in parallel** — one message, five Agent calls, with `subagent_type`:
    `review-design`, `review-mobile`, `review-states`, `review-real-user`, `review-launch`.
    Give each: the scope (file list or "whole app"), a one-line summary of what the update does, and (Launch only) the check results from step 2. Tell them they are read-only.
