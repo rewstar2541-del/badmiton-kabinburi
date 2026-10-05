@@ -622,7 +622,7 @@ export const en: Record<string, string> = {
   "ตอนนี้มีลูกทั้งหมดกี่ลูก (นับจริง)": "How many shuttles do you have now (actual count)?",
   "นับลูกจริง": "Count stock",
   "ตั้งจุดเตือน": "Set warning",
-  "ซื้อลูกเพิ่ม: ลงรายจ่าย \"ซื้อลูกแบด\" ใน คิดเงิน > รายเดือน แล้วใส่จำนวนหลอด สต็อกจะเพิ่มให้เอง": "Bought more? Log a \"Shuttles\" expense in Billing > Monthly with the number of tubes, and stock goes up automatically.",
+  "ซื้อลูกเพิ่ม: ลงรายจ่าย \"ซื้อลูกแบด\" ใน คิดเงิน > รายเดือน แล้วใส่จำนวนหลอด สต็อกจะเพิ่มให้เอง": "Bought more? Log a \"Shuttlecocks\" expense in Billing > Monthly with the number of tubes, and stock goes up automatically.",
   "ลูกแบดเหลือ {n} ลูก ใกล้หมดแล้ว": "Only {n} shuttles left, running low",
   "ค่าใช้จ่ายคนละ {amount}": "Cost {amount} per person",
 };
