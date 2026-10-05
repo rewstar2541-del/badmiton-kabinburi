@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Action, SelfAction, State } from "./state";
 import { endOf, startOf, type ClearKind } from "./clear";
-import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Gender, type Level, type MonthlyPayments, type Plan, type Player, type Settings } from "./types";
+import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Notice, type Gender, type Level, type MonthlyPayments, type Plan, type Player, type Settings } from "./types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -58,6 +58,7 @@ export interface Rows {
   pairs?: { id: string; date: string; from_id: string; to_id: string; status: PairStatus; at: string }[];
   polls?: { id: string; question: string; dates: string[]; created_at: string; chosen: string | null; closed: boolean }[];
   votes?: { poll_id: string; player_id: string; dates: string[] }[];
+  notices?: { id: string; kind: Notice["kind"]; title: string; body: string | null; until: string | null; created_at: string }[];
   board?: { id: string; player_id: string; kind: BoardKind; title: string; detail: string | null; price: number | null; has_photo: boolean; created_at: string; closed_at: string | null }[];
   settings:
     | {
@@ -191,6 +192,16 @@ export function rowsToState(r: Rows): State {
         votes: Object.fromEntries((r.votes ?? []).filter((v) => v.poll_id === p.id).map((v) => [v.player_id, v.dates])),
       }),
     ),
+    notices: (r.notices ?? []).map(
+      (n): Notice => ({
+        id: n.id,
+        kind: n.kind,
+        title: n.title,
+        ...(n.body ? { body: n.body } : {}),
+        ...(n.until ? { until: n.until } : {}),
+        at: Date.parse(n.created_at),
+      }),
+    ),
     board: (r.board ?? []).map(
       (b): BoardPost => ({
         id: b.id,
@@ -249,6 +260,7 @@ export const TABLE_OF: Record<string, TableKey> = {
   polls: "polls",
   poll_votes: "votes",
   board_posts: "board",
+  notices: "notices",
 };
 
 export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iterable<TableKey>, prev?: Rows): Promise<Rows> {
@@ -280,6 +292,10 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
     pairs: () => all(() => db.from("pair_requests").select("id,date,from_id,to_id,status,at").gte("date", sinceDate(1)).order("at")),
     polls: () => all(() => db.from("polls").select("id,question,dates,created_at,chosen,closed").gte("created_at", sinceDate(120)).order("created_at")),
     votes: () => all(() => db.from("poll_votes").select("poll_id,player_id,dates").gte("at", sinceDate(120)).order("poll_id")),
+    notices: () =>
+      all(() =>
+        db.from("notices").select("id,kind,title,body,until,created_at").or(`until.is.null,until.gte.${sinceDate(1)}`).order("created_at", { ascending: false }),
+      ),
     // รูปโหลดแยกตอนเปิดดู (boardPhoto) โพสต์ที่ปิดแล้วเก็บไว้ดู 7 วัน
     board: () =>
       all(() =>
@@ -488,6 +504,19 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       return check(await db.from("polls").update({ closed: true, chosen: a.chosen ?? null }).eq("id", a.id));
     case "removePoll":
       return check(await db.from("polls").delete().eq("id", a.id));
+    case "addNotice":
+      return check(
+        await db.from("notices").insert({
+          id: a._id,
+          kind: a.notice.kind,
+          title: a.notice.title,
+          body: a.notice.body ?? null,
+          until: a.notice.until ?? null,
+          created_at: iso(a._at),
+        }),
+      );
+    case "removeNotice":
+      return check(await db.from("notices").delete().eq("id", a.id));
     case "closeBoardPost":
       return check(await db.from("board_posts").update({ closed_at: iso(a._at) }).eq("id", a.id));
     case "addBoardPost":

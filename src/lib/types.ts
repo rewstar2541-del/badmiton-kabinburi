@@ -50,6 +50,17 @@ export interface Player {
   birthday?: string;
 }
 
+/** ข่าวประกาศทั่วไป (ไม่ผูกกับวันเล่น) แสดงบนสุดจนถึงวันที่กำหนด */
+export interface Notice {
+  id: string;
+  kind: "news" | "urgent";
+  title: string;
+  body?: string;
+  /** แสดงถึงวันนี้ (รวม) ไม่มี = จนกว่าจะลบ */
+  until?: string;
+  at: number;
+}
+
 export type BoardKind = "lost" | "found" | "sell";
 /** บอร์ดของหาย / ของเจอ / ฝากขาย (รูปโหลดแยกทีหลัง) */
 export interface BoardPost {

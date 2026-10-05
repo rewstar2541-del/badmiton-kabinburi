@@ -1,5 +1,6 @@
 "use client";
 
+import { eventStyle } from "@/lib/eventKinds";
 import { waitingPosition } from "@/lib/social";
 import { useState } from "react";
 import { locale, t } from "@/lib/i18n";
@@ -93,6 +94,7 @@ export function ClubCalendar() {
             const date = ymd(view.y, view.m, d);
             const closed = date in state.closed;
             const session = sessions.has(date);
+            const evTitle = session ? state.days.find((x) => x.date === date)?.announcementTitle : undefined;
             return (
               <button
                 key={i}
@@ -104,10 +106,15 @@ export function ClubCalendar() {
                   setError("");
                 }}
                 className={`relative grid aspect-square place-items-center rounded-xl text-sm tabular-nums ${
-                  closed ? "bg-red-50 font-semibold text-red-600 line-through" : session ? "bg-lime/40 font-semibold" : "bg-zinc-50"
+                  closed ? "bg-red-50 font-semibold text-red-600 line-through" : session ? `${eventStyle(evTitle).cell} font-semibold` : "bg-zinc-50"
                 } ${date === now ? "ring-2 ring-ink" : ""} ${picked === date ? "outline-2 outline-offset-1 outline-sky-400" : ""}`}
               >
                 {d}
+                {evTitle && (
+                  <span className="absolute -top-1 -right-1 text-[11px] leading-none" aria-hidden>
+                    {eventStyle(evTitle).emoji}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -115,6 +122,9 @@ export function ClubCalendar() {
         <div className="flex flex-wrap gap-3 text-[11px] text-zinc-500">
           <span className="flex items-center gap-1">
             <span className="size-3 rounded bg-lime/40" /> {t("มีจัดก๊วน")}
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="size-3 rounded bg-amber-200" /> {t("อีเว้นพิเศษ")}
           </span>
           <span className="flex items-center gap-1">
             <span className="size-3 rounded bg-red-50 ring-1 ring-red-200" /> {t("งดเล่น")}
@@ -199,7 +209,7 @@ export function ClubCalendar() {
             ) : sessions.has(picked) ? (
               <>
                 <p className="text-sm text-zinc-600">
-                  {pickedDay?.announcementTitle ? <><span className="font-semibold text-amber-700">{t("อีเว้นพิเศษ")}</span> · <Auto text={pickedDay.announcementTitle} /></> : t("มีจัดก๊วน")}
+                  {pickedDay?.announcementTitle ? <><span className="font-semibold text-amber-700">{eventStyle(pickedDay.announcementTitle).emoji} {t("อีเว้นพิเศษ")}</span> · <Auto text={pickedDay.announcementTitle} /></> : t("มีจัดก๊วน")}
                   {pickedDay?.announcementFee ? <> · {t("คนละ {amount}", { amount: baht(pickedDay.announcementFee) })}</> : null}
                   {pickedDay?.announcement ? <> · <Auto text={pickedDay.announcement} /></> : null}
                 </p>

@@ -1,5 +1,6 @@
 "use client";
 
+import { NoticeBanners, NoticeComposer } from "./Notices";
 import { signupQueue } from "@/lib/social";
 import { BirthdayBanner } from "./Birthday";
 import { PollAdmin } from "./Polls";
@@ -47,8 +48,10 @@ export function CheckInTab() {
   return (
     <div className="space-y-4">
       <StockWarning />
+      <NoticeBanners />
       <BirthdayBanner />
       <AnnounceCard />
+      <NoticeComposer />
       <PollAdmin compact />
       <SignupList />
       {waiting > 0 && (

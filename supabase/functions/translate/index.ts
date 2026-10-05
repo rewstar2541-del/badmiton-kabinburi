@@ -16,7 +16,7 @@ type Lang = keyof typeof TARGET;
 const THAI = /[฀-๿]/;
 
 async function exists(text: string) {
-  for (const [table, col] of [["announcements", "message"], ["announcements", "title"], ["closed_days", "reason"], ["drinks", "note"], ["expenses", "note"], ["polls", "question"], ["board_posts", "title"], ["board_posts", "detail"]]) {
+  for (const [table, col] of [["announcements", "message"], ["announcements", "title"], ["closed_days", "reason"], ["drinks", "note"], ["expenses", "note"], ["polls", "question"], ["board_posts", "title"], ["board_posts", "detail"], ["notices", "title"], ["notices", "body"]]) {
     const { count } = await db.from(table).select(col, { count: "exact", head: true }).eq(col, text);
     if (count) return true;
   }

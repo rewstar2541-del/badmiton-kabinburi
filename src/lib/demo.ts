@@ -65,6 +65,12 @@ export function demoState(): State {
   s = { ...s, players: s.players.map((p, i) => (i === 7 ? { ...p, birthday: date.slice(5) } : p)) };
   run({ type: "addBoardPost", post: { playerId: ids[2], kind: "sell", title: "ไม้ Yonex Astrox 77 มือสอง", detail: "ใช้มา 6 เดือน เอ็นใหม่", price: 2500 } }, now - 2 * 86400000);
   run({ type: "addBoardPost", post: { playerId: ids[1], kind: "lost", title: "ผ้าเช็ดตัวสีชมพู", detail: "ลืมไว้ที่ม้านั่งสนาม 3 เมื่อวาน" } }, now - 86400000);
+  run({ type: "addNotice", notice: { kind: "news", title: "เก็บเงินค่าเสื้อก๊วน ตัวละ 350 บาท", body: "จ่ายได้ที่แอดมินถึงสิ้นเดือนนี้" } }, now - 3600000);
+  {
+    const ev = new Date(now + 5 * 86400000);
+    const p2 = (n: number) => String(n).padStart(2, "0");
+    run({ type: "setAnnouncement", date: `${ev.getFullYear()}-${p2(ev.getMonth() + 1)}-${p2(ev.getDate())}`, message: "หลังตีเสร็จ กินหมูกระทะที่ร้านหน้าสนาม", title: "กินเลี้ยง", fee: 150 });
+  }
   // วันงดเล่นตัวอย่าง: อีก 3 วัน
   const off = new Date(now + 3 * 86400000);
   const pad = (n: number) => String(n).padStart(2, "0");

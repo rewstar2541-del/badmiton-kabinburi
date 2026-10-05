@@ -1,5 +1,6 @@
 "use client";
 
+import { eventStyle } from "@/lib/eventKinds";
 import { useState } from "react";
 import { useStore, useToday } from "@/lib/store";
 import { ClosedBanner } from "./Calendar";
@@ -37,7 +38,7 @@ export function AnnounceCard() {
   if (announced && !editing)
     return (
       <div className="space-y-2">
-        <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />
+        <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} date={date} />
         <CapLine />
         <div className="flex justify-end gap-4 px-1 text-xs text-zinc-500">
           <button
@@ -79,7 +80,7 @@ export function AnnounceCard() {
               onClick={() => setTitle(p)}
               className={`rounded-full px-3 py-1.5 text-xs font-semibold ${title === p ? "bg-ink text-white" : "bg-zinc-100 text-zinc-600"}`}
             >
-              {p ? t(p) : t("จัดก๊วน")}
+              {eventStyle(p).emoji} {p ? t(p) : t("จัดก๊วน")}
             </button>
           ))}
           <button

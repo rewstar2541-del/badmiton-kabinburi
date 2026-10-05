@@ -1,48 +1,50 @@
 "use client";
 
+import { eventStyle } from "@/lib/eventKinds";
+import { NoticeBanners } from "./Notices";
 import { canSelfCheckIn, signupQueue, waitingPosition } from "@/lib/social";
 import { BoardCard } from "./Board";
 import { BirthdayBanner } from "./Birthday";
 import { PollVote } from "./Polls";
 import { PairCard } from "./Pairs";
 import { useState } from "react";
-import { useStore, useToday } from "@/lib/store";
+import { today, useStore, useToday } from "@/lib/store";
 import { presence } from "@/lib/matchmaking";
 import { BringGuest } from "./Guests";
 import type { SelfAction } from "@/lib/state";
 import { ClosedBanner, ClubCalendar } from "./Calendar";
 import { PendingNotice, PickMe, savedPin, useMe } from "./PickMe";
 import { Avatar, Button, Card, Icon, LevelBadge, baht } from "./ui";
-import { t } from "@/lib/i18n";
+import { locale, t } from "@/lib/i18n";
 import { RestButton } from "./RestButton";
 import { Auto } from "@/lib/autoTranslate";
 import { EventPhotos } from "./EventPhotos";
 import { MonthlyReminder, PlanChoice, goToTab } from "./Membership";
 
-/** ประกาศจัดก๊วนวันนี้ (ใช้ทั้งหน้าผู้เล่นและแอดมิน) */
-export function AnnouncementBanner({ message, title, fee }: { message: string; title?: string; fee?: number }) {
-  // มีหัวข้อ = อีเว้นพิเศษ (กินเลี้ยง แข่ง ฯลฯ) ใช้สีต่างจากประกาศจัดก๊วนปกติ
-  if (title)
-    return (
-      <div className="flex gap-3 rounded-3xl border-2 border-amber-300 bg-amber-50 p-4 text-amber-950">
-        <Icon.Megaphone className="shrink-0 text-amber-600" />
-        <div className="min-w-0">
-          <span className="inline-block rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-bold text-ink">{t("อีเว้นพิเศษ")}</span>
-          <div className="mt-1 font-display text-lg font-semibold">
-            <Auto text={title} />
+/** ประกาศวันนี้ (ใช้ทั้งหน้าผู้เล่นและแอดมิน) สีและไอคอนตามประเภท จัดก๊วน / อีเว้นพิเศษแต่ละแบบ */
+export function AnnouncementBanner({ message, title, fee, date }: { message: string; title?: string; fee?: number; date?: string }) {
+  const st = eventStyle(title);
+  const when = new Date((date ?? today()) + "T00:00:00").toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" });
+  return (
+    <div className={`overflow-hidden rounded-3xl p-4 shadow-sm ${st.box}`}>
+      <div className="flex items-start gap-3">
+        <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-white/70 text-3xl shadow-sm" aria-hidden>
+          {st.emoji}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold tracking-wide ${st.badge}`}>{title ? t("อีเว้นพิเศษ") : t("ประกาศ")}</span>
+            <span className="text-xs font-medium opacity-70">{when}</span>
           </div>
-          {!!fee && <div className="text-sm font-semibold">{t("ค่าใช้จ่ายคนละ {amount}", { amount: baht(fee) })}</div>}
-          {message && <p className="mt-0.5 text-sm whitespace-pre-line"><Auto text={message} /></p>}
+          <div className="mt-1 font-display text-xl leading-tight font-semibold">{title ? <Auto text={title} /> : t("วันนี้มีจัดก๊วน")}</div>
+          {!!fee && <div className="mt-1 inline-block rounded-full bg-white/70 px-2.5 py-0.5 text-sm font-semibold">{t("ค่าใช้จ่ายคนละ {amount}", { amount: baht(fee) })}</div>}
         </div>
       </div>
-    );
-  return (
-    <div className="flex gap-3 rounded-3xl bg-lime p-4 text-ink">
-      <Icon.Megaphone className="shrink-0" />
-      <div className="min-w-0">
-        <div className="font-display font-semibold">{t("วันนี้มีจัดก๊วน")}</div>
-        {message && <p className="mt-0.5 text-sm whitespace-pre-line"><Auto text={message} /></p>}
-      </div>
+      {message && (
+        <p className="mt-3 rounded-2xl bg-white/60 px-3 py-2 text-[15px] leading-snug font-medium whitespace-pre-line">
+          <Auto text={message} />
+        </p>
+      )}
     </div>
   );
 }
@@ -64,6 +66,7 @@ export function TodayTab() {
   if (!player)
     return (
       <div className="space-y-4">
+        <NoticeBanners />
         <BirthdayBanner />
         {announced && <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />}
         <PickMe onPick={setMe} hint={t("เข้าสู่ระบบครั้งเดียว เครื่องนี้จะจำไว้ แล้วลงชื่อ เช็คอิน และดูยอดของตัวเองได้")} />
@@ -73,6 +76,7 @@ export function TodayTab() {
   if (player.pending)
     return (
       <div className="space-y-4">
+        <NoticeBanners />
         <BirthdayBanner />
         {announced && <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />}
         <PendingNotice name={player.name} onNotMe={() => setMe(null)} />
@@ -82,6 +86,7 @@ export function TodayTab() {
   if (!announced && !hereToday)
     return (
       <div className="space-y-4">
+        <NoticeBanners />
         <BirthdayBanner />
         <PlanChoice player={player} />
         <MonthlyReminder player={player} />
@@ -127,6 +132,7 @@ export function TodayTab() {
 
   return (
     <div className="space-y-4">
+      <NoticeBanners />
       <BirthdayBanner />
       <PlanChoice player={player} />
       <MonthlyReminder player={player} />
