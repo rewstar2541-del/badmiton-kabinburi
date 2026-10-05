@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Action, SelfAction, State } from "./state";
+import { endOf, startOf, type ClearKind } from "./clear";
 import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Gender, type Level, type MonthlyPayments, type Plan, type Player, type Settings } from "./types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -508,8 +509,41 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       check(await db.from("announcements").delete().lte("date", a.today));
       return check(await db.from("players").delete().not("guest_of", "is", null));
     }
+    case "clearData":
+      return clearRemote(db, a.kinds, a.from, a.to);
     case "replace":
       return importState(db, a.state);
+  }
+}
+
+/** ล้างข้อมูลตามประเภทและช่วงวันที่ (แอดมินลบได้ตามสิทธิ์ของแต่ละตาราง) */
+async function clearRemote(db: SupabaseClient, kinds: ClearKind[], from: string, to: string) {
+  const k = new Set(kinds);
+  const byDate = async (table: string) => check(await db.from(table).delete().gte("date", from).lte("date", to));
+  const byTime = async (table: string, col: string) => check(await db.from(table).delete().gte(col, startOf(from)).lte(col, endOf(to)));
+  // ลำดับ: ของที่อ้างอิงวันก่อน แล้วค่อยเช็คอิน
+  if (k.has("games")) await byDate("games");
+  if (k.has("signups")) {
+    await byDate("pair_requests");
+    await byDate("signups");
+    await byDate("announcements");
+  }
+  if (k.has("bills")) {
+    for (const t of ["drinks", "slips", "checkins", "day_prices"]) await byDate(t);
+  }
+  if (k.has("monthly")) check(await db.from("monthly_payments").delete().gte("month", from.slice(0, 7)).lte("month", to.slice(0, 7)));
+  if (k.has("expenses")) await byDate("expenses");
+  if (k.has("polls")) await byTime("polls", "created_at");
+  if (k.has("board")) await byTime("board_posts", "created_at");
+  if (k.has("closed")) await byDate("closed_days");
+  if (k.has("stock")) check(await db.from("shuttle_stock").delete().eq("id", 1));
+  if (k.has("photos")) {
+    const { data, error } = await db.from("event_photos").select("id,path").gte("date", from).lte("date", to);
+    if (error) throw new Error(error.message);
+    if (data?.length) {
+      await db.storage.from("event-photos").remove(data.map((p) => p.path as string));
+      check(await db.from("event_photos").delete().in("id", data.map((p) => p.id)));
+    }
   }
 }
 

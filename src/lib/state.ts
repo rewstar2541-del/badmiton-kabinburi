@@ -1,3 +1,4 @@
+import { clearState, type ClearKind } from "./clear";
 import { guestsOf, markPaid } from "./billing";
 import { DEFAULT_SETTINGS, type Day, type DayPrices, type Expense, type Game, type PairStatus, type Poll, type ShuttleStock, type BoardPost, type Level, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
 
@@ -62,6 +63,8 @@ export type Action =
   | { type: "addSlip"; date: string; playerId: string; amount: number; _id: string; _at: number }
   /** ล้างประวัติทั้งหมด (ช่วงทดลองใช้) เก็บผู้เล่น ตั้งค่า วันงดเล่น และวันจัดก๊วนหลังวันนี้ไว้ */
   | { type: "clearHistory"; today: string }
+  /** ล้างเฉพาะประเภทที่เลือก ในช่วงวันที่ */
+  | { type: "clearData"; kinds: ClearKind[]; from: string; to: string }
   | { type: "addExpense"; expense: Omit<Expense, "id" | "at">; _id: string; _at: number }
   /** นับลูกจริงแล้ว ตั้งยอดใหม่ ณ ตอนนี้ / เปลี่ยนจุดเตือน */
   | { type: "setStock"; base?: number; low?: number; _at: number }
@@ -304,6 +307,8 @@ export function reducer(state: State, a: Action): State {
           .filter((d) => d.date > a.today && d.announcement !== undefined)
           .map((d) => ({ date: d.date, checkIns: [], games: [], drinks: [], announcement: d.announcement })),
       };
+    case "clearData":
+      return clearState(state, a.kinds, a.from, a.to);
     case "addExpense":
       return { ...state, expenses: [...(state.expenses ?? []), { ...a.expense, id: a._id, at: a._at }] };
     case "setStock": {

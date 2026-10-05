@@ -1,6 +1,7 @@
 "use client";
 
 import { BoardCard } from "./Board";
+import { ClearData } from "./ClearData";
 import { PollAdmin } from "./Polls";
 import { useState } from "react";
 import { isValidPromptPayId } from "@/lib/promptpay";
@@ -150,6 +151,7 @@ export function SettingsTab() {
         </div>
       </Card>
 
+      <ClearData />
       <ClearHistory />
 
       {auth.online && <LoginTab />}
