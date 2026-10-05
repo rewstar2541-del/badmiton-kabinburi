@@ -302,6 +302,7 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
         db
           .from("board_posts")
           .select("id,player_id,kind,title,detail,price,has_photo,created_at,closed_at")
+          .eq("removed", false)
           .gte("created_at", sinceDate(90))
           .or(`closed_at.is.null,closed_at.gte.${sinceDate(7)}`)
           .order("created_at", { ascending: false }),
@@ -519,6 +520,8 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       return check(await db.from("notices").delete().eq("id", a.id));
     case "closeBoardPost":
       return check(await db.from("board_posts").update({ closed_at: iso(a._at) }).eq("id", a.id));
+    case "removeBoardPost":
+      return check(await db.from("board_posts").delete().eq("id", a.id));
     case "addBoardPost":
       // ออนไลน์ลงผ่าน board_post เท่านั้น
       return;
@@ -952,7 +955,8 @@ export type SocialRequest =
   | { kind: "vote"; poll: string; dates: string[] }
   | { kind: "birthday"; bday: string | null }
   | { kind: "boardPost"; post: { kind: BoardKind; title: string; detail: string; price: number | null; photo: string } }
-  | { kind: "boardClose"; id: string };
+  | { kind: "boardClose"; id: string }
+  | { kind: "boardRemove"; id: string };
 
 export async function socialRpc(db: SupabaseClient, req: SocialRequest, playerId: string, pin: string): Promise<string | null> {
   const base = { p_player: playerId, p_pin: pin };
@@ -976,6 +980,8 @@ export async function socialRpc(db: SupabaseClient, req: SocialRequest, playerId
                 })
               : req.kind === "boardClose"
                 ? await db.rpc("board_close", { ...base, p_id: req.id })
+                : req.kind === "boardRemove"
+                  ? await db.rpc("board_remove", { ...base, p_id: req.id })
                 : await db.rpc("vote_poll", { ...base, p_poll: req.poll, p_dates: req.dates });
   if (error) return error.message;
   return (data as string | null) ?? null;

@@ -84,6 +84,7 @@ export type Action =
   | { type: "removeNotice"; id: string }
   | { type: "addBoardPost"; post: Omit<BoardPost, "id" | "at" | "hasPhoto">; _id: string; _at: number }
   | { type: "closeBoardPost"; id: string; _at: number }
+  | { type: "removeBoardPost"; id: string }
   | { type: "replace"; state: State };
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
@@ -335,6 +336,8 @@ export function reducer(state: State, a: Action): State {
       return { ...state, board: [{ ...a.post, id: a._id, at: a._at, hasPhoto: !!a.post.photo }, ...(state.board ?? [])] };
     case "closeBoardPost":
       return { ...state, board: (state.board ?? []).map((b) => (b.id === a.id ? { ...b, closedAt: a._at } : b)) };
+    case "removeBoardPost":
+      return { ...state, board: (state.board ?? []).filter((b) => b.id !== a.id) };
     case "removePoll":
       return { ...state, polls: (state.polls ?? []).filter((p) => p.id !== a.id) };
     case "votePoll":
