@@ -1,5 +1,5 @@
 import { dayAmount } from "./billing";
-import { monthlyAmount, type State } from "./state";
+import { monthlyAmount, today as todayDate, type State } from "./state";
 import { monthOf, type Player } from "./types";
 
 export interface MonthSummary {
@@ -93,7 +93,21 @@ export function lifetime(state: State, playerId: string) {
     bestDay = Math.max(bestDay, today);
   }
   const monthlyMonths = Object.values(state.monthly).filter((m) => m[playerId]).length;
-  return { visits, games, bestDay, bestStreak, monthlyMonths };
+  const { current: attendStreak, best: bestAttend } = attendance(state, playerId);
+  return { visits, games, bestDay, bestStreak, monthlyMonths, attendStreak, bestAttend };
+}
+
+/** มาเล่นติดกันกี่ครั้ง นับเฉพาะวันที่ก๊วนเปิดจริง (มีคนเช็คอิน) วันที่ไม่มาตัดสถิติ วันนี้ที่ยังไม่มาไม่ตัด */
+export function attendance(state: State, playerId: string, now = todayDate()) {
+  let current = 0;
+  let best = 0;
+  const days = state.days.filter((d) => d.checkIns.length && d.date <= now).sort((a, b) => a.date.localeCompare(b.date));
+  for (const d of days) {
+    if (d.checkIns.some((c) => c.playerId === playerId)) current++;
+    else if (d.date !== now) current = 0;
+    best = Math.max(best, current);
+  }
+  return { current, best };
 }
 
 const BADGES: { id: string; name: string; how: string; target: number; stat: keyof ReturnType<typeof lifetime> }[] = [
@@ -103,6 +117,9 @@ const BADGES: { id: string; name: string; how: string; target: number; stat: key
   { id: "streak", name: "ไฟลุก", how: "ชนะติดกัน {n} เกม", target: 5, stat: "bestStreak" },
   { id: "marathon", name: "มาราธอน", how: "เล่น {n} เกมในวันเดียว", target: 10, stat: "bestDay" },
   { id: "hundred", name: "ร้อยเกม", how: "เล่นครบ {n} เกม", target: 100, stat: "games" },
+  { id: "attend5", name: "มาติดกัน", how: "มาเล่นติดกัน {n} ครั้ง", target: 5, stat: "bestAttend" },
+  { id: "attend10", name: "ไม่เคยขาด", how: "มาเล่นติดกัน {n} ครั้ง", target: 10, stat: "bestAttend" },
+  { id: "attend20", name: "ตัวตึงสนาม", how: "มาเล่นติดกัน {n} ครั้ง", target: 20, stat: "bestAttend" },
   { id: "member", name: "สมาชิกขาจริง", how: "จ่ายรายเดือน {n} เดือน", target: 3, stat: "monthlyMonths" },
 ];
 

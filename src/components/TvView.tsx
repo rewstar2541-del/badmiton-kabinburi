@@ -1,5 +1,6 @@
 "use client";
 
+import { BirthdayBanner } from "./Birthday";
 import { useEffect, useRef, useState } from "react";
 import { appName } from "@/lib/brand";
 import { locale, t, useLang } from "@/lib/i18n";
@@ -129,6 +130,7 @@ export function TvView() {
         </div>
       </header>
 
+      <BirthdayBanner tv />
       {day.announcement && (
         <div className="flex items-center gap-3 rounded-2xl bg-lime px-5 py-3 text-xl text-ink">
           <Icon.Megaphone /> <span className="font-semibold">{day.announcementTitle && (

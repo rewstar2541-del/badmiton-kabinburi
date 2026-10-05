@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Action, SelfAction, State } from "./state";
-import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type Gender, type Level, type MonthlyPayments, type Plan, type Player, type Settings } from "./types";
+import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Gender, type Level, type MonthlyPayments, type Plan, type Player, type Settings } from "./types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -24,6 +24,7 @@ export interface Rows {
     plan?: string | null;
     bio?: string | null;
     level_request?: number | null;
+    birthday?: string | null;
   }[];
   checkins: {
     date: string;
@@ -56,6 +57,7 @@ export interface Rows {
   pairs?: { id: string; date: string; from_id: string; to_id: string; status: PairStatus; at: string }[];
   polls?: { id: string; question: string; dates: string[]; created_at: string; chosen: string | null; closed: boolean }[];
   votes?: { poll_id: string; player_id: string; dates: string[] }[];
+  board?: { id: string; player_id: string; kind: BoardKind; title: string; detail: string | null; price: number | null; has_photo: boolean; created_at: string; closed_at: string | null }[];
   settings:
     | {
         court_count: number;
@@ -85,6 +87,7 @@ export function rowsToState(r: Rows): State {
     ...(p.plan === "daily" || p.plan === "monthly" ? { plan: p.plan } : {}),
     ...(p.bio ? { bio: p.bio } : {}),
     ...(p.level_request ? { levelRequest: p.level_request as Level } : {}),
+    ...(p.birthday ? { birthday: p.birthday } : {}),
   }));
 
   const days = new Map<string, Day>();
@@ -186,6 +189,19 @@ export function rowsToState(r: Rows): State {
         votes: Object.fromEntries((r.votes ?? []).filter((v) => v.poll_id === p.id).map((v) => [v.player_id, v.dates])),
       }),
     ),
+    board: (r.board ?? []).map(
+      (b): BoardPost => ({
+        id: b.id,
+        playerId: b.player_id,
+        kind: b.kind,
+        title: b.title,
+        ...(b.detail ? { detail: b.detail } : {}),
+        ...(b.price != null ? { price: b.price } : {}),
+        hasPhoto: b.has_photo,
+        at: Date.parse(b.created_at),
+        ...(b.closed_at ? { closedAt: Date.parse(b.closed_at) } : {}),
+      }),
+    ),
   };
 }
 
@@ -230,6 +246,7 @@ export const TABLE_OF: Record<string, TableKey> = {
   pair_requests: "pairs",
   polls: "polls",
   poll_votes: "votes",
+  board_posts: "board",
 };
 
 export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iterable<TableKey>, prev?: Rows): Promise<Rows> {
@@ -240,7 +257,7 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
     if (data?.[0]?.date) since = data[0].date;
   }
   const fetchers: { [K in TableKey]: () => Promise<Rows[K]> } = {
-    players: () => all(() => db.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of,pending,plan,bio,level_request").order("id")),
+    players: () => all(() => db.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of,pending,plan,bio,level_request,birthday").order("id")),
     checkins: () => all(() => db.from("checkins").select("date,player_id,at,paid_at,resting,court_fee,shuttle_fee").gte("date", since).order("date").order("player_id")),
     games: () => all(() => db.from("games").select("id,date,court,player_ids,started_at,ended_at,shuttles,winner").gte("date", since).order("id")),
     // ค่าน้ำ ค่ารายเดือน และสลิป ผู้เล่นทั่วไปอ่านไม่ได้ (โหลดของตัวเองแยกผ่าน my_private)
@@ -261,6 +278,16 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
     pairs: () => all(() => db.from("pair_requests").select("id,date,from_id,to_id,status,at").gte("date", sinceDate(1)).order("at")),
     polls: () => all(() => db.from("polls").select("id,question,dates,created_at,chosen,closed").gte("created_at", sinceDate(120)).order("created_at")),
     votes: () => all(() => db.from("poll_votes").select("poll_id,player_id,dates").gte("at", sinceDate(120)).order("poll_id")),
+    // รูปโหลดแยกตอนเปิดดู (boardPhoto) โพสต์ที่ปิดแล้วเก็บไว้ดู 7 วัน
+    board: () =>
+      all(() =>
+        db
+          .from("board_posts")
+          .select("id,player_id,kind,title,detail,price,has_photo,created_at,closed_at")
+          .gte("created_at", sinceDate(90))
+          .or(`closed_at.is.null,closed_at.gte.${sinceDate(7)}`)
+          .order("created_at", { ascending: false }),
+      ),
     prices: () => all(() => db.from("day_prices").select("date,court_fee,first_shuttle_fee,next_shuttle_fee").gte("date", since).order("date")),
   };
   const want = new Set<TableKey>(keys ?? (Object.keys(fetchers) as TableKey[]));
@@ -297,6 +324,7 @@ function playerRow(p: Omit<Player, "id"> & { id: string }) {
     plan: p.plan ?? null,
     bio: p.bio ?? null,
     level_request: p.levelRequest ?? null,
+    birthday: p.birthday ?? null,
   };
 }
 
@@ -457,6 +485,11 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       return check(await db.from("polls").update({ closed: true, chosen: a.chosen ?? null }).eq("id", a.id));
     case "removePoll":
       return check(await db.from("polls").delete().eq("id", a.id));
+    case "closeBoardPost":
+      return check(await db.from("board_posts").update({ closed_at: iso(a._at) }).eq("id", a.id));
+    case "addBoardPost":
+      // ออนไลน์ลงผ่าน board_post เท่านั้น
+      return;
     case "setPairStatus":
       // แอดมินยกเลิกคำขอ (ผู้เล่นใช้ respond_pair / cancel_pair)
       return check(await db.from("pair_requests").update({ status: a.status }).eq("id", a.id));
@@ -564,6 +597,23 @@ export async function removeMySlip(db: SupabaseClient, playerId: string, pin: st
 }
 
 /** รูปสลิป (เฉพาะแอดมิน) */
+export async function boardPhoto(db: SupabaseClient, id: string): Promise<string | null> {
+  const { data, error } = await db.from("board_posts").select("photo").eq("id", id).maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data?.photo as string | null) ?? null;
+}
+
+/** ประวัติเกมและการมาเล่นตั้งแต่วันที่ระบุ (ใช้ทำอันดับ / สรุปรายปี) ทุกคนอ่านได้ */
+export async function loadHistory(db: SupabaseClient, from: string): Promise<State> {
+  const [players, checkins, games, announcements] = await Promise.all([
+    all(() => db.from("players").select("id,name,photo,gender,level,guest_of,pending").order("id")),
+    all(() => db.from("checkins").select("date,player_id,at,paid_at").gte("date", from).order("date").order("player_id")),
+    all(() => db.from("games").select("id,date,court,player_ids,started_at,ended_at,shuttles,winner").gte("date", from).order("id")),
+    all(() => db.from("announcements").select("date,message,title").gte("date", from).order("date")),
+  ]);
+  return rowsToState({ players, checkins, games, announcements, prices: [], drinks: [], monthly: [], signups: [], closed: [], slips: [], settings: null } as unknown as Rows);
+}
+
 export async function slipImage(db: SupabaseClient, slipId: string): Promise<string | null> {
   const { data, error } = await db.rpc("slip_image", { p_id: slipId });
   if (error) throw new Error(error.message);
@@ -776,7 +826,10 @@ export type SocialRequest =
   | { kind: "requestPair"; to: string }
   | { kind: "respondPair"; id: string; accept: boolean }
   | { kind: "cancelPair"; id: string }
-  | { kind: "vote"; poll: string; dates: string[] };
+  | { kind: "vote"; poll: string; dates: string[] }
+  | { kind: "birthday"; bday: string | null }
+  | { kind: "boardPost"; post: { kind: BoardKind; title: string; detail: string; price: number | null; photo: string } }
+  | { kind: "boardClose"; id: string };
 
 export async function socialRpc(db: SupabaseClient, req: SocialRequest, playerId: string, pin: string): Promise<string | null> {
   const base = { p_player: playerId, p_pin: pin };
@@ -787,7 +840,20 @@ export async function socialRpc(db: SupabaseClient, req: SocialRequest, playerId
         ? await db.rpc("respond_pair", { ...base, p_id: req.id, p_accept: req.accept })
         : req.kind === "cancelPair"
           ? await db.rpc("cancel_pair", { ...base, p_id: req.id })
-          : await db.rpc("vote_poll", { ...base, p_poll: req.poll, p_dates: req.dates });
+          : req.kind === "birthday"
+            ? await db.rpc("set_my_birthday", { ...base, p_bday: req.bday })
+            : req.kind === "boardPost"
+              ? await db.rpc("board_post", {
+                  ...base,
+                  p_kind: req.post.kind,
+                  p_title: req.post.title,
+                  p_detail: req.post.detail,
+                  p_price: req.post.price,
+                  p_photo: req.post.photo,
+                })
+              : req.kind === "boardClose"
+                ? await db.rpc("board_close", { ...base, p_id: req.id })
+                : await db.rpc("vote_poll", { ...base, p_poll: req.poll, p_dates: req.dates });
   if (error) return error.message;
   return (data as string | null) ?? null;
 }

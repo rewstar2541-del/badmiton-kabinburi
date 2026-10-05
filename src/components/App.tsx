@@ -1,5 +1,6 @@
 "use client";
 
+import { YearSummaryView } from "./YearSummary";
 import { Fragment, useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { waitingQueue } from "@/lib/matchmaking";
 import { PlayerModeProvider, StoreProvider, useStore, useToday } from "@/lib/store";
@@ -325,6 +326,14 @@ function isTv() {
   return hasParam("tv");
 }
 
+function SummaryRoute() {
+  return (
+    <main className="min-h-dvh bg-zinc-100 px-4 py-6">
+      <YearSummaryView year={new URLSearchParams(location.search).get("summary") ?? undefined} />
+    </main>
+  );
+}
+
 function QrRoute() {
   const { state } = useStore();
   return <QrOnlyPage promptPayId={state.settings.promptPayId} />;
@@ -333,7 +342,9 @@ function QrRoute() {
 export function App() {
   return (
     <StoreProvider>
-      <PlayerModeProvider>{hasParam("payqr") ? <QrRoute /> : isTv() ? <TvView /> : <Shell />}</PlayerModeProvider>
+      <PlayerModeProvider>
+        {hasParam("payqr") ? <QrRoute /> : isTv() ? <TvView /> : hasParam("summary") ? <SummaryRoute /> : <Shell />}
+      </PlayerModeProvider>
     </StoreProvider>
   );
 }

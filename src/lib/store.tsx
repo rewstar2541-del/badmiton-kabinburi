@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import { isDemo, demoState } from "./demo";
 import { randomToken, readSession, remember, restoreRemembered, writeSession } from "./session";
 import { clearLineTicket, handleLineCallback, readLineTicket } from "./lineLogin";
-import { socialRpc, type SocialRequest, addGuest, claimPlayer, signUpDay, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, removeMySlip, setMyPlan, updateMyProfile, type ProfileInput, supabase } from "./remote";
+import { boardPhoto, loadHistory, socialRpc, type SocialRequest, addGuest, claimPlayer, signUpDay, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, removeMySlip, setMyPlan, updateMyProfile, type ProfileInput, supabase } from "./remote";
 import { EMPTY_STATE, guestCheck, prepare, reducer, today, type Intent, type SelfAction, type State } from "./state";
 import { DEFAULT_SETTINGS, monthOf, type Level, type Plan, type Player } from "./types";
 import { t } from "@/lib/i18n";
@@ -74,6 +74,10 @@ interface Ctx {
   addGuest: (hostId: string, pin: string, name: string, level: Level) => Promise<string | null>;
   /** รูปสลิป (เฉพาะแอดมิน) */
   slipImage: (slipId: string) => Promise<string | null>;
+  /** รูปของโพสต์ในบอร์ดของหาย / ฝากขาย */
+  boardPhoto: (id: string) => Promise<string | null>;
+  /** ประวัติเกมย้อนหลังตั้งแต่วันที่ระบุ (อันดับ / สรุปรายปี) */
+  history: (from: string) => Promise<State>;
   ready: boolean;
   error: string | null;
   auth: Auth;
@@ -132,10 +136,21 @@ function LocalProvider({ children }: { children: ReactNode }) {
       const date = today();
       if (req.kind === "vote") dispatch({ type: "votePoll", id: req.poll, playerId, dates: req.dates });
       else if (req.kind === "requestPair") dispatch({ type: "requestPair", date, from: playerId, to: req.to });
+      else if (req.kind === "birthday") {
+        const p = state.players.find((x) => x.id === playerId);
+        if (p) dispatch({ type: "updatePlayer", player: { ...p, birthday: req.bday ?? undefined } });
+      } else if (req.kind === "boardPost") {
+        if ((state.board ?? []).filter((b) => b.playerId === playerId && !b.closedAt).length >= 5) return "ลงประกาศได้ไม่เกิน 5 รายการ ปิดรายการเก่าก่อน";
+        const { kind, title, detail, price, photo } = req.post;
+        dispatch({
+          type: "addBoardPost",
+          post: { playerId, kind, title: title.trim(), ...(detail.trim() ? { detail: detail.trim() } : {}), ...(kind === "sell" && price != null ? { price } : {}), ...(photo ? { photo } : {}) },
+        });
+      } else if (req.kind === "boardClose") dispatch({ type: "closeBoardPost", id: req.id });
       else dispatch({ type: "setPairStatus", date, id: req.id, status: req.kind === "cancelPair" ? "cancelled" : req.accept ? "accepted" : "declined" });
       return null;
     },
-    [dispatch],
+    [dispatch, state.players, state.board],
   );
   const setPrefs = useCallback(
     async (playerId: string, _pin: string, prefer: string[], avoid: string[]) => {
@@ -220,7 +235,7 @@ function LocalProvider({ children }: { children: ReactNode }) {
       : undefined,
   };
   return (
-    <StoreCtx.Provider value={{ state, dispatch, self, social, sendSlip, removeSlip: removeSlipLocal, setPrefs, setPlan: setPlanLocal, updateProfile: updateProfileLocal, addGuest: addGuestLocal, register: registerLocal, login: loginLocal, slipImage: getSlip, ready: true, error: null, auth }}>
+    <StoreCtx.Provider value={{ state, dispatch, self, social, sendSlip, removeSlip: removeSlipLocal, setPrefs, setPlan: setPlanLocal, updateProfile: updateProfileLocal, addGuest: addGuestLocal, register: registerLocal, login: loginLocal, slipImage: getSlip, boardPhoto: async (id) => state.board?.find((b) => b.id === id)?.photo ?? null, history: async () => state, ready: true, error: null, auth }}>
       {children}
     </StoreCtx.Provider>
   );
@@ -390,6 +405,8 @@ function RemoteProvider({ children }: { children: ReactNode }) {
   );
 
   const getSlip = useCallback((id: string) => slipImage(db, id), [db]);
+  const getBoardPhoto = useCallback((id: string) => boardPhoto(db, id), [db]);
+  const history = useCallback((from: string) => loadHistory(db, from), [db]);
   const loginRemote = useCallback(
     async (playerId: string): Promise<LoginResult> => {
       // ต้องเพิ่งเข้าด้วย LINE ก่อน แล้วส่งคำขอผูกบัญชีนี้กับชื่อเดิม รอแอดมินยืนยัน
@@ -468,7 +485,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  return <StoreCtx.Provider value={{ state, dispatch, self, social, sendSlip, removeSlip: removeSlipRemote, setPrefs, setPlan: setPlanRemote, updateProfile: updateProfileRemote, addGuest: addGuestRemote, register: registerRemote, login: loginRemote, slipImage: getSlip, ready, error, auth }}>{children}</StoreCtx.Provider>;
+  return <StoreCtx.Provider value={{ state, dispatch, self, social, sendSlip, removeSlip: removeSlipRemote, setPrefs, setPlan: setPlanRemote, updateProfile: updateProfileRemote, addGuest: addGuestRemote, register: registerRemote, login: loginRemote, slipImage: getSlip, boardPhoto: getBoardPhoto, history, ready, error, auth }}>{children}</StoreCtx.Provider>;
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
