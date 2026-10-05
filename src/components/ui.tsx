@@ -1,4 +1,4 @@
-import { useState, type ButtonHTMLAttributes, type ReactNode, type SVGProps } from "react";
+import type { ButtonHTMLAttributes, ReactNode, SVGProps } from "react";
 import { locale, t } from "@/lib/i18n";
 import { LEVELS, type Level } from "@/lib/types";
 
@@ -235,60 +235,3 @@ export function SearchInput({ value, onChange, placeholder }: { value: string; o
     </div>
   );
 }
-
-/** หัวข้อพับเก็บได้ จำว่าเปิดหรือปิดไว้ในเครื่อง */
-export function Fold({
-  id,
-  icon,
-  title,
-  hint,
-  defaultOpen,
-  danger,
-  children,
-}: {
-  id: string;
-  icon: string;
-  title: string;
-  hint: string;
-  defaultOpen?: boolean;
-  danger?: boolean;
-  children: ReactNode;
-}) {
-  const key = "badminton-kabinburi:settings:" + id;
-  const [open, setOpen] = useState(() => {
-    try {
-      const v = localStorage.getItem(key);
-      return v === null ? !!defaultOpen : v === "1";
-    } catch {
-      return !!defaultOpen;
-    }
-  });
-  const toggle = () => {
-    setOpen(!open);
-    try {
-      localStorage.setItem(key, open ? "0" : "1");
-    } catch {}
-  };
-  return (
-    <section className={`rounded-3xl ${open ? "bg-zinc-100 p-2" : ""}`}>
-      <button
-        onClick={toggle}
-        aria-expanded={open}
-        className={`flex w-full items-center gap-3 rounded-2xl bg-white px-4 py-3.5 text-left shadow-sm ${danger ? "ring-1 ring-red-200" : ""}`}
-      >
-        <span className="text-2xl" aria-hidden>
-          {icon}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className={`block font-display font-semibold ${danger ? "text-red-600" : ""}`}>{title}</span>
-          <span className="block truncate text-xs text-zinc-500">{hint}</span>
-        </span>
-        <span className={`shrink-0 text-zinc-400 transition-transform ${open ? "rotate-90" : ""}`} aria-hidden>
-          ›
-        </span>
-      </button>
-      {open && <div className="space-y-4 pt-3">{children}</div>}
-    </section>
-  );
-}
-

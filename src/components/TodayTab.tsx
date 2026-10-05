@@ -7,14 +7,14 @@ import { BoardCard } from "./Board";
 import { BirthdayBanner } from "./Birthday";
 import { PollVote } from "./Polls";
 import { PairCard } from "./Pairs";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { today, useStore, useToday } from "@/lib/store";
 import { presence } from "@/lib/matchmaking";
 import { BringGuest } from "./Guests";
 import type { SelfAction } from "@/lib/state";
 import { ClosedBanner, ClubCalendar } from "./Calendar";
 import { PendingNotice, PickMe, savedPin, useMe } from "./PickMe";
-import { Avatar, Button, Card, Fold, Icon, LevelBadge, baht } from "./ui";
+import { Avatar, Button, Card, Icon, LevelBadge, baht } from "./ui";
 import { locale, t } from "@/lib/i18n";
 import { RestButton } from "./RestButton";
 import { Auto } from "@/lib/autoTranslate";
@@ -100,7 +100,9 @@ export function TodayTab() {
           </Card>
         )}
         <PollVote />
-        <MoreFold />
+        <BoardCard />
+      <ClubCalendar />
+        <EventPhotos />
       </div>
     );
 
@@ -127,19 +129,15 @@ export function TodayTab() {
   const waitPos = waitingPosition(day, player.id);
   const full = !!q.cap && q.confirmed.length >= q.cap;
   const selfIn = canSelfCheckIn(day, player.id);
-  const announcement = (
-    <>
-      <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />
-      <CapLine />
-    </>
-  );
 
   return (
     <div className="space-y-4">
       <NoticeBanners />
+      <BirthdayBanner />
       <PlanChoice player={player} />
-      {/* ยังไม่มา: ดูประกาศก่อนแล้วค่อยลงชื่อ / มาแล้ว: สถานะและปุ่มของฉันขึ้นก่อน */}
-      {!checkedIn && announcement}
+      <MonthlyReminder player={player} />
+      <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />
+      <CapLine />
 
       <Card className="space-y-4">
         <div className="flex items-center gap-3">
@@ -236,27 +234,13 @@ export function TodayTab() {
         )}
       </Card>
 
-      {checkedIn && announcement}
-      <MonthlyReminder player={player} />
-      <BirthdayBanner />
+      {checkedIn && status !== "home" && !player.guestOf && <PairCard />}
+      {checkedIn && status !== "home" && !player.guestOf && <BringGuest player={player} pin={pin} />}
       <PollVote />
-      <MoreFold>
-        {checkedIn && status !== "home" && !player.guestOf && <PairCard />}
-        {checkedIn && status !== "home" && !player.guestOf && <BringGuest player={player} pin={pin} />}
-      </MoreFold>
-    </div>
-  );
-}
-
-/** ของที่ไม่ต้องเห็นตลอด พับเก็บไว้ท้ายหน้า */
-function MoreFold({ children }: { children?: ReactNode }) {
-  return (
-    <Fold id="today-more" icon="➕" title={t("เพิ่มเติม")} hint={t("ขอคู่ ปฏิทินก๊วน ของหาย รูปกิจกรรม")}>
-      {children}
-      <ClubCalendar />
       <BoardCard />
+      <ClubCalendar />
       <EventPhotos />
-    </Fold>
+    </div>
   );
 }
 

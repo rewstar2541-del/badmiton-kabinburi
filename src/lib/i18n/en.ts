@@ -791,10 +791,4 @@ export const en: Record<string, string> = {
   "ตั้งเป็นวันงดเล่น {n} วัน": "Set {n} days off",
   "ยกเลิกอีเว้น {n} วัน?": "Cancel events on {n} days?",
   "ยกเลิกอีเว้นในวันที่เลือก ({n})": "Cancel events on selected days ({n})",
-  "เพิ่มเติม": "More",
-  "ขอคู่ ปฏิทินก๊วน ของหาย รูปกิจกรรม": "Pair requests, club calendar, lost & found, photos",
-  "สรุปเดือน เหรียญ คู่ที่อยากเล่นด้วย": "Month summary, badges, preferred partners",
-  "ประกาศและข่าว": "Announcements & news",
-  "แก้ประกาศวันนี้ ข่าวทั่วไป โหวต": "Edit today's announcement, news, polls",
-  "ข่าวทั่วไป โหวต": "News, polls",
 };
