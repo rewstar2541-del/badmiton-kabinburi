@@ -63,9 +63,10 @@ export function AnnounceCard() {
 }
 
 /** ฟอร์มสร้าง/แก้อีเว้นของวันหนึ่ง ใช้ทั้งหน้าเช็คอิน (วันนี้) และปฏิทินก๊วน (วันไหนก็ได้) */
-export function EventForm({ date, onDone, onCancel }: { date: string; onDone: () => void; onCancel?: () => void }) {
+export function EventForm({ date, dates, onDone, onCancel }: { date?: string; dates?: string[]; onDone: () => void; onCancel?: () => void }) {
   const { dispatch, state } = useStore();
-  const day = state.days.find((d) => d.date === date);
+  const targets = dates ?? (date ? [date] : []);
+  const day = state.days.find((d) => d.date === targets[0]);
   const announced = day?.announcement !== undefined;
   const [message, setMessage] = useState(day?.announcement ?? DEFAULT_MESSAGE());
   const [title, setTitle] = useState<string | null>(day?.announcementTitle ?? null);
@@ -139,21 +140,24 @@ export function EventForm({ date, onDone, onCancel }: { date: string; onDone: ()
         <Button
           variant="accent"
           className="flex-1"
+          disabled={!targets.length}
           onClick={() => {
-            if (date in state.closed) dispatch({ type: "setClosed", date, reason: null });
-            // ข้อความเริ่มต้นเก็บเป็นภาษาไทย ผู้เล่นแต่ละคนจะเห็นตามภาษาที่ตัวเองเลือก
-            dispatch({
-              type: "setAnnouncement",
-              date,
-              message: message.trim() === DEFAULT_MESSAGE() ? DEFAULT_TH : message.trim(),
-              title: title?.trim() || null,
-              fee: title?.trim() && Number(fee) > 0 ? Math.round(Number(fee)) : null,
-              cap: Number(cap) >= 1 ? Math.min(500, Math.round(Number(cap))) : null,
-            });
+            for (const d of targets) {
+              if (d in state.closed) dispatch({ type: "setClosed", date: d, reason: null });
+              // ข้อความเริ่มต้นเก็บเป็นภาษาไทย ผู้เล่นแต่ละคนจะเห็นตามภาษาที่ตัวเองเลือก
+              dispatch({
+                type: "setAnnouncement",
+                date: d,
+                message: message.trim() === DEFAULT_MESSAGE() ? DEFAULT_TH : message.trim(),
+                title: title?.trim() || null,
+                fee: title?.trim() && Number(fee) > 0 ? Math.round(Number(fee)) : null,
+                cap: Number(cap) >= 1 ? Math.min(500, Math.round(Number(cap))) : null,
+              });
+            }
             onDone();
           }}
         >
-          {announced ? t("บันทึก") : t("ประกาศ")}
+          {targets.length > 1 ? t("ประกาศ {n} วัน", { n: targets.length }) : announced ? t("บันทึก") : t("ประกาศ")}
         </Button>
         {onCancel && <Button onClick={onCancel}>{t("ยกเลิก")}</Button>}
       </div>

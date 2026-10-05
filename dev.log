@@ -2,11 +2,8 @@
 - Local:         http://localhost:3123
 - Network:       http://192.0.2.2:3123
 - Environments: .env.local
-✓ Ready in 454ms
-✓ Running next.config.ts took 41ms
+✓ Ready in 588ms
+✓ Running next.config.ts took 121ms
 
- GET / 200 in 487ms (next.js: 300ms, application-code: 186ms)
- GET /?demo 200 in 48ms (next.js: 5ms, application-code: 43ms)
- GET /?demo 200 in 43ms (next.js: 9ms, application-code: 34ms)
- GET /?demo 200 in 55ms (next.js: 3ms, application-code: 52ms)
-[?25h
+ GET / 200 in 3.0s (next.js: 2.7s, application-code: 206ms)
+ GET /?demo 200 in 51ms (next.js: 11ms, application-code: 40ms)

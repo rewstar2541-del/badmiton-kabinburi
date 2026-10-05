@@ -29,6 +29,9 @@ export function ClubCalendar({ bare }: { bare?: boolean } = {}) {
     return { y, m: m - 1 };
   });
   const [picked, setPicked] = useState<string | null>(null);
+  // แอดมินเลือกหลายวันพร้อมกัน
+  const [multi, setMulti] = useState(false);
+  const [sel, setSel] = useState<string[]>([]);
   const [reason, setReason] = useState("");
   const closedReason = useAuto((picked && state.closed[picked]) || "");
   const pickedDay = picked ? state.days.find((d) => d.date === picked) : undefined;
@@ -81,6 +84,24 @@ export function ClubCalendar({ bare }: { bare?: boolean } = {}) {
             ›
           </button>
         </div>
+        {auth.isAdmin && (
+          <div className="grid grid-cols-2 gap-1 rounded-2xl bg-zinc-100 p-1 text-sm font-semibold">
+            {[false, true].map((m) => (
+              <button
+                key={String(m)}
+                aria-pressed={multi === m}
+                onClick={() => {
+                  setMulti(m);
+                  setSel([]);
+                  setPicked(null);
+                }}
+                className={`rounded-xl py-2 ${multi === m ? "bg-white text-ink shadow-sm" : "text-zinc-500"}`}
+              >
+                {m ? t("เลือกหลายวัน") : t("ทีละวัน")}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-zinc-400">
           {weekdays.map((w, i) => (
             <span key={i}>{w}</span>
@@ -97,13 +118,19 @@ export function ClubCalendar({ bare }: { bare?: boolean } = {}) {
               <button
                 key={i}
                 onClick={() => {
+                  if (multi) {
+                    setSel(sel.includes(date) ? sel.filter((x) => x !== date) : [...sel, date].sort());
+                    return;
+                  }
                   setPicked(picked === date ? null : date);
                   setReason(state.closed[date] ?? "");
                   setError("");
                 }}
                 className={`relative grid aspect-square place-items-center rounded-xl text-sm tabular-nums ${
                   closed ? "bg-red-50 font-semibold text-red-600 line-through" : session ? `${eventStyle(evTitle).cell} font-semibold` : "bg-zinc-50"
-                } ${date === now ? "ring-2 ring-ink" : ""} ${picked === date ? "outline-2 outline-offset-1 outline-sky-400" : ""}`}
+                } ${date === now ? "ring-2 ring-ink" : ""} ${picked === date ? "outline-2 outline-offset-1 outline-sky-400" : ""} ${
+                  multi && sel.includes(date) ? "!bg-sky-500 !text-white !no-underline" : ""
+                }`}
               >
                 {d}
                 {evTitle && (
@@ -125,7 +152,8 @@ export function ClubCalendar({ bare }: { bare?: boolean } = {}) {
             <span className="size-3 rounded bg-red-50 ring-1 ring-red-200" /> {t("งดเล่น")}
           </span>
         </div>
-        {auth.isAdmin && !picked && <p className="text-xs text-zinc-500">{t("แตะวันที่เพื่อสร้างอีเว้น หรือตั้งวันงดเล่น")}</p>}
+        {auth.isAdmin && !picked && !multi && <p className="text-xs text-zinc-500">{t("แตะวันที่เพื่อสร้างอีเว้น หรือตั้งวันงดเล่น")}</p>}
+        {auth.isAdmin && multi && <MultiPanel sel={sel} setSel={setSel} view={view} />}
 
         {picked && (
           <div className="space-y-2 rounded-2xl bg-zinc-50 p-3">
@@ -259,6 +287,107 @@ export function ClubCalendar({ bare }: { bare?: boolean } = {}) {
         )}
       </Card>
     </>
+  );
+}
+
+/** แอดมิน: เลือกหลายวัน (แตะในปฏิทิน หรือทำซ้ำทุกสัปดาห์) แล้วสร้างอีเว้น / วันงดเล่นทีเดียว */
+function MultiPanel({ sel, setSel, view }: { sel: string[]; setSel: (v: string[]) => void; view: { y: number; m: number } }) {
+  const { state, dispatch } = useStore();
+  const now = today();
+  const monthEnd = ymd(view.y, view.m, new Date(view.y, view.m + 1, 0).getDate());
+  const [weekdays, setWeekdays] = useState<number[]>([]);
+  const [from, setFrom] = useState(() => (ymd(view.y, view.m, 1) < now ? now : ymd(view.y, view.m, 1)));
+  const [to, setTo] = useState(monthEnd);
+  const [reason, setReason] = useState("");
+  const names = Array.from({ length: 7 }, (_, i) => new Date(2026, 9, 4 + i).toLocaleDateString(locale(), { weekday: "short" }));
+  const short = (d: string) => new Date(d + "T00:00").toLocaleDateString(locale(), { day: "numeric", month: "short" });
+  const withEvent = sel.filter((d) => state.days.some((x) => x.date === d && x.announcement !== undefined));
+
+  const addWeekly = () => {
+    const out = new Set(sel);
+    const end = new Date(to + "T00:00");
+    for (let d = new Date(from + "T00:00"); d <= end && out.size < 120; d.setDate(d.getDate() + 1)) {
+      if (weekdays.includes(d.getDay())) out.add(ymd(d.getFullYear(), d.getMonth(), d.getDate()));
+    }
+    setSel([...out].sort());
+  };
+
+  return (
+    <div className="space-y-3 rounded-2xl bg-zinc-50 p-3">
+      <div className="space-y-2">
+        <div className="text-sm font-semibold">{t("ทำซ้ำทุกสัปดาห์")}</div>
+        <div className="grid grid-cols-7 gap-1">
+          {names.map((n, i) => (
+            <button
+              key={i}
+              aria-pressed={weekdays.includes(i)}
+              onClick={() => setWeekdays(weekdays.includes(i) ? weekdays.filter((x) => x !== i) : [...weekdays, i])}
+              className={`rounded-xl py-2 text-xs font-semibold ${weekdays.includes(i) ? "bg-ink text-white" : "bg-white text-zinc-600"}`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="text-xs text-zinc-500">
+            {t("ตั้งแต่")}
+            <input type="date" className={`${inputClass} mt-1`} value={from} min={now} onChange={(e) => setFrom(e.target.value)} />
+          </label>
+          <label className="text-xs text-zinc-500">
+            {t("ถึง")}
+            <input type="date" className={`${inputClass} mt-1`} value={to} min={from} onChange={(e) => setTo(e.target.value)} />
+          </label>
+        </div>
+        <Button className="w-full" disabled={!weekdays.length || !from || !to || to < from} onClick={addWeekly}>
+          {t("เลือกวันตามนี้")}
+        </Button>
+      </div>
+
+      <div className="flex items-center justify-between gap-2 border-t border-zinc-200 pt-3 text-sm">
+        <span className="font-semibold">{t("เลือกแล้ว {n} วัน", { n: sel.length })}</span>
+        {sel.length > 0 && (
+          <button className="text-xs font-semibold text-zinc-500 underline" onClick={() => setSel([])}>
+            {t("ล้างที่เลือก")}
+          </button>
+        )}
+      </div>
+      {sel.length === 0 ? (
+        <p className="text-xs text-zinc-500">{t("แตะวันในปฏิทินเพื่อเลือก หรือใช้ ทำซ้ำทุกสัปดาห์")}</p>
+      ) : (
+        <>
+          <p className="text-xs text-zinc-500">{sel.map(short).join(", ")}</p>
+          <EventForm key={sel.join()} dates={sel} onDone={() => setSel([])} />
+          <div className="space-y-2 border-t border-zinc-200 pt-3">
+            <input className={inputClass} placeholder={t("เหตุผล เช่น สนามปิด")} value={reason} onChange={(e) => setReason(e.target.value)} />
+            <Button
+              variant="danger"
+              className="w-full"
+              onClick={() => {
+                for (const d of sel) {
+                  if (state.days.some((x) => x.date === d && x.announcement !== undefined)) dispatch({ type: "setAnnouncement", date: d, message: null });
+                  dispatch({ type: "setClosed", date: d, reason: reason.trim() });
+                }
+                setSel([]);
+              }}
+            >
+              {t("ตั้งเป็นวันงดเล่น {n} วัน", { n: sel.length })}
+            </Button>
+            {withEvent.length > 0 && (
+              <Button
+                className="w-full"
+                onClick={() => {
+                  if (!confirm(t("ยกเลิกอีเว้น {n} วัน?", { n: withEvent.length }))) return;
+                  for (const d of withEvent) dispatch({ type: "setAnnouncement", date: d, message: null });
+                  setSel([]);
+                }}
+              >
+                {t("ยกเลิกอีเว้นในวันที่เลือก ({n})", { n: withEvent.length })}
+              </Button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
