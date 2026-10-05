@@ -14,20 +14,15 @@ const DEFAULT_MESSAGE = () => t(DEFAULT_TH);
 /** หัวข้อสำเร็จรูป เก็บเป็นภาษาไทย แสดงตามภาษาที่เลือก (null = จัดก๊วน) */
 const PRESETS = [null, "กินเลี้ยง", "ทำความสะอาดสนาม", "แข่งขันในก๊วน"] as const;
 
-/** แอดมินประกาศ/แก้/ยกเลิกประกาศจัดก๊วนวันนี้ */
+/** แอดมินประกาศ/แก้/ยกเลิกประกาศวันนี้ (ข้อมูลเดียวกับปฏิทินก๊วน) */
 export function AnnounceCard() {
   const { dispatch, state } = useStore();
   const { date, day } = useToday();
   const [editing, setEditing] = useState(false);
-  const [message, setMessage] = useState(day.announcement ?? DEFAULT_MESSAGE());
-  const [title, setTitle] = useState<string | null>(day.announcementTitle ?? null);
-  const [fee, setFee] = useState(day.announcementFee ? String(day.announcementFee) : "");
-  const [cap, setCap] = useState(day.announcementCap ? String(day.announcementCap) : "");
-  const custom = title !== null && !(PRESETS as readonly (string | null)[]).includes(title);
   const announced = day.announcement !== undefined;
 
   const closed = state.closed[date];
-  if (closed !== undefined && !announced)
+  if (closed !== undefined && !announced && !editing)
     return (
       <div className="space-y-1">
         <ClosedBanner reason={closed} />
@@ -41,16 +36,7 @@ export function AnnounceCard() {
         <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} date={date} />
         <CapLine />
         <div className="flex justify-end gap-4 px-1 text-xs text-zinc-500">
-          <button
-            className="underline-offset-2 active:underline"
-            onClick={() => {
-              setMessage(day.announcement ?? "");
-              setTitle(day.announcementTitle ?? null);
-              setFee(day.announcementFee ? String(day.announcementFee) : "");
-              setCap(day.announcementCap ? String(day.announcementCap) : "");
-              setEditing(true);
-            }}
-          >
+          <button className="underline-offset-2 active:underline" onClick={() => setEditing(true)}>
             {t("แก้ข้อความ")}
           </button>
           <button
@@ -70,6 +56,25 @@ export function AnnounceCard() {
       <h3 className="flex items-center gap-2 font-display font-semibold">
         <Icon.Megaphone width={20} height={20} /> {t("ประกาศวันนี้")}
       </h3>
+      <EventForm date={date} onDone={() => setEditing(false)} onCancel={editing ? () => setEditing(false) : undefined} />
+      <p className="text-xs text-zinc-500">{t("วันอื่นตั้งล่วงหน้าได้ที่ ตั้งค่า > ปฏิทินก๊วน")}</p>
+    </Card>
+  );
+}
+
+/** ฟอร์มสร้าง/แก้อีเว้นของวันหนึ่ง ใช้ทั้งหน้าเช็คอิน (วันนี้) และปฏิทินก๊วน (วันไหนก็ได้) */
+export function EventForm({ date, onDone, onCancel }: { date: string; onDone: () => void; onCancel?: () => void }) {
+  const { dispatch, state } = useStore();
+  const day = state.days.find((d) => d.date === date);
+  const announced = day?.announcement !== undefined;
+  const [message, setMessage] = useState(day?.announcement ?? DEFAULT_MESSAGE());
+  const [title, setTitle] = useState<string | null>(day?.announcementTitle ?? null);
+  const [fee, setFee] = useState(day?.announcementFee ? String(day.announcementFee) : "");
+  const [cap, setCap] = useState(day?.announcementCap ? String(day.announcementCap) : "");
+  const custom = title !== null && !(PRESETS as readonly (string | null)[]).includes(title);
+
+  return (
+    <div className="space-y-3">
       <div className="space-y-1.5 text-sm font-medium">
         {t("หัวข้อ")}
         <div className="flex flex-wrap gap-1.5">
@@ -88,7 +93,7 @@ export function AnnounceCard() {
             onClick={() => setTitle(custom ? title : "")}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold ${custom ? "bg-ink text-white" : "bg-zinc-100 text-zinc-600"}`}
           >
-            {t("อื่นๆ")}
+            {eventStyle("อื่นๆ").emoji} {t("อื่นๆ")}
           </button>
         </div>
         {custom && (
@@ -101,39 +106,41 @@ export function AnnounceCard() {
           />
         )}
       </div>
-      {title !== null && (
-        <label className="block text-sm font-medium">
-          {t("ค่าใช้จ่ายต่อคน")}
+      <div className="grid grid-cols-2 gap-2">
+        {title !== null && (
+          <label className="block text-sm font-medium">
+            {t("ค่าใช้จ่ายต่อคน")}
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              className={`${inputClass} mt-1`}
+              placeholder="0"
+              value={fee}
+              onChange={(e) => setFee(e.target.value)}
+            />
+          </label>
+        )}
+        <label className={`block text-sm font-medium ${title === null ? "col-span-2" : ""}`}>
+          {t("รับกี่คน")}
           <input
             type="number"
             inputMode="numeric"
-            min={0}
+            min={1}
             className={`${inputClass} mt-1`}
-            placeholder="0"
-            value={fee}
-            onChange={(e) => setFee(e.target.value)}
+            placeholder={t("ไม่จำกัด")}
+            value={cap}
+            onChange={(e) => setCap(e.target.value)}
           />
         </label>
-      )}
-      <label className="block text-sm font-medium">
-        {t("รับกี่คน (ไม่ใส่ = ไม่จำกัด)")}
-        <input
-          type="number"
-          inputMode="numeric"
-          min={1}
-          className={`${inputClass} mt-1`}
-          placeholder={t("ไม่จำกัด")}
-          value={cap}
-          onChange={(e) => setCap(e.target.value)}
-        />
-        <span className="mt-1 block text-xs font-normal text-zinc-500">{t("เกินจำนวนจะเป็นสำรอง มีคนยกเลิกจะเลื่อนขึ้นเอง")}</span>
-      </label>
-      <textarea className={`${inputClass} min-h-20`} value={message} onChange={(e) => setMessage(e.target.value)} />
+      </div>
+      <textarea className={`${inputClass} min-h-20`} value={message} onChange={(e) => setMessage(e.target.value)} aria-label={t("ข้อความ")} />
       <div className="flex gap-2">
         <Button
           variant="accent"
           className="flex-1"
           onClick={() => {
+            if (date in state.closed) dispatch({ type: "setClosed", date, reason: null });
             // ข้อความเริ่มต้นเก็บเป็นภาษาไทย ผู้เล่นแต่ละคนจะเห็นตามภาษาที่ตัวเองเลือก
             dispatch({
               type: "setAnnouncement",
@@ -143,17 +150,14 @@ export function AnnounceCard() {
               fee: title?.trim() && Number(fee) > 0 ? Math.round(Number(fee)) : null,
               cap: Number(cap) >= 1 ? Math.min(500, Math.round(Number(cap))) : null,
             });
-            setEditing(false);
+            onDone();
           }}
         >
           {announced ? t("บันทึก") : t("ประกาศ")}
         </Button>
-        {editing && <Button onClick={() => setEditing(false)}>{t("ยกเลิก")}</Button>}
+        {onCancel && <Button onClick={onCancel}>{t("ยกเลิก")}</Button>}
       </div>
-      <p className="text-xs text-zinc-500">{title !== null
-          ? t("อีเว้นพิเศษขึ้นเป็นกรอบสี ผู้เล่นกด \"ลงชื่อไปร่วม\" ได้")
-          : t("ประกาศแล้ว ผู้เล่นลงชื่อและเช็คอินเองได้")}
-      </p>
-    </Card>
+      {cap && <p className="text-xs text-zinc-500">{t("เกินจำนวนจะเป็นสำรอง มีคนยกเลิกจะเลื่อนขึ้นเอง")}</p>}
+    </div>
   );
 }

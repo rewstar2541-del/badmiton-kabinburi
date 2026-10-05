@@ -8,6 +8,7 @@ import { today, useStore } from "@/lib/store";
 import { Button, Card, Icon, SectionTitle, baht, inputClass } from "./ui";
 import { Auto, useAuto } from "@/lib/autoTranslate";
 import { savedPin, useMe } from "./PickMe";
+import { EventForm } from "./AnnounceCard";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const ymd = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;
@@ -17,11 +18,9 @@ const ymd = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;
  * แอดมินแตะวันเพื่อตั้งเป็นวันจัดก๊วน (ตั้งล่วงหน้าได้ เปิดให้ลงชื่อ) หรือวันงดเล่น
  * ผู้เล่นแตะวันจัดก๊วนที่ยังไม่ถึง เพื่อลงชื่อล่วงหน้า
  */
-export function ClubCalendar() {
+export function ClubCalendar({ bare }: { bare?: boolean } = {}) {
   const { state, dispatch, auth, self } = useStore();
   const [me] = useMe();
-  const [note, setNote] = useState("");
-  const [capText, setCapText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const now = today();
@@ -55,9 +54,8 @@ export function ClubCalendar() {
   const dayLabel = (d: string) => new Date(d + "T00:00").toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" });
   const signups = pickedDay?.signups ?? [];
   const mine = Boolean(me && signups.some((x) => x.playerId === me));
-  const setSession = (date: string, message: string | null) => {
-    if (message !== null && date in state.closed) dispatch({ type: "setClosed", date, reason: null });
-    dispatch({ type: "setAnnouncement", date, message, ...(message === null ? {} : { cap: Number(capText) >= 1 ? Math.min(500, Math.round(Number(capText))) : null }) });
+  const setSession = (date: string, message: null) => {
+    dispatch({ type: "setAnnouncement", date, message });
     setPicked(null);
   };
   const signUp = async (date: string, on: boolean) => {
@@ -70,7 +68,7 @@ export function ClubCalendar() {
 
   return (
     <>
-      <SectionTitle>{t("ปฏิทินก๊วน")}</SectionTitle>
+      {!bare && <SectionTitle>{t("ปฏิทินก๊วน")}</SectionTitle>}
       <Card className="space-y-3">
         <div className="flex items-center justify-between">
           <button className="grid size-9 place-items-center rounded-full bg-zinc-100" onClick={() => shift(-1)} aria-label={t("เดือนก่อน")}>
@@ -101,8 +99,6 @@ export function ClubCalendar() {
                 onClick={() => {
                   setPicked(picked === date ? null : date);
                   setReason(state.closed[date] ?? "");
-                  setNote(state.days.find((x) => x.date === date)?.announcement ?? "");
-                  setCapText(String(state.days.find((x) => x.date === date)?.announcementCap ?? ""));
                   setError("");
                 }}
                 className={`relative grid aspect-square place-items-center rounded-xl text-sm tabular-nums ${
@@ -119,17 +115,17 @@ export function ClubCalendar() {
             );
           })}
         </div>
-        <div className="flex flex-wrap gap-3 text-[11px] text-zinc-500">
-          <span className="flex items-center gap-1">
-            <span className="size-3 rounded bg-lime/40" /> {t("มีจัดก๊วน")}
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="size-3 rounded bg-amber-200" /> {t("อีเว้นพิเศษ")}
-          </span>
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-zinc-500">
+          {[null, "กินเลี้ยง", "ทำความสะอาดสนาม", "แข่งขันในก๊วน", "อื่นๆ"].map((k) => (
+            <span key={k ?? "s"} className="flex items-center gap-1">
+              <span className={`size-3 rounded ${eventStyle(k).cell}`} /> {eventStyle(k).emoji} {k === null ? t("จัดก๊วน") : k === "อื่นๆ" ? t("อีเว้นพิเศษ") : t(k)}
+            </span>
+          ))}
           <span className="flex items-center gap-1">
             <span className="size-3 rounded bg-red-50 ring-1 ring-red-200" /> {t("งดเล่น")}
           </span>
         </div>
+        {auth.isAdmin && !picked && <p className="text-xs text-zinc-500">{t("แตะวันที่เพื่อสร้างอีเว้น หรือตั้งวันงดเล่น")}</p>}
 
         {picked && (
           <div className="space-y-2 rounded-2xl bg-zinc-50 p-3">
@@ -139,39 +135,20 @@ export function ClubCalendar() {
             {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
             {auth.isAdmin ? (
               <>
-                <div className="space-y-2">
-                  <input
-                    className={inputClass}
-                    placeholder={t("ข้อความ เช่น 1 ทุ่ม ถึง 4 ทุ่ม")}
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                  />
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min={1}
-                    className={inputClass}
-                    aria-label={t("รับกี่คน (ไม่ใส่ = ไม่จำกัด)")}
-                    placeholder={t("รับกี่คน (ไม่ใส่ = ไม่จำกัด)")}
-                    value={capText}
-                    onChange={(e) => setCapText(e.target.value)}
-                  />
-                  <div className="flex gap-2">
-                    <Button variant="accent" className="flex-1" onClick={() => setSession(picked, note.trim())}>
-                      {sessions.has(picked) ? t("บันทึกวันจัดก๊วน") : t("ตั้งเป็นวันจัดก๊วน")}
-                    </Button>
-                    {sessions.has(picked) && (
-                      <Button
-                        onClick={() => {
-                          if (confirm(t("ยกเลิกวันจัดก๊วนนี้?"))) setSession(picked, null);
-                        }}
-                      >
-                        {t("ยกเลิกจัดก๊วน")}
-                      </Button>
-                    )}
+                <EventForm key={picked} date={picked} onDone={() => setPicked(null)} />
+                {sessions.has(picked) && (
+                  <div className="flex items-center justify-between gap-2 text-xs text-zinc-500">
+                    <span>{t("ลงชื่อแล้ว {n} คน", { n: signups.length })}</span>
+                    <button
+                      className="font-semibold text-red-500"
+                      onClick={() => {
+                        if (confirm(t("ยกเลิกวันจัดก๊วนนี้?"))) setSession(picked, null);
+                      }}
+                    >
+                      {t("ยกเลิกอีเว้นนี้")}
+                    </button>
                   </div>
-                  {sessions.has(picked) && <p className="text-xs text-zinc-500">{t("ลงชื่อแล้ว {n} คน", { n: signups.length })}</p>}
-                </div>
+                )}
                 <div className="space-y-2 border-t border-zinc-200 pt-2">
                   <input
                     className={inputClass}
@@ -250,15 +227,16 @@ export function ClubCalendar() {
                     className="flex w-full items-center gap-2 text-left text-emerald-700"
                     onClick={() => {
                       setPicked(d);
-                      setNote(state.days.find((x) => x.date === d)?.announcement ?? "");
-                      setCapText(String(state.days.find((x) => x.date === d)?.announcementCap ?? ""));
                       setReason("");
                       setError("");
                     }}
                   >
                     <Icon.Check width={14} height={14} />
                     <span className="font-semibold">{d === now ? t("วันนี้") : dayLabel(d)}</span>
-                    <span className="min-w-0 truncate text-zinc-500">{t("มีจัดก๊วน")}</span>
+                    <span className="min-w-0 truncate text-zinc-500">
+                      {eventStyle(state.days.find((x) => x.date === d)?.announcementTitle).emoji}{" "}
+                      {state.days.find((x) => x.date === d)?.announcementTitle ? <Auto text={state.days.find((x) => x.date === d)!.announcementTitle!} /> : t("มีจัดก๊วน")}
+                    </span>
                     {signed && <span className="ml-auto shrink-0 text-xs font-semibold">{t("ลงชื่อแล้ว")}</span>}
                   </button>
                 </li>

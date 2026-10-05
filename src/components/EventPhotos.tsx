@@ -30,7 +30,7 @@ async function listPhotos(): Promise<Photo[]> {
   return (data as Omit<Photo, "url">[]).map((p) => ({ ...p, url: supabase!.storage.from(BUCKET).getPublicUrl(p.path).data.publicUrl }));
 }
 
-export function EventPhotos() {
+export function EventPhotos({ bare }: { bare?: boolean } = {}) {
   const { auth } = useStore();
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [open, setOpen] = useState<Photo | null>(null);
@@ -106,7 +106,7 @@ export function EventPhotos() {
 
   return (
     <div className="space-y-3">
-      <SectionTitle>{t("รูปกิจกรรม")}</SectionTitle>
+      {!bare && <SectionTitle>{t("รูปกิจกรรม")}</SectionTitle>}
       {auth.isAdmin && (
         <Card className="space-y-2">
           <input
