@@ -279,7 +279,7 @@ function Brackets({ t: tr, dark, initialDiv, mine }: { t: Tourney; dark?: boolea
   const [side, setSide] = useState<"R1" | "U" | "L">("R1");
   if (!div) return null;
   const segItems: ["R1" | "U" | "L", string][] = [
-    ["R1", t("ผลแข่ง")],
+    ["R1", t("คู่แข่ง")],
     ["U", t("สายบน")],
     ["L", t("สายล่าง")],
   ];
@@ -289,7 +289,7 @@ function Brackets({ t: tr, dark, initialDiv, mine }: { t: Tourney; dark?: boolea
       <div className={dark ? "[&_.bg-zinc-200]:bg-white/10 [&_.text-zinc-600]:text-white/70" : ""}>
         <Seg value={side} items={segItems} onChange={setSide} />
       </div>
-      {side === "R1" ? <MatchList t={tr} divId={div} dark={dark} mine={mine} only="done" /> : <BracketView t={tr} divId={div} bracket={side} dark={dark} />}
+      {side === "R1" ? <MatchList t={tr} divId={div} dark={dark} mine={mine} /> : <BracketView t={tr} divId={div} bracket={side} dark={dark} />}
       <p className={`text-sm ${dark ? "text-white/60" : "text-zinc-500"}`}>{t("ชนะรอบแรกไปสายบน แพ้ไปสายล่าง · แพ้ในสาย = ตกรอบ · แพ้รอบรองได้ที่ 3 ร่วม")}</p>
     </div>
   );
