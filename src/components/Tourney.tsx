@@ -238,13 +238,15 @@ export function BracketView({ t: tr, divId, bracket, dark, w = 150 }: { t: Tourn
 }
 
 /** ตารางแข่งรวมสกอร์: กำลังเล่น > รอคิว > จบแล้ว */
-function MatchList({ t: tr, divId, dark, mine }: { t: Tourney; divId: string; dark?: boolean; mine?: string }) {
+function MatchList({ t: tr, divId, dark, mine, only }: { t: Tourney; divId?: string; dark?: boolean; mine?: string; only?: "done" | "queue" }) {
   const rank = (m: TMatch) => (m.court && !m.winner ? 0 : !m.winner ? 1 : 2);
   const ms = tr.matches
-    .filter((m) => m.divId === divId && !m.bye && (m.a || m.b))
+    .filter((m) => (!divId || m.divId === divId) && !m.bye && (m.a || m.b))
+    .filter((m) => (only === "done" ? !!m.winner : only === "queue" ? !m.winner && !m.court : true))
     .sort((x, y) => rank(x) - rank(y) || (x.no ?? 999) - (y.no ?? 999));
   const sub = dark ? "text-white/60" : "text-zinc-500";
-  if (ms.length === 0) return <p className={`py-6 text-center text-sm ${sub}`}>{t("ยังไม่ได้จับสลาก")}</p>;
+  if (ms.length === 0)
+    return <p className={`py-6 text-center text-sm ${sub}`}>{only === "done" ? t("ยังไม่มีผล") : only === "queue" ? t("ยังไม่มีแมตช์ที่รอแข่ง") : t("ยังไม่ได้จับสลาก")}</p>;
   return (
     <ul className="space-y-2">
       {ms.map((m) => {
@@ -277,7 +279,7 @@ function Brackets({ t: tr, dark, initialDiv, mine }: { t: Tourney; dark?: boolea
   const [side, setSide] = useState<"R1" | "U" | "L">("R1");
   if (!div) return null;
   const segItems: ["R1" | "U" | "L", string][] = [
-    ["R1", t("ตารางแข่ง")],
+    ["R1", t("ผลแข่ง")],
     ["U", t("สายบน")],
     ["L", t("สายล่าง")],
   ];
@@ -287,7 +289,7 @@ function Brackets({ t: tr, dark, initialDiv, mine }: { t: Tourney; dark?: boolea
       <div className={dark ? "[&_.bg-zinc-200]:bg-white/10 [&_.text-zinc-600]:text-white/70" : ""}>
         <Seg value={side} items={segItems} onChange={setSide} />
       </div>
-      {side === "R1" ? <MatchList t={tr} divId={div} dark={dark} mine={mine} /> : <BracketView t={tr} divId={div} bracket={side} dark={dark} />}
+      {side === "R1" ? <MatchList t={tr} divId={div} dark={dark} mine={mine} only="done" /> : <BracketView t={tr} divId={div} bracket={side} dark={dark} />}
       <p className={`text-sm ${dark ? "text-white/60" : "text-zinc-500"}`}>{t("ชนะรอบแรกไปสายบน แพ้ไปสายล่าง · แพ้ในสาย = ตกรอบ · แพ้รอบรองได้ที่ 3 ร่วม")}</p>
     </div>
   );
@@ -323,29 +325,40 @@ function Schedule({ t: tr, mine, dark, limit = 12 }: { t: Tourney; mine?: string
 }
 
 /** สนามทั้งหมด: ใครเจอใคร แต้มสด */
-function CourtsGrid({ t: tr, cols = 2, onPick }: { t: Tourney; cols?: number; onPick?: (m: TMatch) => void }) {
+function CourtsGrid({ t: tr, onPick }: { t: Tourney; cols?: number; onPick?: (m: TMatch) => void }) {
   const on = onCourt(tr);
   return (
-    <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${cols},minmax(0,1fr))` }}>
+    <div className="grid gap-3 sm:grid-cols-2">
       {Array.from({ length: tr.courts }, (_, i) => i + 1).map((c) => {
         const m = on.find((x) => x.court === c);
         const Box = onPick && m ? "button" : "div";
+        const cur = m ? (m.games.length ? m.games[m.games.length - 1] : [0, 0]) : null;
         return (
-          <Box key={c} onClick={m && onPick ? () => onPick(m) : undefined} className="min-w-0 rounded-2xl bg-white/10 p-3 text-left">
-            <div className="flex justify-between text-sm text-white/60">
-              <span>{t("สนาม {n}", { n: c })}</span>
-              {m && <span className="font-bold text-lime">{divOf(tr, m.divId).code}</span>}
+          <Card key={c} className="text-zinc-900">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="font-display text-lg font-semibold">
+                {t("สนาม {n}", { n: c })}
+                {m && <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-bold">{divOf(tr, m.divId).code}</span>}
+              </h3>
+              <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${m ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"}`}>
+                <span className={`size-1.5 rounded-full ${m ? "animate-pulse bg-emerald-500" : "bg-zinc-400"}`} />
+                {m ? (m.no ? t("แมตช์ {n}", { n: m.no }) : t("กำลังเล่น")) : t("ว่าง")}
+              </span>
             </div>
-            {m ? (
-              <>
-                <div className="mt-1 truncate text-sm font-semibold">{teamName(tr, m.a)}</div>
-                <div className="truncate text-sm font-semibold">{teamName(tr, m.b)}</div>
-                <div className="mt-1 text-sm text-lime tabular-nums">{scoreText(m) || t("กำลังเล่น")}</div>
-              </>
+            {m && cur ? (
+              <Box onClick={onPick ? () => onPick(m) : undefined} className="court-surface flex w-full gap-1 rounded-2xl px-2 text-left">
+                {[m.a, m.b].map((tid, k) => (
+                  <div key={k} className="flex min-w-0 flex-1 basis-0 flex-col items-center gap-1 py-3 text-white">
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${k === 0 ? "bg-lime text-ink" : "bg-sky-300 text-ink"}`}>{teamName(tr, tid)}</span>
+                    <span className="font-display text-4xl font-bold tabular-nums">{cur[k]}</span>
+                    <span className="text-xs text-white/70 tabular-nums">{t("เกม {n}", { n: Math.max(1, m.games.length) })}</span>
+                  </div>
+                ))}
+              </Box>
             ) : (
-              <div className="mt-1 text-sm text-white/50">{t("ว่าง")}</div>
+              <div className="court-surface flex h-24 items-center justify-center rounded-2xl text-sm font-semibold text-white/80">{t("ว่าง")}</div>
             )}
-          </Box>
+          </Card>
         );
       })}
     </div>
@@ -777,6 +790,7 @@ export function TourneyAdmin({ section = "event" }: { section?: "event" | "court
   const [slipView, setSlipView] = useState<string | null>(null);
   const [auto, setAuto] = useState(false);
   const [refQ, setRefQ] = useState("");
+  const [showAll, setShowAll] = useState(false);
   const { state } = useStore();
   // จำลองวันแข่ง: เดินเกมทุก 1.5 วินาที เปิดหน้าผู้ชมอีกแท็บดูแต้มวิ่งได้
   useEffect(() => {
@@ -835,19 +849,22 @@ export function TourneyAdmin({ section = "event" }: { section?: "event" | "court
           ))}
         </Card>
       )}
-      {section === "courts" && <div className="rounded-3xl bg-ink p-4 text-white">
-        <div className="mb-3 flex items-center justify-between">
-          <span className="font-display text-lg font-semibold">{t("สนาม")}</span>
-          <a href={siteUrl("ref")} className="inline-flex min-h-11 items-center text-sm text-lime underline">
-            {t("จอกรรมการ")}
-          </a>
-        </div>
-        <CourtsGrid t={tr} onPick={setScoreFor} />
-        <Button variant="accent" className="mt-3 w-full" disabled={!canCall} onClick={() => update(fillCourts)}>
-          {t("เรียกคู่ถัดไปลงสนามว่าง")}
-        </Button>
-        <p className="mt-2 text-sm text-white/60">{t("เรียกเฉพาะคู่ที่มาครบ 2 คน · แตะสนามเพื่อกรอกผล")}</p>
-      </div>}
+      {section === "courts" && (
+        <>
+          <SectionTitle right={<a href={siteUrl("ref")} className="inline-flex min-h-11 items-center text-sm font-semibold text-emerald-700 underline">{t("จอกรรมการ")}</a>}>{t("สนาม")}</SectionTitle>
+          <CourtsGrid t={tr} onPick={setScoreFor} />
+          <Button variant="accent" className="w-full" disabled={!canCall} onClick={() => update(fillCourts)}>
+            {t("เรียกคู่ถัดไปลงสนามว่าง")}
+          </Button>
+          <p className="text-sm text-zinc-500">{t("เรียกเฉพาะคู่ที่มาครบ 2 คน · แตะสนามเพื่อกรอกผล")}</p>
+          <Card>
+            <SectionTitle>{t("คิวถัดไป")}</SectionTitle>
+            <div className="mt-2">
+              <MatchList t={tr} only="queue" />
+            </div>
+          </Card>
+        </>
+      )}
       {section === "settings" && <><Card className="space-y-2">
         <SectionTitle right={t("{n} คน", { n: (tr.referees ?? []).length })}>{t("กรรมการ")}</SectionTitle>
         <p className="text-sm text-zinc-500">{t("คนที่เลือกจะเห็นปุ่ม \"จอกรรมการ\" ในหน้างานแข่ง แอดมินเข้าได้ทุกคน")}</p>
@@ -887,13 +904,13 @@ export function TourneyAdmin({ section = "event" }: { section?: "event" | "court
         <SectionTitle right={t("จ่ายแล้ว {p}/{n} · มาครบ {r}", { p: paid, n: teams.length, r: ready })}>{t("มือ {c} · ทีม", { c: d.code })}</SectionTitle>
         {!divOpen(tr, d) && <p className="mt-2 rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-600">{t("ไม่ถึง {n} คู่ มือนี้ไม่เปิดแข่ง", { n: d.minPairs })}</p>}
         <ul className="mt-2 divide-y divide-zinc-100">
-          {teams.map((x) => (
-            <li key={x.id} className="flex flex-wrap items-center gap-2 py-2.5">
+          {teams.filter((x) => showAll || x.pay !== "yes" || !x.here[0] || !x.here[1]).map((x) => (
+            <li key={x.id} className="flex flex-wrap items-center gap-1.5 py-1">
               {x.names.map((n, k) => (
                 <button
                   key={k}
                   onClick={() => setTeam(x.id, (y) => ({ ...y, here: (k === 0 ? [!y.here[0], y.here[1]] : [y.here[0], !y.here[1]]) as [boolean, boolean] }))}
-                  className={`flex min-h-11 items-center gap-1 rounded-full px-3 text-sm font-semibold ${x.here[k] ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"}`}
+                  className={`flex min-h-10 items-center gap-1 rounded-full px-2.5 text-sm font-semibold ${x.here[k] ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"}`}
                   aria-pressed={x.here[k]}
                 >
                   {x.here[k] ? <Icon.Check width={14} height={14} /> : <Icon.X width={14} height={14} />}
@@ -909,7 +926,7 @@ export function TourneyAdmin({ section = "event" }: { section?: "event" | "court
               <span className="flex-1" />
               <button
                 onClick={() => setTeam(x.id, (y) => ({ ...y, pay: y.pay === "yes" ? "no" : "yes" }))}
-                className={`min-h-11 rounded-full px-3 text-sm font-semibold ${PAY_TONE[x.pay]}`}
+                className={`min-h-10 rounded-full px-2.5 text-sm font-semibold ${PAY_TONE[x.pay]}`}
                 disabled={!!d.drawn}
               >
                 {t(PAY_LABEL[x.pay])}
@@ -917,6 +934,11 @@ export function TourneyAdmin({ section = "event" }: { section?: "event" | "court
             </li>
           ))}
         </ul>
+        {teams.length > 0 && (
+          <button onClick={() => setShowAll(!showAll)} className="mt-1 min-h-11 w-full text-sm font-semibold text-emerald-700 underline">
+            {showAll ? t("ซ่อนทีมที่พร้อมแล้ว") : t("ดูทั้งหมด {n} ทีม", { n: teams.length })}
+          </button>
+        )}
         {!d.drawn ? (
           <Button variant="accent" className="mt-3 w-full" disabled={!divOpen(tr, d) || paid < 2} onClick={() => update((x) => draw(x, d.id))}>
             {t("จับสลากมือ {c} ({n} ทีมที่จ่ายแล้ว)", { c: d.code, n: paid })}
@@ -1177,11 +1199,18 @@ export function WatchView() {
 /** แท็บสนามของผู้เล่นวันแข่ง */
 export function TourneyCourts() {
   const { t: tr } = useTourney();
+  const team = useMyTeam(tr);
   if (!tr) return null;
   return (
-    <div className="rounded-3xl bg-ink p-4 text-white">
-      <div className="mb-3 font-display text-lg font-semibold">{t("สนาม")}</div>
+    <div className="space-y-4">
+      <SectionTitle>{t("สนาม")}</SectionTitle>
       <CourtsGrid t={tr} />
+      <Card>
+        <SectionTitle>{t("คิวถัดไป")}</SectionTitle>
+        <div className="mt-2">
+          <MatchList t={tr} only="queue" mine={team?.id} />
+        </div>
+      </Card>
     </div>
   );
 }

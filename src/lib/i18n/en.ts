@@ -1018,4 +1018,8 @@ export const en: Record<string, string> = {
   "⏸ หยุดจำลอง": "⏸ Pause simulation",
   "▶ จำลองวันแข่ง": "▶ Simulate match day",
   "รอผล": "TBD",
+  "ยังไม่มีผล": "No results yet",
+  "ผลแข่ง": "Results",
+  "ซ่อนทีมที่พร้อมแล้ว": "Hide ready teams",
+  "ดูทั้งหมด {n} ทีม": "Show all {n} teams",
 };
