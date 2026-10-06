@@ -56,7 +56,7 @@ html.dark {
 .dark .text-zinc-400 { color: #7c879b; }
 .dark .text-zinc-500 { color: #9aa4b6; }
 .dark .text-zinc-600 { color: #b6bfcd; }
-.dark .text-ink:not(.bg-lime, .bg-lime *, .bg-sky-300, .bg-amber-300, .bg-amber-300 *) { color: #e6eaf2; }
+.dark .text-ink:not(.bg-lime, .bg-lime *, .bg-sky-300, .bg-amber-300, .bg-amber-300 *, .from-pink-200, .from-pink-200 *) { color: #e6eaf2; }
 .dark .bg-lime .text-zinc-500, .dark .bg-amber-300 .text-zinc-500 { color: #3f4a5c; }
 .dark .placeholder\:text-zinc-400::placeholder { color: #66718a; }
 .dark .focus\:bg-white:focus { background-color: #26324a; }
@@ -89,3 +89,6 @@ html.dark {
 .dark .text-violet-900, .dark .text-violet-950 { color: #c4b5fd; }
 .dark .bg-lime\/30 { background-color: rgba(198, 244, 50, 0.16); }
 .dark .bg-lime\/40, .dark .bg-lime\/25 { background-color: rgba(198, 244, 50, 0.2); }
+.dark .text-violet-700 { color: #c4b5fd; }
+.dark .divide-zinc-100 > :not(:last-child) { border-color: #26324a; }
+.dark .ring-zinc-200 { --tw-ring-color: #34415b; }

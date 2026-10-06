@@ -1,14 +1,9 @@
 "use client";
 
-import { NoticeBanners, NoticeComposer } from "./Notices";
 import { signupQueue } from "@/lib/social";
-import { BirthdayBanner } from "./Birthday";
-import { PollAdmin } from "./Polls";
-import { StockWarning } from "./Stock";
 import { useState } from "react";
 import { useStore, useToday } from "@/lib/store";
 import { isMonthlyPaid, type Player } from "@/lib/types";
-import { AnnounceCard } from "./AnnounceCard";
 import { AdminAddGuest } from "./Guests";
 import { PlayerForm } from "./PlayersTab";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, inputClass } from "./ui";
@@ -47,12 +42,6 @@ export function CheckInTab() {
 
   return (
     <div className="space-y-4">
-      <StockWarning />
-      <NoticeBanners />
-      <BirthdayBanner />
-      <AnnounceCard />
-      <NoticeComposer />
-      <PollAdmin compact />
       <SignupList />
       {waiting > 0 && (
         <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">

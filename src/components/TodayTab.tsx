@@ -50,7 +50,8 @@ export function AnnouncementBanner({ message, title, fee, date }: { message: str
 }
 
 /** หน้าแรกของผู้เล่น: ดูประกาศ ลงชื่อ และเช็คอินเองเมื่อถึงสนาม */
-export function TodayTab() {
+/** home: ใช้ในหน้าแรกแบบใหม่ ซ่อนส่วนที่ย้ายไปอยู่ในเมนูก๊วนและปุ่มลัดแล้ว */
+export function TodayTab({ home }: { home?: boolean } = {}) {
   const { state, self } = useStore();
   const { date, day } = useToday();
   const [me, setMe] = useMe();
@@ -100,9 +101,13 @@ export function TodayTab() {
           </Card>
         )}
         <PollVote />
-        <BoardCard />
-      <ClubCalendar />
-        <EventPhotos />
+        {!home && (
+          <>
+            <BoardCard />
+            <ClubCalendar />
+            <EventPhotos />
+          </>
+        )}
       </div>
     );
 
@@ -140,6 +145,7 @@ export function TodayTab() {
       <CapLine />
 
       <Card className="space-y-4">
+        {!home && (
         <div className="flex items-center gap-3">
           <Avatar name={player.name} photo={player.photo} size={52} />
           <div className="min-w-0 flex-1">
@@ -155,6 +161,7 @@ export function TodayTab() {
             {t("ออกจากระบบ")}
           </button>
         </div>
+        )}
 
         {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
 
@@ -165,7 +172,7 @@ export function TodayTab() {
             </div>
             {status !== "home" && (
               <>
-                <RestButton />
+                {!home && <RestButton />}
                 <Button
                   variant="accent"
                   disabled={busy}
@@ -234,12 +241,16 @@ export function TodayTab() {
         )}
       </Card>
 
-      {checkedIn && status !== "home" && !player.guestOf && <PairCard />}
-      {checkedIn && status !== "home" && !player.guestOf && <BringGuest player={player} pin={pin} />}
+      {!home && checkedIn && status !== "home" && !player.guestOf && <PairCard />}
+      {!home && checkedIn && status !== "home" && !player.guestOf && <BringGuest player={player} pin={pin} />}
       <PollVote />
-      <BoardCard />
-      <ClubCalendar />
-      <EventPhotos />
+      {!home && (
+        <>
+          <BoardCard />
+          <ClubCalendar />
+          <EventPhotos />
+        </>
+      )}
     </div>
   );
 }
