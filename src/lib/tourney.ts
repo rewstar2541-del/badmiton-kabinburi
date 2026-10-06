@@ -31,6 +31,8 @@ export interface TTeam {
   playerIds: [string?, string?];
   guest?: boolean;
   pay: PayStatus;
+  /** รูปสลิปที่แนบ (โหมดทดลองเก็บในเครื่อง) */
+  slip?: string;
   /** ใครมาถึงแล้ว [คนแรก, คนที่สอง] */
   here: [boolean, boolean];
 }
@@ -162,10 +164,19 @@ function buildElim(divId: string, bracket: Bracket, teamIds: string[], id: () =>
   // วางทีมแบบเว้นช่องบาย: ทีมที่ได้บายกระจายกันไม่เจอกันเอง
   const seats: (string | undefined)[] = new Array(size).fill(undefined);
   const byes = size - teamIds.length;
+  // คู่ที่ได้บายเลือกตามลำดับกลับบิต (0, ครึ่งล่าง, ส่วนสี่...) ทีมที่ได้บายจะไม่เจอกันเองรอบสอง
+  const pairs = size / 2;
+  const bits = Math.log2(pairs);
+  const rev = (i: number) => {
+    let r = 0;
+    for (let b = 0; b < bits; b++) if (i & (1 << b)) r |= 1 << (bits - 1 - b);
+    return r;
+  };
+  const byePairs = new Set(Array.from({ length: pairs }, (_, i) => rev(i)).slice(0, byes));
   let k = 0;
-  for (let i = 0; i < size / 2; i++) {
+  for (let i = 0; i < pairs; i++) {
     seats[i * 2] = teamIds[k++];
-    if (i >= byes) seats[i * 2 + 1] = teamIds[k++];
+    if (!byePairs.has(i)) seats[i * 2 + 1] = teamIds[k++];
   }
   for (let r = 0; r < rounds; r++) {
     const count = size / 2 ** (r + 1);
@@ -232,8 +243,10 @@ function maybeBuildBrackets(t: Tourney, divId: string, id: () => string): TMatch
   if (has || r1.length === 0 || r1.some((m) => !m.winner)) return t.matches;
   const winners = r1.map((m) => m.winner!);
   const losers = r1.filter((m) => !m.bye).map((m) => (m.winner === m.a ? m.b! : m.a!));
-  const upper = winners.length >= 2 ? buildElim(divId, "U", winners, id) : [];
-  const lower = losers.length >= 2 ? buildElim(divId, "L", losers, id) : [];
+  // สายที่มีทีมเดียว: ได้ที่ 1 ของสายนั้นเลย
+  const solo = (bracket: Bracket, x: string): TMatch[] => [{ id: id(), divId, bracket, round: 0, slot: 0, a: x, games: [], winner: x, bye: true }];
+  const upper = winners.length >= 2 ? buildElim(divId, "U", winners, id) : winners.length === 1 ? solo("U", winners[0]) : [];
+  const lower = losers.length >= 2 ? buildElim(divId, "L", losers, id) : losers.length === 1 ? solo("L", losers[0]) : [];
   return [...t.matches, ...upper, ...lower];
 }
 
@@ -244,17 +257,32 @@ export function setResult(t: Tourney, matchId: string, games: [number, number][]
   if (!m0 || !div || !m0.a || !m0.b) return t;
   const total = roundsFor(t.matches.filter((m) => m.divId === m0.divId && m.bracket === m0.bracket && m.round === 0).length * 2);
   const w = matchWinner(games, bestOfFor(div, m0, total));
-  const ms = t.matches.map((m) => ({ ...m }));
+  if (m0.winner && resultLocked(t, m0)) return t;
+  const ms = t.matches
+    // แก้ผลรอบแรกหลังสร้างสายแล้ว (ยังไม่มีใครแข่งในสาย): สร้างสายใหม่
+    .filter((m) => !(m0.bracket === "R1" && m.divId === m0.divId && m.bracket !== "R1"))
+    .map((m) => ({ ...m }));
   const m = ms.find((x) => x.id === matchId)!;
   m.games = games;
   m.pendingBy = undefined;
   m.disputed = undefined;
-  if (w === null) return { ...t, matches: ms };
+  if (w === null) {
+    m.winner = undefined;
+    return { ...t, matches: ms };
+  }
   m.winner = w === 0 ? m.a : m.b;
   m.court = undefined;
   placeWinner(ms, m);
   const next = { ...t, matches: ms };
   return { ...next, matches: maybeBuildBrackets(next, m.divId, id) };
+}
+
+/** แก้ผลแมตช์นี้ไม่ได้แล้ว เพราะรอบถัดไปเริ่มแข่งแล้ว */
+export function resultLocked(t: Tourney, m: TMatch): boolean {
+  const started = (x: TMatch) => x.games.length > 0 || (!!x.winner && !x.bye) || !!x.court;
+  if (m.bracket === "R1") return t.matches.some((x) => x.divId === m.divId && x.bracket !== "R1" && started(x));
+  const next = t.matches.find((x) => x.divId === m.divId && x.bracket === m.bracket && x.round === m.round + 1 && x.slot === m.slot >> 1);
+  return !!next && started(next);
 }
 
 /** ผู้เล่นส่งผล รอคู่แข่งยืนยัน */
@@ -394,7 +422,8 @@ export function simulate(t: Tourney, rand = Math.random, id = defaultId): Tourne
   let next = fillCourts({ ...t, teams: t.teams.map((x) => ({ ...x, here: [true, true] as [boolean, boolean] })) });
   for (const m of onCourt(next)) {
     const div = next.divisions.find((d) => d.id === m.divId)!;
-    const bo = m.bracket === "R1" ? div.bestOf.r1 : div.bestOf.early;
+    const total = roundsFor(next.matches.filter((x) => x.divId === m.divId && x.bracket === m.bracket && x.round === 0).length * 2);
+    const bo = bestOfFor(div, m, total);
     const games: [number, number][] = [];
     while (matchWinner(games, Math.max(bo, 1)) === null && games.length < 3) {
       const lose = Math.floor(rand() * 19);
@@ -405,7 +434,8 @@ export function simulate(t: Tourney, rand = Math.random, id = defaultId): Tourne
     let guard = 0;
     while (!next.matches.find((x) => x.id === m.id)?.winner && guard++ < 3) {
       const cur = next.matches.find((x) => x.id === m.id)!;
-      next = setResult(next, m.id, [...cur.games, [21, Math.floor(rand() * 19)]], id);
+      const l = Math.floor(rand() * 19);
+      next = setResult(next, m.id, [...cur.games, rand() < 0.5 ? [21, l] : [l, 21]], id);
     }
   }
   return fillCourts(next);

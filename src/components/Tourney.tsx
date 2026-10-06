@@ -31,6 +31,7 @@ import {
   type Tourney,
 } from "@/lib/tourney";
 import { useTourney } from "@/lib/tourneyStore";
+import { resizeSlip } from "@/lib/image";
 import { Hero } from "./Home";
 import { PayQr } from "./PayQr";
 import { useMe } from "./PickMe";
@@ -547,9 +548,9 @@ function SignupSheet({ t: tr, onClose, onDone }: { t: Tourney; onClose: () => vo
   );
 }
 
-function PaySheet({ t: tr, team, onClose, onPaid }: { t: Tourney; team: TTeam; onClose: () => void; onPaid: () => void }) {
+function PaySheet({ t: tr, team, onClose, onPaid }: { t: Tourney; team: TTeam; onClose: () => void; onPaid: (slip: string) => void }) {
   const { state } = useStore();
-  const [slip, setSlip] = useState(false);
+  const [slip, setSlip] = useState<string | null>(null);
   return (
     <Sheet title={<h2 className="font-display text-xl font-semibold">{t("ค่าสมัคร มือ {c}", { c: divOf(tr, team.divId).code })}</h2>} onClose={onClose}>
       <p className="text-[15px] text-zinc-600">{t("{a} & {b} · {n} บาท/คู่ รวมค่าลูกแล้ว", { a: team.names[0], b: team.names[1], n: tr.fee })}</p>
@@ -557,9 +558,15 @@ function PaySheet({ t: tr, team, onClose, onPaid }: { t: Tourney; team: TTeam; o
       <label className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-zinc-100 px-4 py-3 text-sm font-semibold">
         <Icon.Camera width={20} height={20} />
         {slip ? t("แนบสลิปแล้ว") : t("แนบสลิป")}
-        <input type="file" accept="image/*" className="hidden" onChange={(e) => setSlip(!!e.target.files?.length)} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {slip && <img src={slip} alt="" className="size-10 rounded-lg object-cover" />}
+        <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+            const f = e.target.files?.[0];
+            if (f) setSlip(await resizeSlip(f, 900));
+          }}
+        />
       </label>
-      <Button variant="primary" className="w-full py-4 text-base" disabled={!slip} onClick={onPaid}>
+      <Button variant="primary" className="w-full py-4 text-base" disabled={!slip} onClick={() => slip && onPaid(slip)}>
         {t("จ่ายแล้ว")}
       </Button>
       <p className="text-sm text-zinc-500">{t("แอดมินตรวจสลิปแล้ว ทีมจะได้เข้าจับสลาก")}</p>
@@ -641,8 +648,8 @@ function MyTeamCard({ t: tr, team, update }: { t: Tourney; team: TTeam; update: 
           t={tr}
           team={team}
           onClose={() => setSheet(null)}
-          onPaid={() => {
-            update((x) => ({ ...x, teams: x.teams.map((y) => (y.id === team.id ? { ...y, pay: "slip" } : y)) }));
+          onPaid={(img) => {
+            update((x) => ({ ...x, teams: x.teams.map((y) => (y.id === team.id ? { ...y, pay: "slip", slip: img } : y)) }));
             setSheet(null);
           }}
         />
@@ -728,8 +735,8 @@ export function TourneyHome() {
           t={tr}
           team={pay}
           onClose={() => setPay(null)}
-          onPaid={() => {
-            update((y) => ({ ...y, teams: y.teams.map((z) => (z.id === pay.id ? { ...z, pay: "slip" } : z)) }));
+          onPaid={(img) => {
+            update((y) => ({ ...y, teams: y.teams.map((z) => (z.id === pay.id ? { ...z, pay: "slip", slip: img } : z)) }));
             setPay(null);
           }}
         />
@@ -791,6 +798,7 @@ export function TourneyAdmin() {
   const [scoreFor, setScoreFor] = useState<TMatch | null>(null);
   const [qr, setQr] = useState<"watch" | "join" | null>(null);
   const [fmt, setFmt] = useState(false);
+  const [slipView, setSlipView] = useState<string | null>(null);
   if (!tr) return null;
   const d = tr.divisions.find((x) => x.id === div) ?? tr.divisions[0];
   const teams = divTeams(tr, d.id);
@@ -804,10 +812,10 @@ export function TourneyAdmin() {
       {auth.demo && (
         <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-amber-300 px-3 py-2 text-sm text-ink">
           <span className="flex-1 font-semibold">{t("ทดลองงานแข่ง")}</span>
-          <button className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold" onClick={() => update((x) => simulate(x))}>
+          <button className="min-h-11 rounded-full bg-white px-4 text-sm font-semibold" onClick={() => update((x) => simulate(x))}>
             {t("จำลองผล")}
           </button>
-          <button className="rounded-full bg-ink/10 px-3 py-1.5 text-xs font-semibold" onClick={reset}>
+          <button className="min-h-11 rounded-full bg-ink/10 px-4 text-sm font-semibold" onClick={() => confirm(t("ล้างงานแข่งทดลองแล้วเริ่มใหม่?")) && reset()}>
             {t("เริ่มใหม่")}
           </button>
         </div>
@@ -837,7 +845,7 @@ export function TourneyAdmin() {
       <div className="rounded-3xl bg-ink p-4 text-white">
         <div className="mb-3 flex items-center justify-between">
           <span className="font-display text-lg font-semibold">{t("สนาม")}</span>
-          <a href={siteUrl("ref")} className="text-sm text-lime underline">
+          <a href={siteUrl("ref")} className="inline-flex min-h-11 items-center text-sm text-lime underline">
             {t("จอกรรมการ")}
           </a>
         </div>
@@ -858,7 +866,7 @@ export function TourneyAdmin() {
                 <button
                   key={k}
                   onClick={() => setTeam(x.id, (y) => ({ ...y, here: (k === 0 ? [!y.here[0], y.here[1]] : [y.here[0], !y.here[1]]) as [boolean, boolean] }))}
-                  className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-semibold ${x.here[k] ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"}`}
+                  className={`flex min-h-11 items-center gap-1 rounded-full px-3 text-sm font-semibold ${x.here[k] ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"}`}
                   aria-pressed={x.here[k]}
                 >
                   {x.here[k] ? <Icon.Check width={14} height={14} /> : <Icon.X width={14} height={14} />}
@@ -866,10 +874,15 @@ export function TourneyAdmin() {
                 </button>
               ))}
               {x.guest && <Tag tone="bg-amber-100 text-amber-800">{t("รับเชิญ")}</Tag>}
+              {x.slip && (
+                <button onClick={() => setSlipView(x.slip!)} className="min-h-11 text-sm font-semibold text-sky-700 underline">
+                  {t("ดูสลิป")}
+                </button>
+              )}
               <span className="flex-1" />
               <button
                 onClick={() => setTeam(x.id, (y) => ({ ...y, pay: y.pay === "yes" ? "no" : "yes" }))}
-                className={`rounded-full px-2.5 py-1 text-xs font-semibold ${PAY_TONE[x.pay]}`}
+                className={`min-h-11 rounded-full px-3 text-sm font-semibold ${PAY_TONE[x.pay]}`}
                 disabled={!!d.drawn}
               >
                 {t(PAY_LABEL[x.pay])}
@@ -916,6 +929,12 @@ export function TourneyAdmin() {
           }}
         />
       )}
+      {slipView && (
+        <Sheet title={<h2 className="font-display text-xl font-semibold">{t("สลิป")}</h2>} onClose={() => setSlipView(null)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={slipView} alt={t("สลิป")} className="w-full rounded-2xl" />
+        </Sheet>
+      )}
       {qr && (
         <Sheet title={<h2 className="font-display text-xl font-semibold">{qr === "watch" ? t("QR หน้าผู้ชม") : t("QR สมัครแข่ง")}</h2>} onClose={() => setQr(null)}>
           <LinkQr
@@ -935,7 +954,8 @@ export function RefereeView() {
   const { t: tr, update } = useTourney();
   const [court, setCourt] = useState<number | null>(null);
   const [swap, setSwap] = useState(false);
-  const [hist, setHist] = useState<[number, number][][]>([]);
+  const [histAll, setHist] = useState<{ id: string; games: [number, number][] }[]>([]);
+  const [ending, setEnding] = useState<[number, number][] | null>(null);
   if (!tr) return <p className="p-6">{t("ยังไม่มีงานแข่ง")}</p>;
   const m = court ? onCourt(tr).find((x) => x.court === court) : undefined;
   const pickCourt = (
@@ -955,15 +975,17 @@ export function RefereeView() {
         {pickCourt}
       </div>
     );
+  const hist = histAll.filter((h) => h.id === m.id);
   const bo = boOf(tr, m);
   const games = m.games.length ? m.games : [[0, 0] as [number, number]];
   const cur = games[games.length - 1];
   const won = [0, 1].map((k) => games.filter((g) => gameWinner(g) === k).length);
   const save = (next: [number, number][]) => {
-    setHist((h) => [...h, m.games]);
     const w = matchWinner(next, bo);
-    if (w !== null) update((x) => fillCourts(setResult(x, m.id, next)));
-    else update((x) => ({ ...x, matches: x.matches.map((y) => (y.id === m.id ? { ...y, games: next } : y)) }));
+    // แต้มสุดท้ายของแมตช์: ถามก่อน กันกดผิดแล้วเรียกคู่ต่อไปลงสนามทันที
+    if (w !== null) return setEnding(next);
+    setHist((h) => [...h.filter((x) => x.id === m.id), { id: m.id, games: m.games }]);
+    update((x) => ({ ...x, matches: x.matches.map((y) => (y.id === m.id ? { ...y, games: next } : y)) }));
   };
   const add = (k: 0 | 1) => {
     const g: [number, number] = k === 0 ? [cur[0] + 1, cur[1]] : [cur[0], cur[1] + 1];
@@ -975,14 +997,38 @@ export function RefereeView() {
   const undo = () => {
     const prev = hist[hist.length - 1];
     if (!prev) return;
-    setHist((h) => h.slice(0, -1));
-    update((x) => ({ ...x, matches: x.matches.map((y) => (y.id === m.id ? { ...y, games: prev } : y)) }));
+    setHist(hist.slice(0, -1));
+    update((x) => ({ ...x, matches: x.matches.map((y) => (y.id === m.id ? { ...y, games: prev.games } : y)) }));
   };
   const sides: (0 | 1)[] = swap ? [1, 0] : [0, 1];
+  if (ending) {
+    const w = matchWinner(ending, bo);
+    return (
+      <div className="flex h-dvh flex-col justify-center gap-4 bg-ink p-6 text-center text-white">
+        <div className="text-sm text-white/60">{t("จบแมตช์?")}</div>
+        <div className="font-display text-3xl font-semibold">{t("{x} ชนะ", { x: teamName(tr, w === 0 ? m.a : m.b) })}</div>
+        <div className="text-lg text-lime tabular-nums">{ending.map((g) => g.join("-")).join(" · ")}</div>
+        <Button
+          variant="accent"
+          className="py-4 text-base"
+          onClick={() => {
+            update((x) => fillCourts(setResult(x, m.id, ending)));
+            setEnding(null);
+            setHist([]);
+          }}
+        >
+          {t("ยืนยันผล")}
+        </Button>
+        <Button variant="secondary" className="py-4" onClick={() => setEnding(null)}>
+          ↶ {t("ย้อน")}
+        </Button>
+      </div>
+    );
+  }
   return (
     <div className="flex h-dvh flex-col gap-3 bg-ink p-4 pt-[calc(env(safe-area-inset-top)+16px)] text-white">
       <div className="flex items-center justify-between gap-2 text-sm">
-        <button onClick={() => setCourt(null)} className="font-semibold underline">
+        <button onClick={() => setCourt(null)} className="min-h-11 font-semibold underline">
           {t("สนาม {n}", { n: m.court ?? 0 })} · {divOf(tr, m.divId).code}
         </button>
         <span className="rounded-full bg-white/10 px-3 py-1">

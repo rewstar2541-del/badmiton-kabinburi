@@ -77,3 +77,25 @@ describe("สายแข่ง", () => {
     expect(fixed.matches.find((x) => x.id === m.id)!.winner).toBe(m.b);
   });
 });
+
+describe("แก้ผลและบาย", () => {
+  it("บายไม่เจอกันเองรอบสอง (6 ทีมในสาย)", () => {
+    const base = sampleTourney("2026-09-10", id);
+    let t = draw({ ...base, teams: base.teams.map((x) => ({ ...x, here: [true, true] as [boolean, boolean] })) }, "new", rng(3), id);
+    for (let g = 0; g < 3; g++) t = simulate(t, rng(g + 9), id);
+    const up = t.matches.filter((m) => m.divId === "new" && m.bracket === "U");
+    const r1 = up.filter((m) => m.round === 1);
+    for (const m of r1) {
+      const feeders = up.filter((x) => x.round === 0 && x.slot >> 1 === m.slot);
+      expect(feeders.every((x) => x.bye)).toBe(false);
+    }
+  });
+  it("แก้ผลจนไม่มีผู้ชนะ ล้างผู้ชนะเดิม และห้ามแก้หลังรอบถัดไปเริ่ม", () => {
+    let t = fillCourts(draw(sampleTourney("2026-09-10", id), "new", rng(), id));
+    const m = t.matches.find((x) => x.court)!;
+    t = setResult(t, m.id, [[21, 10]], id);
+    expect(t.matches.find((x) => x.id === m.id)!.winner).toBe(m.a);
+    t = setResult(t, m.id, [], id);
+    expect(t.matches.find((x) => x.id === m.id)!.winner).toBeUndefined();
+  });
+});

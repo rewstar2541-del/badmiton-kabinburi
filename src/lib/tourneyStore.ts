@@ -50,7 +50,18 @@ export function useTourney() {
   const s = useSyncExternalStore(
     (f) => {
       subs.add(f);
-      return () => subs.delete(f);
+      // แท็บอื่นในเครื่องเดียวกัน (เช่น จอกรรมการ กับหน้าผู้ชม) อัพเดทตามกัน
+      const onStorage = (e: StorageEvent) => {
+        if (e.key === KEY || e.key === MODE_KEY) {
+          snap = load();
+          subs.forEach((g) => g());
+        }
+      };
+      window.addEventListener("storage", onStorage);
+      return () => {
+        subs.delete(f);
+        window.removeEventListener("storage", onStorage);
+      };
     },
     get,
     () => SERVER,

@@ -1004,4 +1004,9 @@ export const en: Record<string, string> = {
   "ไม่ตรง": "Not correct",
   "ไม่ถึง {n} คู่ มือนี้ไม่เปิดแข่ง": "Under {n} pairs, this level won't run",
   "รอตรวจสลิป": "Slip pending",
+  "จบแมตช์?": "End match?",
+  "{x} ชนะ": "{x} wins",
+  "ล้างงานแข่งทดลองแล้วเริ่มใหม่?": "Clear the demo tournament and start over?",
+  "สลิป": "Slip",
+  "ยืนยันผล": "Confirm result",
 };

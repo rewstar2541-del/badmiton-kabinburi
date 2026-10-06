@@ -3,6 +3,7 @@
 import { Bell } from "./Bell";
 import { RefereeView, TourneyAdmin, TourneyBanner, TourneyHome, WatchView } from "./Tourney";
 import { useTourney } from "@/lib/tourneyStore";
+import { isDemo } from "@/lib/demo";
 import { YearSummaryView } from "./YearSummary";
 import { Fragment, useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { PlayerModeProvider, StoreProvider, useStore, useToday } from "@/lib/store";
@@ -122,7 +123,7 @@ function DemoBar() {
   if (!auth.demo) return null;
   const demo = auth.demo;
   return (
-    <div className="flex items-center gap-2 bg-amber-300 px-3 py-1.5 text-xs text-ink">
+    <div className="flex flex-wrap items-center gap-2 bg-amber-300 px-3 py-1.5 text-xs text-ink">
       <span className="min-w-0 flex-1 truncate font-semibold">{t("โหมดทดลอง (ข้อมูลอยู่ในเครื่องนี้)")}</span>
       <div className="flex shrink-0 rounded-full bg-ink/10 p-0.5">
         {[false, true].map((admin) => (
@@ -138,7 +139,7 @@ function DemoBar() {
       {tourney.t && (
         <div className="flex shrink-0 rounded-full bg-ink/10 p-0.5">
           {[false, true].map((on) => (
-            <button key={String(on)} onClick={() => tourney.setMode(on)} className={`rounded-full px-2.5 py-1 font-semibold ${tourney.mode === on ? "bg-ink text-white" : ""}`}>
+            <button key={String(on)} onClick={() => tourney.setMode(on)} className={`min-h-9 rounded-full px-3 font-semibold ${tourney.mode === on ? "bg-ink text-white" : ""}`}>
               {on ? t("งานแข่ง") : t("ก๊วนปกติ")}
             </button>
           ))}
@@ -344,7 +345,7 @@ export function App() {
   return (
     <StoreProvider>
       <PlayerModeProvider>
-        {hasParam("payqr") ? <QrRoute /> : hasParam("watch") ? <WatchView /> : hasParam("ref") ? <RefereeView /> : isTv() ? <TvView /> : hasParam("summary") ? <SummaryRoute /> : <Shell />}
+        {hasParam("payqr") ? <QrRoute /> : isDemo() && hasParam("watch") ? <WatchView /> : isDemo() && hasParam("ref") ? <RefereeView /> : isTv() ? <TvView /> : hasParam("summary") ? <SummaryRoute /> : <Shell />}
       </PlayerModeProvider>
     </StoreProvider>
   );
