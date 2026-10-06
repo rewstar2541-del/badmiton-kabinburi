@@ -1023,4 +1023,5 @@ export const en: Record<string, string> = {
   "ซ่อนทีมที่พร้อมแล้ว": "Hide ready teams",
   "ดูทั้งหมด {n} ทีม": "Show all {n} teams",
   "ทุกทีมพร้อมแล้ว": "All teams ready",
+  "คู่แข่ง": "Matchups",
 };
