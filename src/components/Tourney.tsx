@@ -1015,7 +1015,7 @@ export function RefereeView() {
       {Array.from({ length: tr.courts }, (_, i) => i + 1).map((c) => {
         const x = onCourt(tr).find((y) => y.court === c);
         return (
-          <button key={c} onClick={() => setCourt(c)} className={`court-surface flex min-h-28 flex-col items-center justify-center gap-1 rounded-2xl p-3 text-white ${c === court ? "ring-4 ring-lime" : ""}`}>
+          <button key={c} onClick={() => setCourt(c)} className={`bg-gradient-to-b from-emerald-600 to-emerald-800 flex min-h-28 flex-col items-center justify-center gap-1 rounded-2xl p-3 text-white ${c === court ? "ring-4 ring-lime" : ""}`}>
             <span className="rounded-full bg-lime px-3 py-0.5 text-sm font-bold text-ink">{t("สนาม {n}", { n: c })}</span>
             {x ? (
               <>
@@ -1116,7 +1116,7 @@ export function RefereeView() {
             <button
               key={k}
               onClick={() => add(k)}
-              className={`court-surface flex flex-1 flex-col items-center justify-center gap-3 rounded-3xl p-3 text-white active:scale-[0.98] ${lead ? "ring-4 ring-lime" : ""}`}
+              className={`bg-gradient-to-b from-emerald-600 to-emerald-800 flex flex-1 flex-col items-center justify-center gap-3 rounded-3xl p-3 text-white active:scale-[0.98] ${lead ? "ring-4 ring-lime" : ""}`}
             >
               <span className={`rounded-full px-3 py-1 text-center text-sm font-bold text-ink ${k === 0 ? "bg-lime" : "bg-sky-300"}`}>{teamName(tr, k === 0 ? m.a : m.b)}</span>
               <span className="rounded-full bg-black/25 px-3 py-0.5 text-sm">{t("ชนะ {n} เกม", { n: won[k] })}</span>
