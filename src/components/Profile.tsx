@@ -10,6 +10,7 @@ import { Auto } from "@/lib/autoTranslate";
 import { BirthdayEdit } from "./Birthday";
 import { Hero, LangChoices, Rows, guideHref, useSheets } from "./Home";
 import { PlayerLineAlerts } from "./LineCard";
+import { useTourney } from "@/lib/tourneyStore";
 import { PlanSwitch, goToTab } from "./Membership";
 import { BadgesCard, MonthCard, PartnerPrefs } from "./MyExtras";
 import { PartnerStats } from "./PartnerStats";
@@ -22,6 +23,7 @@ export function ProfileTab() {
   const { state, updateProfile } = useStore();
   const { date, day } = useToday();
   const lang = useLang();
+  const eventMode = useTourney().mode;
   const theme = useTheme();
   const [me, setMe] = useMe();
   const [error, setError] = useState("");
@@ -58,13 +60,13 @@ export function ProfileTab() {
         <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900">{t("ขอเปลี่ยนเป็น {level} รออนุมัติ", { level: levelCode(player.levelRequest) })}</p>
       )}
 
-      <Hero
+      {!eventMode && <Hero
         label={bill.paid ? t("วันนี้จ่ายแล้ว") : t("ยอดที่ต้องจ่ายวันนี้")}
         big={!checkedIn && bill.total === 0 ? t("ยังไม่มียอด") : baht(bill.total)}
         sub={t("แตะเพื่อดูรายละเอียดและจ่ายเงิน")}
         icon={Icon.Wallet}
         onClick={() => goToTab("mybill")}
-      />
+      />}
 
       <Rows
         items={[
@@ -77,13 +79,15 @@ export function ProfileTab() {
               open("edit");
             },
           },
-          ...(player.plan && !player.guestOf
+          ...(eventMode ? [] : player.plan && !player.guestOf
             ? [{ icon: Icon.Receipt, title: t("แบบสมาชิก"), sub: player.plan === "monthly" ? t("รายเดือน") : t("รายวัน"), onClick: () => open("plan") }]
             : []),
+          ...(eventMode ? [] : [
           { icon: Icon.Calendar, title: t("สรุปเดือนนี้"), sub: t("มากี่วัน เล่นกี่เกม ชนะเท่าไร"), onClick: () => open("month") },
           { icon: Icon.Trophy, title: t("เหรียญของฉัน"), sub: t("เหรียญที่ได้จากการมาเล่น"), onClick: () => open("badges") },
           { icon: Icon.Chart, title: t("สถิติกับคู่"), sub: t("เล่นกับใครบ่อย ชนะกับใคร"), onClick: () => open("partners") },
           { icon: Icon.Heart, title: t("คู่ที่อยากเล่นด้วย"), sub: t("เลือกคนที่อยากจับคู่หรือไม่อยากเจอ"), onClick: () => open("prefs") },
+          ]),
         ]}
       />
       <Rows
