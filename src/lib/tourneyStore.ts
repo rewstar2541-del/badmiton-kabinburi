@@ -53,6 +53,8 @@ async function fetchRow() {
   if (!supabase) return;
   const { data } = await supabase.from("tourneys").select("data, mode, version").eq("active", true).order("updated_at", { ascending: false }).limit(1).maybeSingle();
   const join = new URLSearchParams(location.search).has("join");
+  // คำตอบที่มาช้ากว่าข้อมูลที่ถืออยู่ ไม่เอา
+  if (data && snap?.t?.id === (data.data as Tourney).id && data.version < snap.version) return;
   snap = data ? { t: data.data as Tourney, mode: data.mode || join, version: data.version } : { t: null, mode: false, version: 0 };
   notify();
 }

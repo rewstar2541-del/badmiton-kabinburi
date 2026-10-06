@@ -824,8 +824,11 @@ function useApplyConfirmed() {
   const ids = tr?.matches.filter((m) => m.confirmed && !m.winner).map((m) => m.id).join(",") ?? "";
   useEffect(() => {
     if (!ids) return;
-    update((x) => ids.split(",").reduce((y, id) => (y.matches.find((m) => m.id === id && m.confirmed && !m.winner) ? setResult(y, id, y.matches.find((m) => m.id === id)!.games) : y), x));
-    update(fillCourts);
+    // รวมเป็นครั้งเดียว ถ้าเครื่องแอดมินอื่นบันทึกไปก่อน รอบนี้จะไม่เปลี่ยนอะไร
+    update((x) => fillCourts(ids.split(",").reduce((y, id) => {
+      const m = y.matches.find((z) => z.id === id && z.confirmed && !z.winner);
+      return m ? setResult(y, id, m.games) : y;
+    }, x)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ids]);
 }
@@ -1046,7 +1049,6 @@ export function TourneyAdmin({ section = "event" }: { section?: "event" | "court
 
 export function RefereeView() {
   const { t: tr, update } = useTourney();
-  useApplyConfirmed();
   const [court, setCourt] = useState<number | null>(null);
   const [swap, setSwap] = useState(false);
   const [histAll, setHist] = useState<{ id: string; games: [number, number][] }[]>([]);
