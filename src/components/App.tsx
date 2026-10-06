@@ -1,7 +1,7 @@
 "use client";
 
 import { Bell } from "./Bell";
-import { RefereeView, TourneyAdmin, TourneyBanner, TourneyHome, WatchView } from "./Tourney";
+import { RefereeView, TourneyAdmin, TourneyBanner, TourneyCourts, TourneyHome, WatchView } from "./Tourney";
 import { useTourney } from "@/lib/tourneyStore";
 import { isDemo } from "@/lib/demo";
 import { YearSummaryView } from "./YearSummary";
@@ -226,7 +226,7 @@ function Shell() {
   const base = auth.isAdmin ? ADMIN_TABS : PLAYER_TABS;
   // วันแข่ง: แท็บแรกเปลี่ยนเป็น "งานแข่ง"
   // วันแข่ง: เหลือแค่ "งานแข่ง" กับโปรไฟล์/ตั้งค่า ไม่โชว์ข้อมูลก๊วน
-  const tabs: Tab[] = tourney.mode ? [{ id: "event", label: "งานแข่ง", icon: Icon.Trophy }, ...base.filter((x) => x.id === "profile" || x.id === "settings")] : base;
+  const tabs: Tab[] = tourney.mode ? [{ id: "event", label: "งานแข่ง", icon: Icon.Trophy }, ...base.filter((x) => x.id === "courts" || x.id === "profile" || x.id === "settings")] : base;
   const [picked, setTab] = useState<TabId>(tabs[0].id);
   const allowed = (id: TabId) => tabs.some((t) => t.id === id) || (auth.isAdmin && ADMIN_EXTRA.includes(id));
   const tab = allowed(picked) ? picked : tabs[0].id;
@@ -287,10 +287,10 @@ function Shell() {
         {tab === "home" && (auth.isAdmin ? <AdminHome /> : <PlayerHome />)}
         {tab === "profile" && <ProfileTab />}
         {tab === "checkin" && <CheckInTab />}
-        {tab === "courts" && <CourtsTab />}
+        {tab === "courts" && (!tourney.mode ? <CourtsTab /> : auth.isAdmin ? <TourneyAdmin section="courts" /> : <TourneyCourts />)}
         {tab === "billing" && <BillingTab />}
         {tab === "players" && <PlayersTab />}
-        {tab === "settings" && <SettingsTab />}
+        {tab === "settings" && (tourney.mode ? <TourneyAdmin section="settings" /> : <SettingsTab />)}
         {tab === "mybill" && <MyBillTab />}
       </main>
       <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-zinc-200 bg-white pb-[env(safe-area-inset-bottom)]">

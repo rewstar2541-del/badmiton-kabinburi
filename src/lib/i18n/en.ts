@@ -1017,4 +1017,5 @@ export const en: Record<string, string> = {
   "เฉพาะกรรมการที่แอดมินเลือกไว้ ให้แอดมินเพิ่มชื่อคุณในหน้างานแข่ง": "Referees only. Ask an admin to add you on the tournament page.",
   "⏸ หยุดจำลอง": "⏸ Pause simulation",
   "▶ จำลองวันแข่ง": "▶ Simulate match day",
+  "รอผล": "TBD",
 };
