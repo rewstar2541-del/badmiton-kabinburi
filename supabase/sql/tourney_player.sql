@@ -69,3 +69,6 @@ begin
   update tourneys set data = d, version = version + 1, updated_at = now() where id = p_id;
   return null;
 end $$;
+
+-- คนนอกก๊วนสมัครแข่ง: เข้า LINE แล้วสร้างผู้เล่น (ไม่ต้องรออนุมัติ) เฉพาะตอนมีงานเปิดรับสมัคร
+-- ดูฟังก์ชันจริงใน Supabase: register_tourney_player(p_ticket, p_name, p_level) -> {id, token} | {error}

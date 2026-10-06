@@ -134,7 +134,7 @@ export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: s
         {lineLoginEnabled ? (
           <>
             <button
-              onClick={startLineLogin}
+              onClick={() => startLineLogin()}
               className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#06C755] px-4 py-3.5 font-semibold text-white"
             >
               {t("เข้าสู่ระบบด้วย LINE")}

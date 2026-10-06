@@ -935,6 +935,13 @@ export async function resolveClaim(db: SupabaseClient, lineUserId: string, ok: b
   return (data as string | null) ?? null;
 }
 
+/** คนนอกก๊วนสมัครแข่ง: สร้างผู้เล่นและเข้าระบบทันที ไม่ต้องรออนุมัติ */
+export async function registerTourney(db: SupabaseClient, ticket: string, name: string, level: number): Promise<{ id?: string; token?: string; error?: string }> {
+  const { data, error } = await db.rpc("register_tourney_player", { p_ticket: ticket, p_name: name, p_level: level });
+  if (error) return { error: error.message };
+  return data as { id?: string; token?: string; error?: string };
+}
+
 export async function registerPlayerLine(db: SupabaseClient, ticket: string, p: Omit<Player, "id">): Promise<{ id?: string; error?: string }> {
   const { data, error } = await db.rpc("register_player_line", {
     p_ticket: ticket,

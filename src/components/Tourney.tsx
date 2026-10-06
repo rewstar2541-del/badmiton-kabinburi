@@ -30,6 +30,10 @@ import {
 } from "@/lib/tourney";
 import { tourneySlip, useTourney, type PlayerAction } from "@/lib/tourneyStore";
 import { resizeSlip } from "@/lib/image";
+import { lineLoginEnabled, readLineTicket, clearLineTicket, startLineLogin } from "@/lib/lineLogin";
+import { registerTourney, supabase } from "@/lib/remote";
+import { writeSession } from "@/lib/session";
+import { LEVELS } from "@/lib/types";
 import { Hero } from "./Home";
 import { PayQr } from "./PayQr";
 import { useMe } from "./PickMe";
@@ -729,8 +733,63 @@ function MyTeamCard({ t: tr, team, act }: { t: Tourney; team: TTeam; act: (a: Pl
 }
 
 /** แท็บ "งานแข่ง" ของผู้เล่น */
+/** คนที่ยังไม่ได้เข้าระบบ: ปุ่ม LINE ใหญ่ๆ แล้วกรอกชื่อ+ระดับมือ สมัครได้ทันที */
+function JoinCard() {
+  const [tk] = useState(readLineTicket);
+  const [name, setName] = useState(tk?.name ?? "");
+  const [level, setLevel] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  if (!tk)
+    return (
+      <Card className="space-y-3 text-center">
+        <p className="text-sm text-zinc-600">{t("ใช้ LINE เข้าครั้งเดียว ไม่ต้องสมัครสมาชิก")}</p>
+        <button
+          onClick={() => startLineLogin(true)}
+          disabled={!lineLoginEnabled}
+          className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-[#06C755] px-4 text-base font-bold text-white disabled:opacity-50"
+        >
+          {t("เข้าด้วย LINE เพื่อสมัคร")}
+        </button>
+      </Card>
+    );
+  const go = async () => {
+    if (!supabase || !name.trim() || !level) return;
+    setBusy(true);
+    const r = await registerTourney(supabase, tk.ticket, name.trim(), level);
+    setBusy(false);
+    if (!r.token || !r.id) return alert(t(r.error ?? "บันทึกไม่สำเร็จ"));
+    writeSession({ playerId: r.id, token: r.token });
+    clearLineTicket();
+    location.reload();
+  };
+  return (
+    <Card className="space-y-3">
+      <SectionTitle>{t("อีกนิดเดียว")}</SectionTitle>
+      <label className="block text-sm font-semibold">
+        {t("ชื่อเล่น")}
+        <input className={inputClass} value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />
+      </label>
+      <div className="text-sm font-semibold">{t("ระดับมือของคุณ")}</div>
+      <div className="grid grid-cols-3 gap-2">
+        {LEVELS.map((l) => (
+          <button
+            key={l.value}
+            onClick={() => setLevel(l.value)}
+            className={`min-h-11 rounded-xl border text-sm font-bold ${level === l.value ? "border-ink bg-ink text-white" : "border-zinc-200 bg-white"}`}
+          >
+            {l.code}
+          </button>
+        ))}
+      </div>
+      <Button variant="accent" className="w-full py-4 text-base" disabled={busy || !name.trim() || !level} onClick={() => void go()}>
+        {t("ไปต่อ")}
+      </Button>
+    </Card>
+  );
+}
+
 export function TourneyHome() {
-  const { t: tr, act: doAct, peeking, setPeek } = useTourney();
+  const { t: tr, act: doAct, peeking, setPeek, real } = useTourney();
   const team = useMyTeam(tr);
   const [signup, setSignup] = useState(false);
   const [pay, setPay] = useState<TTeam | null>(null);
@@ -739,6 +798,7 @@ export function TourneyHome() {
   if (!tr) return null;
   const isRef = !!me && !!tr.referees?.includes(me);
   const anyDrawn = tr.divisions.some((d) => d.drawn);
+  const needLogin = real && !me;
   return (
     <div className="space-y-4">
       <PosterHero t={tr} />
@@ -749,7 +809,8 @@ export function TourneyHome() {
       )}
       {team ? <MyTeamCard t={tr} team={team} act={act} /> : null}
       {!anyDrawn && <DivisionGrid t={tr} highlight={team?.divId} />}
-      {!team && !anyDrawn && (
+      {needLogin && !anyDrawn && <JoinCard />}
+      {!team && !anyDrawn && !needLogin && (
         <Button variant="accent" className="w-full py-4 text-base" onClick={() => setSignup(true)}>
           {t("สมัครแข่ง")}
         </Button>
