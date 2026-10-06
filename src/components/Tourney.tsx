@@ -784,10 +784,18 @@ export function TourneyAdmin() {
   const { state } = useStore();
   // จำลองวันแข่ง: เดินเกมทุก 1.5 วินาที เปิดหน้าผู้ชมอีกแท็บดูแต้มวิ่งได้
   useEffect(() => {
-    if (!auto) return;
-    const h = setInterval(() => update((x) => (finished(x) ? x : simTick(x))), 1500);
+    // หยุดเดินระหว่างแอดมินเปิดหน้ากรอกผล กันผลถูกเขียนทับ
+    if (!auto || scoreFor) return;
+    const h = setInterval(() => {
+      update((x) => {
+        const y = finished(x) ? x : simTick(x);
+        // ไม่มีอะไรขยับแล้ว (เช่น ไม่มีมือไหนจับสลากได้) หยุดเอง
+        if (JSON.stringify(y.matches) === JSON.stringify(x.matches)) setAuto(false);
+        return y;
+      });
+    }, 1500);
     return () => clearInterval(h);
-  }, [auto, update]);
+  }, [auto, scoreFor, update]);
   if (!tr) return null;
   const d = tr.divisions.find((x) => x.id === div) ?? tr.divisions[0];
   const teams = divTeams(tr, d.id);
@@ -862,7 +870,7 @@ export function TourneyAdmin() {
         <input className={inputClass} value={refQ} onChange={(e) => setRefQ(e.target.value)} placeholder={t("พิมพ์ชื่อเพื่อเพิ่มกรรมการ")} />
         {refQ.trim() &&
           state.players
-            .filter((p) => !p.pending && p.name.includes(refQ.trim()) && !(tr.referees ?? []).includes(p.id))
+            .filter((p) => !p.pending && p.name.toLowerCase().includes(refQ.trim().toLowerCase()) && !(tr.referees ?? []).includes(p.id))
             .slice(0, 5)
             .map((p) => (
               <button
@@ -1058,7 +1066,7 @@ export function RefereeView() {
   }
   return (
     <div className="flex h-dvh flex-col gap-3 bg-ink p-4 pt-[calc(env(safe-area-inset-top)+16px)] text-white">
-      <div className="flex items-center justify-between gap-2 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
         {exit}
         <button onClick={() => setCourt(null)} className="min-h-11 font-semibold underline">
           {t("สนาม {n}", { n: m.court ?? 0 })} · {divOf(tr, m.divId).code}
