@@ -13,6 +13,7 @@ Check:
 - **Cost**: the owner must not pay anything. Flag anything that could cost money or exceed free tiers: paid APIs, LINE messages being sent, Vercel features beyond Hobby (cron, heavy serverless use, image optimization at scale), Supabase storage growth (photos not compressed), polling loops.
 - **Demo mode** (`?demo`, `src/lib/demo.ts`) still works and never writes to the real database.
 - **Next.js 16**: APIs used match `node_modules/next/dist/docs/` (this Next.js differs from older versions); no deprecated APIs.
+- **Schema snapshot**: `supabase/schema.sql` is the reference copy of the live database structure. If this update changes the DB (tables, functions, policies), flag [กลาง] unless `supabase/schema.sql` was refreshed too.
 - **Rollback**: if this update breaks, can the owner just revert the merge? Flag irreversible data changes.
 
 Report format (Thai, short):

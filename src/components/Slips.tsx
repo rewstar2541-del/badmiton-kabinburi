@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { resizeSlip } from "@/lib/image";
-import type { SelfAction } from "@/lib/state";
 import { locale, t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
 import { savedPin } from "./PickMe";
@@ -12,9 +11,9 @@ function time(at: number) {
   return new Date(at).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
 }
 
-/** ผู้เล่นแนบรูปสลิปหลังโอน ให้แอดมินตรวจ ส่งสำเร็จแล้วนับว่าจ่ายทันที (เหมือนกด "ฉันจ่ายแล้ว") ไม่ให้ยอดค้างจนจ่ายซ้ำ */
-export function SlipUpload({ playerId, amount, action }: { playerId: string; amount: number; action: Extract<SelfAction, "pay" | "payMonth"> }) {
-  const { sendSlip, removeSlip, self } = useStore();
+/** ผู้เล่นแนบรูปสลิปหลังโอน ให้แอดมินตรวจ */
+export function SlipUpload({ playerId, amount }: { playerId: string; amount: number }) {
+  const { sendSlip, removeSlip } = useStore();
   const { day } = useToday();
   const pin = savedPin.get();
   const [busy, setBusy] = useState(false);
@@ -26,11 +25,12 @@ export function SlipUpload({ playerId, amount, action }: { playerId: string; amo
   return (
     <div className="w-full space-y-3 border-t border-dashed border-zinc-200 pt-3">
       {mine.length > 0 && (
-        <div className="flex items-center gap-2 rounded-2xl bg-sky-50 px-3 py-2.5 text-sm text-sky-800">
-          <Icon.Check width={16} height={16} className="shrink-0" />
-          <span>
+        // ส่งสลิปยังไม่ปิดยอด (แอดมินต้องเช็คก่อน) บอกให้ชัด ไม่งั้นผู้เล่นคิดว่าจ่ายเสร็จแล้วหรือโอนซ้ำ
+        <div className="space-y-0.5 rounded-2xl bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+          <div className="font-semibold">
             {t("ส่งสลิปแล้ว {n} รูป ({time}) รอตรวจ", { n: mine.length, time: time(mine[mine.length - 1].at) })}
-          </span>
+          </div>
+          <div>{t("ยอดจะขึ้นว่าจ่ายแล้วเมื่อแอดมินตรวจสลิป ไม่ต้องโอนซ้ำ")}</div>
         </div>
       )}
       {mine.map((x, i) => (
@@ -86,7 +86,7 @@ export function SlipUpload({ playerId, amount, action }: { playerId: string; amo
           if (!f) return;
           setBusy(true);
           try {
-            const err = (await sendSlip(playerId, pin, amount, await resizeSlip(f))) ?? (await self(action, playerId, pin));
+            const err = await sendSlip(playerId, pin, amount, await resizeSlip(f));
             setError(err ? t(err) : "");
           } catch {
             setError(t("อ่านรูปไม่ได้ ลองเลือกรูปใหม่"));
