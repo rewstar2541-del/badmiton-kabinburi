@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { billFor } from "@/lib/billing";
-import { LANGS, setLang, t, useLang } from "@/lib/i18n";
+import { LANGS, t, useLang } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
 import { setTheme, useTheme } from "@/lib/theme";
 import { isMonthlyPaid, monthOf } from "@/lib/types";
 import { Auto } from "@/lib/autoTranslate";
 import { BirthdayEdit } from "./Birthday";
-import { Hero, Rows, guideHref, useSheets } from "./Home";
+import { Hero, LangChoices, Rows, guideHref, useSheets } from "./Home";
 import { PlayerLineAlerts } from "./LineCard";
 import { PlanSwitch, goToTab } from "./Membership";
 import { BadgesCard, MonthCard, PartnerPrefs } from "./MyExtras";
@@ -25,6 +25,7 @@ export function ProfileTab() {
   const theme = useTheme();
   const [me, setMe] = useMe();
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const { open, sheet } = useSheets<"edit" | "plan" | "month" | "badges" | "partners" | "prefs" | "lang">();
   const player = state.players.find((p) => p.id === me);
 
@@ -34,6 +35,7 @@ export function ProfileTab() {
   const monthly = isMonthlyPaid(state.monthly, date, player.id);
   const bill = billFor(state.days, day, player, state.settings, state.monthly, state.players);
   const dark = theme === "dark";
+  const checkedIn = day.checkIns.some((c) => c.playerId === player.id);
 
   return (
     <div className="space-y-5">
@@ -58,7 +60,7 @@ export function ProfileTab() {
 
       <Hero
         label={bill.paid ? t("วันนี้จ่ายแล้ว") : t("ยอดที่ต้องจ่ายวันนี้")}
-        big={baht(bill.total)}
+        big={!checkedIn && bill.total === 0 ? t("ยังไม่มียอด") : baht(bill.total)}
         sub={t("แตะเพื่อดูรายละเอียดและจ่ายเงิน")}
         icon={Icon.Wallet}
         onClick={() => goToTab("mybill")}
@@ -66,7 +68,15 @@ export function ProfileTab() {
 
       <Rows
         items={[
-          { icon: Icon.Edit, title: t("แก้ไขข้อมูล"), sub: t("ชื่อเล่น รูป วันเกิด ระดับมือ"), onClick: () => open("edit") },
+          {
+            icon: Icon.Edit,
+            title: t("แก้ไขข้อมูล"),
+            sub: t("ชื่อเล่น รูป วันเกิด ระดับมือ"),
+            onClick: () => {
+              setError("");
+              open("edit");
+            },
+          },
           ...(player.plan && !player.guestOf
             ? [{ icon: Icon.Receipt, title: t("แบบสมาชิก"), sub: player.plan === "monthly" ? t("รายเดือน") : t("รายวัน"), onClick: () => open("plan") }]
             : []),
@@ -84,7 +94,7 @@ export function ProfileTab() {
         ]}
       />
       <PlayerLineAlerts playerId={player.id} />
-      <button onClick={() => setMe(null)} className="flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-red-50 font-semibold text-red-600">
+      <button onClick={() => confirm(t("ออกจากระบบใช่ไหม?")) && setMe(null)} className="flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-red-50 font-semibold text-red-600">
         <Icon.LogOut width={20} height={20} /> {t("ออกจากระบบ")}
       </button>
 
@@ -92,43 +102,36 @@ export function ProfileTab() {
         "edit",
         t("แก้ไขข้อมูล"),
         <div className="space-y-4">
-          {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
           <BirthdayEdit player={player} />
           <PlayerForm
             self
             initial={player}
             onCancel={() => open(null)}
             onSave={async (v) => {
-              const err = await updateProfile(player.id, savedPin.get(), { name: v.name, photo: v.photo, gender: v.gender, bio: v.bio, level: v.level });
-              setError(err ? t(err) : "");
-              if (!err) open(null);
+              if (busy) return;
+              setBusy(true);
+              try {
+                const err = await updateProfile(player.id, savedPin.get(), { name: v.name, photo: v.photo, gender: v.gender, bio: v.bio, level: v.level });
+                setError(err ? t(err) : "");
+                if (!err) open(null);
+              } catch {
+                setError(t("บันทึกไม่สำเร็จ ลองใหม่"));
+              } finally {
+                setBusy(false);
+              }
             }}
           />
+          {busy && <p className="text-center text-sm text-zinc-600">{t("กำลังบันทึก...")}</p>}
+          {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
         </div>,
+        true,
       )}
       {sheet("plan", t("แบบสมาชิก"), <PlanSwitch player={player} bare />)}
       {sheet("month", t("สรุปเดือนนี้"), <MonthCard player={player} />)}
       {sheet("badges", t("เหรียญของฉัน"), <BadgesCard player={player} />)}
       {sheet("partners", t("สถิติกับคู่"), <PartnerStats player={player} />)}
       {sheet("prefs", t("คู่ที่อยากเล่นด้วย"), <PartnerPrefs key={(player.prefer ?? []).join() + "|" + (player.avoid ?? []).join()} player={player} />)}
-      {sheet(
-        "lang",
-        t("ภาษา"),
-        <div className="grid gap-2">
-          {LANGS.map((l) => (
-            <button
-              key={l.value}
-              onClick={() => {
-                setLang(l.value);
-                open(null);
-              }}
-              className={`h-14 rounded-2xl text-lg font-semibold ${lang === l.value ? "bg-lime text-ink" : "bg-zinc-100"}`}
-            >
-              {{ th: "ไทย", en: "English", zh: "中文" }[l.value]}
-            </button>
-          ))}
-        </div>,
-      )}
+      {sheet("lang", t("ภาษา"), <LangChoices onDone={() => open(null)} />)}
     </div>
   );
 }

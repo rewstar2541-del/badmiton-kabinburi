@@ -35,17 +35,18 @@ export function Card({ children, className = "" }: { children: ReactNode; classN
 }
 
 /** หน้าต่างเลื่อนขึ้นจากด้านล่าง */
-export function Sheet({ title, onClose, children }: { title: ReactNode; onClose: () => void; children: ReactNode }) {
+export function Sheet({ title, onClose, children, keepOpen }: { title: ReactNode; onClose: () => void; children: ReactNode; keepOpen?: boolean }) {
   return (
-    <div className="fixed inset-0 z-20 flex items-end justify-center bg-ink/50 backdrop-blur-sm sm:items-center" onClick={onClose}>
+    // keepOpen: แตะพื้นหลังแล้วไม่ปิด (กันข้อมูลที่กรอกค้างหาย)
+    <div className="fixed inset-0 z-20 flex items-end justify-center overscroll-contain bg-ink/50 backdrop-blur-sm sm:items-center" onClick={keepOpen ? undefined : onClose}>
       <div
-        className="max-h-[92vh] w-full max-w-md space-y-4 overflow-y-auto rounded-t-[32px] bg-white p-5 pb-[calc(env(safe-area-inset-bottom)+20px)] sm:rounded-[32px]"
+        className="max-h-[92vh] max-h-[92dvh] w-full overscroll-contain max-w-md space-y-4 overflow-y-auto rounded-t-[32px] bg-white p-5 pb-[calc(env(safe-area-inset-bottom)+20px)] sm:rounded-[32px]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto h-1 w-10 rounded-full bg-zinc-200 sm:hidden" />
         <div className="flex items-center justify-between gap-3">
           {title}
-          <button onClick={onClose} className="grid size-9 place-items-center rounded-full bg-zinc-100" aria-label={t("ปิด")}>
+          <button onClick={onClose} className="grid size-11 shrink-0 place-items-center rounded-full bg-zinc-100" aria-label={t("ปิด")}>
             <Icon.X width={18} height={18} />
           </button>
         </div>

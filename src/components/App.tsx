@@ -12,14 +12,14 @@ import { CheckInTab } from "./CheckInTab";
 import { CourtsTab } from "./CourtsTab";
 import { PlayersTab } from "./PlayersTab";
 import { SettingsTab } from "./SettingsTab";
-import { AdminHome, PlayerHome } from "./Home";
+import { AdminHome, LangChoices, PlayerHome, useSheets } from "./Home";
 import { ProfileTab } from "./Profile";
 import { useMe } from "./PickMe";
 import { TvView } from "./TvView";
 import { QrOnlyPage } from "./PayQr";
 import { appName } from "@/lib/brand";
 import { Avatar, Icon } from "./ui";
-import { LANGS, setLang, t, useLang } from "@/lib/i18n";
+import { LANGS, t, useLang } from "@/lib/i18n";
 import { setTheme, useTheme } from "@/lib/theme";
 
 type TabId = "home" | "today" | "checkin" | "courts" | "billing" | "players" | "settings" | "mybill" | "profile";
@@ -93,18 +93,22 @@ function GuideButton() {
   );
 }
 
-/** ปุ่มภาษาเล็กๆ แตะเพื่อเปลี่ยนไปภาษาถัดไป */
+/** ปุ่มภาษา แตะแล้วเปิดแผ่นให้เลือก (กันกดพลาดแล้วกลายเป็นภาษาอื่น) */
 function LangSwitch() {
   const lang = useLang();
-  const i = LANGS.findIndex((l) => l.value === lang);
+  const { open, sheet } = useSheets<"lang">();
   return (
-    <button
-      onClick={() => setLang(LANGS[(i + 1) % LANGS.length].value)}
-      className="h-10 shrink-0 rounded-full bg-white px-3 text-sm font-semibold text-zinc-700 shadow-sm ring-1 ring-zinc-200"
-      aria-label={t("ภาษา")}
-    >
-      {LANGS[i]?.label ?? "ไทย"}
-    </button>
+    <>
+      <button
+        onClick={() => open("lang")}
+        className="flex h-10 shrink-0 items-center gap-1 rounded-full bg-white px-2.5 text-sm font-semibold text-zinc-700 shadow-sm ring-1 ring-zinc-200"
+        aria-label={t("ภาษา")}
+      >
+        <Icon.Globe width={16} height={16} />
+        {LANGS.find((l) => l.value === lang)?.label ?? "ไทย"}
+      </button>
+      {sheet("lang", t("ภาษา"), <LangChoices onDone={() => open(null)} />)}
+    </>
   );
 }
 
@@ -153,7 +157,7 @@ function ModeSwitch() {
             set(player);
             window.scrollTo({ top: 0 });
           }}
-          className={`rounded-full px-3 py-1 text-sm font-semibold ${Boolean(auth.playerMode) === player ? "bg-ink text-white" : "text-zinc-600"}`}
+          className={`h-10 rounded-full px-4 text-sm font-semibold ${Boolean(auth.playerMode) === player ? "bg-ink text-white" : "text-zinc-600"}`}
         >
           {player ? t("ผู้เล่น") : t("แอดมิน")}
         </button>
@@ -277,7 +281,7 @@ function Shell() {
                   window.scrollTo({ top: 0 });
                 }}
                 aria-current={active ? "page" : undefined}
-                className={`flex flex-col items-center gap-0.5 rounded-2xl py-2 text-xs font-semibold transition ${
+                className={`flex flex-col items-center gap-0.5 rounded-2xl py-2 text-sm font-semibold transition ${
                   active ? "bg-lime text-ink" : "text-zinc-600 active:bg-zinc-100"
                 }`}
               >

@@ -4,7 +4,7 @@ import { useState, type ComponentType, type ReactNode, type SVGProps } from "rea
 import { presence, waitingQueue } from "@/lib/matchmaking";
 import { signupQueue } from "@/lib/social";
 import { useStore, useToday } from "@/lib/store";
-import { locale, t, useLang } from "@/lib/i18n";
+import { LANGS, locale, setLang, t, useLang } from "@/lib/i18n";
 import { AnnounceCard } from "./AnnounceCard";
 import { BirthdayBanner } from "./Birthday";
 import { BoardCard } from "./Board";
@@ -65,7 +65,7 @@ export function Hero({
         <I width={24} height={24} />
       </span>
       <div className="relative pr-14 text-sm text-white/70">{label}</div>
-      <div className="relative font-display text-4xl leading-tight font-semibold">
+      <div className="relative pr-14 font-display text-4xl leading-tight font-semibold">
         {big}
         {small && <span className="ml-1.5 text-lg font-medium text-white/80">{small}</span>}
       </div>
@@ -84,11 +84,14 @@ export function Hero({
   );
 }
 
-export type Shortcut = { icon: IconC; label: string; onClick?: () => void; href?: string; disabled?: boolean };
+export type Shortcut = { icon: IconC; label: string; onClick?: () => void; href?: string; disabled?: string };
 
 /** ปุ่มลัดกลม 4 ปุ่มใต้การ์ดสรุป */
 export function Shortcuts({ items }: { items: Shortcut[] }) {
+  // ปุ่มที่ยังใช้ไม่ได้ กดแล้วบอกเหตุผล (disabled = ข้อความเหตุผล)
+  const [why, setWhy] = useState("");
   return (
+    <div className="space-y-2">
     <div className="grid grid-cols-4 gap-2">
       {items.map((s) => {
         const inner = (
@@ -105,11 +108,17 @@ export function Shortcuts({ items }: { items: Shortcut[] }) {
             {inner}
           </a>
         ) : (
-          <button key={s.label} disabled={s.disabled} onClick={s.onClick} className={cls}>
+          <button key={s.label} onClick={s.disabled ? () => setWhy(s.disabled!) : s.onClick} aria-disabled={!!s.disabled} className={cls}>
             {inner}
           </button>
         );
       })}
+    </div>
+    {why && (
+      <button onClick={() => setWhy("")} className="w-full rounded-2xl bg-amber-50 px-4 py-3 text-left text-[15px] font-medium text-amber-900">
+        {why}
+      </button>
+    )}
     </div>
   );
 }
@@ -127,9 +136,9 @@ export function Tiles({ items }: { items: Tile[] }) {
           className={`relative flex flex-col items-center gap-1.5 rounded-2xl px-1 pt-4 pb-3 text-center active:scale-95 ${TONES[i % TONES.length]}`}
         >
           <it.icon width={28} height={28} />
-          <span className="text-sm leading-tight font-semibold text-ink">{it.label}</span>
+          <span className="text-sm leading-tight font-semibold break-words text-ink">{it.label}</span>
           {!!it.badge && (
-            <span className="absolute top-2 right-2 grid min-w-6 place-items-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">{it.badge}</span>
+            <span className="absolute top-2 right-2 grid min-w-7 place-items-center rounded-full bg-red-500 px-1.5 text-sm font-bold text-white">{it.badge}</span>
           )}
         </button>
       ))}
@@ -179,13 +188,34 @@ export function CountBadge({ n, tone }: { n: number; tone: string }) {
 /** แผ่นเลื่อนขึ้นจากด้านล่าง ใช้เปิดเมนูย่อยโดยไม่ต้องเปลี่ยนหน้า */
 export function useSheets<K extends string>() {
   const [open, setOpen] = useState<K | null>(null);
-  const sheet = (key: K, title: string, body: ReactNode) =>
+  const sheet = (key: K, title: string, body: ReactNode, keepOpen?: boolean) =>
     open === key ? (
-      <Sheet title={<h3 className="font-display text-lg font-semibold">{title}</h3>} onClose={() => setOpen(null)}>
+      <Sheet title={<h3 className="font-display text-lg font-semibold">{title}</h3>} onClose={() => setOpen(null)} keepOpen={keepOpen}>
         {body}
       </Sheet>
     ) : null;
   return { open: setOpen, sheet };
+}
+
+/** ปุ่มเลือกภาษาใหญ่ๆ (ใช้ในแถบบนและหน้าโปรไฟล์) */
+export function LangChoices({ onDone }: { onDone: () => void }) {
+  const lang = useLang();
+  return (
+    <div className="grid gap-2">
+      {LANGS.map((l) => (
+        <button
+          key={l.value}
+          onClick={() => {
+            setLang(l.value);
+            onDone();
+          }}
+          className={`h-14 rounded-2xl text-lg font-semibold ${lang === l.value ? "bg-lime text-ink" : "bg-zinc-100"}`}
+        >
+          {{ th: "ไทย", en: "English", zh: "中文" }[l.value]}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 export function guideHref(lang: string, admin: boolean) {
@@ -195,7 +225,7 @@ export function guideHref(lang: string, admin: boolean) {
 /** หน้าแรกของผู้เล่น */
 export function PlayerHome() {
   const { state } = useStore();
-  const { day } = useToday();
+  const { day, date } = useToday();
   const lang = useLang();
   const [me] = useMe();
   const { open, sheet } = useSheets<"rest" | "pair" | "calendar" | "rank" | "board" | "photos">();
@@ -210,12 +240,13 @@ export function PlayerHome() {
   const queue = waitingQueue(day, state.players);
   const pos = queue.findIndex((e) => e.player.id === player.id) + 1;
   const court = day.games.find((g) => !g.endedAt && g.playerIds.includes(player.id))?.court;
+  const closed = state.closed[date];
 
   const hero: { big: string; sub: string } =
     status === "playing"
       ? { big: t("สนาม {n}", { n: court ?? "" }), sub: t("กำลังเล่นอยู่") }
       : status === "waiting"
-        ? { big: t("คิวที่ {n}", { n: pos }), sub: pos <= 4 ? t("ได้ลงเกมถัดไป เตรียมตัวได้เลย") : t("รอคิวอยู่ {n} คน", { n: queue.length }) }
+        ? { big: t("คิวที่ {n}", { n: pos }), sub: pos <= 4 ? t("ใกล้ถึงคิวแล้ว เตรียมตัวได้เลย") : t("รอคิวอยู่ {n} คน", { n: queue.length }) }
         : status === "resting"
           ? { big: t("พักอยู่"), sub: t("ระบบข้ามคิวให้") }
           : status === "home"
@@ -224,7 +255,9 @@ export function PlayerHome() {
               ? { big: t("ลงชื่อแล้ว"), sub: t("ถึงสนามแล้วกดเช็คอินด้านล่าง") }
               : announced
                 ? { big: t("ยังไม่ได้ลงชื่อ"), sub: t("ลงชื่อได้ด้านล่าง") }
-                : { big: t("วันนี้ไม่มีก๊วน"), sub: t("รอแอดมินประกาศ") };
+                : closed !== undefined
+                  ? { big: t("วันนี้งดเล่น"), sub: closed || t("ดูรายละเอียดด้านล่าง") }
+                  : { big: t("วันนี้ไม่มีก๊วน"), sub: t("รอแอดมินประกาศ") };
   const chips = [...(ci ? [t("เช็คอินแล้ว ✓")] : []), ...(played ? [t("เล่นแล้ว {n} เกม", { n: played })] : [])];
   const here = !!ci && !ci.paidAt;
 
@@ -233,9 +266,14 @@ export function PlayerHome() {
       <Hero label={t("วันนี้ของฉัน · {date}", { date: shortDate() })} big={hero.big} sub={hero.sub} chips={chips} icon={Icon.Shuttle} />
       <Shortcuts
         items={[
-          { icon: Icon.Pause, label: t("ขอพัก"), onClick: () => open("rest"), disabled: !here },
+          { icon: Icon.Pause, label: t("ขอพัก"), onClick: () => open("rest"), disabled: here ? undefined : t("เช็คอินที่สนามก่อน ถึงจะขอพักได้") },
           { icon: Icon.Wallet, label: t("จ่ายเงิน"), onClick: () => goToTab("mybill") },
-          { icon: Icon.Hand, label: t("ขอคู่"), onClick: () => open("pair"), disabled: !here || !!player.guestOf },
+          {
+            icon: Icon.Hand,
+            label: t("ขอคู่"),
+            onClick: () => open("pair"),
+            disabled: player.guestOf ? t("แขกขอคู่ไม่ได้") : here ? undefined : t("เช็คอินที่สนามก่อน ถึงจะขอคู่หรือพาเพื่อนได้"),
+          },
           { icon: Icon.Book, label: t("คู่มือ"), href: guideHref(lang, false) },
         ]}
       />
@@ -251,10 +289,10 @@ export function PlayerHome() {
           { icon: Icon.User, label: t("โปรไฟล์"), onClick: () => goToTab("profile") },
         ]}
       />
-      {sheet("rest", t("ขอพัก"), <RestButton />)}
+      {sheet("rest", t("ขอพัก"), here ? <RestButton /> : <p className="text-zinc-600">{t("จ่ายแล้ว ไม่ต้องขอพัก")}</p>)}
       {sheet(
         "pair",
-        t("ขอคู่"),
+        t("ขอคู่ / พาเพื่อน"),
         <div className="space-y-4">
           <PairCard />
           <BringGuest player={player} pin={savedPin.get()} />
@@ -282,7 +320,8 @@ export function AdminHome() {
   const checked = new Set(day.checkIns.map((c) => c.playerId));
   const q = signupQueue(day);
   const notArrived = q.confirmed.filter((id) => !checked.has(id));
-  const unpaid = day.checkIns.filter((c) => !c.paidAt).map((c) => c.playerId);
+  // ค้างจ่าย: เลิกเล่นแล้ว (พัก ไม่ได้อยู่ในสนาม) แต่ยังไม่จ่าย ไม่นับคนที่ยังเล่นหรือรอคิว
+  const unpaid = day.checkIns.filter((c) => !c.paidAt && presence(day, c.playerId) === "resting").map((c) => c.playerId);
   const pending = state.players.filter((p) => p.pending);
   const playing = day.games.filter((g) => !g.endedAt).length * 4;
   const waiting = waitingQueue(day, state.players).length;
@@ -295,7 +334,7 @@ export function AdminHome() {
       ? [{ icon: Icon.CheckIn, title: t("ลงชื่อแล้ว ยังไม่มา"), sub: names(notArrived), right: <CountBadge n={notArrived.length} tone="bg-amber-50 text-amber-700" />, onClick: () => goToTab("checkin") }]
       : []),
     ...(unpaid.length
-      ? [{ icon: Icon.Receipt, title: t("ยังไม่จ่ายเงิน"), sub: names(unpaid), right: <CountBadge n={unpaid.length} tone="bg-red-50 text-red-600" />, onClick: () => goToTab("billing") }]
+      ? [{ icon: Icon.Receipt, title: t("เลิกเล่นแล้ว ยังไม่จ่าย"), sub: names(unpaid), right: <CountBadge n={unpaid.length} tone="bg-red-50 text-red-600" />, onClick: () => goToTab("billing") }]
       : []),
     ...(pending.length
       ? [{ icon: Icon.User, title: t("สมัครใหม่รออนุมัติ"), sub: names(pending.map((p) => p.id)), right: <CountBadge n={pending.length} tone="bg-sky-50 text-sky-700" />, onClick: () => goToTab("players") }]

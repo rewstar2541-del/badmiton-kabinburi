@@ -172,7 +172,7 @@ export function TodayTab({ home }: { home?: boolean } = {}) {
             </div>
             {status !== "home" && (
               <>
-                <RestButton />
+                {!home && <RestButton />}
                 <Button
                   variant="accent"
                   disabled={busy}

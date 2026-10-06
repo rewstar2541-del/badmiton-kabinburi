@@ -90,3 +90,5 @@ html.dark {
 .dark .bg-lime\/30 { background-color: rgba(198, 244, 50, 0.16); }
 .dark .bg-lime\/40, .dark .bg-lime\/25 { background-color: rgba(198, 244, 50, 0.2); }
 .dark .text-violet-700 { color: #c4b5fd; }
+.dark .divide-zinc-100 > :not(:last-child) { border-color: #26324a; }
+.dark .ring-zinc-200 { --tw-ring-color: #34415b; }
