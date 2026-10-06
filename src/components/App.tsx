@@ -225,7 +225,8 @@ function Shell() {
   const tourney = useTourney();
   const base = auth.isAdmin ? ADMIN_TABS : PLAYER_TABS;
   // วันแข่ง: แท็บแรกเปลี่ยนเป็น "งานแข่ง"
-  const tabs: Tab[] = tourney.mode ? [{ id: "event", label: "งานแข่ง", icon: Icon.Trophy }, ...base.slice(1)] : base;
+  // วันแข่ง: เหลือแค่ "งานแข่ง" กับโปรไฟล์/ตั้งค่า ไม่โชว์ข้อมูลก๊วน
+  const tabs: Tab[] = tourney.mode ? [{ id: "event", label: "งานแข่ง", icon: Icon.Trophy }, ...base.filter((x) => x.id === "profile" || x.id === "settings")] : base;
   const [picked, setTab] = useState<TabId>(tabs[0].id);
   const allowed = (id: TabId) => tabs.some((t) => t.id === id) || (auth.isAdmin && ADMIN_EXTRA.includes(id));
   const tab = allowed(picked) ? picked : tabs[0].id;
