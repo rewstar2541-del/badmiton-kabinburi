@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { isDemo } from "./demo";
+import { JOIN_KEY } from "./lineLogin";
 import { supabase } from "./remote";
 import { readSession } from "./session";
 import { today } from "./state";
@@ -31,6 +32,15 @@ export type PlayerAction =
   | { action: "submit"; matchId: string; games: [number, number][] }
   | { action: "confirm"; matchId: string; ok: boolean };
 
+/** ลิงก์ ?join หรือเพิ่งกลับจาก LINE เพื่อสมัครแข่ง */
+function joining() {
+  try {
+    return new URLSearchParams(location.search).has("join") || sessionStorage.getItem(JOIN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 const real = () => !!supabase && !isDemo();
 
 function loadDemo(): Snap {
@@ -39,7 +49,7 @@ function loadDemo(): Snap {
     const raw = localStorage.getItem(KEY);
     const t = raw ? (JSON.parse(raw) as Tourney) : sampleTourney(today());
     // ลิงก์ ?join (QR สมัครแข่ง) เปิดหน้างานแข่งเลย
-    const join = new URLSearchParams(location.search).has("join");
+    const join = joining();
     return { t, mode: join || localStorage.getItem(MODE_KEY) === "1", version: 0 };
   } catch {
     return { t: sampleTourney(today()), mode: false, version: 0 };
@@ -52,7 +62,7 @@ let started = false;
 async function fetchRow() {
   if (!supabase) return;
   const { data } = await supabase.from("tourneys").select("data, mode, version").eq("active", true).order("updated_at", { ascending: false }).limit(1).maybeSingle();
-  const join = new URLSearchParams(location.search).has("join");
+  const join = joining();
   // คำตอบที่มาช้ากว่าข้อมูลที่ถืออยู่ ไม่เอา
   if (data && snap?.t?.id === (data.data as Tourney).id && data.version < snap.version) return;
   snap = data ? { t: data.data as Tourney, mode: data.mode || join, version: data.version } : { t: null, mode: false, version: 0 };

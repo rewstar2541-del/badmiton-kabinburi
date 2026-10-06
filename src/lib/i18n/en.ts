@@ -1042,4 +1042,9 @@ export const en: Record<string, string> = {
   "{n} คู่": "{n} pairs",
   "เพิ่มมือ": "Add level",
   "สร้างงานแข่ง": "Create event",
+  "ใช้ LINE เข้าครั้งเดียว ไม่ต้องสมัครสมาชิก": "Sign in once with LINE, no membership needed",
+  "เข้าด้วย LINE เพื่อสมัคร": "Sign in with LINE to register",
+  "อีกนิดเดียว": "Almost done",
+  "ระดับมือของคุณ": "Your skill level",
+  "ไปต่อ": "Continue",
 };

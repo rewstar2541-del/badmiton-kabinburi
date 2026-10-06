@@ -14,7 +14,11 @@ function redirectUri() {
 }
 
 /** ไปหน้าเข้าสู่ระบบของ LINE แล้วกลับมาที่หน้านี้ */
-export function startLineLogin() {
+/** มาจาก QR สมัครแข่ง: กลับจาก LINE แล้วเปิดหน้างานแข่งต่อ */
+export const JOIN_KEY = "badminton-kabinburi:join";
+
+export function startLineLogin(join = false) {
+  if (join === true) sessionStorage.setItem(JOIN_KEY, "1");
   const state = crypto.randomUUID();
   sessionStorage.setItem(STATE_KEY, state);
   const q = new URLSearchParams({
