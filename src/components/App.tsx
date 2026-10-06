@@ -1,6 +1,8 @@
 "use client";
 
 import { Bell } from "./Bell";
+import { RefereeView, TourneyAdmin, TourneyBanner, TourneyHome, WatchView } from "./Tourney";
+import { useTourney } from "@/lib/tourneyStore";
 import { YearSummaryView } from "./YearSummary";
 import { Fragment, useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { PlayerModeProvider, StoreProvider, useStore, useToday } from "@/lib/store";
@@ -23,7 +25,7 @@ import { Avatar, Icon } from "./ui";
 import { LANGS, t, useLang } from "@/lib/i18n";
 import { setTheme, useTheme } from "@/lib/theme";
 
-type TabId = "home" | "today" | "checkin" | "courts" | "billing" | "players" | "settings" | "mybill" | "profile";
+type TabId = "event" | "home" | "today" | "checkin" | "courts" | "billing" | "players" | "settings" | "mybill" | "profile";
 type Tab = { id: TabId; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> };
 
 const ADMIN_TABS: Tab[] = [
@@ -116,6 +118,7 @@ function LangSwitch() {
 /** แถบโหมดทดลอง สลับดูแบบผู้เล่น/แอดมิน */
 function DemoBar() {
   const { auth } = useStore();
+  const tourney = useTourney();
   if (!auth.demo) return null;
   const demo = auth.demo;
   return (
@@ -132,6 +135,15 @@ function DemoBar() {
           </button>
         ))}
       </div>
+      {tourney.t && (
+        <div className="flex shrink-0 rounded-full bg-ink/10 p-0.5">
+          {[false, true].map((on) => (
+            <button key={String(on)} onClick={() => tourney.setMode(on)} className={`rounded-full px-2.5 py-1 font-semibold ${tourney.mode === on ? "bg-ink text-white" : ""}`}>
+              {on ? t("งานแข่ง") : t("ก๊วนปกติ")}
+            </button>
+          ))}
+        </div>
+      )}
       <button
         className="shrink-0 underline"
         onClick={() => {
@@ -209,7 +221,10 @@ function Shell() {
   const { date } = useToday();
   const lang = useLang();
   // เข้าด้วย LINE แล้วเป็นแอดมิน เมนูแอดมินจะขึ้นเอง
-  const tabs = auth.isAdmin ? ADMIN_TABS : PLAYER_TABS;
+  const tourney = useTourney();
+  const base = auth.isAdmin ? ADMIN_TABS : PLAYER_TABS;
+  // วันแข่ง: แท็บแรกเปลี่ยนเป็น "งานแข่ง"
+  const tabs: Tab[] = tourney.mode ? [{ id: "event", label: "งานแข่ง", icon: Icon.Trophy }, ...base.slice(1)] : base;
   const [picked, setTab] = useState<TabId>(tabs[0].id);
   const allowed = (id: TabId) => tabs.some((t) => t.id === id) || (auth.isAdmin && ADMIN_EXTRA.includes(id));
   const tab = allowed(picked) ? picked : tabs[0].id;
@@ -259,6 +274,12 @@ function Shell() {
         {!auth.isAdmin && (
           <div className="mb-4 empty:hidden">
             <FirstAdminCard />
+          </div>
+        )}
+        {tab === "event" && (auth.isAdmin ? <TourneyAdmin /> : <TourneyHome />)}
+        {tab === "home" && (
+          <div className="mb-4 empty:hidden">
+            <TourneyBanner />
           </div>
         )}
         {tab === "home" && (auth.isAdmin ? <AdminHome /> : <PlayerHome />)}
@@ -323,7 +344,7 @@ export function App() {
   return (
     <StoreProvider>
       <PlayerModeProvider>
-        {hasParam("payqr") ? <QrRoute /> : isTv() ? <TvView /> : hasParam("summary") ? <SummaryRoute /> : <Shell />}
+        {hasParam("payqr") ? <QrRoute /> : hasParam("watch") ? <WatchView /> : hasParam("ref") ? <RefereeView /> : isTv() ? <TvView /> : hasParam("summary") ? <SummaryRoute /> : <Shell />}
       </PlayerModeProvider>
     </StoreProvider>
   );
