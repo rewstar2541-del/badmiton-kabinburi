@@ -44,7 +44,8 @@ export function Sheet({ title, onClose, children, keepOpen }: { title: ReactNode
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto h-1 w-10 rounded-full bg-zinc-200 sm:hidden" />
-        <div className="flex items-center justify-between gap-3">
+        {/* หัวแผ่นติดด้านบนเวลาเลื่อน ปุ่มปิดจะไม่หายไป */}
+        <div className="sticky -top-5 z-10 -mx-5 flex items-center justify-between gap-3 bg-white px-5 py-2">
           {title}
           <button onClick={onClose} className="grid size-11 shrink-0 place-items-center rounded-full bg-zinc-100" aria-label={t("ปิด")}>
             <Icon.X width={18} height={18} />

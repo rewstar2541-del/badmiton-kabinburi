@@ -1,13 +1,15 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { carriedOver } from "@/lib/billing";
+import { carriedOver, guestsOf } from "@/lib/billing";
 import { t } from "@/lib/i18n";
 import { presence, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
 import { goToTab } from "./Membership";
 import { savedPin, useMe } from "./PickMe";
 import { Icon, Sheet, baht, levelCode } from "./ui";
+
+const WEEK = 7 * 24 * 3600 * 1000;
 
 type Tone = "pair" | "court" | "ok" | "money";
 interface Note {
@@ -16,8 +18,10 @@ interface Note {
   title: string;
   sub: string;
   at: number;
-  /** คำขอคู่ที่รอเราตอบ */
+  /** คำขอคู่ที่รอเราตอบ (นับเป็นเรื่องใหม่จนกว่าจะตอบ) */
   pairId?: string;
+  /** เราเป็นคนตอบเอง ไม่ต้องนับเป็นเรื่องใหม่ */
+  mine?: boolean;
   onTap?: () => void;
 }
 
@@ -51,8 +55,8 @@ const clock = () => Date.now();
 function ago(at: number, now: number) {
   const m = Math.max(0, Math.round((now - at) / 60000));
   if (m < 1) return t("เมื่อกี้");
-  if (m < 60) return t("{n} นาที", { n: m });
-  if (m < 60 * 24) return t("{n} ชม.", { n: Math.round(m / 60) });
+  if (m < 60) return t("{n} นาทีที่แล้ว", { n: m });
+  if (m < 60 * 24) return t("{n} ชม.ที่แล้ว", { n: Math.round(m / 60) });
   if (m < 60 * 48) return t("เมื่อวาน");
   return t("{n} วันก่อน", { n: Math.floor(m / 1440) });
 }
@@ -74,19 +78,22 @@ function useNotes(meId: string | null) {
       store.set(logKey, log);
     }
     store.set(key, player.level);
-    return log;
+    const since = clock() - WEEK;
+    return log.filter((l) => l.at > since);
   }, [player?.id, player?.level]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!player) return [];
   const name = (id: string) => state.players.find((p) => p.id === id)?.name ?? "?";
   const notes: Note[] = [];
 
+  // ตอบรับได้เฉพาะตอนที่ทั้งสองคนยังอยู่ที่สนาม (เช็คอินแล้วและยังไม่จ่าย)
+  const here = (id: string) => day.checkIns.some((c) => c.playerId === id && !c.paidAt);
   for (const r of day.pairs ?? []) {
-    if (r.to === player.id && r.status === "pending")
-      notes.push({ id: `pair:${r.id}`, tone: "pair", title: t("{name} ขอคู่กับคุณ", { name: name(r.from) }), sub: t("อยากเล่นคู่กันเกมถัดไป"), at: r.at, pairId: r.id });
+    if (r.to === player.id && r.status === "pending" && here(r.from) && here(r.to))
+      notes.push({ id: `pair:${r.id}`, tone: "pair", title: t("{name} ขอคู่กับคุณ", { name: name(r.from) }), sub: t("เกมถัดไป"), at: r.at, pairId: r.id });
     // ตอบไปแล้ว: เก็บไว้ในรายการให้เห็นว่าตอบอะไรไป
     if (r.to === player.id && (r.status === "accepted" || r.status === "declined"))
-      notes.push({ id: `pair:${r.id}`, tone: "pair", title: t("{name} ขอคู่กับคุณ", { name: name(r.from) }), sub: r.status === "accepted" ? t("รับคู่แล้ว ได้เล่นคู่กันเกมถัดไป") : t("ตอบไม่สะดวกแล้ว"), at: r.at });
+      notes.push({ id: `pair:${r.id}`, tone: "pair", title: t("{name} ขอคู่กับคุณ", { name: name(r.from) }), sub: r.status === "accepted" ? t("รับคู่แล้ว ได้เล่นคู่กันเกมถัดไป") : t("ตอบไม่สะดวกแล้ว"), at: r.at, mine: true });
     if (r.from === player.id && r.status === "accepted")
       notes.push({ id: `pairok:${r.id}`, tone: "pair", title: t("{name} รับคู่ของคุณแล้ว", { name: name(r.to) }), sub: t("ได้เล่นคู่กันเกมถัดไป"), at: r.at });
     if (r.from === player.id && r.status === "declined")
@@ -109,11 +116,12 @@ function useNotes(meId: string | null) {
   for (const l of levelLog)
     notes.push({ id: `level:${l.at}`, tone: "ok", title: t("ระดับมือเปลี่ยนแล้ว"), sub: t("ระดับมือของคุณเป็น {level} แล้ว", { level: levelCode(l.level as never) }), at: l.at });
 
-  const owed = carriedOver(state.days, date, player, state.settings, state.monthly);
+  // ยอดค้างจากวันก่อน รวมแขกที่เราพามา (ตรงกับหน้ายอดของฉัน)
+  const owed = [player, ...guestsOf(state.players, player.id)].reduce((sum, p) => sum + carriedOver(state.days, date, p, state.settings, state.monthly), 0);
   if (owed > 0)
     notes.push({ id: `owed:${date}:${owed}`, tone: "money", title: t("มียอดค้างจ่าย {amount}", { amount: baht(owed) }), sub: t("แตะเพื่อดูยอดและจ่ายเงิน"), at: Date.parse(date + "T00:00:00"), onTap: () => goToTab("mybill") });
 
-  return notes.sort((a, b) => b.at - a.at);
+  return notes.sort((a, b) => Number(!!b.pairId) - Number(!!a.pairId) || b.at - a.at);
 }
 
 /** กระดิ่งแจ้งเตือนในแอพ: เห็นตอนเปิดแอพ ไม่ส่งข้อความออกไปข้างนอก (ไม่มีค่าใช้จ่าย) */
@@ -125,46 +133,55 @@ export function Bell() {
   const [seen, setSeen] = useState<string[]>(() => store.get<string[]>(seenKey, []));
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<{ id: string; text: string } | null>(null);
   const [now, setNow] = useState(0);
 
-  const unread = notes.filter((n) => !seen.includes(n.id));
-  const markAll = () => {
-    const ids = [...new Set([...seen, ...notes.map((n) => n.id)])].slice(-200);
-    setSeen(ids);
-    store.set(seenKey, ids);
+  // คำขอคู่ที่ยังไม่ตอบนับเป็นเรื่องใหม่เสมอ เรื่องที่เราตอบเองไม่นับ
+  const isNew = (n: Note) => !!n.pairId || (!n.mine && !seen.includes(n.id));
+  const unread = notes.filter(isNew);
+  const remember = (ids: string[]) => {
+    const next = [...new Set([...seen, ...ids])].slice(-200);
+    setSeen(next);
+    store.set(seenKey, next);
   };
   const close = () => {
-    markAll();
+    remember(notes.filter((n) => !n.pairId).map((n) => n.id));
     setOpen(false);
-    setError("");
+    setError(null);
   };
   const answer = async (id: string, accept: boolean) => {
     if (!me || busy) return;
     setBusy(true);
-    const err = await social({ kind: "respondPair", id, accept }, me, savedPin.get());
+    let err: string | null = null;
+    try {
+      err = await social({ kind: "respondPair", id, accept }, me, savedPin.get());
+    } catch {
+      err = "เชื่อมต่อไม่ได้ ลองใหม่";
+    }
     setBusy(false);
-    setError(err ? t(err) : "");
+    // ข้อความจากระบบที่แปลไม่ได้ (เช่นเน็ตหลุด) แสดงเป็นข้อความกลางๆ แทน
+    setError(err ? { id, text: /[\u0E00-\u0E7F]/.test(err) ? t(err) : t("เชื่อมต่อไม่ได้ ลองใหม่") } : null);
+    if (!err) remember([`pair:${id}`]);
   };
 
   const row = (n: Note) => {
-    const isNew = !seen.includes(n.id);
+    const fresh = isNew(n);
     const tone = TONE[n.tone];
     const body = (
       <>
         <span className={`grid size-11 shrink-0 place-items-center rounded-2xl ${tone.bg}`}>{tone.icon}</span>
         <div className="min-w-0 flex-1 text-left">
           <div className="flex items-start justify-between gap-2">
-            <b className="text-base leading-snug">{n.title}</b>
+            <b className="min-w-0 text-base leading-snug [overflow-wrap:anywhere]">{n.title}</b>
             <span className="shrink-0 text-[13px] text-zinc-500">{ago(n.at, now)}</span>
           </div>
           <div className="text-[15px] text-zinc-600">{n.sub}</div>
         </div>
-        {isNew && <span className="mt-1.5 size-2.5 shrink-0 rounded-full bg-red-500" aria-label={t("ใหม่")} />}
+        {n.onTap && <Icon.ChevronRight width={18} height={18} className="mt-3 shrink-0 text-zinc-400" />}
       </>
     );
     return (
-      <li key={n.id} className={`rounded-2xl p-3.5 ${isNew ? "bg-lime/15 ring-[1.5px] ring-lime" : "bg-zinc-50 ring-1 ring-zinc-200"}`}>
+      <li key={n.id} className={`rounded-2xl p-3.5 ${fresh ? "bg-lime/15 ring-[1.5px] ring-lime" : "bg-zinc-50 ring-1 ring-zinc-200"}`}>
         {n.onTap ? (
           <button
             className="flex w-full gap-3"
@@ -180,20 +197,21 @@ export function Bell() {
         )}
         {n.pairId && (
           <div className="mt-3 grid grid-cols-2 gap-2 pl-14">
-            <button disabled={busy} onClick={() => answer(n.pairId!, true)} className="h-11 rounded-xl bg-lime font-semibold text-ink disabled:opacity-50">
-              {t("รับคู่")}
-            </button>
             <button disabled={busy} onClick={() => answer(n.pairId!, false)} className="h-11 rounded-xl bg-zinc-100 font-semibold disabled:opacity-50">
               {t("ไม่สะดวก")}
             </button>
+            <button disabled={busy} onClick={() => answer(n.pairId!, true)} className="h-11 rounded-xl bg-lime font-semibold text-ink disabled:opacity-50">
+              {t("รับคู่")}
+            </button>
           </div>
         )}
+        {error && n.pairId === error.id && <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error.text}</p>}
       </li>
     );
   };
 
-  const fresh = notes.filter((n) => !seen.includes(n.id));
-  const old = notes.filter((n) => seen.includes(n.id));
+  const fresh = notes.filter(isNew);
+  const old = notes.filter((n) => !isNew(n));
 
   return (
     <>
@@ -235,8 +253,7 @@ export function Bell() {
               )}
             </div>
           )}
-          {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
-          <p className="text-center text-xs text-zinc-500">{t("เห็นเฉพาะตอนเปิดแอพ")}</p>
+          <p className="text-center text-sm text-zinc-500">{t("ไม่เด้งเตือนในมือถือ เปิดแอพแล้วดูที่นี่")}</p>
         </Sheet>
       )}
     </>
