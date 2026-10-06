@@ -138,6 +138,99 @@ function Svg(props: IconProps) {
 }
 
 export const Icon = {
+  Home: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M3 11 12 3l9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />
+    </Svg>
+  ),
+  User: (p: IconProps) => (
+    <Svg {...p}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21v-1a6 6 0 0 1 12 0v1" />
+    </Svg>
+  ),
+  Pause: (p: IconProps) => (
+    <Svg {...p}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M10 9v6M14 9v6" />
+    </Svg>
+  ),
+  Hand: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M16 11V5a2 2 0 0 0-4 0v6M12 10V4a2 2 0 0 0-4 0v8M8 12V8a2 2 0 0 0-4 0v6a8 8 0 0 0 16 0v-3a2 2 0 0 0-4 0" />
+    </Svg>
+  ),
+  Book: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M2 4h7a3 3 0 0 1 3 3v14a2 2 0 0 0-2-2H2zM22 4h-7a3 3 0 0 0-3 3v14a2 2 0 0 1 2-2h8z" />
+    </Svg>
+  ),
+  Calendar: (p: IconProps) => (
+    <Svg {...p}>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M16 3v4M8 3v4M3 11h18" />
+    </Svg>
+  ),
+  Box: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M21 8 12 3 3 8v8l9 5 9-5z" />
+      <path d="m3 8 9 5 9-5M12 13v8" />
+    </Svg>
+  ),
+  Chart: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M3 3v18h18" />
+      <path d="m7 15 4-4 3 3 5-6" />
+    </Svg>
+  ),
+  Receipt: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 1 .7V2l-3 2-3-2-3 2-3-2-3 2z" />
+      <path d="M8 8h8M8 12h8M8 16h5" />
+    </Svg>
+  ),
+  Shuffle: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />
+    </Svg>
+  ),
+  Globe: (p: IconProps) => (
+    <Svg {...p}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20" />
+    </Svg>
+  ),
+  LogOut: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+    </Svg>
+  ),
+  Edit: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+    </Svg>
+  ),
+  Vote: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="m9 11 3 3 8-8" />
+      <path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9" />
+    </Svg>
+  ),
+  Heart: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z" />
+    </Svg>
+  ),
+  ChevronRight: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="m9 6 6 6-6 6" />
+    </Svg>
+  ),
+  Moon: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+    </Svg>
+  ),
   CheckIn: (p: IconProps) => (
     <Svg {...p}>
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />

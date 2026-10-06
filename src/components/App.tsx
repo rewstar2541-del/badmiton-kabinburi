@@ -2,41 +2,44 @@
 
 import { YearSummaryView } from "./YearSummary";
 import { Fragment, useEffect, useState, type ComponentType, type SVGProps } from "react";
-import { waitingQueue } from "@/lib/matchmaking";
 import { PlayerModeProvider, StoreProvider, useStore, useToday } from "@/lib/store";
 import { BillingTab } from "./BillingTab";
 import { FirstAdminCard } from "./PickMe";
 import { readSession } from "@/lib/session";
 import { monthlyDue } from "./Membership";
 import { MyBillTab } from "./MyBillTab";
-import { CheckInTab, SignupList } from "./CheckInTab";
+import { CheckInTab } from "./CheckInTab";
 import { CourtsTab } from "./CourtsTab";
 import { PlayersTab } from "./PlayersTab";
 import { SettingsTab } from "./SettingsTab";
-import { TodayTab } from "./TodayTab";
+import { AdminHome, PlayerHome } from "./Home";
+import { ProfileTab } from "./Profile";
+import { useMe } from "./PickMe";
 import { TvView } from "./TvView";
 import { QrOnlyPage } from "./PayQr";
 import { appName } from "@/lib/brand";
-import { Icon, Sheet } from "./ui";
-import { LANGS, locale, setLang, t, useLang } from "@/lib/i18n";
+import { Avatar, Icon } from "./ui";
+import { LANGS, setLang, t, useLang } from "@/lib/i18n";
 import { setTheme, useTheme } from "@/lib/theme";
 
-type TabId = "today" | "checkin" | "courts" | "billing" | "players" | "settings" | "mybill";
+type TabId = "home" | "today" | "checkin" | "courts" | "billing" | "players" | "settings" | "mybill" | "profile";
 type Tab = { id: TabId; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> };
 
 const ADMIN_TABS: Tab[] = [
+  { id: "home", label: "หน้าแรก", icon: Icon.Home },
   { id: "checkin", label: "เช็คอิน", icon: Icon.CheckIn },
   { id: "courts", label: "สนาม", icon: Icon.Court },
   { id: "billing", label: "คิดเงิน", icon: Icon.Wallet },
-  { id: "players", label: "ผู้เล่น", icon: Icon.Users },
   { id: "settings", label: "ตั้งค่า", icon: Icon.Settings },
 ];
+/** หน้าที่แอดมินเปิดได้จากหน้าแรก แต่ไม่มีปุ่มบนแถบล่าง */
+const ADMIN_EXTRA: TabId[] = ["players"];
 
-/** ผู้เล่นทั่วไปที่เปิดลิงก์ ดูได้อย่างเดียว */
 const PLAYER_TABS: Tab[] = [
-  { id: "today", label: "วันนี้", icon: Icon.Megaphone },
+  { id: "home", label: "หน้าแรก", icon: Icon.Home },
   { id: "courts", label: "สนาม", icon: Icon.Court },
   { id: "mybill", label: "ยอดของฉัน", icon: Icon.Wallet },
+  { id: "profile", label: "โปรไฟล์", icon: Icon.User },
 ];
 
 function hasParam(name: string) {
@@ -54,17 +57,17 @@ function ThemeSwitch() {
   return (
     <button
       onClick={() => setTheme(dark ? "light" : "dark")}
-      className="grid size-7 shrink-0 place-items-center rounded-full bg-white/10 text-white/80 ring-1 ring-white/10"
+      className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-zinc-700 shadow-sm ring-1 ring-zinc-200"
       aria-label={dark ? t("ธีมสว่าง") : t("ธีมมืด")}
       title={dark ? t("ธีมสว่าง") : t("ธีมมืด")}
     >
       {dark ? (
-        <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+        <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
           <circle cx="12" cy="12" r="4" />
           <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
         </svg>
       ) : (
-        <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
         </svg>
       )}
@@ -81,7 +84,7 @@ function GuideButton() {
   return (
     <a
       href={`/guide/index.html?lang=${lang}&mode=${mode}`}
-      className="grid size-7 shrink-0 place-items-center rounded-full bg-white/10 text-sm font-bold text-white/80 ring-1 ring-white/10"
+      className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-base font-bold text-zinc-700 shadow-sm ring-1 ring-zinc-200"
       aria-label={t("คู่มือการใช้งาน")}
       title={t("คู่มือการใช้งาน")}
     >
@@ -90,20 +93,18 @@ function GuideButton() {
   );
 }
 
+/** ปุ่มภาษาเล็กๆ แตะเพื่อเปลี่ยนไปภาษาถัดไป */
 function LangSwitch() {
   const lang = useLang();
+  const i = LANGS.findIndex((l) => l.value === lang);
   return (
-    <div className="flex shrink-0 rounded-full bg-white/10 p-0.5 ring-1 ring-white/10">
-      {LANGS.map((l) => (
-        <button
-          key={l.value}
-          onClick={() => setLang(l.value)}
-          className={`rounded-full px-2 py-1 text-[11px] font-semibold ${lang === l.value ? "bg-lime text-ink" : "text-white/70"}`}
-        >
-          {l.label}
-        </button>
-      ))}
-    </div>
+    <button
+      onClick={() => setLang(LANGS[(i + 1) % LANGS.length].value)}
+      className="h-10 shrink-0 rounded-full bg-white px-3 text-sm font-semibold text-zinc-700 shadow-sm ring-1 ring-zinc-200"
+      aria-label={t("ภาษา")}
+    >
+      {LANGS[i]?.label ?? "ไทย"}
+    </button>
   );
 }
 
@@ -144,7 +145,7 @@ function ModeSwitch() {
   if (!auth.canAdmin || !auth.setPlayerMode) return null;
   const set = auth.setPlayerMode;
   return (
-    <div className="flex shrink-0 rounded-full bg-white/10 p-0.5 ring-1 ring-white/10" role="group" aria-label={t("วันนี้ฉันเป็น")}>
+    <div className="flex shrink-0 rounded-full bg-zinc-200 p-0.5" role="group" aria-label={t("วันนี้ฉันเป็น")}>
       {[false, true].map((player) => (
         <button
           key={String(player)}
@@ -152,7 +153,7 @@ function ModeSwitch() {
             set(player);
             window.scrollTo({ top: 0 });
           }}
-          className={`rounded-full px-2 py-1 text-[11px] font-semibold ${Boolean(auth.playerMode) === player ? "bg-lime text-ink" : "text-white/70"}`}
+          className={`rounded-full px-3 py-1 text-sm font-semibold ${Boolean(auth.playerMode) === player ? "bg-ink text-white" : "text-zinc-600"}`}
         >
           {player ? t("ผู้เล่น") : t("แอดมิน")}
         </button>
@@ -161,76 +162,39 @@ function ModeSwitch() {
   );
 }
 
+/** แถบบนสุด: ทักทาย ชื่อก๊วน และปุ่มเล็กๆ (ภาษา คู่มือ ธีม) */
 function Header() {
   const { state, auth } = useStore();
-  const [showSignups, setShowSignups] = useState(false);
-  const { day } = useToday();
-  const playing = day.games.filter((g) => !g.endedAt).length * 4;
-  const waiting = waitingQueue(day, state.players).length;
-
-  const stats = [
-    { label: t("ลงชื่อ"), value: day.signups?.length ?? 0 },
-    { label: t("มาแล้ว"), value: day.checkIns.length },
-    { label: t("กำลังเล่น"), value: playing },
-    { label: t("รอคิว"), value: waiting },
-  ];
-
+  const [me] = useMe();
+  const player = state.players.find((p) => p.id === me && !p.pending);
   return (
-    <header className="relative overflow-hidden bg-ink px-5 pt-[calc(env(safe-area-inset-top)+20px)] pb-6 text-white">
-      <div className="pointer-events-none absolute -top-24 -right-16 size-64 rounded-full bg-lime/25 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-28 -left-10 size-56 rounded-full bg-sky-500/20 blur-3xl" />
-      <div className="relative mx-auto max-w-3xl">
-        <div className="flex items-center gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-lime text-ink">
-            <Icon.Shuttle width={22} height={22} strokeWidth={2.2} />
+    <header className="mx-auto w-full max-w-3xl px-4 pt-[calc(env(safe-area-inset-top)+14px)] pb-3">
+      <div className="flex items-center gap-3">
+        {player ? (
+          <Avatar name={player.name} photo={player.photo} size={46} />
+        ) : (
+          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-lime text-ink">
+            <Icon.Shuttle width={24} height={24} strokeWidth={2.2} />
           </span>
-          <div className="min-w-0 flex-1">
-            <h1 className="font-display text-base leading-tight font-semibold">
-              {appName()[0]}
-              <span className="block text-sm font-medium text-lime">{appName()[1]}</span>
-            </h1>
-            <p className="text-xs text-white/60">
-              {new Date().toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" })}
-            </p>
-          </div>
-          {/* ปุ่มซ้อนกันทางขวา จากบนลงล่าง: คู่มือกับธีม ภาษา โหมดแอดมิน/ผู้เล่น */}
-          <div className="flex shrink-0 flex-col items-end gap-1.5 self-start">
-            <div className="flex gap-1.5">
-              <GuideButton />
-              <ThemeSwitch />
-            </div>
-            <LangSwitch />
-            <ModeSwitch />
-          </div>
-        </div>
-        <div className="mt-5 grid grid-cols-4 gap-2">
-          {stats.map((s, i) => {
-            // แอดมินแตะช่อง "ลงชื่อ" เพื่อดูว่าใครลงชื่อไว้บ้าง
-            const tap = i === 0 && auth.isAdmin;
-            const Box = tap ? "button" : "div";
-            return (
-              <Box
-                key={s.label}
-                {...(tap ? { onClick: () => setShowSignups(true) } : {})}
-                className={`rounded-2xl bg-white/[0.07] px-3 py-2.5 text-left ring-1 ring-white/10 ${tap ? "ring-lime/40 active:scale-[0.97]" : ""}`}
-              >
-                <div className="font-display text-2xl leading-none font-semibold">{s.value}</div>
-                <div className="mt-1 text-[11px] text-white/60">
-                  {s.label}
-                  {tap && " ›"}
-                </div>
-              </Box>
-            );
-          })}
-        </div>
-        {showSignups && (
-          <Sheet title={<h3 className="font-display text-lg font-semibold text-ink">{t("คนที่ลงชื่อวันนี้")}</h3>} onClose={() => setShowSignups(false)}>
-            <div className="text-ink">
-              <SignupList bare />
-            </div>
-          </Sheet>
         )}
+        <div className="min-w-0 flex-1">
+          <h1 className={`font-display leading-tight font-semibold ${player ? "truncate text-lg" : "text-base"}`}>
+            {player ? t("สวัสดี {name}", { name: player.name }) : appName()[0]}
+          </h1>
+          <p className="truncate text-sm text-zinc-600">{player ? appName()[0] : appName()[1]}</p>
+        </div>
+        <div className="flex shrink-0 gap-1.5">
+          <LangSwitch />
+          <GuideButton />
+          <ThemeSwitch />
+        </div>
       </div>
+      {auth.canAdmin && (
+        <div className="mt-3 flex items-center justify-end gap-2 text-sm text-zinc-600">
+          {t("วันนี้ฉันเป็น")}
+          <ModeSwitch />
+        </div>
+      )}
     </header>
   );
 }
@@ -242,11 +206,13 @@ function Shell() {
   // เข้าด้วย LINE แล้วเป็นแอดมิน เมนูแอดมินจะขึ้นเอง
   const tabs = auth.isAdmin ? ADMIN_TABS : PLAYER_TABS;
   const [picked, setTab] = useState<TabId>(tabs[0].id);
-  const tab = tabs.some((t) => t.id === picked) ? picked : tabs[0].id;
+  const allowed = (id: TabId) => tabs.some((t) => t.id === id) || (auth.isAdmin && ADMIN_EXTRA.includes(id));
+  const tab = allowed(picked) ? picked : tabs[0].id;
   // ปุ่มในหน้าต่างๆ สั่งเปลี่ยนแท็บได้ (เช่น แจ้งเตือนจ่ายรายเดือน -> ยอดของฉัน)
   useEffect(() => {
     const go = (e: Event) => {
-      setTab((e as CustomEvent<TabId>).detail);
+      const id = (e as CustomEvent<TabId>).detail;
+      setTab(id === "today" ? "home" : id);
       window.scrollTo({ top: 0 });
     };
     window.addEventListener("goto-tab", go);
@@ -271,7 +237,7 @@ function Shell() {
     <Fragment key={lang}>
       <DemoBar />
       <Header />
-      <main className="mx-auto -mt-2 w-full max-w-3xl flex-1 rounded-t-[28px] bg-background px-4 pt-5 pb-32">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-1 pb-32">
         {error && (
           <div role="alert" className="error-bar sticky top-2 z-30 mb-4 flex items-center gap-3 rounded-2xl bg-red-50 px-4 py-2 text-sm text-red-700 shadow">
             <span className="min-w-0 flex-1 break-words">{error}</span>
@@ -290,7 +256,8 @@ function Shell() {
             <FirstAdminCard />
           </div>
         )}
-        {tab === "today" && <TodayTab />}
+        {tab === "home" && (auth.isAdmin ? <AdminHome /> : <PlayerHome />)}
+        {tab === "profile" && <ProfileTab />}
         {tab === "checkin" && <CheckInTab />}
         {tab === "courts" && <CourtsTab />}
         {tab === "billing" && <BillingTab />}
@@ -298,25 +265,26 @@ function Shell() {
         {tab === "settings" && <SettingsTab />}
         {tab === "mybill" && <MyBillTab />}
       </main>
-      <nav className="fixed inset-x-0 bottom-0 z-10 px-4 pb-[calc(env(safe-area-inset-bottom)+12px)]">
-        <div
-          className="mx-auto grid max-w-md rounded-[26px] bg-ink/95 p-1.5 shadow-xl shadow-ink/30 backdrop-blur"
-          style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
-        >
+      <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-zinc-200 bg-white pb-[env(safe-area-inset-bottom)]">
+        <div className="mx-auto grid max-w-md gap-1 px-2 py-1.5" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
           {tabs.map((item) => {
             const active = tab === item.id;
             return (
               <button
                 key={item.id}
-                onClick={() => setTab(item.id)}
-                className={`flex flex-col items-center gap-0.5 rounded-[20px] py-2 text-[11px] font-medium transition ${
-                  active ? "bg-lime text-ink" : "text-white/60 active:text-white"
+                onClick={() => {
+                  setTab(item.id);
+                  window.scrollTo({ top: 0 });
+                }}
+                aria-current={active ? "page" : undefined}
+                className={`flex flex-col items-center gap-0.5 rounded-2xl py-2 text-xs font-semibold transition ${
+                  active ? "bg-lime text-ink" : "text-zinc-600 active:bg-zinc-100"
                 }`}
               >
                 <span className="relative">
-                  <item.icon width={20} height={20} strokeWidth={active ? 2.4 : 2} />
+                  <item.icon width={24} height={24} strokeWidth={active ? 2.4 : 2} />
                   {item.id === "mybill" && billDot && (
-                    <span className="absolute -top-1 -right-1.5 size-2.5 rounded-full bg-amber-400 ring-2 ring-ink" aria-label={t("ยังไม่จ่ายค่ารายเดือน")} />
+                    <span className="absolute -top-1 -right-1.5 size-2.5 rounded-full bg-amber-400 ring-2 ring-white" aria-label={t("ยังไม่จ่ายค่ารายเดือน")} />
                   )}
                 </span>
                 {t(item.label)}
