@@ -266,6 +266,7 @@ function MatchList({ t: tr, divId, dark, mine, only }: { t: Tourney; divId?: str
                 </span>
               ))}
             </span>
+            {!divId && <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${dark ? "bg-white/10 text-lime" : "bg-lime/40"}`}>{divOf(tr, m.divId).code}</span>}
             {live && <span className="shrink-0 text-xs font-semibold text-emerald-500">{t("กำลังเล่น")}</span>}
           </li>
         );
