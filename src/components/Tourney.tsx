@@ -21,11 +21,11 @@ import {
   placings,
   roundsFor,
   setResult,
-  simulate,
+  simTick,
+  finished,
   submitResult,
   teamName,
   validGame,
-  type TDivision,
   type TMatch,
   type TTeam,
   type Tourney,
@@ -142,7 +142,7 @@ function LinkQr({ url, title, sub }: { url: string; title: string; sub: string }
 function siteUrl(param: string) {
   const u = new URL(location.href);
   const demo = u.searchParams.has("demo");
-  u.search = demo ? `?demo&${param}` : `?${param}`;
+  u.search = param ? (demo ? `?demo&${param}` : `?${param}`) : demo ? "?demo" : "";
   u.hash = "";
   return u.toString();
 }
@@ -677,7 +677,9 @@ export function TourneyHome() {
   const [signup, setSignup] = useState(false);
   const [pay, setPay] = useState<TTeam | null>(null);
   const [view, setView] = useState<"sched" | "bracket">("sched");
+  const [me] = useMe();
   if (!tr) return null;
+  const isRef = !!me && !!tr.referees?.includes(me);
   const anyDrawn = tr.divisions.some((d) => d.drawn);
   return (
     <div className="space-y-4">
@@ -688,6 +690,11 @@ export function TourneyHome() {
         <Button variant="accent" className="w-full py-4 text-base" onClick={() => setSignup(true)}>
           {t("สมัครแข่ง")}
         </Button>
+      )}
+      {isRef && (
+        <a href={siteUrl("ref")} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white">
+          {t("จอกรรมการ")}
+        </a>
       )}
       {tr.mapUrl && (
         <a href={tr.mapUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 rounded-2xl bg-zinc-100 px-4 py-3 text-sm font-semibold">
@@ -765,40 +772,22 @@ export function TourneyBanner() {
 
 /* ---------- หน้าแอดมิน ---------- */
 
-function DivSettings({ div, onChange }: { div: TDivision; onChange: (d: TDivision) => void }) {
-  const row = (label: string, key: keyof TDivision["bestOf"]) => (
-    <div className="flex items-center justify-between gap-2">
-      <span className="text-sm">{label}</span>
-      <div className="flex rounded-full bg-zinc-200 p-0.5">
-        {[1, 3].map((n) => (
-          <button
-            key={n}
-            onClick={() => onChange({ ...div, bestOf: { ...div.bestOf, [key]: n } })}
-            className={`h-9 rounded-full px-3 text-sm font-semibold ${div.bestOf[key] === n ? "bg-ink text-white" : "text-zinc-600"}`}
-          >
-            {n === 1 ? t("1 เกม") : t("2 ใน 3")}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-  return (
-    <div className="space-y-2">
-      {row(t("รอบแรก"), "r1")}
-      {row(t("รอบในสาย"), "early")}
-      {row(t("นัดชิง"), "final")}
-    </div>
-  );
-}
-
 export function TourneyAdmin() {
   const { t: tr, update, reset, setMode } = useTourney();
   const { auth } = useStore();
   const [div, setDiv] = useState(() => tr?.divisions[0]?.id ?? "");
   const [scoreFor, setScoreFor] = useState<TMatch | null>(null);
   const [qr, setQr] = useState<"watch" | "join" | null>(null);
-  const [fmt, setFmt] = useState(false);
   const [slipView, setSlipView] = useState<string | null>(null);
+  const [auto, setAuto] = useState(false);
+  const [refQ, setRefQ] = useState("");
+  const { state } = useStore();
+  // จำลองวันแข่ง: เดินเกมทุก 1.5 วินาที เปิดหน้าผู้ชมอีกแท็บดูแต้มวิ่งได้
+  useEffect(() => {
+    if (!auto) return;
+    const h = setInterval(() => update((x) => (finished(x) ? x : simTick(x))), 1500);
+    return () => clearInterval(h);
+  }, [auto, update]);
   if (!tr) return null;
   const d = tr.divisions.find((x) => x.id === div) ?? tr.divisions[0];
   const teams = divTeams(tr, d.id);
@@ -812,8 +801,8 @@ export function TourneyAdmin() {
       {auth.demo && (
         <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-amber-300 px-3 py-2 text-sm text-ink">
           <span className="flex-1 font-semibold">{t("ทดลองงานแข่ง")}</span>
-          <button className="min-h-11 rounded-full bg-white px-4 text-sm font-semibold" onClick={() => update((x) => simulate(x))}>
-            {t("จำลองผล")}
+          <button className="min-h-11 rounded-full bg-white px-4 text-sm font-semibold" onClick={() => setAuto(!auto)} disabled={finished(tr)}>
+            {finished(tr) ? t("จบงานแล้ว") : auto ? t("⏸ หยุดจำลอง") : t("▶ จำลองวันแข่ง")}
           </button>
           <button className="min-h-11 rounded-full bg-ink/10 px-4 text-sm font-semibold" onClick={() => confirm(t("ล้างงานแข่งทดลองแล้วเริ่มใหม่?")) && reset()}>
             {t("เริ่มใหม่")}
@@ -855,6 +844,40 @@ export function TourneyAdmin() {
         </Button>
         <p className="mt-2 text-sm text-white/60">{t("เรียกเฉพาะคู่ที่มาครบ 2 คน · แตะสนามเพื่อกรอกผล")}</p>
       </div>
+      <Card className="space-y-2">
+        <SectionTitle right={t("{n} คน", { n: (tr.referees ?? []).length })}>{t("กรรมการ")}</SectionTitle>
+        <p className="text-sm text-zinc-500">{t("คนที่เลือกจะเห็นปุ่ม \"จอกรรมการ\" ในหน้างานแข่ง แอดมินเข้าได้ทุกคน")}</p>
+        <div className="flex flex-wrap gap-1.5">
+          {(tr.referees ?? []).map((rid) => (
+            <button
+              key={rid}
+              onClick={() => update((x) => ({ ...x, referees: (x.referees ?? []).filter((y) => y !== rid) }))}
+              className="flex min-h-11 items-center gap-1 rounded-full bg-lime/40 px-3 text-sm font-semibold"
+            >
+              {state.players.find((p) => p.id === rid)?.name ?? "?"}
+              <Icon.X width={14} height={14} />
+            </button>
+          ))}
+        </div>
+        <input className={inputClass} value={refQ} onChange={(e) => setRefQ(e.target.value)} placeholder={t("พิมพ์ชื่อเพื่อเพิ่มกรรมการ")} />
+        {refQ.trim() &&
+          state.players
+            .filter((p) => !p.pending && p.name.includes(refQ.trim()) && !(tr.referees ?? []).includes(p.id))
+            .slice(0, 5)
+            .map((p) => (
+              <button
+                key={p.id}
+                onClick={() => {
+                  update((x) => ({ ...x, referees: [...(x.referees ?? []), p.id] }));
+                  setRefQ("");
+                }}
+                className="flex min-h-11 w-full items-center gap-3 rounded-2xl bg-zinc-50 px-3 text-left"
+              >
+                <span className="flex-1 font-semibold">{p.name}</span>
+                <Icon.Plus width={18} height={18} />
+              </button>
+            ))}
+      </Card>
       <DivChips t={tr} value={d.id} onChange={setDiv} />
       <Card>
         <SectionTitle right={t("จ่ายแล้ว {p}/{n} · มาครบ {r}", { p: paid, n: teams.length, r: ready })}>{t("มือ {c} · ทีม", { c: d.code })}</SectionTitle>
@@ -896,14 +919,6 @@ export function TourneyAdmin() {
           </Button>
         ) : (
           <p className="mt-3 text-sm text-zinc-500">{t("จับสลากแล้ว · ทีมที่ยังไม่จ่ายไม่ได้เข้าแข่ง")}</p>
-        )}
-        <button onClick={() => setFmt(!fmt)} className="mt-3 text-sm font-semibold text-zinc-600 underline">
-          {t("รูปแบบเกมของมือนี้")}
-        </button>
-        {fmt && (
-          <div className="mt-2">
-            <DivSettings div={d} onChange={(nd) => update((x) => ({ ...x, divisions: x.divisions.map((y) => (y.id === nd.id ? nd : y)) }))} />
-          </div>
         )}
       </Card>
       <Card>
@@ -956,7 +971,22 @@ export function RefereeView() {
   const [swap, setSwap] = useState(false);
   const [histAll, setHist] = useState<{ id: string; games: [number, number][] }[]>([]);
   const [ending, setEnding] = useState<[number, number][] | null>(null);
+  const { auth } = useStore();
+  const [me] = useMe();
   if (!tr) return <p className="p-6">{t("ยังไม่มีงานแข่ง")}</p>;
+  const exit = (
+    <a href={siteUrl("")} className="inline-flex min-h-11 items-center gap-1 rounded-full bg-white/10 px-4 text-sm font-semibold">
+      ← {t("ออก")}
+    </a>
+  );
+  if (!(auth.canAdmin ?? auth.isAdmin) && !(me && tr.referees?.includes(me)))
+    return (
+      <div className="min-h-dvh space-y-4 bg-ink p-4 text-white">
+        {exit}
+        <div className="font-display text-xl font-semibold">{t("จอกรรมการ")}</div>
+        <p className="text-white/70">{t("เฉพาะกรรมการที่แอดมินเลือกไว้ ให้แอดมินเพิ่มชื่อคุณในหน้างานแข่ง")}</p>
+      </div>
+    );
   const m = court ? onCourt(tr).find((x) => x.court === court) : undefined;
   const pickCourt = (
     <div className="grid grid-cols-2 gap-2">
@@ -970,6 +1000,7 @@ export function RefereeView() {
   if (!m)
     return (
       <div className="min-h-dvh space-y-4 bg-ink p-4 text-white">
+        {exit}
         <div className="font-display text-xl font-semibold">{t("จอกรรมการ")}</div>
         <p className="text-sm text-white/60">{court ? t("สนามนี้ยังว่าง รอแอดมินเรียกคู่") : t("เลือกสนามที่ดูแล")}</p>
         {pickCourt}
@@ -1028,6 +1059,7 @@ export function RefereeView() {
   return (
     <div className="flex h-dvh flex-col gap-3 bg-ink p-4 pt-[calc(env(safe-area-inset-top)+16px)] text-white">
       <div className="flex items-center justify-between gap-2 text-sm">
+        {exit}
         <button onClick={() => setCourt(null)} className="min-h-11 font-semibold underline">
           {t("สนาม {n}", { n: m.court ?? 0 })} · {divOf(tr, m.divId).code}
         </button>

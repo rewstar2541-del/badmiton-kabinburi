@@ -1009,4 +1009,12 @@ export const en: Record<string, string> = {
   "ล้างงานแข่งทดลองแล้วเริ่มใหม่?": "Clear the demo tournament and start over?",
   "สลิป": "Slip",
   "ยืนยันผล": "Confirm result",
+  "คนที่เลือกจะเห็นปุ่ม \"จอกรรมการ\" ในหน้างานแข่ง แอดมินเข้าได้ทุกคน": "Chosen people see a \"Referee screen\" button on the tournament page. Admins always can.",
+  "กรรมการ": "Referees",
+  "จบงานแล้ว": "Event finished",
+  "พิมพ์ชื่อเพื่อเพิ่มกรรมการ": "Type a name to add a referee",
+  "ออก": "Exit",
+  "เฉพาะกรรมการที่แอดมินเลือกไว้ ให้แอดมินเพิ่มชื่อคุณในหน้างานแข่ง": "Referees only. Ask an admin to add you on the tournament page.",
+  "⏸ หยุดจำลอง": "⏸ Pause simulation",
+  "▶ จำลองวันแข่ง": "▶ Simulate match day",
 };
