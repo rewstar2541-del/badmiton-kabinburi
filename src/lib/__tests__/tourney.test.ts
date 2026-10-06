@@ -67,13 +67,13 @@ describe("สายแข่ง", () => {
   it("ผู้เล่นส่งผล คู่แข่งยืนยัน / ไม่ตรงให้แอดมินตัดสิน", () => {
     let t = fillCourts(draw(t0, "new", rng(), id));
     const m = t.matches.find((x) => x.court)!;
-    t = submitResult(t, m.id, m.a!, [[21, 15]]);
+    t = submitResult(t, m.id, m.a!, [[21, 15], [21, 15]]);
     expect(t.matches.find((x) => x.id === m.id)!.winner).toBeUndefined();
     const bad = confirmResult(t, m.id, false, id);
     expect(bad.matches.find((x) => x.id === m.id)!.disputed).toBe(true);
     const ok = confirmResult(t, m.id, true, id);
     expect(ok.matches.find((x) => x.id === m.id)!.winner).toBe(m.a);
-    const fixed = setResult(bad, m.id, [[15, 21]], id);
+    const fixed = setResult(bad, m.id, [[15, 21], [15, 21]], id);
     expect(fixed.matches.find((x) => x.id === m.id)!.winner).toBe(m.b);
   });
 });
@@ -93,9 +93,21 @@ describe("แก้ผลและบาย", () => {
   it("แก้ผลจนไม่มีผู้ชนะ ล้างผู้ชนะเดิม และห้ามแก้หลังรอบถัดไปเริ่ม", () => {
     let t = fillCourts(draw(sampleTourney("2026-09-10", id), "new", rng(), id));
     const m = t.matches.find((x) => x.court)!;
-    t = setResult(t, m.id, [[21, 10]], id);
+    t = setResult(t, m.id, [[21, 10], [21, 10]], id);
     expect(t.matches.find((x) => x.id === m.id)!.winner).toBe(m.a);
     t = setResult(t, m.id, [], id);
     expect(t.matches.find((x) => x.id === m.id)!.winner).toBeUndefined();
+  });
+});
+
+describe("จำลองวันแข่ง", () => {
+  it("เดินจนจบทั้งงาน ได้ที่ 1 ทุกมือที่เปิด", async () => {
+    const { simTick, finished } = await import("../tourney");
+    let t = sampleTourney("2026-09-10", id);
+    let n = 0;
+    while (!finished(t) && n++ < 3000) t = simTick(t, rng(n), id);
+    expect(finished(t)).toBe(true);
+    expect(placings(t, "new", "U").first).toBeTruthy();
+    expect(t.matches.every((m) => m.bye || m.games.length >= 2)).toBe(true);
   });
 });

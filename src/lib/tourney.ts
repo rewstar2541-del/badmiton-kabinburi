@@ -77,6 +77,8 @@ export interface Tourney {
   matches: TMatch[];
   /** เลขแมตช์ถัดไป */
   nextNo: number;
+  /** id ผู้เล่นที่แอดมินตั้งเป็นกรรมการ */
+  referees?: string[];
 }
 
 /* ---------- คะแนน ---------- */
@@ -103,9 +105,10 @@ export function validGame(g: [number, number]): boolean {
   return true;
 }
 
-export function bestOfFor(div: TDivision, m: TMatch, totalRounds: number): number {
-  if (m.bracket === "R1") return div.bestOf.r1;
-  return m.round === totalRounds - 1 ? div.bestOf.final : div.bestOf.early;
+/** ทุกแมตช์ชนะ 2 ใน 3 เกม (ก๊วนไม่มีแข่งเกมเดียว) */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function bestOfFor(_div: TDivision, _m: TMatch, _totalRounds: number): number {
+  return 3;
 }
 
 /** ผู้ชนะแมตช์จากแต้มแต่ละเกม: 0/1 หรือ null ถ้ายังไม่ครบ */
@@ -386,7 +389,7 @@ export function sampleTourney(date: string, id = defaultId): Tourney {
   const d2 = new Date(date + "T00:00:00");
   d2.setDate(d2.getDate() + 1);
   const date2 = d2.toISOString().slice(0, 10);
-  const bo = { r1: 1, early: 1, final: 3 };
+  const bo = { r1: 3, early: 3, final: 3 };
   const divs: TDivision[] = [
     { id: "new", code: "NEW", date, maxPairs: 16, minPairs: 4, bestOf: bo },
     { id: "n", code: "N", date, maxPairs: 8, minPairs: 4, bestOf: bo },
@@ -439,4 +442,34 @@ export function simulate(t: Tourney, rand = Math.random, id = defaultId): Tourne
     }
   }
   return fillCourts(next);
+}
+
+/**
+ * โหมดทดลอง "จำลองวันแข่ง": เดินเกมทีละนิดเหมือนวันจริง
+ * ทุกคนมาถึง จับสลากมือที่พร้อม เรียกลงสนาม แล้วเพิ่มแต้มทีละ 1-3 แต้มต่อสนาม
+ */
+export function simTick(t: Tourney, rand = Math.random, id = defaultId): Tourney {
+  let next: Tourney = { ...t, teams: t.teams.map((x) => ({ ...x, here: [true, true] as [boolean, boolean] })) };
+  for (const d of next.divisions)
+    if (!d.drawn && divOpen(next, d) && divTeams(next, d.id).filter((x) => x.pay === "yes").length >= 2) next = draw(next, d.id, rand, id);
+  next = fillCourts(next);
+  for (const m of onCourt(next)) {
+    const games: [number, number][] = m.games.length ? m.games.map((g) => [...g] as [number, number]) : [[0, 0]];
+    for (let i = 1 + Math.floor(rand() * 3); i > 0; i--) {
+      const cur = games[games.length - 1];
+      cur[rand() < 0.5 ? 0 : 1]++;
+      if (gameWinner(cur) !== null) {
+        if (matchWinner(games, 3) === null) games.push([0, 0]);
+        break;
+      }
+    }
+    if (matchWinner(games, 3) !== null) next = setResult(next, m.id, games, id);
+    else next = { ...next, matches: next.matches.map((x) => (x.id === m.id ? { ...x, games } : x)) };
+  }
+  return fillCourts(next);
+}
+
+/** จบงานแล้วหรือยัง (ทุกมือที่จับสลาก ไม่มีแมตช์ค้าง) */
+export function finished(t: Tourney): boolean {
+  return t.divisions.some((d) => d.drawn) && pending(t).length === 0 && t.matches.every((m) => m.winner);
 }
