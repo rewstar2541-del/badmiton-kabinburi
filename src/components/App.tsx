@@ -3,7 +3,6 @@
 import { Bell } from "./Bell";
 import { RefereeView, TourneyAdmin, TourneyBanner, TourneyCourts, TourneyHome, WatchView } from "./Tourney";
 import { useTourney } from "@/lib/tourneyStore";
-import { isDemo } from "@/lib/demo";
 import { YearSummaryView } from "./YearSummary";
 import { Fragment, useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { PlayerModeProvider, StoreProvider, useStore, useToday } from "@/lib/store";
@@ -346,7 +345,7 @@ export function App() {
   return (
     <StoreProvider>
       <PlayerModeProvider>
-        {hasParam("payqr") ? <QrRoute /> : isDemo() && hasParam("watch") ? <WatchView /> : isDemo() && hasParam("ref") ? <RefereeView /> : isTv() ? <TvView /> : hasParam("summary") ? <SummaryRoute /> : <Shell />}
+        {hasParam("payqr") ? <QrRoute /> : hasParam("watch") ? <WatchView /> : hasParam("ref") ? <RefereeView /> : isTv() ? <TvView /> : hasParam("summary") ? <SummaryRoute /> : <Shell />}
       </PlayerModeProvider>
     </StoreProvider>
   );

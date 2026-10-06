@@ -15,6 +15,7 @@ import { ClubCalendar } from "./Calendar";
 import { EventPhotos } from "./EventPhotos";
 import { LoginTab } from "./LoginTab";
 import { Button, Card, SectionTitle, inputClass } from "./ui";
+import { TourneySetup } from "./Tourney";
 import { t } from "@/lib/i18n";
 
 const NUMBER_FIELDS: { key: keyof Settings; label: string }[] = [
@@ -57,6 +58,9 @@ export function SettingsTab() {
       <Section id="calendar" icon="📅" title={t("ปฏิทินและอีเว้น")} hint={t("สร้างอีเว้น วันงดเล่น โหวตวันตี")} defaultOpen>
         <ClubCalendar bare />
         <PollAdmin />
+      </Section>
+      <Section id="tourney" icon="🏆" title={t("งานแข่ง")} hint={t("สร้างงาน เปิดวันแข่ง จบงาน")}>
+        <TourneySetup />
       </Section>
       <Section id="prices" icon="💰" title={t("ราคาและสนาม")} hint={t("ค่าสนาม ค่าลูก รายเดือน PromptPay จอทีวี")}>
           <Card>
