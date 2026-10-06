@@ -53,10 +53,10 @@ export function PairCard() {
           {r.status === "pending" && r.to === me ? (
             <div className="grid grid-cols-2 gap-2">
               <Button disabled={busy} onClick={() => run({ kind: "respondPair", id: r.id, accept: false })}>
-                {t("ไม่รับ")}
+                {t("ไม่สะดวก")}
               </Button>
               <Button variant="accent" disabled={busy} onClick={() => run({ kind: "respondPair", id: r.id, accept: true })}>
-                {t("ตอบรับ")}
+                {t("รับคู่")}
               </Button>
             </div>
           ) : (
