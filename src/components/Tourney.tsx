@@ -7,7 +7,6 @@ import { t } from "@/lib/i18n";
 import {
   bestOfFor,
   callable,
-  confirmResult,
   divOpen,
   divTeams,
   draw,
@@ -23,14 +22,13 @@ import {
   setResult,
   simTick,
   finished,
-  submitResult,
   teamName,
   validGame,
   type TMatch,
   type TTeam,
   type Tourney,
 } from "@/lib/tourney";
-import { useTourney } from "@/lib/tourneyStore";
+import { tourneySlip, useTourney, type PlayerAction } from "@/lib/tourneyStore";
 import { resizeSlip } from "@/lib/image";
 import { Hero } from "./Home";
 import { PayQr } from "./PayQr";
@@ -634,7 +632,7 @@ function PaySheet({ t: tr, team, onClose, onPaid }: { t: Tourney; team: TTeam; o
   );
 }
 
-function MyTeamCard({ t: tr, team, update }: { t: Tourney; team: TTeam; update: (fn: (t: Tourney) => Tourney) => void }) {
+function MyTeamCard({ t: tr, team, act }: { t: Tourney; team: TTeam; act: (a: PlayerAction) => void }) {
   const { state } = useStore();
   const [me] = useMe();
   const name = state.players.find((p) => p.id === me)?.name;
@@ -645,7 +643,7 @@ function MyTeamCard({ t: tr, team, update }: { t: Tourney; team: TTeam; update: 
   const opp = match ? (match.a === team.id ? match.b : match.a) : undefined;
   const waitingMe = match?.pendingBy && match.pendingBy !== team.id;
   const partnerHere = team.here[idx === 0 ? 1 : 0];
-  const setHere = () => update((x) => ({ ...x, teams: x.teams.map((y) => (y.id === team.id ? { ...y, here: (idx === 0 ? [true, y.here[1]] : [y.here[0], true]) as [boolean, boolean] } : y)) }));
+  const setHere = () => act({ action: "here" });
   const eliminated = !match && tr.matches.some((m) => (m.a === team.id || m.b === team.id) && m.winner && m.winner !== team.id && m.bracket !== "R1");
   return (
     <div className="space-y-3">
@@ -694,10 +692,10 @@ function MyTeamCard({ t: tr, team, update }: { t: Tourney; team: TTeam; update: 
           <div className="font-semibold">{t("ยืนยันผล: {s}", { s: scoreText(match!) })}</div>
           <div className="text-sm text-zinc-500">{t("{x} ส่งผลมา ตรงไหม", { x: teamName(tr, match!.pendingBy) })}</div>
           <div className="grid grid-cols-2 gap-2">
-            <Button variant="danger" onClick={() => update((x) => confirmResult(x, match!.id, false))}>
+            <Button variant="danger" onClick={() => act({ action: "confirm", matchId: match!.id, ok: false })}>
               {t("ไม่ตรง")}
             </Button>
-            <Button variant="accent" onClick={() => update((x) => fillCourts(confirmResult(x, match!.id, true)))}>
+            <Button variant="accent" onClick={() => act({ action: "confirm", matchId: match!.id, ok: true })}>
               {t("ถูกต้อง")}
             </Button>
           </div>
@@ -709,7 +707,7 @@ function MyTeamCard({ t: tr, team, update }: { t: Tourney; team: TTeam; update: 
           team={team}
           onClose={() => setSheet(null)}
           onPaid={(img) => {
-            update((x) => ({ ...x, teams: x.teams.map((y) => (y.id === team.id ? { ...y, pay: "slip", slip: img } : y)) }));
+            act({ action: "slip", image: img });
             setSheet(null);
           }}
         />
@@ -721,7 +719,7 @@ function MyTeamCard({ t: tr, team, update }: { t: Tourney; team: TTeam; update: 
           note={t("ส่งแล้ว คู่แข่งกดยืนยันผล ถ้าไม่ตรงกัน แอดมินตัดสิน")}
           onClose={() => setSheet(null)}
           onSave={(g) => {
-            update((x) => submitResult(x, match.id, team.id, g));
+            act({ action: "submit", matchId: match.id, games: g });
             setSheet(null);
           }}
         />
@@ -732,18 +730,24 @@ function MyTeamCard({ t: tr, team, update }: { t: Tourney; team: TTeam; update: 
 
 /** แท็บ "งานแข่ง" ของผู้เล่น */
 export function TourneyHome() {
-  const { t: tr, update } = useTourney();
+  const { t: tr, act: doAct, peeking, setPeek } = useTourney();
   const team = useMyTeam(tr);
   const [signup, setSignup] = useState(false);
   const [pay, setPay] = useState<TTeam | null>(null);
   const [me] = useMe();
+  const act = (a: PlayerAction) => void doAct(a, me).then((err) => err && alert(t(err)));
   if (!tr) return null;
   const isRef = !!me && !!tr.referees?.includes(me);
   const anyDrawn = tr.divisions.some((d) => d.drawn);
   return (
     <div className="space-y-4">
       <PosterHero t={tr} />
-      {team ? <MyTeamCard t={tr} team={team} update={update} /> : null}
+      {peeking && (
+        <button onClick={() => setPeek(false)} className="min-h-11 text-sm font-semibold text-emerald-700 underline">
+          ← {t("กลับหน้าก๊วน")}
+        </button>
+      )}
+      {team ? <MyTeamCard t={tr} team={team} act={act} /> : null}
       {!anyDrawn && <DivisionGrid t={tr} highlight={team?.divId} />}
       {!team && !anyDrawn && (
         <Button variant="accent" className="w-full py-4 text-base" onClick={() => setSignup(true)}>
@@ -771,9 +775,11 @@ export function TourneyHome() {
           t={tr}
           onClose={() => setSignup(false)}
           onDone={(x) => {
-            update((y) => ({ ...y, teams: [...y.teams, x] }));
-            setSignup(false);
-            setPay(x);
+            void doAct({ action: "signup", team: x }, me).then((err) => {
+              if (err) return alert(t(err));
+              setSignup(false);
+              setPay(x);
+            });
           }}
         />
       )}
@@ -783,7 +789,7 @@ export function TourneyHome() {
           team={pay}
           onClose={() => setPay(null)}
           onPaid={(img) => {
-            update((y) => ({ ...y, teams: y.teams.map((z) => (z.id === pay.id ? { ...z, pay: "slip", slip: img } : z)) }));
+            act({ action: "slip", image: img });
             setPay(null);
           }}
         />
@@ -794,10 +800,10 @@ export function TourneyHome() {
 
 /** แถบประกาศรับสมัครแข่ง บนหน้าแรกของวันตีก๊วนปกติ */
 export function TourneyBanner() {
-  const { t: tr, mode, setMode } = useTourney();
+  const { t: tr, mode, setPeek } = useTourney();
   if (!tr || mode || tr.divisions.every((d) => d.drawn)) return null;
   return (
-    <button onClick={() => setMode(true)} className="flex w-full items-center gap-3 rounded-3xl bg-amber-100 p-4 text-left text-amber-900">
+    <button onClick={() => setPeek(true)} className="flex w-full items-center gap-3 rounded-3xl bg-amber-100 p-4 text-left text-amber-900">
       <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-amber-300 text-ink">
         <Icon.Trophy width={22} height={22} />
       </span>
@@ -812,8 +818,24 @@ export function TourneyBanner() {
 
 /* ---------- หน้าแอดมิน ---------- */
 
+/** ผลที่ผู้เล่นยืนยันกันเองแล้ว: เครื่องแอดมิน/กรรมการบันทึกเข้าสายให้ */
+function useApplyConfirmed() {
+  const { t: tr, update } = useTourney();
+  const ids = tr?.matches.filter((m) => m.confirmed && !m.winner).map((m) => m.id).join(",") ?? "";
+  useEffect(() => {
+    if (!ids) return;
+    // รวมเป็นครั้งเดียว ถ้าเครื่องแอดมินอื่นบันทึกไปก่อน รอบนี้จะไม่เปลี่ยนอะไร
+    update((x) => fillCourts(ids.split(",").reduce((y, id) => {
+      const m = y.matches.find((z) => z.id === id && z.confirmed && !z.winner);
+      return m ? setResult(y, id, m.games) : y;
+    }, x)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ids]);
+}
+
 export function TourneyAdmin({ section = "event" }: { section?: "event" | "courts" | "settings" }) {
-  const { t: tr, update, reset, setMode } = useTourney();
+  const { t: tr, update, reset, setMode, end, real } = useTourney();
+  useApplyConfirmed();
   const { auth } = useStore();
   const [div, setDiv] = useState(() => tr?.divisions[0]?.id ?? "");
   const [scoreFor, setScoreFor] = useState<TMatch | null>(null);
@@ -951,7 +973,7 @@ export function TourneyAdmin({ section = "event" }: { section?: "event" | "court
               ))}
               {x.guest && <Tag tone="bg-amber-100 text-amber-800">{t("รับเชิญ")}</Tag>}
               {x.slip && (
-                <button onClick={() => setSlipView(x.slip!)} className="min-h-11 text-sm font-semibold text-sky-700 underline">
+                <button onClick={() => (x.slip === "db" ? void tourneySlip(x.id).then((img) => img && setSlipView(img)) : setSlipView(x.slip!))} className="min-h-11 text-sm font-semibold text-sky-700 underline">
                   {t("ดูสลิป")}
                 </button>
               )}
@@ -982,7 +1004,12 @@ export function TourneyAdmin({ section = "event" }: { section?: "event" | "court
       </Card>
       <Button variant="ghost" className="w-full" onClick={() => setMode(false)}>
         {t("กลับไปโหมดก๊วนปกติ")}
-      </Button></>}
+      </Button>
+      {real && (
+        <Button variant="danger" className="w-full" onClick={() => confirm(t("จบงานแข่งนี้? ข้อมูลยังเก็บไว้ แต่แอพจะกลับเป็นก๊วนปกติ")) && void end()}>
+          {t("จบงานแข่ง")}
+        </Button>
+      )}</>}
       {section === "event" && (
         <Card>
           <Brackets t={tr} initialDiv={d.id} key={d.id} />
@@ -1255,6 +1282,107 @@ export function TourneyCourts() {
           <MatchList t={tr} only="queue" mine={team?.id} />
         </div>
       </Card>
+    </div>
+  );
+}
+
+/* ---------- ตั้งค่า > งานแข่ง (สร้างงาน / เปิดวันแข่ง / จบงาน) ---------- */
+
+type DivDraft = { date: string; code: string; maxPairs: number };
+
+export function TourneySetup() {
+  const { t: tr, create, setMode, end, mode } = useTourney();
+  const [name, setName] = useState("");
+  const [fee, setFee] = useState("800");
+  const [close, setClose] = useState("");
+  const [courts, setCourts] = useState("4");
+  const [map, setMap] = useState("");
+  const [divs, setDivs] = useState<DivDraft[]>([{ date: "", code: "", maxPairs: 16 }]);
+  const [busy, setBusy] = useState(false);
+  if (tr)
+    return (
+      <div className="space-y-3">
+        <p className="text-sm">
+          <b>{tr.name}</b> · {t("สมัครแล้ว {n} คู่", { n: tr.teams.length })}
+        </p>
+        <Button variant={mode ? "secondary" : "accent"} className="w-full" onClick={() => void setMode(!mode)}>
+          {mode ? t("กลับไปโหมดก๊วนปกติ") : t("เปิดโหมดวันแข่ง")}
+        </Button>
+        <p className="text-sm text-zinc-500">{t("เปิดโหมดวันแข่ง: แอพของทุกคนเปลี่ยนเป็นหน้างานแข่ง วันปกติจะมีแถบประกาศรับสมัครให้แทน")}</p>
+        <Button variant="danger" className="w-full" onClick={() => confirm(t("จบงานแข่งนี้? ข้อมูลยังเก็บไว้ แต่แอพจะกลับเป็นก๊วนปกติ")) && void end()}>
+          {t("จบงานแข่ง")}
+        </Button>
+      </div>
+    );
+  const setDiv = (i: number, p: Partial<DivDraft>) => setDivs(divs.map((d, k) => (k === i ? { ...d, ...p } : d)));
+  const ok = name.trim() && Number(fee) >= 0 && close && Number(courts) > 0 && divs.length > 0 && divs.every((d) => d.date && d.code.trim());
+  const submit = async () => {
+    setBusy(true);
+    const bo = { r1: 3, early: 3, final: 3 };
+    const err = await create({
+      id: `t-${Date.now().toString(36)}`,
+      name: name.trim(),
+      fee: Number(fee),
+      closeDate: close,
+      mapUrl: map.trim() || undefined,
+      courts: Number(courts),
+      divisions: divs.map((d, i) => ({ id: `d${i + 1}`, code: d.code.trim(), date: d.date, maxPairs: d.maxPairs, minPairs: 4, bestOf: bo })),
+      teams: [],
+      matches: [],
+      nextNo: 1,
+      referees: [],
+    });
+    setBusy(false);
+    if (err) alert(err);
+  };
+  return (
+    <div className="space-y-3">
+      <label className="block space-y-1 text-sm font-semibold">
+        <span>{t("ชื่องาน")}</span>
+        <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder={t("เช่น หนุมานคัพ ครั้งที่ 1")} />
+      </label>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="block space-y-1 text-sm font-semibold">
+          <span>{t("ค่าสมัครต่อคู่ (บาท)")}</span>
+          <input className={inputClass} inputMode="numeric" value={fee} onChange={(e) => setFee(e.target.value.replace(/\D/g, ""))} />
+        </label>
+        <label className="block space-y-1 text-sm font-semibold">
+          <span>{t("จำนวนสนาม")}</span>
+          <input className={inputClass} inputMode="numeric" value={courts} onChange={(e) => setCourts(e.target.value.replace(/\D/g, ""))} />
+        </label>
+      </div>
+      <label className="block space-y-1 text-sm font-semibold">
+        <span>{t("วันปิดรับสมัคร")}</span>
+        <input type="date" className={inputClass} value={close} onChange={(e) => setClose(e.target.value)} />
+      </label>
+      <label className="block space-y-1 text-sm font-semibold">
+        <span>{t("ลิงก์แผนที่ (ไม่ใส่ก็ได้)")}</span>
+        <input className={inputClass} value={map} onChange={(e) => setMap(e.target.value)} placeholder="https://maps.google.com/..." />
+      </label>
+      <div className="space-y-2">
+        <span className="text-sm font-semibold">{t("มือที่เปิดแข่ง (ขั้นต่ำ 4 คู่)")}</span>
+        {divs.map((d, i) => (
+          <div key={i} className="flex flex-wrap items-center gap-2 rounded-2xl bg-zinc-50 p-2">
+            <input type="date" aria-label={t("วันแข่ง")} className={`${inputClass} min-w-0 flex-1 basis-36`} value={d.date} onChange={(e) => setDiv(i, { date: e.target.value })} />
+            <input aria-label={t("มือ")} className={`${inputClass} w-20`} value={d.code} onChange={(e) => setDiv(i, { code: e.target.value })} placeholder="NEW" />
+            <select aria-label={t("จำนวนคู่")} className={`${inputClass} w-24`} value={d.maxPairs} onChange={(e) => setDiv(i, { maxPairs: Number(e.target.value) })}>
+              <option value={8}>{t("{n} คู่", { n: 8 })}</option>
+              <option value={16}>{t("{n} คู่", { n: 16 })}</option>
+            </select>
+            {divs.length > 1 && (
+              <button aria-label={t("ลบ")} onClick={() => setDivs(divs.filter((_, k) => k !== i))} className="grid min-h-11 min-w-11 place-items-center text-zinc-500">
+                <Icon.X width={18} height={18} />
+              </button>
+            )}
+          </div>
+        ))}
+        <Button variant="secondary" className="w-full" onClick={() => setDivs([...divs, { date: divs[divs.length - 1]?.date ?? "", code: "", maxPairs: 16 }])}>
+          + {t("เพิ่มมือ")}
+        </Button>
+      </div>
+      <Button variant="accent" className="w-full" disabled={!ok || busy} onClick={() => void submit()}>
+        {t("สร้างงานแข่ง")}
+      </Button>
     </div>
   );
 }
