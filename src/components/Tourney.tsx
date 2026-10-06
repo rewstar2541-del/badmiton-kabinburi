@@ -997,7 +997,7 @@ export function RefereeView() {
   const [me] = useMe();
   if (!tr) return <p className="p-6">{t("ยังไม่มีงานแข่ง")}</p>;
   const exit = (
-    <a href={siteUrl("")} className="inline-flex min-h-11 items-center gap-1 rounded-full bg-white/10 px-4 text-sm font-semibold">
+    <a href={siteUrl("")} className="inline-flex min-h-11 items-center gap-1 rounded-full bg-white px-4 text-sm font-semibold text-ink">
       ← {t("ออก")}
     </a>
   );
@@ -1012,11 +1012,22 @@ export function RefereeView() {
   const m = court ? onCourt(tr).find((x) => x.court === court) : undefined;
   const pickCourt = (
     <div className="grid grid-cols-2 gap-2">
-      {Array.from({ length: tr.courts }, (_, i) => i + 1).map((c) => (
-        <button key={c} onClick={() => setCourt(c)} className={`rounded-2xl py-4 font-semibold ${c === court ? "bg-lime text-ink" : "bg-white/10"}`}>
-          {t("สนาม {n}", { n: c })}
-        </button>
-      ))}
+      {Array.from({ length: tr.courts }, (_, i) => i + 1).map((c) => {
+        const x = onCourt(tr).find((y) => y.court === c);
+        return (
+          <button key={c} onClick={() => setCourt(c)} className={`court-surface flex min-h-28 flex-col items-center justify-center gap-1 rounded-2xl p-3 text-white ${c === court ? "ring-4 ring-lime" : ""}`}>
+            <span className="rounded-full bg-lime px-3 py-0.5 text-sm font-bold text-ink">{t("สนาม {n}", { n: c })}</span>
+            {x ? (
+              <>
+                <span className="w-full truncate text-center text-sm font-semibold">{teamName(tr, x.a)}</span>
+                <span className="w-full truncate text-center text-sm font-semibold">{teamName(tr, x.b)}</span>
+              </>
+            ) : (
+              <span className="text-sm text-white/80">{t("ว่าง")}</span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
   if (!m)
@@ -1082,17 +1093,17 @@ export function RefereeView() {
     <div className="flex h-dvh flex-col gap-3 bg-ink p-4 pt-[calc(env(safe-area-inset-top)+16px)] text-white">
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
         {exit}
-        <button onClick={() => setCourt(null)} className="min-h-11 font-semibold underline">
-          {t("สนาม {n}", { n: m.court ?? 0 })} · {divOf(tr, m.divId).code}
+        <button onClick={() => setCourt(null)} className="min-h-11 rounded-full bg-lime px-4 font-bold text-ink">
+          {t("สนาม {n}", { n: m.court ?? 0 })} · {divOf(tr, m.divId).code} ▾
         </button>
-        <span className="rounded-full bg-white/10 px-3 py-1">
+        <span className="rounded-full bg-white px-3 py-2 font-semibold text-ink">
           {t("เกม {n}", { n: games.length })} · {bo === 3 ? t("ชนะ 2 ใน 3") : t("เกมเดียว")}
         </span>
       </div>
       {games.length > 1 && (
         <div className="flex gap-2 text-sm">
           {games.slice(0, -1).map((g, i) => (
-            <span key={i} className="rounded-2xl bg-white/10 px-3 py-2">
+            <span key={i} className="rounded-2xl bg-amber-300 px-3 py-2 font-semibold text-ink">
               {t("เกม {n}", { n: i + 1 })}: {g.join("-")}
             </span>
           ))}
@@ -1105,21 +1116,21 @@ export function RefereeView() {
             <button
               key={k}
               onClick={() => add(k)}
-              className={`flex flex-1 flex-col items-center justify-center gap-2 rounded-3xl p-3 active:scale-[0.98] ${lead ? "bg-lime text-ink" : "bg-white/10 text-white"}`}
+              className={`court-surface flex flex-1 flex-col items-center justify-center gap-3 rounded-3xl p-3 text-white active:scale-[0.98] ${lead ? "ring-4 ring-lime" : ""}`}
             >
-              <span className="text-center font-semibold">{teamName(tr, k === 0 ? m.a : m.b)}</span>
-              <span className="text-sm opacity-70">{t("ชนะ {n} เกม", { n: won[k] })}</span>
-              <span className="font-display text-7xl font-semibold tabular-nums">{cur[k]}</span>
-              <span className={`rounded-full px-5 py-2 text-lg font-bold ${lead ? "bg-ink text-white" : "bg-lime text-ink"}`}>+1</span>
+              <span className={`rounded-full px-3 py-1 text-center text-sm font-bold text-ink ${k === 0 ? "bg-lime" : "bg-sky-300"}`}>{teamName(tr, k === 0 ? m.a : m.b)}</span>
+              <span className="rounded-full bg-black/25 px-3 py-0.5 text-sm">{t("ชนะ {n} เกม", { n: won[k] })}</span>
+              <span className="font-display text-8xl font-bold tabular-nums drop-shadow">{cur[k]}</span>
+              <span className="rounded-full bg-white px-7 py-3 text-2xl font-bold text-ink shadow">+1</span>
             </button>
           );
         })}
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <button onClick={undo} disabled={hist.length === 0} className="rounded-2xl bg-white/10 py-3 font-semibold disabled:opacity-40">
+        <button onClick={undo} disabled={hist.length === 0} className="min-h-12 rounded-2xl bg-amber-300 py-3 font-semibold text-ink disabled:opacity-40">
           ↶ {t("ย้อน")}
         </button>
-        <button onClick={() => setSwap(!swap)} className="rounded-2xl bg-white/10 py-3 font-semibold">
+        <button onClick={() => setSwap(!swap)} className="min-h-12 rounded-2xl bg-white py-3 font-semibold text-ink">
           {t("สลับฝั่ง")}
         </button>
       </div>
