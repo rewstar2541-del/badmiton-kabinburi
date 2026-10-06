@@ -325,8 +325,9 @@ function Schedule({ t: tr, mine, dark, limit = 12 }: { t: Tourney; mine?: string
 }
 
 /** สนามทั้งหมด: ใครเจอใคร แต้มสด */
-function CourtsGrid({ t: tr, onPick }: { t: Tourney; cols?: number; onPick?: (m: TMatch) => void }) {
+function CourtsGrid({ t: tr, onPick, cols }: { t: Tourney; cols?: number; onPick?: (m: TMatch) => void }) {
   const on = onCourt(tr);
+  if (cols) return <DarkCourts t={tr} cols={cols} />;
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {Array.from({ length: tr.courts }, (_, i) => i + 1).map((c) => {
@@ -349,7 +350,7 @@ function CourtsGrid({ t: tr, onPick }: { t: Tourney; cols?: number; onPick?: (m:
               <Box onClick={onPick ? () => onPick(m) : undefined} className="court-surface flex w-full gap-1 rounded-2xl px-2 text-left">
                 {[m.a, m.b].map((tid, k) => (
                   <div key={k} className="flex min-w-0 flex-1 basis-0 flex-col items-center gap-1 py-3 text-white">
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${k === 0 ? "bg-lime text-ink" : "bg-sky-300 text-ink"}`}>{teamName(tr, tid)}</span>
+                    <span className={`max-w-full truncate rounded-full px-2 py-0.5 text-xs font-bold ${k === 0 ? "bg-lime text-ink" : "bg-sky-300 text-ink"}`}>{teamName(tr, tid)}</span>
                     <span className="font-display text-4xl font-bold tabular-nums">{cur[k]}</span>
                     <span className="text-xs text-white/70 tabular-nums">{t("เกม {n}", { n: Math.max(1, m.games.length) })}</span>
                   </div>
@@ -359,6 +360,35 @@ function CourtsGrid({ t: tr, onPick }: { t: Tourney; cols?: number; onPick?: (m:
               <div className="court-surface flex h-24 items-center justify-center rounded-2xl text-sm font-semibold text-white/80">{t("ว่าง")}</div>
             )}
           </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+/** จอผู้ชม (พื้นมืด) */
+function DarkCourts({ t: tr, cols }: { t: Tourney; cols: number }) {
+  const on = onCourt(tr);
+  return (
+    <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${cols},minmax(0,1fr))` }}>
+      {Array.from({ length: tr.courts }, (_, i) => i + 1).map((c) => {
+        const m = on.find((x) => x.court === c);
+        return (
+          <div key={c} className="min-w-0 rounded-2xl bg-white/10 p-3 text-left">
+            <div className="flex justify-between text-sm text-white/60">
+              <span>{t("สนาม {n}", { n: c })}</span>
+              {m && <span className="font-bold text-lime">{divOf(tr, m.divId).code}</span>}
+            </div>
+            {m ? (
+              <>
+                <div className="mt-1 truncate text-sm font-semibold">{teamName(tr, m.a)}</div>
+                <div className="truncate text-sm font-semibold">{teamName(tr, m.b)}</div>
+                <div className="mt-1 text-sm text-lime tabular-nums">{scoreText(m) || t("กำลังเล่น")}</div>
+              </>
+            ) : (
+              <div className="mt-1 text-sm text-white/50">{t("ว่าง")}</div>
+            )}
+          </div>
         );
       })}
     </div>
@@ -811,6 +841,7 @@ export function TourneyAdmin({ section = "event" }: { section?: "event" | "court
   const teams = divTeams(tr, d.id);
   const paid = teams.filter((x) => x.pay === "yes").length;
   const ready = teams.filter((x) => x.here[0] && x.here[1]).length;
+  const hidden = teams.filter((x) => x.pay === "yes" && x.here[0] && x.here[1]).length;
   const disputes = tr.matches.filter((m) => m.disputed);
   const canCall = callable(tr).length > 0 && onCourt(tr).length < tr.courts;
   const setTeam = (id: string, fn: (x: TTeam) => TTeam) => update((y) => ({ ...y, teams: y.teams.map((z) => (z.id === id ? fn(z) : z)) }));
@@ -910,7 +941,7 @@ export function TourneyAdmin({ section = "event" }: { section?: "event" | "court
                 <button
                   key={k}
                   onClick={() => setTeam(x.id, (y) => ({ ...y, here: (k === 0 ? [!y.here[0], y.here[1]] : [y.here[0], !y.here[1]]) as [boolean, boolean] }))}
-                  className={`flex min-h-10 items-center gap-1 rounded-full px-2.5 text-sm font-semibold ${x.here[k] ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"}`}
+                  className={`flex min-h-11 items-center gap-1 rounded-full px-2.5 text-sm font-semibold ${x.here[k] ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"}`}
                   aria-pressed={x.here[k]}
                 >
                   {x.here[k] ? <Icon.Check width={14} height={14} /> : <Icon.X width={14} height={14} />}
@@ -926,7 +957,7 @@ export function TourneyAdmin({ section = "event" }: { section?: "event" | "court
               <span className="flex-1" />
               <button
                 onClick={() => setTeam(x.id, (y) => ({ ...y, pay: y.pay === "yes" ? "no" : "yes" }))}
-                className={`min-h-10 rounded-full px-2.5 text-sm font-semibold ${PAY_TONE[x.pay]}`}
+                className={`min-h-11 rounded-full px-2.5 text-sm font-semibold ${PAY_TONE[x.pay]}`}
                 disabled={!!d.drawn}
               >
                 {t(PAY_LABEL[x.pay])}
@@ -934,7 +965,8 @@ export function TourneyAdmin({ section = "event" }: { section?: "event" | "court
             </li>
           ))}
         </ul>
-        {teams.length > 0 && (
+        {!showAll && hidden === teams.length && teams.length > 0 && <p className="py-3 text-center text-sm text-emerald-700">{t("ทุกทีมพร้อมแล้ว")}</p>}
+        {hidden > 0 && (
           <button onClick={() => setShowAll(!showAll)} className="mt-1 min-h-11 w-full text-sm font-semibold text-emerald-700 underline">
             {showAll ? t("ซ่อนทีมที่พร้อมแล้ว") : t("ดูทั้งหมด {n} ทีม", { n: teams.length })}
           </button>
@@ -1176,7 +1208,7 @@ export function WatchView() {
         </div>
         {tab === "courts" && (
           <>
-            <CourtsGrid t={tr} />
+            <CourtsGrid t={tr} cols={2} />
             <div className="rounded-2xl bg-white/10 p-3">
               <div className="text-sm text-white/60">{t("คู่ต่อไป")}</div>
               <Schedule t={{ ...tr, matches: tr.matches.filter((m) => !m.court) }} dark limit={5} />

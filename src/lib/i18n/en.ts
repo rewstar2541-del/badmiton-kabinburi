@@ -1022,4 +1022,5 @@ export const en: Record<string, string> = {
   "ผลแข่ง": "Results",
   "ซ่อนทีมที่พร้อมแล้ว": "Hide ready teams",
   "ดูทั้งหมด {n} ทีม": "Show all {n} teams",
+  "ทุกทีมพร้อมแล้ว": "All teams ready",
 };
