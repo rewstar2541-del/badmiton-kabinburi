@@ -156,6 +156,12 @@ export const Icon = {
       <path d="M10 9v6M14 9v6" />
     </Svg>
   ),
+  Bell: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    </Svg>
+  ),
   Hand: (p: IconProps) => (
     <Svg {...p}>
       <path d="M16 11V5a2 2 0 0 0-4 0v6M12 10V4a2 2 0 0 0-4 0v8M8 12V8a2 2 0 0 0-4 0v6a8 8 0 0 0 16 0v-3a2 2 0 0 0-4 0" />

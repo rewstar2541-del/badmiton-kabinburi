@@ -1,5 +1,6 @@
 "use client";
 
+import { Bell } from "./Bell";
 import { YearSummaryView } from "./YearSummary";
 import { Fragment, useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { PlayerModeProvider, StoreProvider, useStore, useToday } from "@/lib/store";
@@ -189,7 +190,7 @@ function Header() {
         </div>
         <div className="flex shrink-0 gap-1.5">
           <LangSwitch />
-          <GuideButton />
+          {player && !auth.isAdmin ? <Bell key={player.id} /> : <GuideButton />}
           <ThemeSwitch />
         </div>
       </div>
