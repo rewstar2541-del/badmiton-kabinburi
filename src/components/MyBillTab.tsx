@@ -8,7 +8,7 @@ import { PendingNotice, PickMe, useMe } from "./PickMe";
 import { SelfPay } from "./SelfPay";
 import { SlipUpload } from "./Slips";
 import { MonthlyDueCard, PlanChoice } from "./Membership";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { savedPin } from "./PickMe";
 import { Auto } from "@/lib/autoTranslate";
 import { Button, Card, Icon, baht, inputClass } from "./ui";
@@ -92,10 +92,13 @@ function MyDrinks({ playerId, drinks }: { playerId: string; drinks: { id: string
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const lock = useRef(false);
   const add = async (n: number) => {
-    if (!n || n <= 0) return;
+    if (!n || n <= 0 || lock.current) return;
+    lock.current = true;
     setBusy(true);
     const err = await addMyDrink(playerId, savedPin.get(), n, "");
+    lock.current = false;
     setBusy(false);
     setError(err ? t(err) : "");
     if (!err) setAmount("");
