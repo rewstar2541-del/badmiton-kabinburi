@@ -1047,4 +1047,5 @@ export const en: Record<string, string> = {
   "อีกนิดเดียว": "Almost done",
   "ระดับมือของคุณ": "Your skill level",
   "ไปต่อ": "Continue",
+  "เพิ่มผิด บอกแอดมินให้ลบได้": "Added by mistake? Ask an admin to remove it",
 };
