@@ -8,7 +8,7 @@ import { PendingNotice, PickMe, useMe } from "./PickMe";
 import { SelfPay } from "./SelfPay";
 import { SlipUpload } from "./Slips";
 import { MonthlyDueCard, PlanChoice } from "./Membership";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { savedPin } from "./PickMe";
 import { Auto } from "@/lib/autoTranslate";
 import { Button, Card, Icon, baht, inputClass } from "./ui";
@@ -64,7 +64,7 @@ export function MyBillTab() {
               ))}
             </div>
           </div>
-          {checkedIn && <MyDrinks playerId={player.id} drinks={day.drinks.filter((d) => d.playerId === player.id)} />}
+          {checkedIn && <MyDrinks playerId={player.id} paid={bill.paid} drinks={day.drinks.filter((d) => d.playerId === player.id)} />}
           {bill.paid ? (
             <Card className="flex items-center justify-center gap-1.5 py-6 font-semibold text-emerald-700">
               <Icon.Check width={18} height={18} /> {t("จ่ายแล้ว ขอบคุณครับ")}
@@ -86,16 +86,19 @@ export function MyBillTab() {
   );
 }
 
-/** ผู้เล่นเพิ่มค่าน้ำเอง (แก้/ลบได้เฉพาะแอดมิน) */
-function MyDrinks({ playerId, drinks }: { playerId: string; drinks: { id: string; amount: number; note: string }[] }) {
-  const { addMyDrink } = useStore();
+/** ผู้เล่นเพิ่มค่าน้ำเอง ลบของที่เพิ่มผิดได้เอง (ก่อนจ่าย) */
+function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean; drinks: { id: string; amount: number; note: string }[] }) {
+  const { addMyDrink, removeMyDrink } = useStore();
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const lock = useRef(false);
   const add = async (n: number) => {
-    if (!n || n <= 0) return;
+    if (!n || n <= 0 || lock.current) return;
+    lock.current = true;
     setBusy(true);
     const err = await addMyDrink(playerId, savedPin.get(), n, "");
+    lock.current = false;
     setBusy(false);
     setError(err ? t(err) : "");
     if (!err) setAmount("");
@@ -104,9 +107,24 @@ function MyDrinks({ playerId, drinks }: { playerId: string; drinks: { id: string
     <Card className="space-y-2">
       <div className="text-sm font-semibold">{t("ค่าน้ำ")}</div>
       {drinks.map((d) => (
-        <div key={d.id} className="flex justify-between text-sm text-zinc-600">
+        <div key={d.id} className="flex items-center justify-between gap-2 text-sm text-zinc-600">
           <Auto text={d.note} />
-          <span>{baht(d.amount)}</span>
+          <span className="ml-auto">{baht(d.amount)}</span>
+          {!paid && (
+            <button
+              className="min-h-11 min-w-11 rounded-xl text-xs font-semibold text-red-600"
+              aria-label={t("ลบค่าน้ำ {n} บาท", { n: d.amount })}
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                const err = await removeMyDrink(playerId, savedPin.get(), d.id);
+                setBusy(false);
+                setError(err ? t(err) : "");
+              }}
+            >
+              {t("ลบ")}
+            </button>
+          )}
         </div>
       ))}
       <div className="grid grid-cols-4 gap-2">
@@ -129,7 +147,7 @@ function MyDrinks({ playerId, drinks }: { playerId: string; drinks: { id: string
         </Button>
       </form>
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
-      <p className="text-xs text-zinc-500">{t("เพิ่มผิด บอกแอดมินให้ลบได้")}</p>
+      <p className="text-xs text-zinc-500">{paid ? t("จ่ายแล้ว ถ้าค่าน้ำผิด บอกแอดมินให้แก้") : t("เพิ่มผิด กด ลบ ข้างรายการได้เลย")}</p>
     </Card>
   );
 }

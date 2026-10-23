@@ -1060,4 +1060,7 @@ export const en: Record<string, string> = {
   "ชื่อธนาคาร เช่น กสิกรไทย": "Bank name, e.g. Kasikorn",
   "เลขบัญชี": "Account number",
   "ชื่อบัญชี": "Account name",
+  "ลบค่าน้ำ {n} บาท": "Remove drink {n} baht",
+  "จ่ายแล้ว ถ้าค่าน้ำผิด บอกแอดมินให้แก้": "Already paid. If a drink is wrong, ask an admin",
+  "เพิ่มผิด กด ลบ ข้างรายการได้เลย": "Added by mistake? Tap Remove next to it",
 };

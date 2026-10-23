@@ -70,5 +70,62 @@ begin
   return null;
 end $$;
 
--- คนนอกก๊วนสมัครแข่ง: เข้า LINE แล้วสร้างผู้เล่น (ไม่ต้องรออนุมัติ) เฉพาะตอนมีงานเปิดรับสมัคร
--- ดูฟังก์ชันจริงใน Supabase: register_tourney_player(p_ticket, p_name, p_level) -> {id, token} | {error}
+-- สมัครแข่งสำหรับคนนอกก๊วน: สร้างผู้เล่นจากตั๋ว LINE (ใช้ได้ครั้งเดียว เพราะ line_user_id ซ้ำใน player_auth ไม่ได้)
+-- เฉพาะตอนมีงานเปิดรับสมัคร จำกัด 100 คน/วัน
+create or replace function public.register_tourney_player(p_ticket text, p_name text, p_level int)
+returns jsonb language plpgsql security definer set search_path to 'public', 'extensions' as $$
+declare uid text := ticket_line_user(p_ticket); pic text; pid text;
+begin
+  if uid is null then return jsonb_build_object('error', 'กรุณาเข้าสู่ระบบด้วย LINE ใหม่'); end if;
+  if exists (select 1 from player_auth where line_user_id = uid) then
+    return jsonb_build_object('error', 'บัญชี LINE นี้ผูกกับผู้เล่นคนอื่นแล้ว');
+  end if;
+  if not exists (select 1 from tourneys where active and data->>'closeDate' >= to_char(now() at time zone 'Asia/Bangkok', 'YYYY-MM-DD')) then
+    return jsonb_build_object('error', 'ปิดรับสมัครแล้ว');
+  end if;
+  if coalesce(trim(p_name), '') = '' then return jsonb_build_object('error', 'กรุณาใส่ชื่อเล่น'); end if;
+  if p_level not between 1 and 6 then return jsonb_build_object('error', 'คำสั่งไม่ถูกต้อง'); end if;
+  if (select count(*) from players where bio = 'ผู้แข่งขันรับเชิญ' and created_at > now() - interval '1 day') >= 100 then
+    return jsonb_build_object('error', 'สมัครเยอะเกินไป ลองใหม่ภายหลัง');
+  end if;
+  select picture into pic from line_link_tickets where line_user_id = uid and picture is not null order by expires_at desc limit 1;
+  if not photo_ok(pic) then pic := null; end if;
+  insert into players(name, gender, level, photo, pending, bio)
+    values (left(trim(p_name), 40), 'other', p_level, pic, false, 'ผู้แข่งขันรับเชิญ') returning id into pid;
+  insert into player_auth(player_id, line_user_id) values (pid, uid);
+  update line_claims set status = 'cancelled' where line_user_id = uid and status = 'pending';
+  return jsonb_build_object('id', pid, 'token', new_player_session(pid));
+end $$;
+revoke all on function public.register_tourney_player(text, text, int) from public;
+grant execute on function public.register_tourney_player(text, text, int) to anon, authenticated;
+
+-- ผู้เล่นเพิ่มค่าน้ำของตัวเอง (ต้องเช็คอินวันนี้ 1-200 บาท ไม่เกิน 10 รายการ/วัน)
+create or replace function public.add_my_drink(p_player text, p_pin text, p_amount int, p_note text)
+returns text language plpgsql security definer set search_path to 'public', 'extensions' as $$
+declare d date := (now() at time zone 'Asia/Bangkok')::date; err text := check_player_pin(p_player, p_pin);
+begin
+  if err is not null then return err; end if;
+  if p_amount is null or p_amount not between 1 and 200 then return 'จำนวนเงินไม่ถูกต้อง'; end if;
+  if not exists (select 1 from checkins where date = d and player_id = p_player) then return 'วันนี้ยังไม่ได้เช็คอิน'; end if;
+  if (select count(*) from drinks where date = d and player_id = p_player) >= 10 then return 'เพิ่มค่าน้ำวันนี้ครบ 10 รายการแล้ว'; end if;
+  insert into drinks(date, player_id, amount, note) values (d, p_player, p_amount, coalesce(nullif(left(trim(p_note), 40), ''), 'น้ำ'));
+  return null;
+end $$;
+revoke all on function public.add_my_drink(text, text, int, text) from public;
+grant execute on function public.add_my_drink(text, text, int, text) to anon, authenticated;
+
+-- ผู้เล่นลบค่าน้ำที่ตัวเองเพิ่มผิด (เฉพาะของวันนี้ และยังไม่จ่าย)
+-- หมายเหตุ: ใช้ execute เพราะเครื่องมือรัน SQL หมดเวลาเมื่อเจอคำสั่งลบตรงๆ
+create or replace function public.remove_my_drink(p_player text, p_pin text, p_id text)
+returns text language plpgsql security definer set search_path to 'public', 'extensions' as $$
+declare d date := (now() at time zone 'Asia/Bangkok')::date; err text := check_player_pin(p_player, p_pin); n int;
+begin
+  if err is not null then return err; end if;
+  if exists (select 1 from checkins where date = d and player_id = p_player and paid_at is not null) then return 'จ่ายแล้ว ลบไม่ได้ ให้แอดมินช่วย'; end if;
+  delete from drinks where id = p_id and player_id = p_player and date = d;
+  get diagnostics n = row_count;
+  if n = 0 then return 'ไม่พบรายการนี้ (ลบได้เฉพาะของวันนี้)'; end if;
+  return null;
+end $$;
+revoke all on function public.remove_my_drink(text, text, text) from public;
+grant execute on function public.remove_my_drink(text, text, text) to anon, authenticated;
