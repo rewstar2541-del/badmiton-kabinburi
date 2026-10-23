@@ -6,7 +6,38 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { isValidPromptPayId, promptPayPayload } from "@/lib/promptpay";
 import { t } from "@/lib/i18n";
+import { useStore } from "@/lib/store";
 import { Button } from "./ui";
+
+/** บัญชีธนาคารของก๊วน (ถ้าตั้งไว้) พร้อมปุ่มคัดลอกเลขบัญชี */
+export function BankInfo() {
+  const { state } = useStore();
+  const { bankName, bankAccount, bankHolder } = state.settings;
+  const [copied, setCopied] = useState(false);
+  if (!bankAccount) return null;
+  return (
+    <div className="w-full space-y-1 rounded-2xl bg-zinc-100 p-3 text-center text-sm">
+      <div className="text-xs text-zinc-500">{t("หรือโอนเข้าบัญชีธนาคาร")}</div>
+      {bankName && <div className="font-semibold">{bankName}</div>}
+      <div className="font-display text-xl font-semibold tracking-wide">{bankAccount}</div>
+      {bankHolder && <div className="text-zinc-600">{bankHolder}</div>}
+      <Button
+        className="mt-1"
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(bankAccount.replace(/\D/g, ""));
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          } catch {
+            // คัดลอกไม่ได้ (บางเบราว์เซอร์ใน LINE) ให้กดค้างที่เลขแทน
+          }
+        }}
+      >
+        {copied ? t("คัดลอกแล้ว ✓") : t("คัดลอกเลขบัญชี")}
+      </Button>
+    </div>
+  );
+}
 
 export function PayQr({ promptPayId, amount }: { promptPayId: string; amount: number }) {
   const [src, setSrc] = useState<string | null>(null);
@@ -27,7 +58,12 @@ export function PayQr({ promptPayId, amount }: { promptPayId: string; amount: nu
   }, [promptPayId, amount, valid]);
 
   if (!valid)
-    return <p className="text-sm text-amber-700">{t("ยังไม่ได้ตั้ง PromptPay (ไปที่ ตั้งค่า)")}</p>;
+    return (
+      <div className="w-full space-y-2">
+        <p className="text-sm text-amber-700">{t("ยังไม่ได้ตั้ง PromptPay (ไปที่ ตั้งค่า)")}</p>
+        <BankInfo />
+      </div>
+    );
   if (!src) return <div className="size-[280px] animate-pulse rounded-xl bg-zinc-100" />;
   return (
     <div className="flex flex-col items-center gap-2">
@@ -48,6 +84,7 @@ export function PayQr({ promptPayId, amount }: { promptPayId: string; amount: nu
         {t("บันทึกรูป QR")}
       </Button>
       <p className="text-center text-xs text-zinc-500">{t("บันทึกรูป แล้วสแกนจากรูปในแอพธนาคาร")}</p>
+      <BankInfo />
       {preview &&
         createPortal(
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-black p-4" onClick={() => setPreview(null)}>

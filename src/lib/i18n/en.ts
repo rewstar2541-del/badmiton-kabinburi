@@ -1053,4 +1053,11 @@ export const en: Record<string, string> = {
   "งานที่จบแล้ว {n} งาน": "{n} finished events",
   "ลบแล้วกู้ไม่ได้": "This cannot be undone",
   "ลบประวัติงานแข่งแล้ว": "Tournament history deleted",
+  "หรือโอนเข้าบัญชีธนาคาร": "Or transfer to the bank account",
+  "คัดลอกเลขบัญชี": "Copy account number",
+  "คัดลอกแล้ว ✓": "Copied ✓",
+  "บัญชีธนาคาร (ไม่บังคับ)": "Bank account (optional)",
+  "ชื่อธนาคาร เช่น กสิกรไทย": "Bank name, e.g. Kasikorn",
+  "เลขบัญชี": "Account number",
+  "ชื่อบัญชี": "Account name",
 };
