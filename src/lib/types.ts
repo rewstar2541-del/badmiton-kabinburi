@@ -99,6 +99,10 @@ export interface Settings {
   monthlyFee: number;
   /** เบอร์มือถือ เลขบัตรประชาชน หรือเลขผู้เสียภาษี ที่ผูก PromptPay */
   promptPayId: string;
+  /** บัญชีธนาคาร (ไม่บังคับ) แสดงใต้ QR สำหรับคนที่โอนเข้าบัญชีตรง */
+  bankName: string;
+  bankAccount: string;
+  bankHolder: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -108,6 +112,9 @@ export const DEFAULT_SETTINGS: Settings = {
   nextShuttleFee: 25,
   monthlyFee: 150,
   promptPayId: "",
+  bankName: "",
+  bankAccount: "",
+  bankHolder: "",
 };
 
 export type Team = "A" | "B";
