@@ -236,6 +236,29 @@ export function useTourney() {
   };
 }
 
+/** แอดมิน: ลบงานแข่งที่จบแล้วทั้งหมด (รวมสลิป) คืนข้อความผิดพลาด หรือ null */
+export async function clearTourneyHistory(): Promise<string | null> {
+  if (!real()) {
+    // โหมดทดลอง: ลบงานในเครื่องแล้วเริ่มตัวอย่างใหม่
+    emitDemo({ t: sampleTourney(today()), mode: false, version: 0 });
+    return null;
+  }
+  const { data } = await supabase!.from("tourneys").select("id").eq("active", false);
+  const ids = (data ?? []).map((x) => x.id as string);
+  if (!ids.length) return null;
+  const a = await supabase!.from("tourney_slips").delete().in("tourney_id", ids);
+  if (a.error) return a.error.message;
+  const b = await supabase!.from("tourneys").delete().in("id", ids);
+  return b.error?.message ?? null;
+}
+
+/** แอดมิน: จำนวนงานแข่งที่จบแล้ว */
+export async function pastTourneyCount(): Promise<number> {
+  if (!real()) return 0;
+  const { count } = await supabase!.from("tourneys").select("id", { count: "exact", head: true }).eq("active", false);
+  return count ?? 0;
+}
+
 /** แอดมินดูสลิป (เก็บแยกในฐานข้อมูล) */
 export async function tourneySlip(teamId: string): Promise<string | null> {
   if (!supabase) return null;
