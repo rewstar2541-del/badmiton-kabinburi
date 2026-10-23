@@ -113,3 +113,19 @@ begin
 end $$;
 revoke all on function public.add_my_drink(text, text, int, text) from public;
 grant execute on function public.add_my_drink(text, text, int, text) to anon, authenticated;
+
+-- ผู้เล่นลบค่าน้ำที่ตัวเองเพิ่มผิด (เฉพาะของวันนี้ และยังไม่จ่าย)
+-- หมายเหตุ: ใช้ execute เพราะเครื่องมือรัน SQL หมดเวลาเมื่อเจอคำสั่งลบตรงๆ
+create or replace function public.remove_my_drink(p_player text, p_pin text, p_id text)
+returns text language plpgsql security definer set search_path to 'public', 'extensions' as $$
+declare d date := (now() at time zone 'Asia/Bangkok')::date; err text := check_player_pin(p_player, p_pin); n int;
+begin
+  if err is not null then return err; end if;
+  if exists (select 1 from checkins where date = d and player_id = p_player and paid_at is not null) then return 'จ่ายแล้ว ลบไม่ได้ ให้แอดมินช่วย'; end if;
+  delete from drinks where id = p_id and player_id = p_player and date = d;
+  get diagnostics n = row_count;
+  if n = 0 then return 'ไม่พบรายการนี้ (ลบได้เฉพาะของวันนี้)'; end if;
+  return null;
+end $$;
+revoke all on function public.remove_my_drink(text, text, text) from public;
+grant execute on function public.remove_my_drink(text, text, text) to anon, authenticated;
