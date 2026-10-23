@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { isDemo } from "./demo";
-import { JOIN_KEY } from "./lineLogin";
+import { JOIN_KEY, clearJoin } from "./lineLogin";
 import { supabase } from "./remote";
 import { readSession } from "./session";
 import { today } from "./state";
@@ -175,6 +175,7 @@ export function useTourney() {
     peeking: peek && !s.mode,
     setPeek: (on: boolean) => {
       peek = on;
+      if (!on) clearJoin();
       snap = { ...get() };
       notify();
     },
@@ -206,6 +207,7 @@ export function useTourney() {
     },
     setMode: async (mode: boolean) => {
       peek = false;
+      clearJoin();
       const cur = get();
       if (!real()) return emitDemo({ ...cur, mode });
       if (!cur.t) return;

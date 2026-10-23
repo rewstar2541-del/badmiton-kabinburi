@@ -757,7 +757,15 @@ function JoinCard() {
     setBusy(true);
     const r = await registerTourney(supabase, tk.ticket, name.trim(), level);
     setBusy(false);
-    if (!r.token || !r.id) return alert(t(r.error ?? "บันทึกไม่สำเร็จ"));
+    if (!r.token || !r.id) {
+      alert(t(r.error ?? "บันทึกไม่สำเร็จ"));
+      // ตั๋ว LINE หมดอายุหรือใช้แล้ว: กลับไปปุ่มเข้า LINE ใหม่
+      if (r.error?.includes("LINE") || r.error?.includes("ผูกกับ")) {
+        clearLineTicket();
+        location.reload();
+      }
+      return;
+    }
     writeSession({ playerId: r.id, token: r.token });
     clearLineTicket();
     location.reload();
@@ -775,9 +783,10 @@ function JoinCard() {
           <button
             key={l.value}
             onClick={() => setLevel(l.value)}
-            className={`min-h-11 rounded-xl border text-sm font-bold ${level === l.value ? "border-ink bg-ink text-white" : "border-zinc-200 bg-white"}`}
+            className={`min-h-12 rounded-xl border py-1 text-sm font-bold ${level === l.value ? "border-ink bg-ink text-white" : "border-zinc-200 bg-white"}`}
           >
             {l.code}
+            <span className="block text-[10px] font-normal opacity-70">{t(l.label)}</span>
           </button>
         ))}
       </div>
