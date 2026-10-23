@@ -8,7 +8,10 @@ import { PendingNotice, PickMe, useMe } from "./PickMe";
 import { SelfPay } from "./SelfPay";
 import { SlipUpload } from "./Slips";
 import { MonthlyDueCard, PlanChoice } from "./Membership";
-import { Card, Icon, baht } from "./ui";
+import { useState } from "react";
+import { savedPin } from "./PickMe";
+import { Auto } from "@/lib/autoTranslate";
+import { Button, Card, Icon, baht, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
 
 /** หน้าสำหรับผู้เล่น: เลือกชื่อตัวเอง แล้วดูยอดที่ต้องจ่ายวันนี้ */
@@ -61,6 +64,7 @@ export function MyBillTab() {
               ))}
             </div>
           </div>
+          {checkedIn && <MyDrinks playerId={player.id} drinks={day.drinks.filter((d) => d.playerId === player.id)} />}
           {bill.paid ? (
             <Card className="flex items-center justify-center gap-1.5 py-6 font-semibold text-emerald-700">
               <Icon.Check width={18} height={18} /> {t("จ่ายแล้ว ขอบคุณครับ")}
@@ -79,5 +83,53 @@ export function MyBillTab() {
       )}
 
     </div>
+  );
+}
+
+/** ผู้เล่นเพิ่มค่าน้ำเอง (แก้/ลบได้เฉพาะแอดมิน) */
+function MyDrinks({ playerId, drinks }: { playerId: string; drinks: { id: string; amount: number; note: string }[] }) {
+  const { addMyDrink } = useStore();
+  const [amount, setAmount] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const add = async (n: number) => {
+    if (!n || n <= 0) return;
+    setBusy(true);
+    const err = await addMyDrink(playerId, savedPin.get(), n, "");
+    setBusy(false);
+    setError(err ? t(err) : "");
+    if (!err) setAmount("");
+  };
+  return (
+    <Card className="space-y-2">
+      <div className="text-sm font-semibold">{t("ค่าน้ำ")}</div>
+      {drinks.map((d) => (
+        <div key={d.id} className="flex justify-between text-sm text-zinc-600">
+          <Auto text={d.note} />
+          <span>{baht(d.amount)}</span>
+        </div>
+      ))}
+      <div className="grid grid-cols-4 gap-2">
+        {[10, 15, 20, 25].map((n) => (
+          <Button key={n} disabled={busy} onClick={() => void add(n)}>
+            +{n}
+          </Button>
+        ))}
+      </div>
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void add(Number(amount));
+        }}
+      >
+        <input className={`${inputClass} min-w-0 flex-1`} inputMode="numeric" placeholder={t("บาท")} value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <Button type="submit" disabled={busy}>
+          {t("เพิ่ม")}
+        </Button>
+      </form>
+      {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+      <p className="text-xs text-zinc-500">{t("เพิ่มผิด บอกแอดมินให้ลบได้")}</p>
+    </Card>
   );
 }

@@ -1047,4 +1047,10 @@ export const en: Record<string, string> = {
   "อีกนิดเดียว": "Almost done",
   "ระดับมือของคุณ": "Your skill level",
   "ไปต่อ": "Continue",
+  "เพิ่มผิด บอกแอดมินให้ลบได้": "Added by mistake? Ask an admin to remove it",
+  "ลบประวัติงานแข่ง": "Delete tournament history",
+  "ลบงานแข่งที่จบแล้ว ทีม ผลแข่ง และสลิป งานที่เปิดอยู่ไม่ลบ": "Deletes finished tournaments, teams, results and slips. The open event is kept",
+  "งานที่จบแล้ว {n} งาน": "{n} finished events",
+  "ลบแล้วกู้ไม่ได้": "This cannot be undone",
+  "ลบประวัติงานแข่งแล้ว": "Tournament history deleted",
 };
