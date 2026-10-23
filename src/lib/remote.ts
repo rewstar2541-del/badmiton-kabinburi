@@ -68,6 +68,9 @@ export interface Rows {
         next_shuttle_fee: number;
         monthly_fee: number;
         promptpay_id: string;
+        bank_name?: string;
+        bank_account?: string;
+        bank_holder?: string;
       }
     | null;
 }
@@ -158,6 +161,9 @@ export function rowsToState(r: Rows): State {
         nextShuttleFee: s.next_shuttle_fee,
         monthlyFee: s.monthly_fee,
         promptPayId: s.promptpay_id,
+        bankName: s.bank_name ?? "",
+        bankAccount: s.bank_account ?? "",
+        bankHolder: s.bank_holder ?? "",
       }
     : DEFAULT_SETTINGS;
 
@@ -279,7 +285,7 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
     monthly: async () => (isAdmin ? all(() => db.from("monthly_payments").select("month,player_id,paid_at,amount").order("month").order("player_id")) : []),
     settings: async () => {
       const r = await all(() =>
-        db.from("settings").select("court_count,court_fee,first_shuttle_fee,next_shuttle_fee,monthly_fee,promptpay_id").eq("id", 1),
+        db.from("settings").select("court_count,court_fee,first_shuttle_fee,next_shuttle_fee,monthly_fee,promptpay_id,bank_name,bank_account,bank_holder").eq("id", 1),
       );
       return (r[0] as Rows["settings"]) ?? null;
     },
@@ -460,6 +466,9 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
           next_shuttle_fee: s.nextShuttleFee,
           monthly_fee: s.monthlyFee,
           promptpay_id: s.promptPayId,
+          bank_name: s.bankName.trim(),
+          bank_account: s.bankAccount.trim(),
+          bank_holder: s.bankHolder.trim(),
         }),
       );
     }

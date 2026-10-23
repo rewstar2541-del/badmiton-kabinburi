@@ -113,6 +113,30 @@ export function SettingsTab() {
                 />
                 {!ppOk && <span className="text-xs text-red-600">{t("ต้องเป็นตัวเลข 10, 13 หรือ 15 หลัก")}</span>}
               </label>
+              <div className="space-y-2 rounded-2xl bg-zinc-50 p-3">
+                <div className="text-sm font-medium">{t("บัญชีธนาคาร (ไม่บังคับ)")}</div>
+                {(
+                  [
+                    ["bankName", t("ชื่อธนาคาร เช่น กสิกรไทย")],
+                    ["bankAccount", t("เลขบัญชี")],
+                    ["bankHolder", t("ชื่อบัญชี")],
+                  ] as const
+                ).map(([k, ph]) => (
+                  <input
+                    key={k}
+                    className={inputClass}
+                    placeholder={ph}
+                    aria-label={ph}
+                    maxLength={60}
+                    inputMode={k === "bankAccount" ? "numeric" : "text"}
+                    value={s[k]}
+                    onChange={(e) => {
+                      setSaved(false);
+                      setS({ ...s, [k]: e.target.value });
+                    }}
+                  />
+                ))}
+              </div>
               <Button variant="primary" type="submit" className="w-full">
                 {saved ? t("บันทึกแล้ว ✓") : t("บันทึก")}
               </Button>
