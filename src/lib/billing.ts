@@ -146,3 +146,37 @@ export function markPaid(days: Day[], date: string, playerId: string | string[],
         },
   );
 }
+
+export interface Owing {
+  /** คนที่ต้องจ่าย (แขกรวมอยู่ในยอดของคนพามา) */
+  playerId: string;
+  total: number;
+  /** ยอดค้างแยกตามวัน เก่าสุดก่อน (รวมยอดแขกของวันนั้นแล้ว) */
+  days: { date: string; amount: number }[];
+}
+
+/** ยอดค้างจ่ายของทุกคนจนถึงวัน `upTo` เรียงจากค้างมากไปน้อย */
+export function owingList(days: Day[], upTo: string, players: Player[], s: Settings, monthly: MonthlyPayments): Owing[] {
+  const byId = new Map(players.map((p) => [p.id, p]));
+  // แขกไม่จ่ายเอง ยอดไปรวมที่คนพามา (ถ้าคนพามายังอยู่)
+  const payerOf = (p: Player) => (p.guestOf && byId.has(p.guestOf) ? p.guestOf : p.id);
+  const owe = new Map<string, Map<string, number>>();
+  for (const d of days) {
+    if (d.date > upTo) continue;
+    for (const c of d.checkIns) {
+      const p = byId.get(c.playerId);
+      if (!p || c.paidAt) continue;
+      const amount = dayAmount(d, p, s, monthly).amount;
+      if (amount <= 0) continue;
+      const m = owe.get(payerOf(p)) ?? new Map<string, number>();
+      m.set(d.date, (m.get(d.date) ?? 0) + amount);
+      owe.set(payerOf(p), m);
+    }
+  }
+  return [...owe]
+    .map(([playerId, m]) => {
+      const list = [...m].map(([date, amount]) => ({ date, amount })).sort((a, b) => a.date.localeCompare(b.date));
+      return { playerId, total: list.reduce((sum, x) => sum + x.amount, 0), days: list };
+    })
+    .sort((a, b) => b.total - a.total || a.days[0].date.localeCompare(b.days[0].date));
+}

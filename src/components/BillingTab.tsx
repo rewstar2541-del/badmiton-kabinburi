@@ -8,6 +8,7 @@ import { monthOf, type Drink, type Player } from "@/lib/types";
 import { AnnualView } from "./Annual";
 import { ExportReport } from "./ExportReport";
 import { Ledger } from "./Ledger";
+import { OwingView } from "./Owing";
 import { StockCard } from "./Stock";
 import { PayQr } from "./PayQr";
 import { SlipReview } from "./Slips";
@@ -482,14 +483,15 @@ function MonthlyView() {
 }
 
 export function BillingTab() {
-  const [view, setView] = useState<"daily" | "monthly" | "annual">("daily");
+  const [view, setView] = useState<"daily" | "owing" | "monthly" | "annual">("daily");
   return (
     <div className="space-y-4">
       <SectionTitle>{t("คิดเงิน")}</SectionTitle>
-      <div className="grid grid-cols-3 gap-1 rounded-2xl bg-white p-1 shadow-sm">
+      <div className="grid grid-cols-4 gap-1 rounded-2xl bg-white p-1 shadow-sm">
         {(
           [
             ["daily", "วันนี้"],
+            ["owing", "ค้างจ่าย"],
             ["monthly", "รายเดือน"],
             ["annual", "รายปี"],
           ] as const
@@ -503,7 +505,7 @@ export function BillingTab() {
           </button>
         ))}
       </div>
-      {view === "daily" ? <DailyView /> : view === "monthly" ? <MonthlyView /> : <AnnualView />}
+      {view === "daily" ? <DailyView /> : view === "owing" ? <OwingView /> : view === "monthly" ? <MonthlyView /> : <AnnualView />}
     </div>
   );
 }

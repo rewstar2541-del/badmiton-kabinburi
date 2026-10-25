@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { billFor, datesToFreeze, markPaid, shuttleFee } from "../billing";
+import { billFor, datesToFreeze, markPaid, owingList, shuttleFee } from "../billing";
 import { prepare, reducer, EMPTY_STATE, type State } from "../state";
 import { DEFAULT_SETTINGS as S, addYears, annualStatus, type Day, type Game, type MonthlyPayments, type Player } from "../types";
 
@@ -74,6 +74,27 @@ describe("billing", () => {
   it("แอดมินยกเลิกสถานะรายเดือน ระบบกลับมาคิดค่าสนาม", () => {
     const d = day("2026-10-04", []);
     expect(billFor([d], d, monthly, S, { "2026-10": {} }).courtFee).toBe(40);
+  });
+});
+
+describe("ใครค้างจ่าย", () => {
+  it("รวมทุกวันที่ยังไม่จ่าย เรียงมากไปน้อย แขกรวมในยอดคนพามา", () => {
+    const guest: Player = { id: "g", name: "แขก", level: 3, guestOf: "m" };
+    const d1 = day("2026-10-01", [game("g1", 1)]);
+    const d2: Day = { ...day("2026-10-04", [game("g2", 1, ["d", "m", "g", "y"])]), checkIns: [{ playerId: "d", at: 0, paidAt: 5 }, { playerId: "m", at: 0 }, { playerId: "g", at: 0 }] };
+    const later = day("2026-10-09", [game("g3", 1)]);
+    const list = owingList([d1, d2, later], "2026-10-04", [daily, monthly, guest], S, M);
+    // รายวัน: ค้างแค่ 1 ต.ค. (40 + 30 + 15) วันที่ 4 จ่ายแล้ว
+    // รายเดือน: 30 + 30 + แขกวันที่ 4 (40 + 30) = 130
+    expect(list).toEqual([
+      { playerId: "m", total: 130, days: [{ date: "2026-10-01", amount: 30 }, { date: "2026-10-04", amount: 100 }] },
+      { playerId: "d", total: 85, days: [{ date: "2026-10-01", amount: 85 }] },
+    ]);
+  });
+
+  it("จ่ายครบแล้วไม่ขึ้นในรายชื่อ", () => {
+    const d = day("2026-10-01", [game("g1", 1)], true);
+    expect(owingList([d], "2026-10-01", [daily, monthly], S, M)).toEqual([]);
   });
 });
 
