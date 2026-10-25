@@ -11,6 +11,7 @@ import { BirthdayEdit } from "./Birthday";
 import { Hero, LangChoices, Rows, guideHref, useSheets } from "./Home";
 import { PlayerLineAlerts } from "./LineCard";
 import { useTourney } from "@/lib/tourneyStore";
+import { AnnualInfo } from "./Annual";
 import { PlanSwitch, goToTab } from "./Membership";
 import { BadgesCard, MonthCard, PartnerPrefs } from "./MyExtras";
 import { PartnerStats } from "./PartnerStats";
@@ -48,9 +49,10 @@ export function ProfileTab() {
             <span className="truncate font-display text-2xl font-semibold">{player.name}</span>
             <LevelBadge level={player.level} />
           </div>
-          <div className="text-[15px] text-zinc-600">{monthly ? t("สมาชิกรายเดือน {month}", { month: monthOf(date) }) : t("จ่ายรายวัน")}</div>
+          <div className="text-[15px] text-zinc-600">{bill.annualMember ? t("สมาชิกรายปี") : monthly ? t("สมาชิกรายเดือน {month}", { month: monthOf(date) }) : t("จ่ายรายวัน")}</div>
         </div>
       </div>
+      <AnnualInfo player={player} />
       {player.bio && (
         <p className="px-1 text-[15px] whitespace-pre-line text-zinc-700">
           <Auto text={player.bio} />

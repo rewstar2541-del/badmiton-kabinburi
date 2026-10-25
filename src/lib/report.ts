@@ -36,7 +36,7 @@ export interface MonthReport {
   expenses: Expense[];
   expenseBy: Record<ExpenseCategory, number>;
   /** รวมทั้งเดือน: ยอดรายวัน + ค่าสมาชิกรายเดือน, รายจ่าย และกำไร (รายรับที่เก็บได้แล้ว - รายจ่าย) */
-  totals: DayRow & { monthlyFees: number; income: number; expenses: number; profit: number };
+  totals: DayRow & { monthlyFees: number; annualFees: number; income: number; expenses: number; profit: number };
 }
 
 /** รายงานรายเดือนสำหรับทำบัญชี: แยกรายวัน รายคน และค่าสมาชิกรายเดือน */
@@ -102,7 +102,8 @@ export function monthReport(state: State, month: string): MonthReport {
   const expenseBy = Object.fromEntries(EXPENSE_CATEGORIES.map((c) => [c.value, 0])) as Record<ExpenseCategory, number>;
   for (const e of expenses) expenseBy[e.category] += e.amount;
   const expenseTotal = expenses.reduce((s, e) => s + e.amount, 0);
-  const income = sum("received") + monthlyTotal;
+  const annualTotal = (state.annualPayments ?? []).filter((x) => monthOf(x.paidOn) === month).reduce((s, x) => s + x.amount, 0);
+  const income = sum("received") + monthlyTotal + annualTotal;
   return {
     month,
     days,
@@ -122,6 +123,7 @@ export function monthReport(state: State, month: string): MonthReport {
       received: sum("received"),
       unpaid: sum("unpaid"),
       monthlyFees: monthlyTotal,
+      annualFees: annualTotal,
       income,
       expenses: expenseTotal,
       profit: income - expenseTotal,

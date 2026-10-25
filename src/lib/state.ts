@@ -1,6 +1,6 @@
 import { clearState, type ClearKind } from "./clear";
 import { guestsOf, markPaid } from "./billing";
-import { DEFAULT_SETTINGS, type Day, type DayPrices, type Expense, type Game, type PairStatus, type Poll, type ShuttleStock, type BoardPost, type Notice, type Level, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
+import { DEFAULT_SETTINGS, type Day, type DayPrices, type Expense, type Game, type PairStatus, type Poll, type ShuttleStock, type BoardPost, type Notice, type Level, type AnnualPayment, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
 
 export interface State {
   players: Player[];
@@ -11,6 +11,8 @@ export interface State {
   closed: Record<string, string>;
   /** ค่ารายเดือนที่จ่ายจริง เดือน -> ผู้เล่น -> บาท (ไม่มี = ราคาปัจจุบัน) */
   monthlyAmounts?: Record<string, Record<string, number>>;
+  /** ประวัติการจ่ายค่าสมาชิกรายปี (แอดมินเท่านั้น) */
+  annualPayments?: AnnualPayment[];
   /** รายจ่ายของก๊วน (แอดมินเท่านั้น) */
   expenses?: Expense[];
   /** สต็อกลูกแบด (แอดมินเท่านั้น) */
@@ -55,6 +57,12 @@ export type Action =
   | { type: "unmarkPaid"; date: string; playerId: string }
   | { type: "setMonthlyPaid"; month: string; playerId: string; paid: boolean; _at: number }
   /** freeze: เก็บราคาเดิมไว้กับวันก่อนๆ ตอนเปลี่ยนราคา บิลเก่าจะได้ไม่เปลี่ยนตาม */
+  /** บันทึกจ่ายค่าสมาชิกรายปี กำหนดช่วงวันใช้งานเอง (until รวมวันนั้น) */
+  | { type: "recordAnnual"; playerId: string; paidOn: string; from: string; until: string; amount: number; _id: string }
+  /** แก้วันหมดอายุสมาชิกรายปีโดยไม่บันทึกการจ่ายเพิ่ม */
+  | { type: "setAnnualExpiry"; playerId: string; until: string }
+  /** ยกเลิกสมาชิกรายปี (เก็บประวัติการจ่ายไว้) */
+  | { type: "clearAnnual"; playerId: string }
   | { type: "updateSettings"; settings: Settings; freeze?: { dates: string[]; prices: DayPrices } }
   /** title: undefined = คงหัวข้อเดิม, null = จัดก๊วน (ค่าเริ่มต้น) */
   | { type: "setAnnouncement"; date: string; message: string | null; title?: string | null; fee?: number | null; cap?: number | null }
@@ -112,6 +120,7 @@ export function normalizeBackup(raw: unknown): State {
     polls: Array.isArray(data.polls) ? data.polls : [],
     board: Array.isArray(data.board) ? data.board : [],
     notices: Array.isArray(data.notices) ? data.notices : [],
+    annualPayments: Array.isArray(data.annualPayments) ? data.annualPayments : [],
   };
 }
 
@@ -254,6 +263,16 @@ export function reducer(state: State, a: Action): State {
         monthlyAmounts: { ...state.monthlyAmounts, [a.month]: amounts },
       };
     }
+    case "recordAnnual":
+      return {
+        ...state,
+        players: state.players.map((p) => (p.id === a.playerId ? { ...p, annualFrom: a.from, annualUntil: a.until } : p)),
+        annualPayments: [...(state.annualPayments ?? []), { id: a._id, playerId: a.playerId, paidOn: a.paidOn, from: a.from, until: a.until, amount: a.amount }],
+      };
+    case "setAnnualExpiry":
+      return { ...state, players: state.players.map((p) => (p.id === a.playerId && p.annualUntil ? { ...p, annualUntil: a.until } : p)) };
+    case "clearAnnual":
+      return { ...state, players: state.players.map((p) => (p.id === a.playerId ? { ...p, annualFrom: undefined, annualUntil: undefined } : p)) };
     case "updateSettings": {
       const f = a.freeze;
       const dates = new Set(f?.dates ?? []);

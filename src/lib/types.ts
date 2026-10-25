@@ -48,6 +48,37 @@ export interface Player {
   plan?: Plan;
   /** วันเกิด MM-DD (ไม่เก็บปี) */
   birthday?: string;
+  /** สมาชิกรายปี: ใช้ได้ตั้งแต่วันนี้ถึงวันนี้ (YYYY-MM-DD รวมทั้งสองวัน) ไม่คิดค่าสนามในช่วงนี้ */
+  annualFrom?: string;
+  annualUntil?: string;
+}
+
+/** การจ่ายค่าสมาชิกรายปี (แอดมินเท่านั้น) ใช้ดูประวัติและรวมเป็นรายรับของเดือนที่จ่าย */
+export interface AnnualPayment {
+  id: string;
+  playerId: string;
+  /** วันที่จ่าย YYYY-MM-DD */
+  paidOn: string;
+  from: string;
+  until: string;
+  amount: number;
+}
+
+/** เป็นสมาชิกรายปีอยู่ในวันนั้นไหม */
+export function isAnnualMember(player: Pick<Player, "annualFrom" | "annualUntil"> | undefined, date: string): boolean {
+  return Boolean(player?.annualUntil && date <= player.annualUntil && (!player.annualFrom || date >= player.annualFrom));
+}
+
+/** วันที่ + ปี (YYYY-MM-DD) เช่น จ่าย 2026-01-01 ใช้ได้ถึง 2027-01-01 (29 ก.พ. เลื่อนเป็น 28 ก.พ.) */
+export function addYears(date: string, years: number): string {
+  const [y, m, d] = date.split("-").map(Number);
+  const last = new Date(Date.UTC(y + years, m, 0)).getUTCDate();
+  return `${y + years}-${String(m).padStart(2, "0")}-${String(Math.min(d, last)).padStart(2, "0")}`;
+}
+
+/** จำนวนวันจาก a ถึง b (b - a) */
+export function daysBetween(a: string, b: string): number {
+  return Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
 }
 
 /** ข่าวประกาศทั่วไป (ไม่ผูกกับวันเล่น) แสดงบนสุดจนถึงวันที่กำหนด */
@@ -247,4 +278,18 @@ export interface Expense {
   shuttles?: number;
   /** เวลาที่ลง ใช้เทียบกับเวลานับสต็อก */
   at?: number;
+}
+
+/** เตือนสมาชิกรายปีใกล้หมดอายุเมื่อเหลือไม่เกินกี่วัน */
+export const ANNUAL_SOON_DAYS = 30;
+
+export type AnnualStatus = { kind: "active" | "soon" | "expired"; until: string; daysLeft: number };
+
+/** สถานะสมาชิกรายปี ณ วันนั้น (undefined = ไม่เคยเป็น) หมดอายุแล้วยังคืนค่า expired ให้แอดมินตามต่ออายุได้ */
+export function annualStatus(player: Pick<Player, "annualFrom" | "annualUntil"> | undefined, date: string): AnnualStatus | undefined {
+  if (!player?.annualUntil) return undefined;
+  const daysLeft = daysBetween(date, player.annualUntil);
+  if (daysLeft < 0) return { kind: "expired", until: player.annualUntil, daysLeft };
+  if (player.annualFrom && date < player.annualFrom) return undefined;
+  return { kind: daysLeft <= ANNUAL_SOON_DAYS ? "soon" : "active", until: player.annualUntil, daysLeft };
 }

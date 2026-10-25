@@ -1,9 +1,11 @@
-import { isMonthlyPaid, type Day, type DayPrices, type MonthlyPayments, type Player, type Settings } from "./types";
+import { isAnnualMember, isMonthlyPaid, type Day, type DayPrices, type MonthlyPayments, type Player, type Settings } from "./types";
 
 export interface Bill {
   playerId: string;
   /** จ่ายรายเดือนของเดือนนั้นแล้ว จึงไม่คิดค่าสนาม */
   monthlyMember: boolean;
+  /** เป็นสมาชิกรายปีในวันนั้น จึงไม่คิดค่าสนาม */
+  annualMember: boolean;
   courtFee: number;
   shuttleCount: number;
   shuttleFee: number;
@@ -60,10 +62,11 @@ export function dayAmount(
   monthly: MonthlyPayments,
 ): Omit<Bill, "carriedOver" | "guests" | "total" | "paid"> & { amount: number } {
   const monthlyMember = isMonthlyPaid(monthly, day.date, player.id);
+  const annualMember = isAnnualMember(player, day.date);
   const p = pricesFor(day, s);
   const ci = day.checkIns.find((c) => c.playerId === player.id);
   // ยังไม่เช็คอิน = ยังไม่ได้มาเล่นวันนี้ ไม่คิดค่าสนาม
-  const courtFee = !ci ? 0 : (ci.courtFee ?? (monthlyMember ? 0 : p.courtFee));
+  const courtFee = !ci ? 0 : (ci.courtFee ?? (monthlyMember || annualMember ? 0 : p.courtFee));
   const shuttleCount = shuttleCountFor(day, player.id);
   const sFee = ci?.shuttleFee ?? shuttleFee(shuttleCount, p);
   const drinkFee = day.drinks
@@ -72,6 +75,7 @@ export function dayAmount(
   return {
     playerId: player.id,
     monthlyMember,
+    annualMember,
     courtFee,
     shuttleCount,
     shuttleFee: sFee,

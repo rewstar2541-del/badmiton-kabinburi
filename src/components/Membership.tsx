@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { State } from "@/lib/state";
 import { useStore, useToday } from "@/lib/store";
-import { isMonthlyPaid, monthOf, type Plan, type Player } from "@/lib/types";
+import { isAnnualMember, isMonthlyPaid, monthOf, type Plan, type Player } from "@/lib/types";
 import { t } from "@/lib/i18n";
 import { PayQr } from "./PayQr";
 import { savedPin } from "./PickMe";
@@ -16,7 +16,7 @@ export const MONTHLY_DUE_DAY = 5;
 
 /** สมาชิกรายเดือนที่ยังไม่จ่ายของเดือนนี้ */
 export function monthlyDue(state: State, player: Player | undefined, date: string): boolean {
-  return Boolean(player && !player.guestOf && player.plan === "monthly" && !isMonthlyPaid(state.monthly, date, player.id));
+  return Boolean(player && !player.guestOf && player.plan === "monthly" && !isAnnualMember(player, date) && !isMonthlyPaid(state.monthly, date, player.id));
 }
 
 /** ถึงรอบจ่ายแล้ว (ตั้งแต่วันที่ 5) ใช้แจ้งเตือนในหน้าวันนี้ */

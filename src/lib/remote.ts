@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Action, SelfAction, State } from "./state";
 import { endOf, startOf, type ClearKind } from "./clear";
-import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Notice, type Gender, type Level, type MonthlyPayments, type Plan, type Player, type Settings } from "./types";
+import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Notice, type Gender, type Level, type AnnualPayment, type MonthlyPayments, type Plan, type Player, type Settings } from "./types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -26,7 +26,10 @@ export interface Rows {
     bio?: string | null;
     level_request?: number | null;
     birthday?: string | null;
+    annual_from?: string | null;
+    annual_until?: string | null;
   }[];
+  annual?: { id: string; player_id: string; paid_on: string; from_date: string; until_date: string; amount: number }[];
   checkins: {
     date: string;
     player_id: string;
@@ -93,6 +96,7 @@ export function rowsToState(r: Rows): State {
     ...(p.bio ? { bio: p.bio } : {}),
     ...(p.level_request ? { levelRequest: p.level_request as Level } : {}),
     ...(p.birthday ? { birthday: p.birthday } : {}),
+    ...(p.annual_until ? { annualUntil: p.annual_until, ...(p.annual_from ? { annualFrom: p.annual_from } : {}) } : {}),
   }));
 
   const days = new Map<string, Day>();
@@ -177,6 +181,9 @@ export function rowsToState(r: Rows): State {
     days: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)),
     monthly,
     monthlyAmounts,
+    annualPayments: (r.annual ?? []).map(
+      (a): AnnualPayment => ({ id: a.id, playerId: a.player_id, paidOn: a.paid_on, from: a.from_date, until: a.until_date, amount: Number(a.amount) }),
+    ),
     expenses: (r.expenses ?? []).map((e) => ({
       id: e.id,
       date: e.date,
@@ -254,6 +261,7 @@ export const TABLE_OF: Record<string, TableKey> = {
   games: "games",
   drinks: "drinks",
   monthly_payments: "monthly",
+  annual_payments: "annual",
   settings: "settings",
   announcements: "announcements",
   signups: "signups",
@@ -277,12 +285,13 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
     if (data?.[0]?.date) since = data[0].date;
   }
   const fetchers: { [K in TableKey]: () => Promise<Rows[K]> } = {
-    players: () => all(() => db.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of,pending,plan,bio,level_request,birthday").order("id")),
+    players: () => all(() => db.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of,pending,plan,bio,level_request,birthday,annual_from,annual_until").order("id")),
     checkins: () => all(() => db.from("checkins").select("date,player_id,at,paid_at,resting,court_fee,shuttle_fee").gte("date", since).order("date").order("player_id")),
     games: () => all(() => db.from("games").select("id,date,court,player_ids,started_at,ended_at,shuttles,winner").gte("date", since).order("id")),
     // ค่าน้ำ ค่ารายเดือน และสลิป ผู้เล่นทั่วไปอ่านไม่ได้ (โหลดของตัวเองแยกผ่าน my_private)
     drinks: async () => (isAdmin ? all(() => db.from("drinks").select("id,date,player_id,amount,note").order("id")) : []),
     monthly: async () => (isAdmin ? all(() => db.from("monthly_payments").select("month,player_id,paid_at,amount").order("month").order("player_id")) : []),
+    annual: async () => (isAdmin ? all(() => db.from("annual_payments").select("id,player_id,paid_on,from_date,until_date,amount").order("paid_on").order("id")) : []),
     settings: async () => {
       const r = await all(() =>
         db.from("settings").select("court_count,court_fee,first_shuttle_fee,next_shuttle_fee,monthly_fee,promptpay_id,bank_name,bank_account,bank_holder").eq("id", 1),
@@ -350,6 +359,8 @@ function playerRow(p: Omit<Player, "id"> & { id: string }) {
     bio: p.bio ?? null,
     level_request: p.levelRequest ?? null,
     birthday: p.birthday ?? null,
+    annual_from: p.annualFrom ?? null,
+    annual_until: p.annualUntil ?? null,
   };
 }
 
@@ -441,6 +452,15 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       return a.paid
         ? check(await db.from("monthly_payments").upsert({ month: a.month, player_id: a.playerId, paid_at: iso(a._at) }))
         : check(await db.from("monthly_payments").delete().eq("month", a.month).eq("player_id", a.playerId));
+    case "recordAnnual":
+      check(
+        await db.from("annual_payments").insert({ id: a._id, player_id: a.playerId, paid_on: a.paidOn, from_date: a.from, until_date: a.until, amount: a.amount }),
+      );
+      return check(await db.from("players").update({ annual_from: a.from, annual_until: a.until }).eq("id", a.playerId));
+    case "setAnnualExpiry":
+      return check(await db.from("players").update({ annual_until: a.until }).eq("id", a.playerId).not("annual_until", "is", null));
+    case "clearAnnual":
+      return check(await db.from("players").update({ annual_from: null, annual_until: null }).eq("id", a.playerId));
     case "updateSettings": {
       const s = a.settings;
       if (a.freeze?.dates.length) {
@@ -637,6 +657,12 @@ async function importState(db: SupabaseClient, s: State) {
   const closed = Object.entries(s.closed ?? {}).map(([date, reason]) => ({ date, reason }));
   if (closed.length) check(await db.from("closed_days").upsert(closed));
   if (s.expenses?.length) check(await db.from("expenses").upsert(s.expenses));
+  if (s.annualPayments?.length)
+    check(
+      await db.from("annual_payments").upsert(
+        s.annualPayments.map((x) => ({ id: x.id, player_id: x.playerId, paid_on: x.paidOn, from_date: x.from, until_date: x.until, amount: x.amount })),
+      ),
+    );
   await persist(db, { type: "updateSettings", settings: s.settings });
 }
 
