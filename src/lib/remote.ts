@@ -895,6 +895,18 @@ export async function testLine(db: SupabaseClient): Promise<string | null> {
   return (data as { error?: string })?.error ?? null;
 }
 
+/** แอดมินแจ้งเลื่อน/งดเล่น เข้า LINE ของทุกคนที่ลงชื่อ/เช็คอินวันนั้น */
+export async function sendLineNotice(
+  db: SupabaseClient,
+  date: string,
+  kind: "postpone" | "cancel",
+  reason: string,
+): Promise<{ sent?: number; noLine?: string[]; error?: string }> {
+  const { data, error } = await db.functions.invoke("line", { body: { action: "notice", date, kind, reason } });
+  if (error) return { error: error.message };
+  return data as { sent?: number; noLine?: string[]; error?: string };
+}
+
 // ---------- ล็อกอินผู้เล่น ----------
 
 export type LoginResult = { token?: string; pending?: boolean; error?: string };
