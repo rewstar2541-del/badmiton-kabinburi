@@ -37,6 +37,7 @@ export function ExportReport({ month }: { month: string }) {
         [bold(tot.profit >= 0 ? t("กำไร") : t("ขาดทุน")), money(Math.abs(tot.profit))],
         [],
         [t("ค่าสมาชิกรายเดือน"), money(tot.monthlyFees)],
+        [t("ค่าสมาชิกรายปี"), money(tot.annualFees)],
         [t("ค่าสนามรายวัน"), money(tot.courtFee)],
         [t("ค่าลูก"), money(tot.shuttleFee)],
         [t("ค่าน้ำ"), money(tot.drinks)],

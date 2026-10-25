@@ -7,6 +7,7 @@ import { PayQr } from "./PayQr";
 import { PendingNotice, PickMe, useMe } from "./PickMe";
 import { SelfPay } from "./SelfPay";
 import { SlipUpload } from "./Slips";
+import { AnnualInfo } from "./Annual";
 import { MonthlyDueCard, PlanChoice } from "./Membership";
 import { useState } from "react";
 import { savedPin } from "./PickMe";
@@ -32,6 +33,7 @@ export function MyBillTab() {
   return (
     <div className="space-y-4">
       <PlanChoice player={player} />
+      <AnnualInfo player={player} />
       <MonthlyDueCard player={player} />
 
       {!checkedIn && bill.total === 0 ? (
@@ -44,7 +46,7 @@ export function MyBillTab() {
             <div className="mt-4 space-y-1.5 text-sm">
               {[
                 [
-                  (monthly ? t("ค่าสนาม (จ่ายรายเดือนแล้ว)") : t("ค่าสนาม")) + (bill.courtAdjusted ? ` (${t("แอดมินแก้ยอด")})` : ""),
+                  (bill.annualMember ? t("ค่าสนาม (สมาชิกรายปี)") : monthly ? t("ค่าสนาม (จ่ายรายเดือนแล้ว)") : t("ค่าสนาม")) + (bill.courtAdjusted ? ` (${t("แอดมินแก้ยอด")})` : ""),
                   bill.courtFee,
                 ],
                 [

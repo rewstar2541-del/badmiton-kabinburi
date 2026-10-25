@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { billFor, datesToFreeze, markPaid, shuttleFee } from "../billing";
 import { prepare, reducer, EMPTY_STATE, type State } from "../state";
-import { DEFAULT_SETTINGS as S, type Day, type Game, type MonthlyPayments, type Player } from "../types";
+import { DEFAULT_SETTINGS as S, addYears, annualStatus, type Day, type Game, type MonthlyPayments, type Player } from "../types";
 
 const daily: Player = { id: "d", name: "รายวัน", level: 3 };
 const monthly: Player = { id: "m", name: "รายเดือน", level: 3 };
@@ -140,5 +140,40 @@ describe("เก็บราคาเดิมของวันนี้ถ้�
   it("วันนี้มีคนจ่ายแล้ว ราคาใหม่เริ่มพรุ่งนี้", () => {
     expect(datesToFreeze([day("2026-10-04", [], true)], "2026-10-04")).toEqual(["2026-10-04"]);
     expect(datesToFreeze([day("2026-10-04", [])], "2026-10-04")).toEqual([]);
+  });
+});
+
+describe("สมาชิกรายปี", () => {
+  const day: Day = { date: "2026-10-10", checkIns: [{ playerId: "a", at: 1 }], games: [], drinks: [] };
+  const base = { id: "a", name: "ก", level: 3 as const };
+  it("ไม่คิดค่าสนามในช่วงสมาชิก คิดอีกครั้งเมื่อหมดอายุ", () => {
+    const m = { ...base, annualFrom: "2026-01-01", annualUntil: "2026-10-10" };
+    expect(billFor([day], day, m, S, {})).toMatchObject({ courtFee: 0, annualMember: true });
+    expect(billFor([day], day, { ...m, annualUntil: "2026-10-09" }, S, {})).toMatchObject({ courtFee: 40, annualMember: false });
+  });
+  it("วันหมดอายุตั้งเองได้ และบวกปีไม่ล้นเดือน", () => {
+    expect(addYears("2026-01-01", 1)).toBe("2027-01-01");
+    expect(addYears("2028-02-29", 1)).toBe("2029-02-28");
+  });
+  it("สถานะใกล้หมดอายุ", () => {
+    expect(annualStatus({ annualUntil: "2026-10-30" }, "2026-10-10")?.kind).toBe("soon");
+    expect(annualStatus({ annualUntil: "2027-10-10" }, "2026-10-10")?.kind).toBe("active");
+    expect(annualStatus({ annualUntil: "2026-10-01" }, "2026-10-10")?.kind).toBe("expired");
+    expect(annualStatus({}, "2026-10-10")).toBeUndefined();
+  });
+});
+
+describe("ต่ออายุสมาชิกรายปี", () => {
+  it("ตรึงค่าสนามวันเก่าที่หลุดจากช่วงใหม่ ไม่ให้บิลย้อนหลังเปลี่ยน", () => {
+    const old: Day = { date: "2026-03-01", checkIns: [{ playerId: "a", at: 1 }], games: [], drinks: [] };
+    const st: State = { ...EMPTY_STATE, players: [{ id: "a", name: "ก", level: 3, annualFrom: "2026-01-01", annualUntil: "2026-12-31" }], days: [old] };
+    const next = reducer(st, { type: "recordAnnual", playerId: "a", paidOn: "2027-02-01", from: "2027-02-01", until: "2028-02-01", amount: 1, _id: "x", prev: { from: "2026-01-01", until: "2026-12-31" } });
+    const p = next.players[0];
+    expect(billFor(next.days, next.days[0], p, S, {}).courtFee).toBe(0);
+    expect(next.annualPayments).toHaveLength(1);
+  });
+  it("ลบรายการจ่ายได้", () => {
+    const st: State = { ...EMPTY_STATE, annualPayments: [{ id: "x", playerId: "a", paidOn: "2026-01-01", from: "2026-01-01", until: "2027-01-01", amount: 1 }] };
+    expect(reducer(st, { type: "removeAnnualPayment", id: "x" }).annualPayments).toEqual([]);
   });
 });

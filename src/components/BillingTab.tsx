@@ -5,6 +5,7 @@ import { billFor, dayAmount, shuttleFormula, type Bill } from "@/lib/billing";
 import { locale, t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
 import { monthOf, type Drink, type Player } from "@/lib/types";
+import { AnnualView } from "./Annual";
 import { ExportReport } from "./ExportReport";
 import { Ledger } from "./Ledger";
 import { StockCard } from "./Stock";
@@ -481,15 +482,16 @@ function MonthlyView() {
 }
 
 export function BillingTab() {
-  const [view, setView] = useState<"daily" | "monthly">("daily");
+  const [view, setView] = useState<"daily" | "monthly" | "annual">("daily");
   return (
     <div className="space-y-4">
       <SectionTitle>{t("คิดเงิน")}</SectionTitle>
-      <div className="grid grid-cols-2 gap-1 rounded-2xl bg-white p-1 shadow-sm">
+      <div className="grid grid-cols-3 gap-1 rounded-2xl bg-white p-1 shadow-sm">
         {(
           [
             ["daily", "วันนี้"],
             ["monthly", "รายเดือน"],
+            ["annual", "รายปี"],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -501,7 +503,7 @@ export function BillingTab() {
           </button>
         ))}
       </div>
-      {view === "daily" ? <DailyView /> : <MonthlyView />}
+      {view === "daily" ? <DailyView /> : view === "monthly" ? <MonthlyView /> : <AnnualView />}
     </div>
   );
 }

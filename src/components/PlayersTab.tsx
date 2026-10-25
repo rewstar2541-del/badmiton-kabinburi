@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { listClaims, resolveClaim, supabase, type LineClaim } from "@/lib/remote";
 import { resizeToSquare } from "@/lib/image";
 import { today, useStore } from "@/lib/store";
-import { DEFAULT_LEVEL, LEVELS, isMonthlyPaid, type Gender, type Level, type Player } from "@/lib/types";
+import { DEFAULT_LEVEL, LEVELS, isAnnualMember, isMonthlyPaid, type Gender, type Level, type Player } from "@/lib/types";
 import { Avatar, Button, Card, Icon, LevelBadge, SearchInput, SectionTitle, inputClass } from "./ui";
 import { cameSince, daysBefore, rosterCompare, visibleRoster, visitCounts } from "@/lib/roster";
 import { LevelGroups, RosterSortSwitch, useRosterSort } from "./RosterSort";
@@ -226,6 +226,7 @@ export function PlayersTab() {
                         sort === "often" && t("มา {n} ครั้ง/30 วัน", { n: counts.get(p.id) ?? 0 }),
                         p.guestOf && t("แขกของ {name}", { name: state.players.find((h) => h.id === p.guestOf)?.name ?? "?" }),
                         admin.enabled && !admin.emailOf.has(p.id) && !p.guestOf && t("ยังไม่ได้ผูก LINE"),
+                        isAnnualMember(p, date) && t("สมาชิกรายปี"),
                         isMonthlyPaid(state.monthly, date, p.id) && t("รายเดือนเดือนนี้"),
                       ].filter(Boolean).join(" · ") ||
                         " "}
