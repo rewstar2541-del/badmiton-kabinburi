@@ -1097,7 +1097,9 @@ export const zh: Record<string, string> = {
   "เปลี่ยนรูปใน LINE แล้ว กดเพื่อดึงรูปใหม่": "已在 LINE 换头像？点此获取",
   "ตีก๊วน": "羽毛球活动",
   "เพิ่มลงปฏิทินในมือถือ": "添加到手机日历",
-  "Apple / ไฟล์ .ics": "Apple / .ics 文件",
   "บันทึกวันตีก๊วนทั้งหมดลงปฏิทิน ({n} วัน)": "将全部活动存入日历（{n} 天）",
-  "โหลดไฟล์ .ics แล้วเปิดด้วย Apple Calendar หรือนำเข้า Google Calendar": "下载 .ics 文件，用 Apple 日历打开或导入 Google 日历",
+  "iPhone / Apple": "iPhone / Apple",
+  "iPhone: แตะไฟล์ที่โหลดแล้วกด เพิ่ม · Android: ใช้ปุ่ม Google Calendar": "iPhone：点下载的文件再点添加 · Android：使用 Google Calendar 按钮",
+  "ได้ไฟล์ .ics ใน iPhone แตะไฟล์แล้วกด เพิ่มทั้งหมด ส่วน Google Calendar นำเข้าไฟล์ได้ทางคอมพิวเตอร์ ในมือถือ Android ให้แตะวันในปฏิทินแล้วกด Google Calendar ทีละวัน": "下载 .ics 文件。iPhone 上点文件选择全部添加；Google 日历可在电脑上导入；Android 手机请点日历中的日期，逐天使用 Google Calendar",
+  "ตารางอาจเปลี่ยน ดูในแอพก่อนไป": "日程可能变动，出发前请在应用中确认：",
 };

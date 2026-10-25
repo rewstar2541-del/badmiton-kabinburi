@@ -45,7 +45,7 @@ function fold(line: string) {
   return out.join("\r\n ");
 }
 
-/** ไฟล์ .ics ที่ Apple Calendar / Google Calendar นำเข้าได้ (UID ตามวัน นำเข้าซ้ำจะอัพเดทแทนการเพิ่มซ้ำ) */
+/** ไฟล์ .ics ที่ Apple Calendar / Google Calendar นำเข้าได้ (UID ตามวัน ปฏิทินที่รองรับจะอัพเดทอีเว้นเดิมเมื่อนำเข้าซ้ำ) */
 export function buildIcs(items: CalItem[], calName: string, stamp = new Date()): string {
   const now = stamp.toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
   const lines = [
@@ -71,7 +71,7 @@ export function buildIcs(items: CalItem[], calName: string, stamp = new Date()):
   return lines.map(fold).join("\r\n") + "\r\n";
 }
 
-/** ลิงก์เปิดหน้าเพิ่มอีเว้นใน Google Calendar (ไม่ต้องโหลดไฟล์ ใช้ในแอพ LINE ได้) */
+/** ลิงก์เปิดหน้าเพิ่มอีเว้นใน Google Calendar (ไม่ต้องโหลดไฟล์ ใช้ได้ทั้ง Android และ iPhone) */
 export function googleCalendarUrl(it: CalItem): string {
   const p = new URLSearchParams({
     action: "TEMPLATE",

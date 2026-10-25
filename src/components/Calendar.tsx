@@ -11,7 +11,7 @@ import { savedPin, useMe } from "./PickMe";
 import { EventForm } from "./AnnounceCard";
 import { OpenOutside } from "./OpenOutside";
 import { appName } from "@/lib/brand";
-import { downloadBlob, inAppBrowser } from "@/lib/download";
+import { downloadBlob, inAppBrowser, inLineApp } from "@/lib/download";
 import { buildIcs, googleCalendarUrl, upcomingSessions, type CalItem } from "@/lib/ics";
 import type { Day } from "@/lib/types";
 
@@ -247,7 +247,7 @@ export function ClubCalendar({ bare }: { bare?: boolean } = {}) {
             ) : (
               <p className="text-sm text-zinc-600">{t("ยังไม่มีประกาศ")}</p>
             )}
-            {pickedDay && sessions.has(picked) && picked >= now && !(picked in state.closed) && <AddToCalendar day={pickedDay} />}
+            {pickedDay && sessions.has(picked) && picked >= now && !(picked in state.closed) && <AddToCalendar key={picked} day={pickedDay} />}
           </div>
         )}
 
@@ -300,8 +300,8 @@ export function ClubCalendar({ bare }: { bare?: boolean } = {}) {
 /** ข้อมูลอีเว้นสำหรับปฏิทินในมือถือ (หัวข้อตามภาษาที่เลือก) */
 function calItem(d: Day): CalItem {
   const what = d.announcementTitle ?? t("ตีก๊วน");
-  const details = [d.announcementFee ? t("คนละ {amount}", { amount: baht(d.announcementFee) }) : "", d.announcement ?? ""].filter(Boolean).join("\n");
-  return { date: d.date, title: `${eventStyle(d.announcementTitle).emoji} ${what} · ${appName()[0]}`, details: details || undefined };
+  const details = [d.announcementFee ? t("คนละ {amount}", { amount: baht(d.announcementFee) }) : "", d.announcement ?? "", `${t("ตารางอาจเปลี่ยน ดูในแอพก่อนไป")} ${window.location.origin}`].filter(Boolean).join("\n");
+  return { date: d.date, title: `${eventStyle(d.announcementTitle).emoji} ${what} · ${appName()[0]}`, details };
 }
 
 const calFile = (items: CalItem[], name: string) => {
@@ -312,14 +312,22 @@ const calFile = (items: CalItem[], name: string) => {
 function AddToCalendar({ day }: { day: Day }) {
   const [inLine, setInLine] = useState(false);
   const item = calItem(day);
+  // LINE เปิดลิงก์ใน Chrome / Safari ที่ล็อกอิน Google ไว้ (Google ไม่ให้ล็อกอินในเบราว์เซอร์ของแอพ)
+  const google = googleCalendarUrl(item) + (inLineApp() ? "&openExternalBrowser=1" : "");
   return (
     <div className="space-y-2 border-t border-zinc-200 pt-2">
-      <div className="text-xs font-semibold text-zinc-500">{t("เพิ่มลงปฏิทินในมือถือ")}</div>
+      <div className="text-sm font-semibold text-zinc-500">{t("เพิ่มลงปฏิทินในมือถือ")}</div>
       <div className="grid grid-cols-2 gap-2">
         <a
-          href={googleCalendarUrl(item)}
+          href={google}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={(e) => {
+            if (inAppBrowser() && !inLineApp()) {
+              e.preventDefault();
+              setInLine(true);
+            }
+          }}
           className="grid min-h-11 place-items-center rounded-2xl bg-white px-3 py-2 text-center text-sm font-semibold text-ink ring-1 ring-zinc-200"
         >
           Google Calendar
@@ -328,9 +336,10 @@ function AddToCalendar({ day }: { day: Day }) {
           className="min-h-11 rounded-2xl bg-white px-3 py-2 text-sm font-semibold text-ink ring-1 ring-zinc-200"
           onClick={() => (inAppBrowser() ? setInLine(true) : calFile([item], `badminton-${day.date}.ics`))}
         >
-          {t("Apple / ไฟล์ .ics")}
+          {t("iPhone / Apple")}
         </button>
       </div>
+      <p className="text-xs text-zinc-500">{t("iPhone: แตะไฟล์ที่โหลดแล้วกด เพิ่ม · Android: ใช้ปุ่ม Google Calendar")}</p>
       {inLine && <OpenOutside menu={t("ปฏิทินก๊วน")} />}
     </div>
   );
@@ -343,7 +352,7 @@ function SaveAllToCalendar() {
   const days = upcomingSessions(state.days, state.closed, today());
   if (!days.length) return null;
   return (
-    <div className="space-y-2 border-t border-zinc-100 pt-3">
+    <div className="space-y-2 border-t border-zinc-200 pt-3">
       <Button
         className="flex w-full items-center justify-center gap-2"
         onClick={() => (inAppBrowser() ? setInLine(true) : calFile(days.map(calItem), "badminton-calendar.ics"))}
@@ -351,7 +360,7 @@ function SaveAllToCalendar() {
         <Icon.Calendar width={16} height={16} />
         {t("บันทึกวันตีก๊วนทั้งหมดลงปฏิทิน ({n} วัน)", { n: days.length })}
       </Button>
-      <p className="text-[11px] text-zinc-400">{t("โหลดไฟล์ .ics แล้วเปิดด้วย Apple Calendar หรือนำเข้า Google Calendar")}</p>
+      <p className="text-xs text-zinc-500">{t("ได้ไฟล์ .ics ใน iPhone แตะไฟล์แล้วกด เพิ่มทั้งหมด ส่วน Google Calendar นำเข้าไฟล์ได้ทางคอมพิวเตอร์ ในมือถือ Android ให้แตะวันในปฏิทินแล้วกด Google Calendar ทีละวัน")}</p>
       {inLine && <OpenOutside menu={t("ปฏิทินก๊วน")} />}
     </div>
   );
