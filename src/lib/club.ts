@@ -62,7 +62,8 @@ export function birthdays(players: Player[], date: string): Player[] {
 }
 
 export interface YearSummary {
-  year: string;
+  /** ช่วงที่สรุป: ปี (YYYY) หรือเดือน (YYYY-MM) */
+  period: string;
   sessions: number;
   games: number;
   shuttles: number;
@@ -72,6 +73,8 @@ export interface YearSummary {
   topGames: { id: string; n: number }[];
   topWinners: { id: string; n: number; games: number }[];
   bestDuo?: { ids: [string, string]; wins: number; games: number };
+  /** คู่ที่จับคู่ทีมเดียวกันบ่อยที่สุด นับทุกเกมที่จบ ไม่ต้องมีผลแพ้ชนะ */
+  topDuo?: { ids: [string, string]; games: number };
   busiestDay?: { date: string; players: number };
   longestGame?: { game: Game; date: string; minutes: number };
 }
@@ -79,15 +82,16 @@ export interface YearSummary {
 const top = (m: Map<string, number>, n = 5) =>
   [...m].sort((a, b) => b[1] - a[1]).slice(0, n).map(([id, v]) => ({ id, n: v }));
 
-/** สรุปก๊วนรายปี ปี ค.ศ. (YYYY) */
-export function yearSummary(state: Pick<State, "days" | "players">, year: string): YearSummary {
+/** สรุปก๊วนและรางวัลประจำช่วง: ปี ค.ศ. (YYYY) หรือเดือน (YYYY-MM) */
+export function clubSummary(state: Pick<State, "days" | "players">, period: string): YearSummary {
   const guests = new Set(state.players.filter((p) => p.guestOf).map((p) => p.id));
-  const days = state.days.filter((d) => d.date.startsWith(year) && d.checkIns.length);
+  const days = state.days.filter((d) => d.date.startsWith(period) && d.checkIns.length);
   const visits = new Map<string, number>();
   const games = new Map<string, number>();
   const wins = new Map<string, number>();
   const decidedGames = new Map<string, number>();
   const duo = new Map<string, { wins: number; games: number }>();
+  const together = new Map<string, number>();
   let gameCount = 0;
   let shuttles = 0;
   let visitCount = 0;
@@ -111,10 +115,11 @@ export function yearSummary(state: Pick<State, "days" | "players">, year: string
         decidedGames.set(id, (decidedGames.get(id) ?? 0) + 1);
         if ((g.winner === "A") === i < 2) wins.set(id, (wins.get(id) ?? 0) + 1);
       });
-      if (!g.winner) continue;
       for (const [x, y, team] of [[g.playerIds[0], g.playerIds[1], "A"], [g.playerIds[2], g.playerIds[3], "B"]] as const) {
         if (guests.has(x) || guests.has(y)) continue;
         const key = [x, y].sort().join("|");
+        together.set(key, (together.get(key) ?? 0) + 1);
+        if (!g.winner) continue;
         const v = duo.get(key) ?? { wins: 0, games: 0 };
         v.games++;
         if (g.winner === team) v.wins++;
@@ -125,8 +130,9 @@ export function yearSummary(state: Pick<State, "days" | "players">, year: string
   const bestDuo = [...duo]
     .filter(([, v]) => v.games >= 3)
     .sort((a, b) => b[1].wins - a[1].wins || b[1].wins / b[1].games - a[1].wins / a[1].games)[0];
+  const topDuo = [...together].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1])[0];
   return {
-    year,
+    period,
     sessions: days.length,
     games: gameCount,
     shuttles,
@@ -136,6 +142,7 @@ export function yearSummary(state: Pick<State, "days" | "players">, year: string
     topGames: top(games, 3),
     topWinners: top(wins, 3).map((x) => ({ ...x, games: decidedGames.get(x.id) ?? 0 })),
     bestDuo: bestDuo ? { ids: bestDuo[0].split("|") as [string, string], ...bestDuo[1] } : undefined,
+    topDuo: topDuo ? { ids: topDuo[0].split("|") as [string, string], games: topDuo[1] } : undefined,
     busiestDay: busiest,
     longestGame: longest,
   };

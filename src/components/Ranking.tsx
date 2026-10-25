@@ -36,15 +36,15 @@ export function useHistory(from: string): { data: Pick<State, "days" | "players"
   return { data, failed: failed && !data };
 }
 
-const shift = (month: string, n: number) => {
+export const shift = (month: string, n: number) => {
   const [y, m] = month.split("-").map(Number);
   const d = new Date(y, m - 1 + n, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 };
-const monthLabel = (m: string) => new Date(m + "-01T00:00:00").toLocaleDateString(locale(), { month: "long", year: "numeric" });
+export const monthLabel = (m: string) => new Date(m + "-01T00:00:00").toLocaleDateString(locale(), { month: "long", year: "numeric" });
 
 /** ตารางอันดับรายเดือน (ทุกคนเห็น) */
-export function RankingCard({ onYear }: { onYear?: () => void }) {
+export function RankingCard({ onSummary }: { onSummary?: (month: string) => void }) {
   const now = today().slice(0, 7);
   const [month, setMonth] = useState(now);
   const [all, setAll] = useState(false);
@@ -114,9 +114,9 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
       <p className="text-xs text-zinc-500">
         {t("แต้มขึ้นลงตามผลแพ้ชนะ ชนะทีมเก่งกว่าได้แต้มมากกว่า")}
       </p>
-      {onYear && (
-        <button className="w-full rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white" onClick={onYear}>
-          {t("ดูสรุปก๊วนปี {year}", { year: yearLabel(today().slice(0, 4)) })}
+      {onSummary && (
+        <button className="w-full rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white" onClick={() => onSummary(month)}>
+          {t("ดูรางวัลประจำเดือน {month}", { month: monthLabel(month) })}
         </button>
       )}
     </Card>

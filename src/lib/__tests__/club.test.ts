@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { birthdays, monthRanking, yearSummary } from "../club";
+import { birthdays, clubSummary, monthRanking } from "../club";
 import { EMPTY_STATE, type State } from "../state";
 import { attendance } from "../stats";
 import type { Day, Game, Player } from "../types";
 
 const P = (id: string, level = 3, extra: Partial<Player> = {}): Player => ({ id, name: id, level, ...extra }) as Player;
-const G = (ids: string[], winner: "A" | "B", at: number): Game => ({
+const G = (ids: string[], winner: "A" | "B" | undefined, at: number): Game => ({
   id: "g" + at,
   court: 1,
   playerIds: ids as Game["playerIds"],
@@ -52,10 +52,19 @@ describe("birthdays and year summary", () => {
   it("summarises a year", () => {
     const players = ["a", "b", "c", "d"].map((id) => P(id));
     const games = [1, 2, 3].map((n) => G(["a", "b", "c", "d"], "A", n));
-    const s = yearSummary({ players, days: [D("2026-03-01", ["a", "b", "c", "d"], games), D("2025-12-31", ["a"])] }, "2026");
+    const s = clubSummary({ players, days: [D("2026-03-01", ["a", "b", "c", "d"], games), D("2025-12-31", ["a"])] }, "2026");
     expect(s.sessions).toBe(1);
     expect(s.games).toBe(3);
     expect(s.bestDuo?.ids).toEqual(["a", "b"]);
     expect(s.topWinners[0]).toMatchObject({ n: 3, games: 3 });
+  });
+  it("summarises a month and counts the most frequent pair even without results", () => {
+    const players = ["a", "b", "c", "d", "e"].map((id) => P(id));
+    const games = [G(["a", "c", "b", "d"], undefined, 1), G(["c", "a", "e", "b"], undefined, 2), G(["a", "b", "c", "d"], "A", 3)];
+    const s = clubSummary({ players, days: [D("2026-10-04", ["a", "b", "c", "d", "e"], games), D("2026-09-30", ["a"])] }, "2026-10");
+    expect(s.sessions).toBe(1);
+    expect(s.visits).toBe(5);
+    expect(s.topDuo).toEqual({ ids: ["a", "c"], games: 2 });
+    expect(s.topWinners[0]).toMatchObject({ n: 1, games: 1 });
   });
 });
