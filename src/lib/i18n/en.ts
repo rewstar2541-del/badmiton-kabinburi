@@ -1093,4 +1093,6 @@ export const en: Record<string, string> = {
   "ถึง {date}": "until {date}",
   "ลบรายการจ่ายนี้? (วันหมดอายุไม่เปลี่ยน)": "Delete this payment? (expiry date is unchanged)",
   "ใช้ได้ถึง {date} (เหลือ {n} วัน) ไม่ต้องจ่ายค่าสนามรายวัน/รายเดือน ค่าลูกและค่าน้ำคิดตามปกติ": "Valid until {date} ({n} days left). No daily/monthly court fee; shuttle and drink fees apply as usual",
+  "อัพเดทรูปจาก LINE": "Update photo from LINE",
+  "เปลี่ยนรูปใน LINE แล้ว กดเพื่อดึงรูปใหม่": "Changed your LINE photo? Tap to fetch it",
 };

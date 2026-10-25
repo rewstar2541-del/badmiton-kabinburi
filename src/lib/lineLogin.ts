@@ -84,3 +84,26 @@ export async function handleLineCallback(db: SupabaseClient): Promise<string | "
   window.location.reload();
   return "redirect";
 }
+
+const SYNC_KEY = "badminton-kabinburi:photo-sync";
+
+/** รูปโปรไฟล์ที่มาจาก LINE (หรือยังไม่มีรูป) จึงดึงใหม่จาก LINE ได้ */
+export function photoFromLine(photo?: string): boolean {
+  return !photo || photo.startsWith("https://profile.line-scdn.net/");
+}
+
+/**
+ * เปิดแอพในแอป LINE: ไปขอรูปโปรไฟล์ล่าสุดจาก LINE ครั้งหนึ่งต่อการเปิด (LINE ส่งกลับทันทีเพราะเคยอนุญาตแล้ว)
+ * คืน true ถ้ากำลังเปลี่ยนหน้าไป LINE
+ */
+export function syncLinePhotoOnOpen(photo?: string): boolean {
+  if (!lineLoginEnabled || !/\bLine\//i.test(navigator.userAgent) || !photoFromLine(photo)) return false;
+  try {
+    if (sessionStorage.getItem(SYNC_KEY)) return false;
+    sessionStorage.setItem(SYNC_KEY, "1");
+  } catch {
+    return false;
+  }
+  startLineLogin();
+  return true;
+}

@@ -12,6 +12,7 @@ import { Hero, LangChoices, Rows, guideHref, useSheets } from "./Home";
 import { PlayerLineAlerts } from "./LineCard";
 import { useTourney } from "@/lib/tourneyStore";
 import { AnnualInfo } from "./Annual";
+import { lineLoginEnabled, photoFromLine, startLineLogin } from "@/lib/lineLogin";
 import { PlanSwitch, goToTab } from "./Membership";
 import { BadgesCard, MonthCard, PartnerPrefs } from "./MyExtras";
 import { PartnerStats } from "./PartnerStats";
@@ -81,6 +82,9 @@ export function ProfileTab() {
               open("edit");
             },
           },
+          ...(lineLoginEnabled && !player.guestOf && photoFromLine(player.photo)
+            ? [{ icon: Icon.Edit, title: t("อัพเดทรูปจาก LINE"), sub: t("เปลี่ยนรูปใน LINE แล้ว กดเพื่อดึงรูปใหม่"), onClick: () => startLineLogin() }]
+            : []),
           ...(eventMode ? [] : player.plan && !player.guestOf
             ? [{ icon: Icon.Receipt, title: t("แบบสมาชิก"), sub: player.plan === "monthly" ? t("รายเดือน") : t("รายวัน"), onClick: () => open("plan") }]
             : []),
