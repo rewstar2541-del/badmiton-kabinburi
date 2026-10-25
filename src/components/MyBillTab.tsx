@@ -6,6 +6,7 @@ import { isMonthlyPaid } from "@/lib/types";
 import { PayQr } from "./PayQr";
 import { PendingNotice, PickMe, useMe } from "./PickMe";
 import { SelfPay } from "./SelfPay";
+import { ReceiptButton } from "./Receipt";
 import { SlipUpload } from "./Slips";
 import { AnnualInfo } from "./Annual";
 import { MonthlyDueCard, PlanChoice } from "./Membership";
@@ -29,6 +30,21 @@ export function MyBillTab() {
   const bill = billFor(state.days, day, player, state.settings, state.monthly, state.players);
   const s = state.settings;
   const monthly = isMonthlyPaid(state.monthly, date, player.id);
+  const lines: (readonly [string, number])[] = [
+    [
+      (bill.annualMember ? t("ค่าสนาม (สมาชิกรายปี)") : monthly ? t("ค่าสนาม (จ่ายรายเดือนแล้ว)") : t("ค่าสนาม")) + (bill.courtAdjusted ? ` (${t("แอดมินแก้ยอด")})` : ""),
+      bill.courtFee,
+    ],
+    [
+      t("ค่าลูก {n} ลูก", { n: bill.shuttleCount }) +
+        shuttleFormula(bill) +
+        (bill.shuttleAdjusted ? ` (${t("แอดมินแก้ยอด")})` : ""),
+      bill.shuttleFee,
+    ],
+    [t("ค่าน้ำ"), bill.drinkFee],
+    ...(bill.carriedOver > 0 ? [[t("ค้างจ่ายครั้งก่อน"), bill.carriedOver] as const] : []),
+    ...bill.guests.map((g) => [t("แขก: {name}", { name: g.name }), g.amount] as const),
+  ];
 
   return (
     <div className="space-y-4">
@@ -44,21 +60,7 @@ export function MyBillTab() {
             <div className="text-xs text-white/60">{t("ยอดที่ต้องจ่าย")}</div>
             <div className="font-display text-4xl font-semibold">{baht(bill.total)}</div>
             <div className="mt-4 space-y-1.5 text-sm">
-              {[
-                [
-                  (bill.annualMember ? t("ค่าสนาม (สมาชิกรายปี)") : monthly ? t("ค่าสนาม (จ่ายรายเดือนแล้ว)") : t("ค่าสนาม")) + (bill.courtAdjusted ? ` (${t("แอดมินแก้ยอด")})` : ""),
-                  bill.courtFee,
-                ],
-                [
-                  t("ค่าลูก {n} ลูก", { n: bill.shuttleCount }) +
-                    shuttleFormula(bill) +
-                    (bill.shuttleAdjusted ? ` (${t("แอดมินแก้ยอด")})` : ""),
-                  bill.shuttleFee,
-                ],
-                [t("ค่าน้ำ"), bill.drinkFee],
-                ...(bill.carriedOver > 0 ? [[t("ค้างจ่ายครั้งก่อน"), bill.carriedOver] as const] : []),
-                ...bill.guests.map((g) => [t("แขก: {name}", { name: g.name }), g.amount] as const),
-              ].map(([label, v]) => (
+              {lines.map(([label, v]) => (
                 <div key={label} className="flex justify-between text-white/80">
                   <span>{label}</span>
                   <span>{baht(Number(v))}</span>
@@ -68,8 +70,19 @@ export function MyBillTab() {
           </div>
           {checkedIn && <MyDrinks playerId={player.id} drinks={day.drinks.filter((d) => d.playerId === player.id)} />}
           {bill.paid ? (
-            <Card className="flex items-center justify-center gap-1.5 py-6 font-semibold text-emerald-700">
-              <Icon.Check width={18} height={18} /> {t("จ่ายแล้ว ขอบคุณครับ")}
+            <Card className="flex flex-col items-center gap-3 py-6 font-semibold text-emerald-700">
+              <div className="flex items-center gap-1.5">
+                <Icon.Check width={18} height={18} /> {t("จ่ายแล้ว ขอบคุณครับ")}
+              </div>
+              {bill.total > 0 && (
+                <ReceiptButton
+                  name={player.name}
+                  date={date}
+                  paidAt={day.checkIns.find((c) => c.playerId === player.id)?.paidAt}
+                  lines={lines}
+                  total={bill.total}
+                />
+              )}
             </Card>
           ) : (
             bill.total > 0 && (
