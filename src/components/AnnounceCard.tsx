@@ -161,7 +161,7 @@ export function EventForm({ date, dates, onDone, onCancel }: { date?: string; da
         </Button>
         {onCancel && <Button onClick={onCancel}>{t("ยกเลิก")}</Button>}
       </div>
-      {cap && <p className="text-xs text-zinc-500">{t("เกินจำนวนจะเป็นสำรอง มีคนยกเลิกจะเลื่อนขึ้นเองและแจ้ง LINE คนที่ได้ขึ้น")}</p>}
+      {cap && <p className="text-xs text-zinc-500">{t("เกินจำนวนจะเป็นสำรอง มีคนยกเลิกจะเลื่อนขึ้นเองและแจ้งทาง LINE (คนที่ผูก LINE ไว้)")}</p>}
     </div>
   );
 }
