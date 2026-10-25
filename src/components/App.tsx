@@ -9,6 +9,7 @@ import { PlayerModeProvider, StoreProvider, useStore, useToday } from "@/lib/sto
 import { BillingTab } from "./BillingTab";
 import { FirstAdminCard } from "./PickMe";
 import { readSession } from "@/lib/session";
+import { syncLinePhotoOnOpen } from "@/lib/lineLogin";
 import { monthlyDue } from "./Membership";
 import { MyBillTab } from "./MyBillTab";
 import { CheckInTab } from "./CheckInTab";
@@ -239,6 +240,11 @@ function Shell() {
     window.addEventListener("goto-tab", go);
     return () => window.removeEventListener("goto-tab", go);
   }, []);
+  // เปิดในแอป LINE: ดึงรูปโปรไฟล์ล่าสุดจาก LINE ให้เอง (ครั้งหนึ่งต่อการเปิด)
+  const me = auth.online && ready ? state.players.find((p) => p.id === readSession()?.playerId) : undefined;
+  useEffect(() => {
+    if (me && !me.guestOf && !me.pending) syncLinePhotoOnOpen(me.photo);
+  }, [me]);
   // จุดแดงที่ "ยอดของฉัน" เมื่อยังไม่จ่ายค่ารายเดือน
   const billDot = !auth.isAdmin && monthlyDue(state, state.players.find((p) => p.id === readSession()?.playerId), date);
 
