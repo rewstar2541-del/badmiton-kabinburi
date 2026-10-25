@@ -684,6 +684,26 @@ export async function selfService(db: SupabaseClient, action: SelfAction, player
   return (data as string | null) ?? null;
 }
 
+/** เช็คอินด้วย QR ที่สนาม (code มาจากลิงก์ใน QR) คืนข้อความผิดพลาด หรือ null */
+export async function qrCheckIn(db: SupabaseClient, playerId: string, pin: string, code: string) {
+  const { data, error } = await db.rpc("qr_check_in", { p_player: playerId, p_pin: pin, p_code: code });
+  if (error) return error.code === "PGRST202" ? "ระบบ QR ยังไม่พร้อม ให้แอดมินเช็คอินให้" : error.message;
+  return (data as string | null) ?? null;
+}
+
+/** แอดมิน: รหัส QR ของวันนั้น (null = ยังไม่เปิด) */
+export async function getCheckinCode(db: SupabaseClient, date: string): Promise<string | null> {
+  const { data, error } = await db.from("checkin_codes").select("code").eq("date", date).maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data?.code as string | undefined) ?? null;
+}
+
+/** แอดมิน: เปิด (ใส่รหัส) หรือปิด (null) การเช็คอินด้วย QR ของวันนั้น */
+export async function setCheckinCode(db: SupabaseClient, date: string, code: string | null) {
+  const res = code ? await db.from("checkin_codes").upsert({ date, code }) : await db.from("checkin_codes").delete().eq("date", date);
+  if (res.error) throw new Error(res.error.message);
+}
+
 /** ผู้เล่นส่งรูปสลิปโอนเงินของวันนี้ คืนข้อความผิดพลาด หรือ null */
 /** ลงชื่อ/ยกเลิกล่วงหน้าสำหรับวันจัดก๊วนที่แอดมินตั้งไว้ในปฏิทิน */
 export async function signUpDay(db: SupabaseClient, playerId: string, pin: string, date: string, on: boolean) {

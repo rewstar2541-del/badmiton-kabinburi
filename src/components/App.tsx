@@ -9,6 +9,7 @@ import { PlayerModeProvider, StoreProvider, useStore, useToday } from "@/lib/sto
 import { BillingTab } from "./BillingTab";
 import { FirstAdminCard } from "./PickMe";
 import { readSession } from "@/lib/session";
+import { QrCheckInHandler } from "./QrCheckin";
 import { monthlyDue } from "./Membership";
 import { MyBillTab } from "./MyBillTab";
 import { CheckInTab } from "./CheckInTab";
@@ -258,6 +259,7 @@ function Shell() {
     <Fragment key={lang}>
       <DemoBar />
       <Header />
+      <QrCheckInHandler />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-1 pb-32">
         {error && (
           <div role="alert" className="error-bar sticky top-2 z-30 mb-4 flex items-center gap-3 rounded-2xl bg-red-50 px-4 py-2 text-sm text-red-700 shadow">

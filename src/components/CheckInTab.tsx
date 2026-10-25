@@ -4,6 +4,7 @@ import { signupQueue } from "@/lib/social";
 import { useState } from "react";
 import { useStore, useToday } from "@/lib/store";
 import { isMonthlyPaid, type Player } from "@/lib/types";
+import { QrCheckInCard } from "./QrCheckin";
 import { AdminAddGuest } from "./Guests";
 import { PlayerForm } from "./PlayersTab";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, inputClass } from "./ui";
@@ -42,6 +43,7 @@ export function CheckInTab() {
 
   return (
     <div className="space-y-4">
+      <QrCheckInCard />
       <SignupList />
       {waiting > 0 && (
         <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
