@@ -214,7 +214,7 @@ export function TodayTab({ home }: { home?: boolean } = {}) {
             {waitPos > 0 ? (
               <div className="rounded-2xl bg-amber-50 px-3 py-3 text-center text-amber-900">
                 <div className="font-semibold">{t("คุณอยู่รายชื่อสำรองลำดับที่ {n}", { n: waitPos })}</div>
-                <div className="text-xs">{t("มีคนยกเลิกจะเลื่อนขึ้นเอง หรือให้แอดมินเช็คอินให้")}</div>
+                <div className="text-xs">{t("มีคนยกเลิกจะเลื่อนขึ้นเองและแจ้งทาง LINE หรือให้แอดมินเช็คอินให้")}</div>
               </div>
             ) : (
               <div className="flex items-center justify-center gap-1.5 rounded-2xl bg-sky-50 py-3 font-semibold text-sky-700">
