@@ -108,7 +108,7 @@ export function LineCard() {
 
           <Row
             label={t("แจ้ง \"ถึงคิวคุณ\"")}
-            hint={t("1 ข้อความต่อคนต่อเกม (ส่งก่อนเสมอ)")}
+            hint={t("1 ข้อความต่อคนต่อเกม และตอนได้ขึ้นจากสำรอง (ส่งก่อนเสมอ)")}
             checked={s.notify_turn_personal}
             onChange={() => save({ notify_turn_personal: !s.notify_turn_personal })}
           />
@@ -216,7 +216,7 @@ export function PlayerLineAlerts({ playerId }: { playerId: string }) {
         </div>
       )}
       {friend && <p className="text-xs text-emerald-700">✓ {t("เป็นเพื่อนกับ LINE ก๊วนแล้ว")}</p>}
-      {info.turn_on && <Row label={t("ถึงคิวฉันแล้ว")} checked={info.turn} onChange={() => save(!info.turn, info.announce)} />}
+      {info.turn_on && <Row label={t("ถึงคิวฉัน / ได้ขึ้นจากสำรอง")} checked={info.turn} onChange={() => save(!info.turn, info.announce)} />}
       {info.announce_on && <Row label={t("เปิดลงชื่อ / อีเว้นใหม่")} checked={info.announce} onChange={() => save(info.turn, !info.announce)} />}
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
     </Card>
