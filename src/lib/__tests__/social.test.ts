@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { nextMatch } from "../matchmaking";
-import { activePairs, canSelfCheckIn, partnerStats, shuttleStock, signupQueue, waitingPosition } from "../social";
+import { activePairs, canSelfCheckIn, drinkStock, partnerStats, shuttleStock, signupQueue, waitingPosition } from "../social";
 import { EMPTY_STATE, type State } from "../state";
 import type { Day, Player } from "../types";
 
@@ -45,6 +45,30 @@ describe("shuttle stock", () => {
     };
     expect(shuttleStock(state)).toMatchObject({ left: 20 + 24 - 3, bought: 24, used: 3 });
     expect(shuttleStock(EMPTY_STATE)).toBeNull();
+  });
+});
+
+describe("drink stock", () => {
+  it("adds bottles bought and takes one bottle per drink logged after the last count", () => {
+    const counted = Date.parse("2026-10-05T10:00:00");
+    const drink = (id: string, at?: number) => ({ id, playerId: "a", amount: 15, note: "น้ำ", ...(at ? { at } : {}) });
+    const state: State = {
+      ...EMPTY_STATE,
+      drinkStock: { base: 24, countedAt: counted, low: 12 },
+      expenses: [
+        { id: "e1", date: "2026-10-05", category: "drinks", amount: 120, note: "", bottles: 12, at: counted + 1 },
+        { id: "e2", date: "2026-10-04", category: "drinks", amount: 120, note: "", bottles: 12, at: counted - 1 },
+        { id: "e3", date: "2026-10-05", category: "shuttle", amount: 900, note: "", shuttles: 12, at: counted + 1 },
+      ],
+      days: [
+        { date: "2026-10-04", checkIns: [], games: [], drinks: [drink("old")] },
+        { date: "2026-10-05", checkIns: [], games: [], drinks: [drink("before", counted - 1), drink("x", counted + 1), drink("y", counted + 2)] },
+        // ไม่มีเวลา = นับเป็นเที่ยงของวันนั้น
+        { date: "2026-10-06", checkIns: [], games: [], drinks: [drink("z")] },
+      ],
+    };
+    expect(drinkStock(state)).toMatchObject({ left: 24 + 12 - 3, bought: 12, used: 3 });
+    expect(drinkStock(EMPTY_STATE)).toBeNull();
   });
 });
 

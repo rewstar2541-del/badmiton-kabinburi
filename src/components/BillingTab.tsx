@@ -316,6 +316,7 @@ function DailyView() {
 
       {openRow && <BillDetail player={openRow.player} bill={openRow.bill} onClose={() => setOpen(null)} />}
       <StockCard />
+      <StockCard kind="drink" />
     </>
   );
 }

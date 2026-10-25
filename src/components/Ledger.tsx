@@ -22,6 +22,8 @@ export function Ledger({ month }: { month: string }) {
   const [note, setNote] = useState("");
   const [tubeCount, setTubeCount] = useState("");
   const tubesBought = category === "shuttle" ? Math.max(0, Math.floor(Number(tubeCount) || 0)) : 0;
+  const [bottleCount, setBottleCount] = useState("");
+  const bottlesBought = category === "drinks" ? Math.max(0, Math.floor(Number(bottleCount) || 0)) : 0;
   const value = Number(amount);
   const valid = value > 0 && Number.isInteger(value) && monthOf(date) === month;
 
@@ -29,11 +31,19 @@ export function Ledger({ month }: { month: string }) {
     if (!valid) return;
     dispatch({
       type: "addExpense",
-      expense: { date, category, amount: value, note: note.trim(), ...(tubesBought ? { shuttles: tubesBought * TUBE } : {}) },
+      expense: {
+        date,
+        category,
+        amount: value,
+        note: note.trim(),
+        ...(tubesBought ? { shuttles: tubesBought * TUBE } : {}),
+        ...(bottlesBought ? { bottles: bottlesBought } : {}),
+      },
     });
     setAmount("");
     setNote("");
     setTubeCount("");
+    setBottleCount("");
     setAdding(false);
   };
 
@@ -72,6 +82,7 @@ export function Ledger({ month }: { month: string }) {
                 <span className="block font-medium">
                   {t(EXPENSE_CATEGORIES.find((c) => c.value === e.category)?.label ?? "อื่นๆ")}
                   {e.shuttles ? <span className="font-normal text-zinc-500"> · {t("{n} ลูก", { n: e.shuttles })}</span> : null}
+                  {e.bottles ? <span className="font-normal text-zinc-500"> · {t("{n} ขวด", { n: e.bottles })}</span> : null}
                 </span>
                 {e.note && (
                   <span className="block truncate text-xs text-zinc-500">
@@ -135,6 +146,17 @@ export function Ledger({ month }: { month: string }) {
               placeholder={t("กี่หลอด (หลอดละ {n} ลูก) เข้าสต็อก", { n: TUBE })}
               value={tubeCount}
               onChange={(e) => setTubeCount(e.target.value)}
+            />
+          )}
+          {category === "drinks" && (
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              className={inputClass}
+              placeholder={t("กี่ขวด เข้าสต็อกน้ำ (ไม่ใส่ก็ได้)")}
+              value={bottleCount}
+              onChange={(e) => setBottleCount(e.target.value)}
             />
           )}
           <input className={inputClass} placeholder={t("หมายเหตุ (ไม่ใส่ก็ได้)")} maxLength={80} value={note} onChange={(e) => setNote(e.target.value)} />
