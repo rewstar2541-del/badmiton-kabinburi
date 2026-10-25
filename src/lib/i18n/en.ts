@@ -1095,4 +1095,9 @@ export const en: Record<string, string> = {
   "ใช้ได้ถึง {date} (เหลือ {n} วัน) ไม่ต้องจ่ายค่าสนามรายวัน/รายเดือน ค่าลูกและค่าน้ำคิดตามปกติ": "Valid until {date} ({n} days left). No daily/monthly court fee; shuttle and drink fees apply as usual",
   "อัพเดทรูปจาก LINE": "Update photo from LINE",
   "เปลี่ยนรูปใน LINE แล้ว กดเพื่อดึงรูปใหม่": "Changed your LINE photo? Tap to fetch it",
+  "ตีก๊วน": "Badminton session",
+  "เพิ่มลงปฏิทินในมือถือ": "Add to your phone calendar",
+  "Apple / ไฟล์ .ics": "Apple / .ics file",
+  "บันทึกวันตีก๊วนทั้งหมดลงปฏิทิน ({n} วัน)": "Save all sessions to calendar ({n} days)",
+  "โหลดไฟล์ .ics แล้วเปิดด้วย Apple Calendar หรือนำเข้า Google Calendar": "Downloads an .ics file. Open it with Apple Calendar or import it into Google Calendar",
 };
