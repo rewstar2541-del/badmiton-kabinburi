@@ -812,6 +812,7 @@ export interface LineSettings {
   notify_turn: boolean;
   notify_turn_personal: boolean;
   notify_announce: boolean;
+  notify_annual: boolean;
   monthly_limit: number;
   turn_reserve: number;
   oa_basic_id: string | null;
@@ -822,7 +823,7 @@ export interface LineSettings {
 export async function getLineSettings(db: SupabaseClient): Promise<LineSettings | null> {
   const { data, error } = await db
     .from("line_settings")
-    .select("group_id,notify_signup,notify_turn,notify_turn_personal,notify_announce,monthly_limit,turn_reserve,oa_basic_id,last_error,last_error_at")
+    .select("group_id,notify_signup,notify_turn,notify_turn_personal,notify_announce,notify_annual,monthly_limit,turn_reserve,oa_basic_id,last_error,last_error_at")
     .eq("id", 1)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -837,7 +838,7 @@ export interface LineStatus {
   basicId: string | null;
   lineLimit: number | null;
   lineUsed: number | null;
-  usage: { month: string; sent: number; turn: number; announce: number; skipped: number };
+  usage: { month: string; sent: number; turn: number; announce: number; annual?: number; skipped: number };
   error?: string;
 }
 
