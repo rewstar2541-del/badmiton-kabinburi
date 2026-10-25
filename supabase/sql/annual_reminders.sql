@@ -1,11 +1,16 @@
 -- เตือนสมาชิกรายปีใกล้หมดอายุทาง LINE (ต้องรัน annual_membership.sql ก่อน)
 -- ทุกวัน 9 โมงเช้า: ส่งหาสมาชิกที่เหลือ 30 วัน และ 7 วัน (คนละครั้ง ต่อรอบสมาชิก) แล้วสรุปรายชื่อส่งเข้า LINE แอดมิน
--- ถ้าวันไหนระบบไม่ได้ส่ง วันถัดไปจะส่งตามให้ (เช่น เหลือ 29 วันก็ยังได้ข้อความรอบ 30 วัน)
+-- ถ้าวันไหนระบบไม่ได้รัน หรือโควตาเดือนนี้หมด วันถัดไปจะส่งตามให้ (เช่น เหลือ 29 วันก็ยังได้ข้อความรอบ 30 วัน)
+-- ส่วนที่ LINE ตอบ error / สมาชิกไม่ได้เพิ่มเพื่อน LINE ก๊วน จะไม่ส่งซ้ำ (ดูชื่อได้จากสรุปของแอดมิน)
 -- ต่ออายุแล้ว (วันหมดอายุเปลี่ยน) จะเริ่มนับรอบเตือนใหม่เอง
--- ทดลองส่งทันที: select public.line_annual_reminders();
+-- ส่งทันที (ส่งหาสมาชิกจริง และนับว่าเตือนรอบนั้นแล้ว): select public.line_annual_reminders();
+-- หยุดชั่วคราว: ปิดสวิตช์ในแอพ (ตั้งค่า > แจ้งเตือน LINE) หรือ update line_settings set notify_annual = false where id = 1;
+-- ถอดออกถาวร: select cron.unschedule('line-annual-reminders');
 
 alter table public.line_settings add column if not exists notify_annual boolean not null default true;
 alter table public.line_usage add column if not exists annual integer not null default 0;
+-- line_settings ให้สิทธิ์ทีละคอลัมน์ แอดมินต้องอ่าน/แก้สวิตช์ใหม่ได้
+grant select (notify_annual), update (notify_annual) on table public.line_settings to authenticated;
 
 -- จำว่าเตือนใครไปแล้ว ไม่ส่งซ้ำ
 create table if not exists public.annual_reminders (
@@ -39,6 +44,10 @@ declare
 begin
   select * into s from line_settings where id = 1;
   if s is null or not s.notify_annual then return jsonb_build_object('skipped', 'off'); end if;
+  -- โควตาหมดแล้ว ไม่จดว่าเตือน รอเดือนหน้า/วันถัดไปค่อยส่ง
+  if coalesce((select sent from line_usage where month = to_char(now() at time zone 'Asia/Bangkok', 'YYYY-MM')), 0) >= s.monthly_limit then
+    return jsonb_build_object('skipped', 'quota');
+  end if;
 
   -- เหลือ 8-30 วัน = รอบ 30 วัน, 0-7 วัน = รอบ 7 วัน (ยังไม่เริ่มใช้ / หมดแล้ว ไม่เตือน)
   with d as (
@@ -70,9 +79,10 @@ begin
   select coalesce(jsonb_agg(jsonb_build_object('to_many', g.ids, 'text', g.txt)), '[]') into msgs
   from (
     select jsonb_agg(x->>'uid') as ids,
-      format(E'⏰ สมาชิกรายปีของคุณ%s\nต่ออายุกับแอดมินได้เลย ถ้าหมดอายุแล้วจะกลับไปคิดค่าสนามรายวันตามปกติ\nดูในแอพ: https://badmiton-kabinburi.vercel.app/',
-        case when (x->>'left')::int = 0 then format('ใช้ได้ถึงวันนี้เป็นวันสุดท้าย (%s)', x->>'until_txt')
-          else format('จะหมดอายุ ใช้ได้ถึง %s (อีก %s วัน)', x->>'until_txt', x->>'left') end) as txt
+      format(E'%s\nต่ออายุกับแอดมินได้เลย ต่อก่อนหมดวันที่เหลือไม่หาย (นับต่อจากวันหมดเดิม)\nถ้าหมดอายุแล้วจะกลับไปคิดค่าสนามตามปกติ\nดูในแอพ: https://badmiton-kabinburi.vercel.app/',
+        case when (x->>'left')::int = 0 then format('⏰ สมาชิกรายปีของคุณใช้ได้ถึงวันนี้เป็นวันสุดท้าย (%s)', x->>'until_txt')
+          when (x->>'left')::int <= 7 then format('⏰ สมาชิกรายปีของคุณใช้ได้ถึง %s (อีก %s วัน)', x->>'until_txt', x->>'left')
+          else format('🏸 สมาชิกรายปีของคุณใช้ได้ถึง %s (อีก %s วัน)', x->>'until_txt', x->>'left') end) as txt
     from jsonb_array_elements(due) x
     where x->>'uid' is not null
     group by x->>'until', x->>'until_txt', x->>'left'
@@ -85,13 +95,14 @@ begin
     select 'U' || substring(split_part(ad.email, '@', 1) from 2) from admins ad where ad.email like 'u%@line.kabinburi.app'
   ) x where id is not null;
   if boss is not null then
-    select format(E'📋 สมาชิกรายปีใกล้หมดอายุ %s คน\n%s\nต่ออายุ: แท็บคิดเงิน > รายปี', n,
-        string_agg(format('• %s ถึง %s (%s)%s', x->>'name', x->>'until_txt',
+    select format(E'📋 เตือนสมาชิกรายปีวันนี้ %s คน\n%s\nคนที่ไม่ได้เพิ่มเพื่อน LINE ก๊วนจะไม่ได้รับข้อความ\nต่ออายุ: แท็บคิดเงิน > รายปี', n,
+        string_agg(format('• %s หมด %s (%s)%s', x->>'name', x->>'until_txt',
           case when (x->>'left')::int = 0 then 'วันสุดท้าย' else 'อีก ' || (x->>'left') || ' วัน' end,
           case when x->>'uid' is null then E'\n   ⚠️ ไม่ได้ผูก LINE ต้องแจ้งเอง' else '' end), E'\n'))
       into summary
       from jsonb_array_elements(due) x;
-    msgs := msgs || jsonb_build_object('to_many', boss, 'text', left(summary, 4900));
+    -- สรุปส่งก่อน ถ้าโควตาเหลือน้อยแอดมินยังได้รายชื่อไปแจ้งเอง
+    msgs := jsonb_build_array(jsonb_build_object('to_many', boss, 'text', left(summary, 4900))) || msgs;
   end if;
 
   -- ฟังก์ชัน line รับครั้งละ 10 ข้อความ

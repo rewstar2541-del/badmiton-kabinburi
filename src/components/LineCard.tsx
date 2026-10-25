@@ -61,7 +61,12 @@ export function LineCard() {
   const save = async (patch: Partial<LineSettings>) => {
     if (!supabase || !s) return;
     setS({ ...s, ...patch });
-    await updateLineSettings(supabase, patch);
+    try {
+      await updateLineSettings(supabase, patch);
+    } catch (e) {
+      setS(s);
+      setMsg(String(e instanceof Error ? e.message : e));
+    }
   };
 
   const limit = s?.monthly_limit ?? 300;
@@ -121,7 +126,7 @@ export function LineCard() {
           />
           <Row
             label={t("เตือนสมาชิกรายปีใกล้หมดอายุ")}
-            hint={t("ส่งหาสมาชิกตอนเหลือ 30 และ 7 วัน และสรุปรายชื่อให้แอดมิน ทุกวัน 9 โมงเช้า")}
+            hint={t("ส่งหาสมาชิกคนละ 2 ครั้ง (เหลือ 30 และ 7 วัน) และสรุปรายชื่อให้แอดมิน ระบบเช็คทุกวัน 9 โมงเช้า ใช้โควตาเหมือนแจ้งถึงคิว")}
             checked={s.notify_annual}
             onChange={() => save({ notify_annual: !s.notify_annual })}
           />

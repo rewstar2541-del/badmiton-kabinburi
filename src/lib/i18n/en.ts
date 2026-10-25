@@ -755,7 +755,7 @@ export const en: Record<string, string> = {
   "1 ข้อความต่อคน ส่งเฉพาะคนที่มาใน 60 วัน": "1 message per player, only those who came in the last 60 days",
   "เตือนรายปี {n}": "Annual reminders {n}",
   "เตือนสมาชิกรายปีใกล้หมดอายุ": "Remind annual members before expiry",
-  "ส่งหาสมาชิกตอนเหลือ 30 และ 7 วัน และสรุปรายชื่อให้แอดมิน ทุกวัน 9 โมงเช้า": "Sent to members at 30 and 7 days left, with a list for admins, daily at 9 AM",
+  "ส่งหาสมาชิกคนละ 2 ครั้ง (เหลือ 30 และ 7 วัน) และสรุปรายชื่อให้แอดมิน ระบบเช็คทุกวัน 9 โมงเช้า ใช้โควตาเหมือนแจ้งถึงคิว": "Sent to each member twice (30 and 7 days left), with a list for admins. Checked daily at 9 AM; uses quota like turn alerts",
   "โควตาต่อเดือน": "Monthly quota",
   "กันไว้ให้ถึงคิว": "Keep for turn alerts",
   "ถ้าโควตาเหลือน้อยกว่าที่กันไว้ จะไม่ส่งแจ้งประกาศ": "Sign-up alerts aren't sent when the quota left is below this",
