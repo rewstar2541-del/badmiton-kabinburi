@@ -15,6 +15,13 @@ export function AnnualInfo({ player }: { player: Player }) {
   const { date } = useToday();
   const st = annualStatus(player, date);
   if (!st) return null;
+  if (st.kind === "upcoming")
+    return (
+      <div className="rounded-3xl bg-zinc-100 p-4 text-ink">
+        <div className="font-display font-semibold">{t("สมาชิกรายปี")}</div>
+        <div className="text-sm">{t("เริ่มใช้ {date} ถึง {until}", { date: fmt(st.from ?? ""), until: fmt(st.until) })}</div>
+      </div>
+    );
   const tone = st.kind === "expired" ? "bg-zinc-100 text-zinc-700" : st.kind === "soon" ? "bg-amber-50 text-amber-900 ring-1 ring-amber-300" : "bg-lime/30 text-ink";
   return (
     <div className={`rounded-3xl p-4 ${tone}`}>
@@ -22,7 +29,7 @@ export function AnnualInfo({ player }: { player: Player }) {
       <div className="text-sm">
         {st.kind === "expired"
           ? t("หมดอายุ {date} คิดค่าสนามรายวันตามปกติ ติดต่อแอดมินเพื่อต่ออายุ", { date: fmt(st.until) })
-          : t("ใช้ได้ถึง {date} (เหลือ {n} วัน) ไม่ต้องจ่ายค่าสนามรายวัน/รายเดือน", { date: fmt(st.until), n: st.daysLeft })}
+          : t("ใช้ได้ถึง {date} (เหลือ {n} วัน) ไม่ต้องจ่ายค่าสนามรายวัน/รายเดือน ค่าลูกและค่าน้ำคิดตามปกติ", { date: fmt(st.until), n: st.daysLeft })}
       </div>
     </div>
   );
@@ -54,7 +61,9 @@ export function AnnualView() {
               ? t("ยังไม่เป็นสมาชิกรายปี")
               : st.kind === "expired"
                 ? t("หมดอายุแล้ว {date}", { date: fmt(st.until) })
-                : st.kind === "soon"
+                : st.kind === "upcoming"
+                  ? t("จะเริ่ม {date}", { date: fmt(st.from ?? "") })
+                  : st.kind === "soon"
                   ? t("ใกล้หมดอายุ {date} (เหลือ {n} วัน)", { date: fmt(st.until), n: st.daysLeft })
                   : t("ใช้ได้ถึง {date}", { date: fmt(st.until) })}
           </span>
@@ -70,7 +79,7 @@ export function AnnualView() {
     <>
       <div className="grid grid-cols-2 gap-2 rounded-3xl bg-ink p-5 text-center text-white">
         <div>
-          <div className="font-display text-2xl font-semibold">{members.filter((p) => annualStatus(p, date)?.kind !== "expired").length}</div>
+          <div className="font-display text-2xl font-semibold">{members.filter((p) => annualStatus(p, date)?.kind === "active" || annualStatus(p, date)?.kind === "soon").length}</div>
           <div className="text-[11px] text-white/60">{t("สมาชิกรายปีที่ใช้งานอยู่")}</div>
         </div>
         <div>
@@ -86,7 +95,7 @@ export function AnnualView() {
       <p className="px-1 text-xs text-zinc-500">{t("สมาชิกรายปีไม่ถูกคิดค่าสนามรายวัน ค่าลูกและค่าน้ำยังคิดตามปกติ")}</p>
       <ul className="space-y-2">{members.map(row)}</ul>
       {members.length === 0 && <Card className="py-6 text-center text-sm text-zinc-500">{t("ยังไม่มีสมาชิกรายปี ค้นหาชื่อด้านล่างเพื่อเพิ่ม")}</Card>}
-      <input className={inputClass} placeholder={t("ค้นหาชื่อเพื่อเพิ่มสมาชิกรายปี")} value={q} onChange={(e) => setQ(e.target.value)} />
+      <input className={inputClass} aria-label={t("ค้นหาชื่อเพื่อเพิ่มสมาชิกรายปี")} placeholder={t("ค้นหาชื่อเพื่อเพิ่มสมาชิกรายปี")} value={q} onChange={(e) => setQ(e.target.value)} />
       {others.length > 0 && <ul className="space-y-2">{others.filter((p) => !p.annualUntil).map(row)}</ul>}
       {target && (
         <AnnualSheet
@@ -94,7 +103,8 @@ export function AnnualView() {
           player={target}
           onClose={() => setTarget(null)}
           onSave={(i) => {
-            dispatch({ type: "recordAnnual", playerId: target.id, paidOn: date, ...i });
+            const prev = target.annualFrom && target.annualUntil ? { from: target.annualFrom, until: target.annualUntil } : undefined;
+            dispatch({ type: "recordAnnual", playerId: target.id, paidOn: date, prev, ...i });
             setTarget(null);
           }}
           onExpiry={(until) => {
@@ -124,8 +134,9 @@ function AnnualSheet({
   onExpiry: (until: string) => void;
   onClear: () => void;
 }) {
-  const { state } = useStore();
+  const { state, dispatch } = useStore();
   const { date } = useToday();
+  const mine = (state.annualPayments ?? []).filter((x) => x.playerId === player.id).reverse();
   const history = [...(state.annualPayments ?? [])].reverse();
   const last = history.find((x) => x.playerId === player.id) ?? history[0];
   const active = annualStatus(player, date)?.kind === "active" || annualStatus(player, date)?.kind === "soon";
@@ -158,9 +169,32 @@ function AnnualSheet({
           <span className="text-zinc-500">{t("ยอดที่รับ (บาท)")}</span>
           <input className={inputClass} inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))} />
         </label>
-        <Button variant="accent" className="w-full" disabled={!valid} onClick={() => onSave({ from, until, amount: Number(amount) })}>
+        <Button variant="accent" className="w-full" disabled={!valid} onClick={() => {
+            if (confirm(t("บันทึกรับเงิน {amount} จาก {name} ใช้ได้ถึง {date}?", { amount: baht(Number(amount)), name: player.name, date: fmt(until) })))
+              onSave({ from, until, amount: Number(amount) });
+          }}>
           {t("ได้รับเงินแล้ว {amount}", { amount: baht(Number(amount) || 0) })}
         </Button>
+        {mine.length > 0 && (
+          <div className="space-y-1.5 border-t border-zinc-100 pt-3">
+            <div className="text-sm font-semibold">{t("ประวัติการจ่าย")}</div>
+            {mine.map((x) => (
+              <div key={x.id} className="flex items-center gap-2 text-sm text-zinc-600">
+                <span className="min-w-0 flex-1">
+                  {fmt(x.paidOn)} · {baht(x.amount)} · {t("ถึง {date}", { date: fmt(x.until) })}
+                </span>
+                <button
+                  className="min-h-11 shrink-0 px-2 text-xs font-semibold text-red-600"
+                  onClick={() => {
+                    if (confirm(t("ลบรายการจ่ายนี้? (วันหมดอายุไม่เปลี่ยน)"))) dispatch({ type: "removeAnnualPayment", id: x.id });
+                  }}
+                >
+                  {t("ลบ")}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         {player.annualUntil && (
           <div className="flex gap-2">
             <Button variant="ghost" className="flex-1" disabled={!until || until < (player.annualFrom ?? "")} onClick={() => onExpiry(until)}>

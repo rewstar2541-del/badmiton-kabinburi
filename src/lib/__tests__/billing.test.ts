@@ -162,3 +162,18 @@ describe("สมาชิกรายปี", () => {
     expect(annualStatus({}, "2026-10-10")).toBeUndefined();
   });
 });
+
+describe("ต่ออายุสมาชิกรายปี", () => {
+  it("ตรึงค่าสนามวันเก่าที่หลุดจากช่วงใหม่ ไม่ให้บิลย้อนหลังเปลี่ยน", () => {
+    const old: Day = { date: "2026-03-01", checkIns: [{ playerId: "a", at: 1 }], games: [], drinks: [] };
+    const st: State = { ...EMPTY_STATE, players: [{ id: "a", name: "ก", level: 3, annualFrom: "2026-01-01", annualUntil: "2026-12-31" }], days: [old] };
+    const next = reducer(st, { type: "recordAnnual", playerId: "a", paidOn: "2027-02-01", from: "2027-02-01", until: "2028-02-01", amount: 1, _id: "x", prev: { from: "2026-01-01", until: "2026-12-31" } });
+    const p = next.players[0];
+    expect(billFor(next.days, next.days[0], p, S, {}).courtFee).toBe(0);
+    expect(next.annualPayments).toHaveLength(1);
+  });
+  it("ลบรายการจ่ายได้", () => {
+    const st: State = { ...EMPTY_STATE, annualPayments: [{ id: "x", playerId: "a", paidOn: "2026-01-01", from: "2026-01-01", until: "2027-01-01", amount: 1 }] };
+    expect(reducer(st, { type: "removeAnnualPayment", id: "x" }).annualPayments).toEqual([]);
+  });
+});

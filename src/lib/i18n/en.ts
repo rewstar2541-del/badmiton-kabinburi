@@ -1086,4 +1086,11 @@ export const en: Record<string, string> = {
   "ค่าสนาม (สมาชิกรายปี)": "Court fee (annual member)",
   "ค่าสมาชิกรายปี": "Annual membership fees",
   "รายปี": "Annual",
+  "เริ่มใช้ {date} ถึง {until}": "Starts {date}, valid until {until}",
+  "จะเริ่ม {date}": "Starts {date}",
+  "บันทึกรับเงิน {amount} จาก {name} ใช้ได้ถึง {date}?": "Record {amount} from {name}, valid until {date}?",
+  "ประวัติการจ่าย": "Payment history",
+  "ถึง {date}": "until {date}",
+  "ลบรายการจ่ายนี้? (วันหมดอายุไม่เปลี่ยน)": "Delete this payment? (expiry date is unchanged)",
+  "ใช้ได้ถึง {date} (เหลือ {n} วัน) ไม่ต้องจ่ายค่าสนามรายวัน/รายเดือน ค่าลูกและค่าน้ำคิดตามปกติ": "Valid until {date} ({n} days left). No daily/monthly court fee; shuttle and drink fees apply as usual",
 };

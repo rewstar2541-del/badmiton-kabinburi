@@ -453,10 +453,16 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
         ? check(await db.from("monthly_payments").upsert({ month: a.month, player_id: a.playerId, paid_at: iso(a._at) }))
         : check(await db.from("monthly_payments").delete().eq("month", a.month).eq("player_id", a.playerId));
     case "recordAnnual":
+      if (a.prev && (a.from > a.prev.from || a.until < a.prev.until))
+        check(
+          await db.from("checkins").update({ court_fee: 0 }).eq("player_id", a.playerId).gte("date", a.prev.from).lte("date", a.prev.until).is("court_fee", null),
+        );
       check(
         await db.from("annual_payments").insert({ id: a._id, player_id: a.playerId, paid_on: a.paidOn, from_date: a.from, until_date: a.until, amount: a.amount }),
       );
       return check(await db.from("players").update({ annual_from: a.from, annual_until: a.until }).eq("id", a.playerId));
+    case "removeAnnualPayment":
+      return check(await db.from("annual_payments").delete().eq("id", a.id));
     case "setAnnualExpiry":
       return check(await db.from("players").update({ annual_until: a.until }).eq("id", a.playerId).not("annual_until", "is", null));
     case "clearAnnual":

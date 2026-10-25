@@ -58,7 +58,9 @@ export type Action =
   | { type: "setMonthlyPaid"; month: string; playerId: string; paid: boolean; _at: number }
   /** freeze: เก็บราคาเดิมไว้กับวันก่อนๆ ตอนเปลี่ยนราคา บิลเก่าจะได้ไม่เปลี่ยนตาม */
   /** บันทึกจ่ายค่าสมาชิกรายปี กำหนดช่วงวันใช้งานเอง (until รวมวันนั้น) */
-  | { type: "recordAnnual"; playerId: string; paidOn: string; from: string; until: string; amount: number; _id: string }
+  | { type: "recordAnnual"; playerId: string; paidOn: string; from: string; until: string; amount: number; _id: string; prev?: { from: string; until: string } }
+  /** ลบรายการจ่ายที่บันทึกผิด (ไม่แตะวันหมดอายุ ใช้ "แก้เฉพาะวันหมดอายุ" แยก) */
+  | { type: "removeAnnualPayment"; id: string }
   /** แก้วันหมดอายุสมาชิกรายปีโดยไม่บันทึกการจ่ายเพิ่ม */
   | { type: "setAnnualExpiry"; playerId: string; until: string }
   /** ยกเลิกสมาชิกรายปี (เก็บประวัติการจ่ายไว้) */
@@ -122,6 +124,15 @@ export function normalizeBackup(raw: unknown): State {
     notices: Array.isArray(data.notices) ? data.notices : [],
     annualPayments: Array.isArray(data.annualPayments) ? data.annualPayments : [],
   };
+}
+
+/** วันที่เช็คอินไว้ในช่วงสมาชิกรายปีเดิม (ที่กำลังถูกแทนที่) ใช้ตรึงค่าสนามเป็น 0 */
+export function annualFrozenDates(state: State, a: { playerId: string; from: string; until: string; prev?: { from: string; until: string } }): string[] {
+  const prev = a.prev;
+  if (!prev) return [];
+  return state.days
+    .filter((d) => d.date >= prev.from && d.date <= prev.until && !(d.date >= a.from && d.date <= a.until) && d.checkIns.some((c) => c.playerId === a.playerId && c.courtFee === undefined))
+    .map((d) => d.date);
 }
 
 export function newId(): string {
@@ -263,12 +274,23 @@ export function reducer(state: State, a: Action): State {
         monthlyAmounts: { ...state.monthlyAmounts, [a.month]: amounts },
       };
     }
-    case "recordAnnual":
+    case "recordAnnual": {
+      // ช่วงสมาชิกเดิมที่ถูกแทนที่: ตรึงค่าสนาม 0 ให้วันเก่าที่เช็คอินไว้ บิลย้อนหลังจะได้ไม่เปลี่ยน
+      const frozen = a.prev && (a.from > a.prev.from || a.until < a.prev.until) ? annualFrozenDates(state, a) : [];
+      const dates = new Set(frozen);
       return {
         ...state,
+        days: dates.size
+          ? state.days.map((d) =>
+              dates.has(d.date) ? { ...d, checkIns: d.checkIns.map((c) => (c.playerId === a.playerId && c.courtFee === undefined ? { ...c, courtFee: 0 } : c)) } : d,
+            )
+          : state.days,
         players: state.players.map((p) => (p.id === a.playerId ? { ...p, annualFrom: a.from, annualUntil: a.until } : p)),
         annualPayments: [...(state.annualPayments ?? []), { id: a._id, playerId: a.playerId, paidOn: a.paidOn, from: a.from, until: a.until, amount: a.amount }],
       };
+    }
+    case "removeAnnualPayment":
+      return { ...state, annualPayments: (state.annualPayments ?? []).filter((x) => x.id !== a.id) };
     case "setAnnualExpiry":
       return { ...state, players: state.players.map((p) => (p.id === a.playerId && p.annualUntil ? { ...p, annualUntil: a.until } : p)) };
     case "clearAnnual":

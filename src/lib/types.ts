@@ -283,13 +283,13 @@ export interface Expense {
 /** เตือนสมาชิกรายปีใกล้หมดอายุเมื่อเหลือไม่เกินกี่วัน */
 export const ANNUAL_SOON_DAYS = 30;
 
-export type AnnualStatus = { kind: "active" | "soon" | "expired"; until: string; daysLeft: number };
+export type AnnualStatus = { kind: "active" | "soon" | "expired" | "upcoming"; from?: string; until: string; daysLeft: number };
 
 /** สถานะสมาชิกรายปี ณ วันนั้น (undefined = ไม่เคยเป็น) หมดอายุแล้วยังคืนค่า expired ให้แอดมินตามต่ออายุได้ */
 export function annualStatus(player: Pick<Player, "annualFrom" | "annualUntil"> | undefined, date: string): AnnualStatus | undefined {
   if (!player?.annualUntil) return undefined;
   const daysLeft = daysBetween(date, player.annualUntil);
   if (daysLeft < 0) return { kind: "expired", until: player.annualUntil, daysLeft };
-  if (player.annualFrom && date < player.annualFrom) return undefined;
+  if (player.annualFrom && date < player.annualFrom) return { kind: "upcoming", from: player.annualFrom, until: player.annualUntil, daysLeft };
   return { kind: daysLeft <= ANNUAL_SOON_DAYS ? "soon" : "active", until: player.annualUntil, daysLeft };
 }
