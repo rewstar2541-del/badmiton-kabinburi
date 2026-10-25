@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextMatch, splitTeams, waitingQueue } from "../matchmaking";
+import { nextMatch, pairHistory, splitTeams, waitingQueue } from "../matchmaking";
 import type { Day, Level, Player } from "../types";
 
 const p = (id: string, level: Level): Player => ({ id, name: id, level });
@@ -69,6 +69,47 @@ describe("matchmaking", () => {
     expect(m).not.toContain("b");
     const teamOf = (id: string) => (m.indexOf(id as never) < 2 ? "A" : "B");
     expect(teamOf("a")).toBe(teamOf("c"));
+  });
+
+  it("เกมวันก่อน ๆ นับน้อยกว่าวันนี้ และเกิน 60 วันไม่นับ", () => {
+    const g = (id: string): Day["games"][number] => ({ id, court: 1, playerIds: ["a", "b", "c", "d"], startedAt: 1, endedAt: 2, shuttles: 1 });
+    const today = { ...dayWith([]), games: [g("t")] };
+    const past = [
+      { ...dayWith([]), date: "2026-10-03", games: [g("y")] },
+      { ...dayWith([]), date: "2026-07-01", games: [g("old")] },
+    ];
+    const h = pairHistory(today, past);
+    expect(h.partners.get("a|b")).toBeGreaterThan(1);
+    expect(h.partners.get("a|b")).toBeLessThan(1.6);
+    expect(h.opponents.get("a|c")).toBe(h.partners.get("a|b"));
+    expect(h.partners.get("a|c")).toBeUndefined();
+  });
+
+  it("เลี่ยงคนที่เจอกันบ่อยในวันก่อน ๆ ถ้ามีทางเลือกอื่นที่ดีพอกัน", () => {
+    const ps = ["a", "b", "c", "d", "e"].map((id) => p(id, 3));
+    // a b c d เจอกันเองบ่อยในช่วงที่ผ่านมา e ไม่เคยเจอใคร
+    const past = ["2026-09-30", "2026-10-01", "2026-10-02", "2026-10-03"].map((date, i) => ({
+      ...dayWith([]),
+      date,
+      games: [{ id: `g${i}`, court: 1, playerIds: ["a", "b", "c", "d"] as [string, string, string, string], startedAt: 1, endedAt: 2, shuttles: 1 }],
+    }));
+    // ไม่มีประวัติ: เลือกตามคิว (e อยู่ท้ายสุด ไม่ได้ลง)
+    expect(nextMatch(dayWith(ps), ps)).not.toContain("e");
+    // มีประวัติ: ดึง e ที่ยังไม่เคยเจอเข้ามาแทนคนที่เจอบ่อย และ a ไม่ได้คู่กับ b ซ้ำ
+    const m = nextMatch(dayWith(ps), ps, 8, past)!;
+    expect(m).toContain("e");
+    const i = m.indexOf("a");
+    const mateOfA = m[i < 2 ? 1 - i : 5 - i];
+    expect(mateOfA).not.toBe("b");
+  });
+
+  it("แบ่งทีมเลี่ยงการเจอคู่แข่งเดิม", () => {
+    const four = ["a", "b", "c", "d"].map((id) => p(id, 3));
+    // a เคยเจอ c กับ d ฝั่งตรงข้ามบ่อย: ควรอยู่ทีมเดียวกับ c หรือ d แทน
+    const opponents = new Map([["a|c", 3], ["a|d", 3]]);
+    const { teams } = splitTeams(four, new Map(), [], opponents);
+    const mate = teams[teams.indexOf("a") < 2 ? 1 - teams.indexOf("a") : 5 - teams.indexOf("a")];
+    expect(["c", "d"]).toContain(mate);
   });
 });
 
