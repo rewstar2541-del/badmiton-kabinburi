@@ -1,6 +1,6 @@
 import { clearState, type ClearKind } from "./clear";
 import { guestsOf, markPaid } from "./billing";
-import { DEFAULT_SETTINGS, type Day, type DayPrices, type Expense, type Game, type PairStatus, type Poll, type ShuttleStock, type BoardPost, type Notice, type Level, type AnnualPayment, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
+import { DEFAULT_SETTINGS, type Day, type DayPrices, type Expense, type Game, type PairStatus, type Poll, type ShuttleStock, type BoardPost, type Notice, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
 
 export interface State {
   players: Player[];
@@ -13,6 +13,8 @@ export interface State {
   monthlyAmounts?: Record<string, Record<string, number>>;
   /** ประวัติการจ่ายค่าสมาชิกรายปี (แอดมินเท่านั้น) */
   annualPayments?: AnnualPayment[];
+  /** กติกาวันหมดอายุสมาชิกรายปีตามยอดจ่าย (แอดมินตั้งเอง) */
+  annualRules?: AnnualRule[];
   /** รายจ่ายของก๊วน (แอดมินเท่านั้น) */
   expenses?: Expense[];
   /** สต็อกลูกแบด (แอดมินเท่านั้น) */
@@ -61,6 +63,7 @@ export type Action =
   | { type: "recordAnnual"; playerId: string; paidOn: string; from: string; until: string; amount: number; _id: string; prev?: { from: string; until: string } }
   /** ลบรายการจ่ายที่บันทึกผิด (ไม่แตะวันหมดอายุ ใช้ "แก้เฉพาะวันหมดอายุ" แยก) */
   | { type: "removeAnnualPayment"; id: string }
+  | { type: "setAnnualRules"; rules: AnnualRule[] }
   /** แก้วันหมดอายุสมาชิกรายปีโดยไม่บันทึกการจ่ายเพิ่ม */
   | { type: "setAnnualExpiry"; playerId: string; until: string }
   /** ยกเลิกสมาชิกรายปี (เก็บประวัติการจ่ายไว้) */
@@ -123,6 +126,7 @@ export function normalizeBackup(raw: unknown): State {
     board: Array.isArray(data.board) ? data.board : [],
     notices: Array.isArray(data.notices) ? data.notices : [],
     annualPayments: Array.isArray(data.annualPayments) ? data.annualPayments : [],
+    annualRules: Array.isArray(data.annualRules) ? data.annualRules : [],
   };
 }
 
@@ -289,6 +293,8 @@ export function reducer(state: State, a: Action): State {
         annualPayments: [...(state.annualPayments ?? []), { id: a._id, playerId: a.playerId, paidOn: a.paidOn, from: a.from, until: a.until, amount: a.amount }],
       };
     }
+    case "setAnnualRules":
+      return { ...state, annualRules: a.rules };
     case "removeAnnualPayment":
       return { ...state, annualPayments: (state.annualPayments ?? []).filter((x) => x.id !== a.id) };
     case "setAnnualExpiry":
