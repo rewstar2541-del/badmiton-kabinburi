@@ -1106,6 +1106,7 @@ export const en: Record<string, string> = {
   "จ่ายตั้งแต่ (บาท)": "Pay at least (baht)",
   "หมดอายุสิ้นเดือน": "Expires end of month",
   "ของปี": "of year",
+  "ปี {year}": "Year {year}",
   "ลบกติกานี้": "Delete this rule",
   "+ เพิ่มกติกา": "+ Add rule",
   "ยอดต้องไม่ซ้ำกัน": "Amounts must be different",
