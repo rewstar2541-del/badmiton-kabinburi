@@ -16,13 +16,13 @@ export function useHistory(from: string): { data: Pick<State, "days" | "players"
   const { state, history, auth } = useStore();
   const full = auth.isAdmin || !auth.online;
   const [loaded, setLoaded] = useState<{ from: string; s: State } | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [failedFrom, setFailedFrom] = useState<string | null>(null);
   useEffect(() => {
     if (full) return;
     let alive = true;
     history(from)
       .then((s) => alive && setLoaded({ from, s }))
-      .catch(() => alive && setFailed(true));
+      .catch(() => alive && setFailedFrom(from));
     return () => {
       alive = false;
     };
@@ -33,7 +33,7 @@ export function useHistory(from: string): { data: Pick<State, "days" | "players"
     const d = today();
     return { players: state.players, days: [...loaded.s.days.filter((x) => x.date < d), ...state.days.filter((x) => x.date >= d)] };
   }, [full, state, loaded, from]);
-  return { data, failed: failed && !data };
+  return { data, failed: failedFrom === from && !data };
 }
 
 export const shift = (month: string, n: number) => {
@@ -116,7 +116,7 @@ export function RankingCard({ onSummary }: { onSummary?: (month: string) => void
       </p>
       {onSummary && (
         <button className="w-full rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white" onClick={() => onSummary(month)}>
-          {t("ดูรางวัลประจำเดือน {month}", { month: monthLabel(month) })}
+          {t("ดูสรุปก๊วนเดือน {month}", { month: monthLabel(month) })}
         </button>
       )}
     </Card>

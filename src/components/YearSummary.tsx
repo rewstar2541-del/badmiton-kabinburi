@@ -18,6 +18,8 @@ export function ClubSummaryView({ period: initial, onClose }: { period?: string;
   const monthly = period.length === 7;
   const { data, failed } = useHistory(monthly ? `${period}-01` : `${period}-01-01`);
   const s = useMemo(() => (data ? clubSummary(data, period) : null), [data, period]);
+  const recent = monthly ? Array.from({ length: 12 }, (_, n) => shift(thisMonth, -n)) : [0, 1, 2].map((n) => String(Number(thisYear) - n));
+  const options = recent.includes(period) ? recent : [...recent, period];
   const heading = monthly ? t("สรุปก๊วนเดือน {month}", { month: monthLabel(period) }) : t("สรุปก๊วนปี {year}", { year: yearLabel(period) });
   const byId = new Map((data?.players ?? []).map((p) => [p.id, p]));
   const name = (id: string) => byId.get(id)?.name ?? "?";
@@ -78,27 +80,27 @@ export function ClubSummaryView({ period: initial, onClose }: { period?: string;
           <div className="flex rounded-full bg-white/10 p-1 text-sm">
             {(
               [
-                [true, t("รายเดือน")],
-                [false, t("รายปี")],
+                [true, t("สรุปรายเดือน")],
+                [false, t("สรุปรายปี")],
               ] as const
             ).map(([m, label]) => (
               <button
                 key={String(m)}
                 aria-pressed={monthly === m}
-                className={`rounded-full px-3 py-1 font-semibold ${monthly === m ? "bg-lime text-ink" : "text-white/80"}`}
-                onClick={() => setPeriod(m ? thisMonth : period.slice(0, 4))}
+                className={`min-h-11 rounded-full px-4 font-semibold ${monthly === m ? "bg-lime text-ink" : "text-white/80"}`}
+                onClick={() => monthly !== m && setPeriod(m ? (period === thisYear ? thisMonth : `${period.slice(0, 4)}-12`) : period.slice(0, 4))}
               >
                 {label}
               </button>
             ))}
           </div>
           <select
-            className="min-w-0 flex-1 rounded-full bg-white/10 px-3 py-1.5 text-sm"
+            className="min-h-11 min-w-0 flex-1 rounded-full bg-white/10 px-3 text-base"
             value={period}
             aria-label={monthly ? t("เดือน") : t("ปี")}
             onChange={(e) => setPeriod(e.target.value)}
           >
-            {(monthly ? Array.from({ length: 12 }, (_, n) => shift(thisMonth, -n)) : [0, 1, 2].map((n) => String(Number(thisYear) - n))).map((p) => (
+            {options.map((p) => (
               <option key={p} value={p} className="text-ink">
                 {monthly ? monthLabel(p) : yearLabel(p)}
               </option>
@@ -129,7 +131,7 @@ export function ClubSummaryView({ period: initial, onClose }: { period?: string;
               <div className="flex items-center gap-2.5 rounded-2xl bg-zinc-100 p-3">
                 <Avatar name={name(s.topDuo.ids[0])} photo={byId.get(s.topDuo.ids[0])?.photo} size={34} />
                 <Avatar name={name(s.topDuo.ids[1])} photo={byId.get(s.topDuo.ids[1])?.photo} size={34} />
-                <span className="min-w-0 flex-1 font-semibold">
+                <span className="min-w-0 flex-1 font-semibold break-words">
                   {name(s.topDuo.ids[0])} + {name(s.topDuo.ids[1])}
                 </span>
                 <span className="shrink-0 text-sm text-zinc-600">{t("เล่นด้วยกัน {n} เกม", { n: s.topDuo.games })}</span>
@@ -142,7 +144,7 @@ export function ClubSummaryView({ period: initial, onClose }: { period?: string;
               <div className="flex items-center gap-2.5 rounded-2xl bg-lime/30 p-3">
                 <Avatar name={name(s.bestDuo.ids[0])} photo={byId.get(s.bestDuo.ids[0])?.photo} size={34} />
                 <Avatar name={name(s.bestDuo.ids[1])} photo={byId.get(s.bestDuo.ids[1])?.photo} size={34} />
-                <span className="min-w-0 flex-1 font-semibold">
+                <span className="min-w-0 flex-1 font-semibold break-words">
                   {name(s.bestDuo.ids[0])} + {name(s.bestDuo.ids[1])}
                 </span>
                 <span className="shrink-0 text-sm text-zinc-600">{t("ชนะ {w} จาก {g} เกม", { w: s.bestDuo.wins, g: s.bestDuo.games })}</span>

@@ -130,7 +130,7 @@ export function clubSummary(state: Pick<State, "days" | "players">, period: stri
   const bestDuo = [...duo]
     .filter(([, v]) => v.games >= 3)
     .sort((a, b) => b[1].wins - a[1].wins || b[1].wins / b[1].games - a[1].wins / a[1].games)[0];
-  const topDuo = [...together].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1])[0];
+  const topDuo = [...together].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1] || (duo.get(b[0])?.wins ?? 0) - (duo.get(a[0])?.wins ?? 0) || a[0].localeCompare(b[0]))[0];
   return {
     period,
     sessions: days.length,
