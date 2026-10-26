@@ -8,7 +8,7 @@ import { PendingNotice, PickMe, useMe } from "./PickMe";
 import { SelfPay } from "./SelfPay";
 import { SlipUpload } from "./Slips";
 import { AnnualInfo } from "./Annual";
-import { MyPoints } from "./Loyalty";
+import { MyPoints, RedeemHint } from "./Loyalty";
 import { MonthlyDueCard, PlanChoice } from "./Membership";
 import { useState } from "react";
 import { savedPin } from "./PickMe";
@@ -36,7 +36,6 @@ export function MyBillTab() {
       <PlanChoice player={player} />
       <AnnualInfo player={player} />
       <MonthlyDueCard player={player} />
-      <MyPoints player={player} />
 
       {!checkedIn && bill.total === 0 ? (
         <Card className="py-8 text-center text-sm text-zinc-500">{t("วันนี้ยังไม่ได้เช็คอิน")}</Card>
@@ -77,6 +76,7 @@ export function MyBillTab() {
           ) : (
             bill.total > 0 && (
               <Card className="flex flex-col items-center gap-2">
+                <RedeemHint playerId={player.id} />
                 <PayQr promptPayId={s.promptPayId} amount={bill.total} />
                 <p className="text-center text-xs text-zinc-500">{t("สแกนจ่ายหรือจ่ายสด แล้วกดปุ่มด้านล่าง")}</p>
                 <SelfPay playerId={player.id} amount={bill.total} action="pay" />
@@ -86,6 +86,7 @@ export function MyBillTab() {
           )}
         </>
       )}
+      <MyPoints player={player} />
 
     </div>
   );

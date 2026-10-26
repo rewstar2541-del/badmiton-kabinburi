@@ -316,10 +316,15 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
       const row = (r[0] as Rows["settings"]) ?? null;
       // คอลัมน์ loyalty เพิ่มทีหลัง (supabase/sql/loyalty_points.sql) ยังไม่ได้รันก็ยังโหลดตั้งค่าอื่นได้
       const l = await db.from("settings").select("loyalty").eq("id", 1).maybeSingle();
-      return row && !l.error && l.data?.loyalty ? { ...row, loyalty: l.data.loyalty as Loyalty } : row;
+      if (l.error && !missing(l.error)) throw new Error(l.error.message);
+      return row && l.data?.loyalty ? { ...row, loyalty: l.data.loyalty as Loyalty } : row;
     },
     // โหลดทั้งหมด (ไม่จำกัดช่วงวัน) แต้มคงเหลือจะได้ถูก ยังไม่ได้สร้างตารางก็ไม่ทำให้แอพพัง
-    loyalty: () => all(() => db.from("loyalty_points").select("id,player_id,date,kind,points,amount").order("date").order("id")).catch(() => []),
+    loyalty: async () => {
+      const first = await db.from("loyalty_points").select("id").limit(1);
+      if (first.error && missing(first.error)) return [];
+      return all(() => db.from("loyalty_points").select("id,player_id,date,kind,points,amount").order("date").order("id"));
+    },
     announcements: () => all(() => db.from("announcements").select("date,message,title,fee,cap").gte("date", since).order("date")),
     signups: () => all(() => db.from("signups").select("date,player_id,at").gte("date", since).order("date").order("player_id")),
     slips: async () => (isAdmin ? all(() => db.from("slips").select("id,date,player_id,amount,created_at").is("removed_at", null).order("id")) : []),
@@ -360,6 +365,11 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
 
 export async function loadRemote(db: SupabaseClient, isAdmin: boolean): Promise<State> {
   return rowsToState(await loadRows(db, isAdmin));
+}
+
+/** ยังไม่ได้รัน supabase/sql/loyalty_points.sql (ไม่มีตาราง / คอลัมน์) */
+function missing(e: { code?: string }): boolean {
+  return ["PGRST205", "42P01", "42703", "PGRST204"].includes(e.code ?? "");
 }
 
 function check(res: { error: { message: string } | null }) {
@@ -618,7 +628,7 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       check(await db.from("monthly_payments").delete().neq("month", ""));
       const lp = await db.from("loyalty_points").delete().neq("id", "");
       // ยังไม่ได้สร้างตารางแต้ม (ยังไม่ได้รัน SQL) ข้ามไป
-      if (lp.error && lp.error.code !== "PGRST205" && lp.error.code !== "42P01") check(lp);
+      if (lp.error && !missing(lp.error)) check(lp);
       check(await db.from("announcements").delete().lte("date", a.today));
       return check(await db.from("players").delete().not("guest_of", "is", null));
     }
@@ -719,7 +729,10 @@ async function importState(db: SupabaseClient, s: State) {
     ...(s.pointsEarned ?? []).map((e) => ({ id: e.id, player_id: e.playerId, date: `${e.month}-01`, kind: "earn", points: e.points, amount: 0 })),
     ...days.flatMap((d) => (d.rewards ?? []).map((r) => ({ id: r.id, player_id: r.playerId, date: d.date, kind: r.kind, points: r.points, amount: r.amount }))),
   ];
-  if (loyalty.length) check(await db.from("loyalty_points").upsert(loyalty));
+  if (loyalty.length) {
+    const r = await db.from("loyalty_points").upsert(loyalty);
+    if (r.error && !missing(r.error)) check(r);
+  }
   await persist(db, { type: "updateSettings", settings: s.settings });
 }
 

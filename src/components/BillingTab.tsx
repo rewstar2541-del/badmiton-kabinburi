@@ -186,6 +186,8 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
         </div>
       </div>
 
+      <LoyaltyRedeem player={player} bill={bill} />
+
       <div className="space-y-2">
         <div className="text-sm font-semibold">{t("ค่าน้ำ")}</div>
         {drinks.map((d) => (
@@ -212,8 +214,6 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
           <Button type="submit">{t("เพิ่ม")}</Button>
         </form>
       </div>
-
-      <LoyaltyRedeem player={player} bill={bill} />
 
       <FeeEditor key={`${bill.courtFee}|${bill.shuttleFee}`} player={player} bill={bill} />
 

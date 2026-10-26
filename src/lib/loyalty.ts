@@ -44,3 +44,9 @@ export function rewardDiscount(day: Day, playerId: string, shuttleFee: number, d
   const sum = (kind: RewardKind) => (day.rewards ?? []).filter((r) => r.playerId === playerId && r.kind === kind).reduce((n, r) => n + r.amount, 0);
   return { shuttle: Math.min(sum("shuttle"), shuttleFee), drink: Math.min(sum("drink"), drinkFee) };
 }
+
+/** เดือนก่อนหน้า (YYYY-MM) */
+export function prevMonth(month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
+}

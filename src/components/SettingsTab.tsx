@@ -159,7 +159,7 @@ export function SettingsTab() {
           </Card>
       </Section>
       <Section id="loyalty" icon="⭐" title={t("คะแนนสะสมความขยัน")} hint={t("มาครบเดือนได้แต้ม แลกส่วนลด")}>
-        <LoyaltySettings />
+        <LoyaltySettings key={JSON.stringify(state.settings.loyalty ?? null)} />
       </Section>
       <Section id="board" icon="📸" title={t("บอร์ดและรูปกิจกรรม")} hint={t("ของหาย ขายของ รูปภาพ")}>
         <BoardCard />

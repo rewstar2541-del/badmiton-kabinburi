@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Bill } from "@/lib/billing";
 import { t } from "@/lib/i18n";
-import { daysCame, loyaltyOn, monthQualifiers, pointsBalance } from "@/lib/loyalty";
+import { daysCame, loyaltyOn, monthQualifiers, pointsBalance, prevMonth } from "@/lib/loyalty";
 import { useStore, useToday } from "@/lib/store";
 import { DEFAULT_LOYALTY, monthOf, type Loyalty, type Player, type RewardKind } from "@/lib/types";
 import { Avatar, Button, Card, Icon, baht, inputClass } from "./ui";
@@ -21,10 +21,14 @@ const FIELDS: { key: Exclude<keyof Loyalty, "enabled">; label: string }[] = [
 export function LoyaltySettings() {
   const { state, dispatch } = useStore();
   const [l, setL] = useState<Loyalty>(() => state.settings.loyalty ?? { ...DEFAULT_LOYALTY, enabled: false });
-  const [saved, setSaved] = useState(false);
+  // สถานะเปิด/ปิดอ่านจากข้อมูลจริง บันทึกไม่สำเร็จ (เช่นยังไม่ได้รัน SQL) สวิตช์จะกลับเอง
+  const on = Boolean(state.settings.loyalty?.enabled);
+  const valid = l.days > 0 && l.points > 0 && l.shuttleCost > 0 && l.shuttleValue > 0 && l.drinkCost > 0 && l.drinkValue > 0;
+  // บันทึกแล้ว = ค่าในฟอร์มตรงกับที่บันทึกอยู่จริง
+  const saved = JSON.stringify(l) === JSON.stringify(state.settings.loyalty);
   const save = (next: Loyalty) => {
+    if (next.enabled && !valid) return;
     dispatch({ type: "updateSettings", settings: { ...state.settings, loyalty: next } });
-    setSaved(true);
   };
   return (
     <Card className="space-y-3">
@@ -35,8 +39,8 @@ export function LoyaltySettings() {
         </span>
         <input
           type="checkbox"
-          className="size-6 shrink-0 accent-lime-600"
-          checked={l.enabled}
+          className="size-6 shrink-0 accent-lime"
+          checked={on}
           onChange={(e) => {
             const next = { ...l, enabled: e.target.checked };
             setL(next);
@@ -44,7 +48,7 @@ export function LoyaltySettings() {
           }}
         />
       </label>
-      {l.enabled && (
+      {on && (
         <form
           className="space-y-3"
           onSubmit={(e) => {
@@ -52,16 +56,15 @@ export function LoyaltySettings() {
             save(l);
           }}
         >
-          <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-3">
             {FIELDS.map((f) => (
-              <label key={f.key} className="block text-xs text-zinc-500">
+              <label key={f.key} className="block text-sm">
                 {t(f.label)}
                 <input
                   className={inputClass}
                   inputMode="numeric"
                   value={l[f.key]}
                   onChange={(e) => {
-                    setSaved(false);
                     setL({ ...l, [f.key]: Number(e.target.value.replace(/\D/g, "")) || 0 });
                   }}
                 />
@@ -69,7 +72,7 @@ export function LoyaltySettings() {
             ))}
           </div>
           <p className="text-xs text-zinc-500">{t("สิ้นเดือนแจกแต้มที่ คิดเงิน > รายเดือน แลกแต้มตอนคิดเงิน (กดชื่อในบิลวันนี้)")}</p>
-          <Button variant="primary" type="submit" className="w-full" disabled={!l.days || !l.points || !l.shuttleCost || !l.drinkCost}>
+          <Button variant="primary" type="submit" className="w-full" disabled={!valid}>
             {saved ? t("บันทึกแล้ว ✓") : t("บันทึก")}
           </Button>
         </form>
@@ -87,14 +90,28 @@ export function LoyaltyAward({ month }: { month: string }) {
   const list = monthQualifiers(state, month, rule);
   const ended = month < monthOf(date);
   const todo = list.filter((x) => !x.awarded);
+  // ลืมแจกเดือนที่แล้ว: เตือนที่หน้าเดือนปัจจุบันด้วย
+  const last = prevMonth(monthOf(date));
+  const lastTodo = !ended ? monthQualifiers(state, last, rule).filter((x) => !x.awarded) : [];
+  const award = (m: string, ids: string[]) => {
+    if (confirm(t("แจก {p} แต้มให้ {n} คนที่มาครบ?", { p: rule.points, n: ids.length }))) dispatch({ type: "awardPoints", month: m, playerIds: ids, points: rule.points });
+  };
   return (
     <Card className="space-y-2">
-      <div className="flex items-baseline justify-between gap-2">
+      <div>
         <h3 className="font-display font-semibold">{t("คะแนนสะสมความขยัน")}</h3>
-        <span className="shrink-0 text-xs text-zinc-500">{t("มาครบ {n} วัน ได้ {p} แต้ม", { n: rule.days, p: rule.points })}</span>
+        <p className="text-xs text-zinc-500">{t("มาครบ {n} วัน ได้ {p} แต้ม", { n: rule.days, p: rule.points })}</p>
       </div>
+      {lastTodo.length > 0 && (
+        <div className="space-y-2 rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-300">
+          <p className="text-sm text-amber-900">{t("เดือนที่แล้วยังไม่ได้แจกแต้ม {n} คน", { n: lastTodo.length })}</p>
+          <Button variant="accent" className="w-full" onClick={() => award(last, lastTodo.map((x) => x.player.id))}>
+            {t("แจกแต้มเดือนที่แล้ว {n} คน", { n: lastTodo.length })}
+          </Button>
+        </div>
+      )}
       {list.length === 0 ? (
-        <p className="text-sm text-zinc-500">{t("ยังไม่มีใครมาครบเดือนนี้")}</p>
+        <p className="text-sm text-zinc-500">{t("ยังไม่มีใครมาครบ")}</p>
       ) : (
         <ul className="space-y-1.5">
           {list.map(({ player, days, awarded }) => (
@@ -118,10 +135,7 @@ export function LoyaltyAward({ month }: { month: string }) {
           <Button
             variant="accent"
             className="w-full"
-            onClick={() => {
-              if (confirm(t("แจก {p} แต้มให้ {n} คนที่มาครบเดือนนี้?", { p: rule.points, n: todo.length })))
-                dispatch({ type: "awardPoints", month, playerIds: todo.map((x) => x.player.id), points: rule.points });
-            }}
+            onClick={() => award(month, todo.map((x) => x.player.id))}
           >
             {t("แจกแต้ม {n} คน", { n: todo.length })}
           </Button>
@@ -145,12 +159,12 @@ export function LoyaltyRedeem({ player, bill }: { player: Player; bill: Bill }) 
   const usedOn = (kind: RewardKind) => used.filter((r) => r.kind === kind).reduce((n, r) => n + r.amount, 0);
   const options = rule
     ? ([
-        ["shuttle", t("ลดค่าลูก {amount}", { amount: baht(rule.shuttleValue) }), rule.shuttleCost, rule.shuttleValue, bill.shuttleFee - usedOn("shuttle")],
-        ["drink", t("น้ำฟรี (ไม่เกิน {amount})", { amount: baht(rule.drinkValue) }), rule.drinkCost, rule.drinkValue, bill.drinkFee - usedOn("drink")],
+        ["shuttle", (amount: string) => t("ลดค่าลูก {amount}", { amount }), rule.shuttleCost, rule.shuttleValue, bill.shuttleFee - usedOn("shuttle")],
+        ["drink", (amount: string) => t("น้ำฟรี (ไม่เกิน {amount})", { amount }), rule.drinkCost, rule.drinkValue, bill.drinkFee - usedOn("drink")],
       ] as const)
     : [];
   return (
-    <div className="space-y-2 rounded-3xl bg-lime/15 p-4">
+    <div className="space-y-2 rounded-3xl bg-lime/25 p-4">
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-sm font-semibold">{t("แต้มความขยัน")}</span>
         <span className="text-sm">{t("เหลือ {n} แต้ม", { n: balance })}</span>
@@ -158,10 +172,10 @@ export function LoyaltyRedeem({ player, bill }: { player: Player; bill: Bill }) 
       {used.map((r) => (
         <div key={r.id} className="flex items-center justify-between gap-2 rounded-2xl bg-white px-3 py-2 text-sm">
           <span className="min-w-0 flex-1">
-            {r.kind === "shuttle" ? t("ส่วนลดค่าลูก") : t("น้ำฟรี")} · {t("{n} แต้ม", { n: r.points })}
+            {r.kind === "shuttle" ? t("ส่วนลดค่าลูก") : t("น้ำฟรี")} -{baht(r.amount)} · {t("ใช้ {n} แต้ม", { n: r.points })}
           </span>
           {!paid && (
-            <button className="text-xs text-red-500" onClick={() => dispatch({ type: "removeReward", date, id: r.id })}>
+            <button className="-my-1 min-h-11 shrink-0 rounded-xl px-3 text-sm font-semibold text-red-500 active:bg-red-50" onClick={() => dispatch({ type: "removeReward", date, id: r.id })}>
               {t("คืนแต้ม")}
             </button>
           )}
@@ -172,17 +186,19 @@ export function LoyaltyRedeem({ player, bill }: { player: Player; bill: Bill }) 
           {options.map(([kind, label, cost, value, room]) => (
             <Button
               key={kind}
-              disabled={balance < cost || room <= 0}
-              className="px-2 text-xs"
+              disabled={balance < cost || room <= 0 || cost <= 0 || value <= 0}
+              className="px-2 disabled:opacity-40"
               onClick={() => dispatch({ type: "redeemPoints", date, playerId: player.id, kind, points: cost, amount: Math.min(value, room) })}
             >
-              {label}
+              {/* ลดได้จริงไม่เกินยอดของวันนี้ */}
+              {label(baht(room > 0 ? Math.min(value, room) : value))}
               <span className="block font-normal text-zinc-500">{t("ใช้ {n} แต้ม", { n: cost })}</span>
             </Button>
           ))}
         </div>
       )}
-      {!paid && rule && bill.drinkFee - usedOn("drink") <= 0 && <p className="text-xs text-zinc-500">{t("เพิ่มค่าน้ำก่อน แล้วค่อยแลกน้ำฟรี")}</p>}
+      {!paid && rule && balance < Math.min(rule.shuttleCost, rule.drinkCost) && <p className="text-xs text-zinc-600">{t("แต้มยังไม่พอแลก")}</p>}
+      {!paid && rule && bill.drinkFee - usedOn("drink") <= 0 && <p className="text-xs text-zinc-600">{t("เพิ่มค่าน้ำก่อน แล้วค่อยแลกน้ำฟรี")}</p>}
     </div>
   );
 }
@@ -220,4 +236,14 @@ export function MyPoints({ player }: { player: Player }) {
       </p>
     </Card>
   );
+}
+
+/** ผู้เล่นมีแต้มพอแลก: เตือนก่อนจ่ายเอง (จ่ายแล้วแลกย้อนหลังไม่ได้) */
+export function RedeemHint({ playerId }: { playerId: string }) {
+  const { state } = useStore();
+  const rule = loyaltyOn(state.settings);
+  if (!rule) return null;
+  const balance = pointsBalance(state, playerId);
+  if (balance < Math.min(rule.shuttleCost, rule.drinkCost)) return null;
+  return <p className="rounded-2xl bg-lime/25 px-3 py-2 text-center text-sm">{t("มี {n} แต้ม ถ้าจะใช้ส่วนลด ให้แอดมินแลกก่อนจ่าย", { n: balance })}</p>;
 }
