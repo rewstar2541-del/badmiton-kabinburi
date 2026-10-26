@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { billFor, datesToFreeze, markPaid, shuttleFee } from "../billing";
 import { prepare, reducer, EMPTY_STATE, type State } from "../state";
-import { DEFAULT_SETTINGS as S, addYears, annualStatus, type Day, type Game, type MonthlyPayments, type Player } from "../types";
+import { DEFAULT_SETTINGS as S, addYears, annualExpiryFor, annualStatus, type Day, type Game, type MonthlyPayments, type Player } from "../types";
 
 const daily: Player = { id: "d", name: "รายวัน", level: 3 };
 const monthly: Player = { id: "m", name: "รายเดือน", level: 3 };
@@ -175,5 +175,22 @@ describe("ต่ออายุสมาชิกรายปี", () => {
   it("ลบรายการจ่ายได้", () => {
     const st: State = { ...EMPTY_STATE, annualPayments: [{ id: "x", playerId: "a", paidOn: "2026-01-01", from: "2026-01-01", until: "2027-01-01", amount: 1 }] };
     expect(reducer(st, { type: "removeAnnualPayment", id: "x" }).annualPayments).toEqual([]);
+  });
+});
+
+describe("กติกาวันหมดอายุตามยอดจ่าย", () => {
+  const rules = [
+    { minAmount: 1000, endMonth: 6, yearsAhead: 1 },
+    { minAmount: 2000, endMonth: 12, yearsAhead: 1 },
+  ];
+  it("จ่าย 1000 หมดอายุ มิ.ย. ปีหน้า / 2000 ขึ้นไป ธ.ค. ปีหน้า", () => {
+    expect(annualExpiryFor(rules, 1000, "2026-10-25")).toBe("2027-06-30");
+    expect(annualExpiryFor(rules, 1500, "2026-10-25")).toBe("2027-06-30");
+    expect(annualExpiryFor(rules, 2000, "2026-10-25")).toBe("2027-12-31");
+    expect(annualExpiryFor(rules, 5000, "2026-10-25")).toBe("2027-12-31");
+  });
+  it("ยอดต่ำกว่ากติกาหรือไม่มีกติกา = ครบ 1 ปี", () => {
+    expect(annualExpiryFor(rules, 500, "2026-10-25")).toBe("2027-10-25");
+    expect(annualExpiryFor([], 1000, "2026-10-25")).toBe("2027-10-25");
   });
 });
