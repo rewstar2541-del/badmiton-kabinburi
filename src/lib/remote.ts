@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Action, SelfAction, State } from "./state";
 import { endOf, startOf, type ClearKind } from "./clear";
 import { earnId } from "./loyalty";
-import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Notice, type Gender, type Level, type AnnualPayment, type Loyalty, type MonthlyPayments, type RewardKind, type Plan, type Player, type Settings } from "./types";
+import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Notice, type Gender, type Level, type AnnualPayment, type AnnualRule, type Loyalty, type MonthlyPayments, type RewardKind, type Plan, type Player, type Settings } from "./types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -30,6 +30,7 @@ export interface Rows {
     annual_from?: string | null;
     annual_until?: string | null;
   }[];
+  annualRules?: { min_amount: number; end_month: number; years_ahead: number }[];
   annual?: { id: string; player_id: string; paid_on: string; from_date: string; until_date: string; amount: number }[];
   /** แต้มความขยัน: kind earn = ได้จากเดือนที่มาครบ (date = วันแรกของเดือน) อื่นๆ = แลกในบิลวันนั้น */
   loyalty?: { id: string; player_id: string; date: string; kind: "earn" | RewardKind; points: number; amount: number }[];
@@ -189,6 +190,7 @@ export function rowsToState(r: Rows): State {
     days: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)),
     monthly,
     monthlyAmounts,
+    annualRules: (r.annualRules ?? []).map((x): AnnualRule => ({ minAmount: Number(x.min_amount), endMonth: x.end_month, yearsAhead: x.years_ahead })).sort((a, b) => a.minAmount - b.minAmount),
     annualPayments: (r.annual ?? []).map(
       (a): AnnualPayment => ({ id: a.id, playerId: a.player_id, paidOn: a.paid_on, from: a.from_date, until: a.until_date, amount: Number(a.amount) }),
     ),
@@ -274,6 +276,7 @@ export const TABLE_OF: Record<string, TableKey> = {
   monthly_payments: "monthly",
   annual_payments: "annual",
   loyalty_points: "loyalty",
+  annual_rules: "annualRules",
   settings: "settings",
   announcements: "announcements",
   signups: "signups",
@@ -303,6 +306,8 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
     // ค่าน้ำ ค่ารายเดือน และสลิป ผู้เล่นทั่วไปอ่านไม่ได้ (โหลดของตัวเองแยกผ่าน my_private)
     drinks: async () => (isAdmin ? all(() => db.from("drinks").select("id,date,player_id,amount,note").order("id")) : []),
     monthly: async () => (isAdmin ? all(() => db.from("monthly_payments").select("month,player_id,paid_at,amount").order("month").order("player_id")) : []),
+    // ตารางกติกายังไม่ได้สร้าง (ยังไม่รัน SQL) ให้ข้ามไป ไม่ให้หน้าอื่นพัง
+    annualRules: async () => (isAdmin ? all(() => db.from("annual_rules").select("min_amount,end_month,years_ahead").order("min_amount")).catch(() => []) : []),
     annual: async () => (isAdmin ? all(() => db.from("annual_payments").select("id,player_id,paid_on,from_date,until_date,amount").order("paid_on").order("id")) : []),
     settings: async () => {
       const r = await all(() =>
@@ -478,6 +483,11 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
         await db.from("annual_payments").insert({ id: a._id, player_id: a.playerId, paid_on: a.paidOn, from_date: a.from, until_date: a.until, amount: a.amount }),
       );
       return check(await db.from("players").update({ annual_from: a.from, annual_until: a.until }).eq("id", a.playerId));
+    case "setAnnualRules": {
+      check(await db.from("annual_rules").delete().gte("min_amount", 0));
+      if (!a.rules.length) return;
+      return check(await db.from("annual_rules").insert(a.rules.map((x) => ({ min_amount: x.minAmount, end_month: x.endMonth, years_ahead: x.yearsAhead }))));
+    }
     case "removeAnnualPayment":
       return check(await db.from("annual_payments").delete().eq("id", a.id));
     case "setAnnualExpiry":

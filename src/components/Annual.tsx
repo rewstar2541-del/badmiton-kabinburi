@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { locale, t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
-import { addYears, annualStatus, type Player } from "@/lib/types";
+import { addYears, annualExpiryFor, annualStatus, type AnnualRule, type Player } from "@/lib/types";
 import { Avatar, Button, Card, Sheet, baht, inputClass } from "./ui";
 
 function fmt(date: string) {
@@ -46,7 +46,9 @@ export function AnnualView() {
     .filter((p) => p.annualUntil)
     .sort((a, b) => (a.annualUntil ?? "").localeCompare(b.annualUntil ?? ""));
   const soon = members.filter((p) => annualStatus(p, date)?.kind === "soon");
-  const others = q.trim() ? people.filter((p) => p.name.toLowerCase().includes(q.trim().toLowerCase())) : [];
+  const others = people
+    .filter((p) => !p.annualUntil && (!q.trim() || p.name.toLowerCase().includes(q.trim().toLowerCase())))
+    .sort((a, b) => a.name.localeCompare(b.name, "th"));
   const paid = (state.annualPayments ?? []).filter((x) => x.paidOn.slice(0, 4) === date.slice(0, 4)).reduce((s, x) => s + x.amount, 0);
 
   const row = (p: Player) => {
@@ -94,9 +96,10 @@ export function AnnualView() {
       )}
       <p className="px-1 text-xs text-zinc-500">{t("สมาชิกรายปีไม่ถูกคิดค่าสนามรายวัน ค่าลูกและค่าน้ำยังคิดตามปกติ")}</p>
       <ul className="space-y-2">{members.map(row)}</ul>
-      {members.length === 0 && <Card className="py-6 text-center text-sm text-zinc-500">{t("ยังไม่มีสมาชิกรายปี ค้นหาชื่อด้านล่างเพื่อเพิ่ม")}</Card>}
+      {members.length === 0 && <Card className="py-6 text-center text-sm text-zinc-500">{t("ยังไม่มีสมาชิกรายปี กดรับเงินที่ชื่อด้านล่างเพื่อเพิ่ม")}</Card>}
       <input className={inputClass} aria-label={t("ค้นหาชื่อเพื่อเพิ่มสมาชิกรายปี")} placeholder={t("ค้นหาชื่อเพื่อเพิ่มสมาชิกรายปี")} value={q} onChange={(e) => setQ(e.target.value)} />
-      {others.length > 0 && <ul className="space-y-2">{others.filter((p) => !p.annualUntil).map(row)}</ul>}
+      {others.length > 0 && <ul className="space-y-2">{others.map(row)}</ul>}
+      <RulesEditor />
       {target && (
         <AnnualSheet
           key={target.id}
@@ -143,8 +146,14 @@ function AnnualSheet({
   // ต่ออายุขณะยังไม่หมด: เริ่มต่อจากวันหมดอายุเดิม ไม่เสียวันที่เหลือ
   const start = active && player.annualUntil ? player.annualUntil : date;
   const [from, setFrom] = useState(active ? player.annualFrom ?? date : date);
-  const [until, setUntil] = useState(addYears(start, 1));
+  const [manual, setManual] = useState<string | null>(null);
   const [amount, setAmount] = useState(last ? String(last.amount) : "");
+  const rules = state.annualRules ?? [];
+  const base = active ? start : from;
+  // วันหมดอายุตามกติกายอดจ่าย (แอดมินแก้เองได้ ถ้าแก้แล้วจะไม่ถูกเปลี่ยนตามยอดอีก)
+  const auto = annualExpiryFor(rules, Number(amount) || 0, base);
+  const until = manual ?? auto;
+  const setUntil = (v: string) => setManual(v);
   const valid = until >= from && amount !== "" && Number(amount) >= 0;
   return (
     <Sheet
@@ -152,14 +161,14 @@ function AnnualSheet({
       title={
         <div>
           <h3 className="font-display text-lg font-semibold">{t("สมาชิกรายปี {name}", { name: player.name })}</h3>
-          <p className="text-xs text-zinc-500">{t("วันหมดอายุตั้งเองได้ ค่าเริ่มต้นคือ 1 ปีหลังเริ่ม")}</p>
+          <p className="text-xs text-zinc-500">{rules.length ? t("วันหมดอายุเปลี่ยนตามยอดที่รับ (ตามกติกาที่ตั้งไว้) และแก้เองได้") : t("วันหมดอายุตั้งเองได้ ค่าเริ่มต้นคือ 1 ปีหลังเริ่ม")}</p>
         </div>
       }
     >
       <div className="space-y-3">
         <label className="block text-sm">
           <span className="text-zinc-500">{t("เริ่มใช้งาน")}</span>
-          <input type="date" className={inputClass} value={from} onChange={(e) => { setFrom(e.target.value); if (e.target.value) setUntil(addYears(e.target.value, 1)); }} />
+          <input type="date" className={inputClass} value={from} onChange={(e) => setFrom(e.target.value)} />
         </label>
         <label className="block text-sm">
           <span className="text-zinc-500">{t("วันหมดอายุ (รวมวันนี้)")}</span>
@@ -213,5 +222,99 @@ function AnnualSheet({
         )}
       </div>
     </Sheet>
+  );
+}
+
+const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
+
+/** แอดมิน: กติกาวันหมดอายุตามยอดที่จ่าย เช่น 1,000 หมดอายุ มิ.ย. ปีหน้า / 2,000 ขึ้นไป ธ.ค. ปีหน้า */
+function RulesEditor() {
+  const { state, dispatch } = useStore();
+  const saved = state.annualRules ?? [];
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<AnnualRule[]>(saved);
+  const monthName = (m: number) => new Date(2000, m - 1, 1).toLocaleDateString(locale(), { month: "long" });
+  const set = (i: number, patch: Partial<AnnualRule>) => setDraft(draft.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  if (!open)
+    return (
+      <Card className="space-y-1">
+        <div className="font-display font-semibold">{t("กติกาวันหมดอายุตามยอดที่จ่าย")}</div>
+        {saved.length === 0 && <p className="text-sm text-zinc-500">{t("ยังไม่ได้ตั้ง ตอนนี้หมดอายุหลังจ่าย 1 ปี")}</p>}
+        {saved.map((r) => (
+          <p key={r.minAmount} className="text-sm text-zinc-600">
+            {t("จ่ายตั้งแต่ {amount} หมดอายุสิ้นเดือน {month} {when}", {
+              amount: baht(r.minAmount),
+              month: monthName(r.endMonth),
+              when: r.yearsAhead === 0 ? t("ปีเดียวกัน") : r.yearsAhead === 1 ? t("ปีหน้า") : t("อีก {n} ปี", { n: r.yearsAhead }),
+            })}
+          </p>
+        ))}
+        <Button
+          variant="ghost"
+          onClick={() => {
+            setDraft(saved);
+            setOpen(true);
+          }}
+        >
+          {t("แก้กติกา")}
+        </Button>
+      </Card>
+    );
+  const valid = draft.every((r) => r.minAmount >= 0 && r.endMonth >= 1 && r.endMonth <= 12) && new Set(draft.map((r) => r.minAmount)).size === draft.length;
+  return (
+    <Card className="space-y-3">
+      <div className="font-display font-semibold">{t("กติกาวันหมดอายุตามยอดที่จ่าย")}</div>
+      {draft.map((r, i) => (
+        <div key={i} className="space-y-2 rounded-2xl bg-zinc-50 p-3">
+          <label className="block text-sm">
+            <span className="text-zinc-500">{t("จ่ายตั้งแต่ (บาท)")}</span>
+            <input className={inputClass} inputMode="numeric" value={String(r.minAmount)} onChange={(e) => set(i, { minAmount: Number(e.target.value.replace(/[^\d]/g, "")) })} />
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block text-sm">
+              <span className="text-zinc-500">{t("หมดอายุสิ้นเดือน")}</span>
+              <select className={inputClass} value={r.endMonth} onChange={(e) => set(i, { endMonth: Number(e.target.value) })}>
+                {MONTHS.map((m) => (
+                  <option key={m} value={m}>
+                    {monthName(m)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-sm">
+              <span className="text-zinc-500">{t("ของปี")}</span>
+              <select className={inputClass} value={r.yearsAhead} onChange={(e) => set(i, { yearsAhead: Number(e.target.value) })}>
+                <option value={0}>{t("ปีเดียวกัน")}</option>
+                <option value={1}>{t("ปีหน้า")}</option>
+                <option value={2}>{t("อีก {n} ปี", { n: 2 })}</option>
+              </select>
+            </label>
+          </div>
+          <button className="min-h-11 text-xs font-semibold text-red-600" onClick={() => setDraft(draft.filter((_, j) => j !== i))}>
+            {t("ลบกติกานี้")}
+          </button>
+        </div>
+      ))}
+      <Button variant="ghost" className="w-full" onClick={() => setDraft([...draft, { minAmount: (draft.at(-1)?.minAmount ?? 0) + 1000, endMonth: 12, yearsAhead: 1 }])}>
+        {t("+ เพิ่มกติกา")}
+      </Button>
+      {!valid && <p className="text-xs text-red-600">{t("ยอดต้องไม่ซ้ำกัน")}</p>}
+      <div className="flex gap-2">
+        <Button variant="ghost" className="flex-1" onClick={() => setOpen(false)}>
+          {t("ยกเลิก")}
+        </Button>
+        <Button
+          variant="accent"
+          className="flex-1"
+          disabled={!valid}
+          onClick={() => {
+            dispatch({ type: "setAnnualRules", rules: [...draft].sort((a, b) => a.minAmount - b.minAmount) });
+            setOpen(false);
+          }}
+        >
+          {t("บันทึกกติกา")}
+        </Button>
+      </div>
+    </Card>
   );
 }
