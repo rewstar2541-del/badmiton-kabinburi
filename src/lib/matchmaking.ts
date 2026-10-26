@@ -55,27 +55,33 @@ function pairKey(x: string, y: string) {
 
 /**
  * สถิติคู่จากเกมที่บันทึกไว้: วันนี้นับเต็ม 1 ต่อเกม
- * วันก่อน ๆ นับน้อยลงตามระยะเวลา (เมื่อวาน ~0.5 สองสัปดาห์ก่อน 0.25) เกิน 60 วันไม่นับ
+ * วันก่อน ๆ นับน้อยลงตามระยะเวลา (เมื่อวาน ~0.5 สองสัปดาห์ก่อน 0.25) รวมไม่เกิน 1 ต่อคู่ เกิน 60 วันไม่นับ
  */
 export function pairHistory(day: Day, past: Day[] = []): PairHistory {
-  const partners = new Map<string, number>();
-  const opponents = new Map<string, number>();
-  const add = (m: Map<string, number>, x: string, y: string, w: number) => m.set(pairKey(x, y), (m.get(pairKey(x, y)) ?? 0) + w);
-  const count = (games: Day["games"], w: number) => {
-    for (const [a1, a2, b1, b2] of games.map((g) => g.playerIds)) {
-      add(partners, a1, a2, w);
-      add(partners, b1, b2, w);
-      for (const a of [a1, a2]) for (const b of [b1, b2]) add(opponents, a, b, w);
+  const add = (m: Map<string, number>, x: string, y: string, w: number) => {
+    const k = pairKey(x, y);
+    m.set(k, (m.get(k) ?? 0) + w);
+  };
+  const count = (h: PairHistory, games: Day["games"], w: number) => {
+    for (const { playerIds: [a1, a2, b1, b2] } of games) {
+      add(h.partners, a1, a2, w);
+      add(h.partners, b1, b2, w);
+      for (const a of [a1, a2]) for (const b of [b1, b2]) add(h.opponents, a, b, w);
     }
   };
-  count(day.games, 1);
+  const today: PairHistory = { partners: new Map(), opponents: new Map() };
+  const before: PairHistory = { partners: new Map(), opponents: new Map() };
+  count(today, day.games, 1);
   const now = Date.parse(day.date);
   for (const d of past) {
     const ago = (now - Date.parse(d.date)) / 86_400_000;
     if (!(ago >= 1 && ago <= HISTORY_DAYS)) continue;
-    count(d.games, 0.5 ** (1 + ago / HALF_LIFE_DAYS));
+    count(before, d.games, 0.5 ** (1 + ago / HALF_LIFE_DAYS));
   }
-  return { partners, opponents };
+  // วันก่อน ๆ รวมกันไม่เกิน 1 ต่อคู่ ขาประจำจะได้ไม่ถูกข้ามคิวมากไป และการซ้ำวันนี้ยังสำคัญกว่าเสมอ
+  for (const k of ["partners", "opponents"] as const)
+    for (const [key, w] of before[k]) add(today[k], ...(key.split("|") as [string, string]), Math.min(w, 1));
+  return today;
 }
 
 const wants = (a: Player, b: Player) => Boolean(a.prefer?.includes(b.id) || b.prefer?.includes(a.id));

@@ -85,22 +85,38 @@ describe("matchmaking", () => {
     expect(h.partners.get("a|c")).toBeUndefined();
   });
 
-  it("เลี่ยงคนที่เจอกันบ่อยในวันก่อน ๆ ถ้ามีทางเลือกอื่นที่ดีพอกัน", () => {
+  it("วันก่อน ๆ รวมไม่เกิน 1 ต่อคู่ และไม่นับวันนี้หรือวันที่ผิดซ้ำ", () => {
+    const g = (id: string): Day["games"][number] => ({ id, court: 1, playerIds: ["a", "b", "c", "d"], startedAt: 1, endedAt: 2, shuttles: 1 });
+    const today = { ...dayWith([]), games: [g("t")] };
+    const past = [
+      // วันเดียวกับวันนี้ (state.days มีวันนี้อยู่ด้วย) วันอนาคต และวันที่อ่านไม่ได้: ไม่นับ
+      today,
+      { ...dayWith([]), date: "2026-10-05", games: [g("f")] },
+      { ...dayWith([]), date: "bad", games: [g("x")] },
+      // เมื่อวานเล่นด้วยกัน 5 เกม: นับแค่ 1
+      { ...dayWith([]), date: "2026-10-03", games: ["1", "2", "3", "4", "5"].map(g) },
+    ];
+    expect(pairHistory(today, past).partners.get("a|b")).toBe(2);
+  });
+
+  it("ไม่ให้คู่หูเดิมจากวันก่อน ๆ ได้คู่กันอีก แต่ไม่ข้ามคิว", () => {
     const ps = ["a", "b", "c", "d", "e"].map((id) => p(id, 3));
-    // a b c d เจอกันเองบ่อยในช่วงที่ผ่านมา e ไม่เคยเจอใคร
+    // a คู่ b และ c คู่ d มาหลายครั้งในช่วงที่ผ่านมา
     const past = ["2026-09-30", "2026-10-01", "2026-10-02", "2026-10-03"].map((date, i) => ({
       ...dayWith([]),
       date,
       games: [{ id: `g${i}`, court: 1, playerIds: ["a", "b", "c", "d"] as [string, string, string, string], startedAt: 1, endedAt: 2, shuttles: 1 }],
     }));
-    // ไม่มีประวัติ: เลือกตามคิว (e อยู่ท้ายสุด ไม่ได้ลง)
-    expect(nextMatch(dayWith(ps), ps)).not.toContain("e");
-    // มีประวัติ: ดึง e ที่ยังไม่เคยเจอเข้ามาแทนคนที่เจอบ่อย และ a ไม่ได้คู่กับ b ซ้ำ
+    const mateOf = (m: string[], id: string) => {
+      const i = m.indexOf(id);
+      return m[i < 2 ? 1 - i : 5 - i];
+    };
+    // ไม่มีประวัติ: a ได้คู่ b
+    expect(mateOf(nextMatch(dayWith(ps), ps)!, "a")).toBe("b");
+    // มีประวัติ: ยังเป็น 4 คนต้นคิวเหมือนเดิม (ประวัติวันก่อน ๆ ไม่ทำให้ e แซงคิว) แต่ a ไม่ได้คู่ b ซ้ำ
     const m = nextMatch(dayWith(ps), ps, 8, past)!;
-    expect(m).toContain("e");
-    const i = m.indexOf("a");
-    const mateOfA = m[i < 2 ? 1 - i : 5 - i];
-    expect(mateOfA).not.toBe("b");
+    expect([...m].sort()).toEqual(["a", "b", "c", "d"]);
+    expect(mateOf(m, "a")).not.toBe("b");
   });
 
   it("แบ่งทีมเลี่ยงการเจอคู่แข่งเดิม", () => {
