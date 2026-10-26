@@ -905,6 +905,24 @@ export async function testLine(db: SupabaseClient): Promise<string | null> {
   return (data as { error?: string })?.error ?? null;
 }
 
+/** แอดมินแจ้งเลื่อน/งดเล่น เข้า LINE ของทุกคนที่ลงชื่อ/เช็คอินวันนั้น */
+export async function sendLineNotice(
+  db: SupabaseClient,
+  date: string,
+  kind: "postpone" | "cancel",
+  reason: string,
+): Promise<{ sent?: number; noLine?: string[]; error?: string; left?: number; need?: number }> {
+  const { data, error } = await db.functions.invoke("line", { body: { action: "notice", date, kind, reason } });
+  if (error) {
+    // ตอบกลับไม่ใช่ 2xx: อ่านข้อความไทยจาก body ถ้ามี
+    const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
+    return { error: body?.error ?? "ส่งไม่สำเร็จ ลองใหม่" };
+  }
+  const r = data as { sent?: number; noLine?: string[]; error?: string; left?: number; need?: number };
+  // function ตัวเก่ายังไม่รู้จัก notice จะไม่ตอบ sent กลับมา
+  return r.error || typeof r.sent === "number" ? r : { error: "ระบบ LINE ยังไม่อัปเดต แจ้งผู้ดูแลระบบ" };
+}
+
 // ---------- ล็อกอินผู้เล่น ----------
 
 export type LoginResult = { token?: string; pending?: boolean; error?: string };

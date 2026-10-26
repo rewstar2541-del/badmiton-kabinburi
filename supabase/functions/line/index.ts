@@ -4,6 +4,7 @@
 //  2. webhook จาก LINE (มี x-line-signature) ใช้จำ id กลุ่มเมื่อบอทถูกเชิญเข้ากลุ่ม
 //  3. แอดมิน: ดูสถานะ/โควตา หรือกดทดสอบ (ส่ง token ของแอดมินมา)
 //  4. ผู้เล่น: เช็คว่าเพิ่มเพื่อน LINE ของก๊วนแล้วหรือยัง
+//  5. แอดมิน: แจ้งเลื่อน/งดเล่นกะทันหัน ส่งหาทุกคนที่ลงชื่อหรือเช็คอินวันนั้น
 // ต้องตั้ง secrets: LINE_CHANNEL_ACCESS_TOKEN, LINE_CHANNEL_SECRET
 // โควตาฟรีของ LINE OA ไทย 300 ข้อความ/เดือน นับตามจำนวนคนที่ได้รับ ถ้าครบแล้ว LINE จะไม่ส่งต่อ (แพ็กเกจฟรีไม่เก็บเงิน)
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -157,7 +158,9 @@ Deno.serve(async (req) => {
     return errs.length ? json({ error: errs }, 502) : json({ ok: true, sent, skipped });
   }
 
-  const req2 = body ? (JSON.parse(body) as { action?: string; player?: string; token?: string }) : {};
+  const req2 = body
+    ? (JSON.parse(body) as { action?: string; player?: string; token?: string; date?: string; kind?: string; reason?: string })
+    : {};
 
   // 4. ผู้เล่นเช็คว่าเพิ่มเพื่อนแล้วหรือยัง
   if (req2.action === "friend") {
@@ -191,6 +194,42 @@ Deno.serve(async (req) => {
       lineUsed: consumption?.totalUsage ?? null,
       usage: u,
     });
+  }
+
+  // 5. แจ้งเลื่อน/งดเล่น: ส่งทุกคนที่ลงชื่อ/เช็คอินวันนั้น ไม่สนสวิตช์ปิดแจ้งประกาศ และไม่กันโควตาไว้ให้ถึงคิว
+  if (req2.action === "notice") {
+    const date = req2.date ?? "";
+    const reason = (req2.reason ?? "").trim().slice(0, 500);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !reason) return json({ error: "ใส่เหตุผลก่อน" });
+    if (!TOKEN) return json({ error: "ยังไม่ได้ใส่ LINE_CHANNEL_ACCESS_TOKEN ใน Supabase" });
+    const [{ data: sg, error: e1 }, { data: ci, error: e2 }] = await Promise.all([
+      db.from("signups").select("player_id").eq("date", date),
+      db.from("checkins").select("player_id").eq("date", date),
+    ]);
+    if (e1 || e2) return json({ error: (e1 ?? e2)!.message });
+    const ids = [...new Set([...(sg ?? []), ...(ci ?? [])].map((r) => r.player_id as string))];
+    if (!ids.length) return json({ error: "วันนี้ยังไม่มีคนลงชื่อ" });
+    const [{ data: ps, error: e3 }, { data: au, error: e4 }] = await Promise.all([
+      db.from("players").select("id,name,guest_of").in("id", ids),
+      db.from("player_auth").select("player_id,line_user_id").in("player_id", ids).not("line_user_id", "is", null),
+    ]);
+    if (e3 || e4) return json({ error: (e3 ?? e4)!.message });
+    const lineOf = new Map((au ?? []).map((a) => [a.player_id as string, a.line_user_id as string]));
+    const to = [...new Set(lineOf.values())];
+    // เพื่อนที่พามา ไม่มี LINE เอง คนพามาได้ข้อความแล้ว
+    const noLine = (ps ?? []).filter((p) => !p.guest_of && !lineOf.has(p.id)).map((p) => p.name as string);
+    const [y, m, d] = date.split("-").map(Number);
+    const wd = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."][new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+    const head = req2.kind === "cancel" ? "⛔ งดเล่น" : "⏰ เลื่อนเวลาเล่น";
+    const text = `${head} ${wd} ${d}/${m}\n${reason}\nดูในแอพ: https://badmiton-kabinburi.vercel.app/`;
+    if (!to.length) return json({ ok: true, sent: 0, noLine });
+    const left = s.monthly_limit - (await used());
+    if (left < to.length) return json({ error: "quota", left: Math.max(0, left), need: to.length });
+    const msg = [{ type: "text", text }];
+    const err = to.length === 1 ? await linePost("/message/push", { to: to[0], messages: msg }) : await linePost("/message/multicast", { to, messages: msg });
+    if (!err) await addUsage("announce", to.length);
+    await logError(err);
+    return json(err ? { error: err } : { ok: true, sent: to.length, noLine });
   }
 
   // ทดสอบ: ส่งหาแอดมินคนที่กด (ถ้าผูก LINE แล้ว) ไม่งั้นเข้ากลุ่ม
