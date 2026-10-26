@@ -169,6 +169,9 @@ export function RulesEditor() {
   const saved = state.annualRules ?? [];
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<AnnualRule[]>(saved);
+  const { date } = useToday();
+  const yearName = (ahead: number) =>
+    t("ปี {year}", { year: new Date(Number(date.slice(0, 4)) + ahead, 0, 1).toLocaleDateString(locale(), { year: "numeric" }) });
   const monthName = (m: number) => new Date(2000, m - 1, 1).toLocaleDateString(locale(), { month: "long" });
   const set = (i: number, patch: Partial<AnnualRule>) => setDraft(draft.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   if (!open)
@@ -181,7 +184,7 @@ export function RulesEditor() {
             {t("จ่ายตั้งแต่ {amount} หมดอายุสิ้นเดือน {month} {when}", {
               amount: baht(r.minAmount),
               month: monthName(r.endMonth),
-              when: r.yearsAhead === 0 ? t("ปีเดียวกัน") : r.yearsAhead === 1 ? t("ปีหน้า") : t("อีก {n} ปี", { n: r.yearsAhead }),
+              when: yearName(r.yearsAhead),
             })}
           </p>
         ))}
@@ -220,9 +223,9 @@ export function RulesEditor() {
             <label className="block text-sm">
               <span className="text-zinc-500">{t("ของปี")}</span>
               <select className={inputClass} value={r.yearsAhead} onChange={(e) => set(i, { yearsAhead: Number(e.target.value) })}>
-                <option value={0}>{t("ปีเดียวกัน")}</option>
-                <option value={1}>{t("ปีหน้า")}</option>
-                <option value={2}>{t("อีก {n} ปี", { n: 2 })}</option>
+                <option value={0}>{yearName(0)}</option>
+                <option value={1}>{yearName(1)}</option>
+                <option value={2}>{yearName(2)}</option>
               </select>
             </label>
           </div>
