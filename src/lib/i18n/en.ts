@@ -1126,7 +1126,7 @@ export const en: Record<string, string> = {
   "ยังไม่มีสมาชิกรายปี กดรับเงินที่ชื่อด้านล่างเพื่อเพิ่ม": "No annual members yet. Tap Receive payment on a name below to add",
   "ไม่มีใครได้รับทาง LINE ต้องบอกเอง": "No one got it on LINE, tell them yourself",
   "โควตา LINE เหลือ {left} ข้อความ ไม่พอส่ง {n} คน": "Only {left} LINE messages left this month, not enough for {n} people",
-  "ลงชื่อ {n} คน คนที่ผูก LINE จะได้ข้อความ แล้วปิดวันนี้ในแอพ": "{n} signed up. Those linked to LINE get the message, then today is closed in the app",
+  "ลงชื่อ {n} คน คนที่ผูก LINE จะได้ข้อความ แล้วปิดวันนี้และลบประกาศ": "{n} signed up. Those linked to LINE get the message, then today is closed and the announcement removed",
   "ลงชื่อ {n} คน คนที่ผูก LINE จะได้ข้อความ และต่อท้ายในประกาศ": "{n} signed up. Those linked to LINE get the message, and it's added to the announcement",
   "ปิดวันนี้ในแอพอย่างเดียว ไม่ส่ง LINE": "Close today in the app only, no LINE",
   "แก้ประกาศในแอพอย่างเดียว ไม่ส่ง LINE": "Update the announcement in the app only, no LINE",
