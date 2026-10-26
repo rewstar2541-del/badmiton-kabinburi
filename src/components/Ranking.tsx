@@ -16,13 +16,13 @@ export function useHistory(from: string): { data: Pick<State, "days" | "players"
   const { state, history, auth } = useStore();
   const full = auth.isAdmin || !auth.online;
   const [loaded, setLoaded] = useState<{ from: string; s: State } | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [failedFrom, setFailedFrom] = useState<string | null>(null);
   useEffect(() => {
     if (full) return;
     let alive = true;
     history(from)
       .then((s) => alive && setLoaded({ from, s }))
-      .catch(() => alive && setFailed(true));
+      .catch(() => alive && setFailedFrom(from));
     return () => {
       alive = false;
     };
@@ -33,18 +33,18 @@ export function useHistory(from: string): { data: Pick<State, "days" | "players"
     const d = today();
     return { players: state.players, days: [...loaded.s.days.filter((x) => x.date < d), ...state.days.filter((x) => x.date >= d)] };
   }, [full, state, loaded, from]);
-  return { data, failed: failed && !data };
+  return { data, failed: failedFrom === from && !data };
 }
 
-const shift = (month: string, n: number) => {
+export const shift = (month: string, n: number) => {
   const [y, m] = month.split("-").map(Number);
   const d = new Date(y, m - 1 + n, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 };
-const monthLabel = (m: string) => new Date(m + "-01T00:00:00").toLocaleDateString(locale(), { month: "long", year: "numeric" });
+export const monthLabel = (m: string) => new Date(m + "-01T00:00:00").toLocaleDateString(locale(), { month: "long", year: "numeric" });
 
 /** ตารางอันดับรายเดือน (ทุกคนเห็น) */
-export function RankingCard({ onYear }: { onYear?: () => void }) {
+export function RankingCard({ onSummary }: { onSummary?: (month: string) => void }) {
   const now = today().slice(0, 7);
   const [month, setMonth] = useState(now);
   const [all, setAll] = useState(false);
@@ -114,9 +114,9 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
       <p className="text-xs text-zinc-500">
         {t("แต้มขึ้นลงตามผลแพ้ชนะ ชนะทีมเก่งกว่าได้แต้มมากกว่า")}
       </p>
-      {onYear && (
-        <button className="w-full rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white" onClick={onYear}>
-          {t("ดูสรุปก๊วนปี {year}", { year: yearLabel(today().slice(0, 4)) })}
+      {onSummary && (
+        <button className="w-full rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white" onClick={() => onSummary(month)}>
+          {t("ดูสรุปก๊วนเดือน {month}", { month: monthLabel(month) })}
         </button>
       )}
     </Card>

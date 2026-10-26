@@ -3,7 +3,7 @@
 import { Bell } from "./Bell";
 import { RefereeView, TourneyAdmin, TourneyBanner, TourneyCourts, TourneyHome, WatchView } from "./Tourney";
 import { useTourney } from "@/lib/tourneyStore";
-import { YearSummaryView } from "./YearSummary";
+import { ClubSummaryView } from "./YearSummary";
 import { Fragment, useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { PlayerModeProvider, StoreProvider, useStore, useToday } from "@/lib/store";
 import { BillingTab } from "./BillingTab";
@@ -337,7 +337,7 @@ function isTv() {
 function SummaryRoute() {
   return (
     <main className="min-h-dvh bg-zinc-100 px-4 py-6">
-      <YearSummaryView year={new URLSearchParams(location.search).get("summary") ?? undefined} />
+      <ClubSummaryView period={new URLSearchParams(location.search).get("summary") ?? undefined} />
     </main>
   );
 }
