@@ -2,17 +2,14 @@
 
 import { useState } from "react";
 import { billFor, dayAmount, shuttleFormula, type Bill } from "@/lib/billing";
-import { locale, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
-import { monthOf, type Drink, type Player } from "@/lib/types";
-import { AnnualView } from "./Annual";
-import { ExportReport } from "./ExportReport";
-import { Ledger } from "./Ledger";
+import { type Drink, type Player } from "@/lib/types";
+import { MembersView } from "./Members";
 import { StockCard } from "./Stock";
 import { PayQr } from "./PayQr";
 import { SlipReview } from "./Slips";
-import { Avatar, Button, Card, Icon, SearchInput, SectionTitle, Sheet, baht, inputClass } from "./ui";
-import { visibleRoster } from "@/lib/roster";
+import { Avatar, Button, Card, Icon, SectionTitle, Sheet, baht, inputClass } from "./ui";
 import { Auto } from "@/lib/autoTranslate";
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -320,178 +317,16 @@ function DailyView() {
   );
 }
 
-function shiftMonth(month: string, delta: number): string {
-  const [y, m] = month.split("-").map(Number);
-  const d = new Date(y, m - 1 + delta, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function monthLabel(month: string): string {
-  const [y, m] = month.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString(locale(), { month: "long", year: "numeric" });
-}
-
-/** แอดมินบันทึกว่าใครจ่ายรายเดือนของเดือนไหนแล้ว แก้ไขย้อนหลังได้ */
-function MonthlyView() {
-  const { state, dispatch } = useStore();
-  const { date } = useToday();
-  const [month, setMonth] = useState(monthOf(date));
-  const [payFor, setPayFor] = useState<Player | null>(null);
-  const [q, setQ] = useState("");
-  const paid = state.monthly[month] ?? {};
-  const fee = state.settings.monthlyFee;
-
-  const members = state.players.filter((p) => !p.guestOf && !p.pending);
-  const count = members.filter((p) => paid[p.id]).length;
-  // สมาชิกรายเดือนที่ยังไม่จ่ายเดือนนี้
-  // ใช้แบบสมาชิกปัจจุบัน จึงแสดงเฉพาะเดือนนี้ (เดือนก่อนๆ บางคนอาจยังเป็นรายวัน)
-  const owing = members.filter((p) => month === monthOf(date) && p.plan === "monthly" && !paid[p.id]).sort((a, b) => a.name.localeCompare(b.name, "th"));
-  // แสดงคนที่จ่ายแล้วหรือมาเล่นในเดือนนี้ คนอื่นค้นหาชื่อ
-  const came = new Set(state.days.filter((d) => monthOf(d.date) === month).flatMap((d) => d.checkIns.map((c) => c.playerId)));
-  const players = visibleRoster(members, q, (p) => Boolean(paid[p.id]) || came.has(p.id) || p.plan === "monthly").sort(
-    (a, b) => Number(Boolean(paid[b.id])) - Number(Boolean(paid[a.id])) || a.name.localeCompare(b.name, "th"),
-  );
-  const hidden = members.length - players.length;
-  const slipIn = new Set(state.days.filter((d) => monthOf(d.date) === month).flatMap((d) => (d.slips ?? []).map((x) => x.playerId)));
-
-  return (
-    <>
-      <div className="rounded-3xl bg-ink p-5 text-white">
-        <div className="flex items-center justify-between">
-          <button className="grid size-9 place-items-center rounded-full bg-white/10" onClick={() => setMonth(shiftMonth(month, -1))} aria-label={t("เดือนก่อน")}>
-            ‹
-          </button>
-          <div className="text-center">
-            <div className="font-display text-lg font-semibold">{monthLabel(month)}</div>
-            <div className="text-xs text-white/60">{t("ค่าสมาชิก {amount}", { amount: baht(fee) })}</div>
-          </div>
-          <button className="grid size-9 place-items-center rounded-full bg-white/10" onClick={() => setMonth(shiftMonth(month, 1))} aria-label={t("เดือนถัดไป")}>
-            ›
-          </button>
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-2 text-center">
-          <div className="rounded-2xl bg-white/[0.07] py-2">
-            <div className="font-display text-2xl font-semibold">{count}</div>
-            <div className="text-[11px] text-white/60">{t("คนจ่ายแล้ว")}</div>
-          </div>
-          <div className="rounded-2xl bg-white/[0.07] py-2">
-            <div className="font-display text-2xl font-semibold">{(count * fee).toLocaleString("th-TH")}</div>
-            <div className="text-[11px] text-white/60">{t("บาทที่เก็บได้")}</div>
-          </div>
-        </div>
-      </div>
-      {owing.length > 0 && (
-        <div className="space-y-2 rounded-3xl bg-amber-50 p-4 ring-1 ring-amber-300">
-          <div className="flex items-baseline justify-between gap-2">
-            <h3 className="font-display font-semibold text-amber-950">{t("สมาชิกรายเดือนที่ยังไม่จ่าย")}</h3>
-            <span className="shrink-0 text-sm text-amber-900">
-              {t("{n} คน", { n: owing.length })} · {baht(owing.length * fee)}
-            </span>
-          </div>
-          <ul className="space-y-1.5">
-            {owing.map((p) => (
-              <li key={p.id} className="flex items-center gap-2.5 rounded-2xl bg-white px-3 py-2">
-                <Avatar name={p.name} photo={p.photo} size={32} />
-                <span className="min-w-0 flex-1 truncate text-sm font-semibold">{p.name}</span>
-                <button className="shrink-0 rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-600" onClick={() => setPayFor(p)}>
-                  {t("รับเงิน")}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      <Ledger key={month} month={month} />
-      <ExportReport month={month} />
-      <p className="px-1 text-xs text-zinc-500">
-        {t("จ่ายเดือนนี้แล้วไม่คิดค่าสนามรายวัน แตะเพื่อแก้")}
-      </p>
-
-      <SearchInput value={q} onChange={setQ} />
-      {!q.trim() && hidden > 0 && (
-        <p className="px-1 text-xs text-zinc-500">{t("แสดงคนที่มาหรือจ่ายเดือนนี้ อีก {n} คนพิมพ์ค้นหา", { n: hidden })}</p>
-      )}
-      <ul className="space-y-2">
-        {players.map((p) => {
-          const at = paid[p.id];
-          return (
-            <li key={p.id} className="flex items-center gap-3 rounded-3xl bg-white px-4 py-3 shadow-[0_8px_24px_-14px_rgba(11,18,32,0.25)]">
-              <Avatar name={p.name} photo={p.photo} size={40} />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-semibold">{p.name}</span>
-                <span className="block text-xs text-zinc-500">
-                  {at
-                    ? t("จ่ายเมื่อ {date}", { date: new Date(at).toLocaleDateString(locale(), { day: "numeric", month: "short" }) })
-                    : t("ยังไม่จ่าย")}
-                </span>
-              </span>
-              {!at && slipIn.has(p.id) && (
-                <span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">{t("มีสลิป")}</span>
-              )}
-              {at ? (
-                <button
-                  className="flex items-center gap-1 rounded-full bg-lime px-3 py-1.5 text-xs font-semibold text-ink"
-                  onClick={() => {
-                    if (confirm(t("ยกเลิกรายเดือน {month} ของ {name}? (กลับไปคิดรายวัน)", { month: monthLabel(month), name: p.name })))
-                      dispatch({ type: "setMonthlyPaid", month, playerId: p.id, paid: false });
-                  }}
-                >
-                  <Icon.Check width={14} height={14} strokeWidth={3} /> {t("จ่ายแล้ว")}
-                </button>
-              ) : (
-                <button className="rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-600" onClick={() => setPayFor(p)}>
-                  {t("รับเงิน")}
-                </button>
-              )}
-            </li>
-          );
-        })}
-        {players.length === 0 && (
-          <Card className="py-10 text-center text-sm text-zinc-500">{members.length ? t("ไม่พบชื่อที่ค้นหา") : t("ยังไม่มีผู้เล่น")}</Card>
-        )}
-      </ul>
-
-      {payFor && (
-        <Sheet
-          onClose={() => setPayFor(null)}
-          title={
-            <div>
-              <h3 className="font-display text-lg font-semibold">{t("รายเดือน {name}", { name: payFor.name })}</h3>
-              <p className="text-xs text-zinc-500">{monthLabel(month)}</p>
-            </div>
-          }
-        >
-          <SlipReview playerId={payFor.id} month={month} />
-          <div className="flex flex-col items-center gap-3">
-            <PayQr promptPayId={state.settings.promptPayId} amount={fee} />
-            <Button
-              variant="accent"
-              className="w-full"
-              onClick={() => {
-                dispatch({ type: "setMonthlyPaid", month, playerId: payFor.id, paid: true });
-                setPayFor(null);
-              }}
-            >
-              {t("ได้รับเงินแล้ว {amount}", { amount: baht(fee) })}
-            </Button>
-          </div>
-        </Sheet>
-      )}
-    </>
-  );
-}
-
 export function BillingTab() {
-  const [view, setView] = useState<"daily" | "monthly" | "annual">("daily");
+  const [view, setView] = useState<"daily" | "members">("daily");
   return (
     <div className="space-y-4">
       <SectionTitle>{t("คิดเงิน")}</SectionTitle>
-      <div className="grid grid-cols-3 gap-1 rounded-2xl bg-white p-1 shadow-sm">
+      <div className="grid grid-cols-2 gap-1 rounded-2xl bg-white p-1 shadow-sm">
         {(
           [
             ["daily", "วันนี้"],
-            ["monthly", "รายเดือน"],
-            ["annual", "รายปี"],
+            ["members", "สมาชิก"],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -503,7 +338,7 @@ export function BillingTab() {
           </button>
         ))}
       </div>
-      {view === "daily" ? <DailyView /> : view === "monthly" ? <MonthlyView /> : <AnnualView />}
+      {view === "daily" ? <DailyView /> : <MembersView />}
     </div>
   );
 }
