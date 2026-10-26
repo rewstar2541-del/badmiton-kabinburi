@@ -74,6 +74,7 @@ export interface Rows {
         bank_name?: string;
         bank_account?: string;
         bank_holder?: string;
+        open_signup_days?: number | null;
       }
     | null;
 }
@@ -168,6 +169,7 @@ export function rowsToState(r: Rows): State {
         bankName: s.bank_name ?? "",
         bankAccount: s.bank_account ?? "",
         bankHolder: s.bank_holder ?? "",
+        ...(s.open_signup_days != null ? { openSignupDays: s.open_signup_days } : {}),
       }
     : DEFAULT_SETTINGS;
 
@@ -296,7 +298,11 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
       const r = await all(() =>
         db.from("settings").select("court_count,court_fee,first_shuttle_fee,next_shuttle_fee,monthly_fee,promptpay_id,bank_name,bank_account,bank_holder").eq("id", 1),
       );
-      return (r[0] as Rows["settings"]) ?? null;
+      const row = (r[0] as Rows["settings"]) ?? null;
+      // คอลัมน์ใหม่ (supabase/sql/annual_early_signup.sql) โหลดแยก ยังไม่รัน SQL ก็ไม่พัง
+      const early = await db.from("settings").select("open_signup_days").eq("id", 1);
+      if (row && !early.error) row.open_signup_days = (early.data?.[0] as { open_signup_days: number | null } | undefined)?.open_signup_days ?? null;
+      return row;
     },
     announcements: () => all(() => db.from("announcements").select("date,message,title,fee,cap").gte("date", since).order("date")),
     signups: () => all(() => db.from("signups").select("date,player_id,at").gte("date", since).order("date").order("player_id")),
@@ -483,7 +489,7 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
           ),
         );
       }
-      return check(
+      check(
         await db.from("settings").upsert({
           id: 1,
           court_count: s.courtCount,
@@ -497,6 +503,10 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
           bank_holder: s.bankHolder.trim(),
         }),
       );
+      // ยังไม่รัน SQL ของคอลัมน์นี้: ปิดสิทธิ์อยู่แล้วก็ไม่ต้องแจ้ง error
+      const early = await db.from("settings").update({ open_signup_days: s.openSignupDays ?? null }).eq("id", 1);
+      if (s.openSignupDays != null) check(early);
+      return;
     }
     case "setClosed":
       return a.reason === null

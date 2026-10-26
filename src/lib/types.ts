@@ -76,6 +76,27 @@ export function addYears(date: string, years: number): string {
   return `${y + years}-${String(m).padStart(2, "0")}-${String(Math.min(d, last)).padStart(2, "0")}`;
 }
 
+/** วันที่ + วัน (YYYY-MM-DD) */
+export function addDays(date: string, days: number): string {
+  return new Date(Date.parse(date) + days * 86400000).toISOString().slice(0, 10);
+}
+
+/**
+ * สมาชิกรายปีลงชื่อล่วงหน้าได้ก่อนคนอื่น (ตรงกับ sign_up_day ในฐานข้อมูล)
+ * คืนวันที่คนทั่วไปเริ่มลงชื่อวันนั้นได้ ถ้าคนนี้ยังลงไม่ได้ ไม่งั้นคืน undefined
+ */
+export function signupOpensOn(
+  settings: Pick<Settings, "openSignupDays">,
+  player: Pick<Player, "annualFrom" | "annualUntil"> | undefined,
+  date: string,
+  today: string,
+): string | undefined {
+  const n = settings.openSignupDays;
+  if (n == null || isAnnualMember(player, date)) return undefined;
+  const opens = addDays(date, -n);
+  return opens > today ? opens : undefined;
+}
+
 /** จำนวนวันจาก a ถึง b (b - a) */
 export function daysBetween(a: string, b: string): number {
   return Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
@@ -134,6 +155,8 @@ export interface Settings {
   bankName: string;
   bankAccount: string;
   bankHolder: string;
+  /** สิทธิ์สมาชิกรายปี: คนทั่วไปลงชื่อล่วงหน้าได้ไม่เกินกี่วันก่อนวันเล่น ไม่มี = ทุกคนลงชื่อได้เท่ากัน */
+  openSignupDays?: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {

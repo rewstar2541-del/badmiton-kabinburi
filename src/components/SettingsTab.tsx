@@ -100,6 +100,23 @@ export function SettingsTab() {
                   />
                 </label>
               ))}
+              <label className="block space-y-1 rounded-2xl bg-amber-50 p-3 text-sm">
+                <span className="font-medium">⭐ {t("สิทธิ์สมาชิกรายปี: ลงชื่อล่วงหน้าได้ก่อนคนอื่น")}</span>
+                <span className="block text-xs text-zinc-600">
+                  {t("คนทั่วไปลงชื่อได้ไม่เกินกี่วันก่อนวันเล่น สมาชิกรายปีลงได้ทันทีที่สร้างวันจัดก๊วน เว้นว่าง = ทุกคนลงได้เท่ากัน")}
+                </span>
+                <input
+                  className={inputClass}
+                  inputMode="numeric"
+                  placeholder={t("เว้นว่าง = ไม่ใช้สิทธิ์นี้")}
+                  value={s.openSignupDays ?? ""}
+                  onChange={(e) => {
+                    setSaved(false);
+                    const v = e.target.value.replace(/\D/g, "");
+                    setS({ ...s, openSignupDays: v === "" ? undefined : Math.min(90, Number(v)) });
+                  }}
+                />
+              </label>
               <label className="block space-y-1.5 text-sm font-medium">
                 {t("PromptPay ของก๊วน (เบอร์มือถือ / เลขบัตร 13 หลัก)")}
                 <input
