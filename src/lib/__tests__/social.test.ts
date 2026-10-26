@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { nextMatch } from "../matchmaking";
 import { activePairs, canSelfCheckIn, partnerStats, shuttleStock, signupQueue, waitingPosition } from "../social";
+import { signupOpensOn } from "../types";
 import { EMPTY_STATE, type State } from "../state";
 import type { Day, Player } from "../types";
 
@@ -91,5 +92,21 @@ describe("sign-up cap", () => {
     expect(canSelfCheckIn(day(3, ["a", "b"]), "d")).toBe(false);
     expect(canSelfCheckIn(day(4, ["a"]), "x")).toBe(false);
     expect(canSelfCheckIn(day(5, ["a"]), "x")).toBe(true);
+  });
+});
+
+describe("annual early sign-up", () => {
+  const member = { annualFrom: "2026-01-01", annualUntil: "2026-12-31" };
+  it("is off when no window is set", () => {
+    expect(signupOpensOn({}, undefined, "2026-11-20", "2026-10-25")).toBeUndefined();
+  });
+  it("holds back non-members until the window opens", () => {
+    expect(signupOpensOn({ openSignupDays: 3 }, undefined, "2026-11-01", "2026-10-25")).toBe("2026-10-29");
+    expect(signupOpensOn({ openSignupDays: 3 }, undefined, "2026-10-28", "2026-10-25")).toBeUndefined();
+    expect(signupOpensOn({ openSignupDays: 0 }, undefined, "2026-10-25", "2026-10-25")).toBeUndefined();
+  });
+  it("lets annual members sign up any time, but only for dates inside their membership", () => {
+    expect(signupOpensOn({ openSignupDays: 3 }, member, "2026-11-01", "2026-10-25")).toBeUndefined();
+    expect(signupOpensOn({ openSignupDays: 3 }, member, "2027-01-10", "2026-12-25")).toBe("2027-01-07");
   });
 });

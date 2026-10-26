@@ -2,6 +2,7 @@
 
 import { eventStyle } from "@/lib/eventKinds";
 import { waitingPosition } from "@/lib/social";
+import { isAnnualMember, signupOpensOn } from "@/lib/types";
 import { useState } from "react";
 import { locale, t } from "@/lib/i18n";
 import { today, useStore } from "@/lib/store";
@@ -57,6 +58,11 @@ export function ClubCalendar({ bare }: { bare?: boolean } = {}) {
   const dayLabel = (d: string) => new Date(d + "T00:00").toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" });
   const signups = pickedDay?.signups ?? [];
   const mine = Boolean(me && signups.some((x) => x.playerId === me));
+  const meP = me ? state.players.find((p) => p.id === me) : undefined;
+  // สิทธิ์สมาชิกรายปี: คนทั่วไปยังลงชื่อวันนี้ไม่ได้จนถึงวันที่เปิด
+  const opensOn = picked && meP ? signupOpensOn(state.settings, meP, picked, now) : undefined;
+  const lapsed = Boolean(opensOn && meP?.annualUntil && picked! > meP.annualUntil);
+  const earlyPerk = Boolean(picked && isAnnualMember(meP, picked) && signupOpensOn(state.settings, undefined, picked, now));
   const setSession = (date: string, message: null) => {
     dispatch({ type: "setAnnouncement", date, message });
     setPicked(null);
@@ -227,16 +233,31 @@ export function ClubCalendar({ bare }: { bare?: boolean } = {}) {
                 {me && pickedDay && waitingPosition(pickedDay, me) > 0 && (
                   <p className="text-xs font-semibold text-amber-700">{t("คุณอยู่รายชื่อสำรองลำดับที่ {n}", { n: waitingPosition(pickedDay, me) })}</p>
                 )}
-                {me && picked >= now && (
-                  <Button variant={mine ? "ghost" : "primary"} className="w-full" disabled={busy} onClick={() => signUp(picked, !mine)}>
-                    {mine
-                      ? t("ยกเลิกลงชื่อ")
-                      : pickedDay?.announcementCap && signups.length >= pickedDay.announcementCap
-                        ? t("เต็มแล้ว ลงชื่อสำรอง")
-                        : pickedDay?.announcementTitle
-                          ? t("ลงชื่อไปร่วม")
-                          : t("ลงชื่อว่าจะมา")}
-                  </Button>
+                {me && picked >= now && !mine && opensOn ? (
+                  <p className="rounded-xl bg-amber-50 px-3 py-2 text-center text-sm text-amber-900">
+                    {t("สมาชิกรายปีลงชื่อได้ก่อน คนทั่วไปลงชื่อได้ตั้งแต่ {date}", { date: dayLabel(opensOn) })}
+                    {lapsed && meP?.annualUntil && (
+                      <span className="mt-1 block text-xs">{t("สมาชิกรายปีของคุณหมดวันที่ {date} ต่ออายุเพื่อลงชื่อก่อน", { date: dayLabel(meP.annualUntil) })}</span>
+                    )}
+                  </p>
+                ) : (
+                  me &&
+                  picked >= now && (
+                    <>
+                      {earlyPerk && !mine && (
+                        <p className="text-center text-xs font-semibold text-amber-700">⭐ {t("สิทธิ์สมาชิกรายปี ลงชื่อได้ก่อนคนอื่น")}</p>
+                      )}
+                      <Button variant={mine ? "ghost" : "primary"} className="w-full" disabled={busy} onClick={() => signUp(picked, !mine)}>
+                        {mine
+                          ? t("ยกเลิกลงชื่อ")
+                          : pickedDay?.announcementCap && signups.length >= pickedDay.announcementCap
+                            ? t("เต็มแล้ว ลงชื่อสำรอง")
+                            : pickedDay?.announcementTitle
+                              ? t("ลงชื่อไปร่วม")
+                              : t("ลงชื่อว่าจะมา")}
+                      </Button>
+                    </>
+                  )
                 )}
               </>
             ) : (

@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Action, SelfAction, State } from "./state";
 import { endOf, startOf, type ClearKind } from "./clear";
+import { t } from "./i18n";
 import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Notice, type Gender, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Plan, type Player, type Settings } from "./types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -75,6 +76,7 @@ export interface Rows {
         bank_name?: string;
         bank_account?: string;
         bank_holder?: string;
+        open_signup_days?: number | null;
       }
     | null;
 }
@@ -169,6 +171,7 @@ export function rowsToState(r: Rows): State {
         bankName: s.bank_name ?? "",
         bankAccount: s.bank_account ?? "",
         bankHolder: s.bank_holder ?? "",
+        ...(s.open_signup_days != null ? { openSignupDays: s.open_signup_days } : {}),
       }
     : DEFAULT_SETTINGS;
 
@@ -301,7 +304,11 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
       const r = await all(() =>
         db.from("settings").select("court_count,court_fee,first_shuttle_fee,next_shuttle_fee,monthly_fee,promptpay_id,bank_name,bank_account,bank_holder").eq("id", 1),
       );
-      return (r[0] as Rows["settings"]) ?? null;
+      const row = (r[0] as Rows["settings"]) ?? null;
+      // คอลัมน์ใหม่ (supabase/sql/annual_early_signup.sql) โหลดแยก ยังไม่รัน SQL ก็ไม่พัง
+      const early = await db.from("settings").select("open_signup_days").eq("id", 1);
+      if (row && !early.error) row.open_signup_days = (early.data?.[0] as { open_signup_days: number | null } | undefined)?.open_signup_days ?? null;
+      return row;
     },
     announcements: () => all(() => db.from("announcements").select("date,message,title,fee,cap").gte("date", since).order("date")),
     signups: () => all(() => db.from("signups").select("date,player_id,at").gte("date", since).order("date").order("player_id")),
@@ -493,7 +500,7 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
           ),
         );
       }
-      return check(
+      check(
         await db.from("settings").upsert({
           id: 1,
           court_count: s.courtCount,
@@ -507,6 +514,12 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
           bank_holder: s.bankHolder.trim(),
         }),
       );
+      const early = await db.from("settings").update({ open_signup_days: s.openSignupDays ?? null }).eq("id", 1);
+      // ยังไม่รัน supabase/sql/annual_early_signup.sql: ปิดสิทธิ์อยู่แล้วก็ไม่ต้องแจ้ง error
+      const noColumn = early.error && /open_signup_days/.test(early.error.message);
+      if (noColumn && s.openSignupDays == null) return;
+      if (noColumn) throw new Error(t("ยังเปิดสิทธิ์สมาชิกรายปีไม่ได้ ต้องรัน SQL ก่อน"));
+      return check(early);
     }
     case "setClosed":
       return a.reason === null
