@@ -1,6 +1,7 @@
 import { clearState, type ClearKind } from "./clear";
 import { guestsOf, markPaid } from "./billing";
-import { DEFAULT_SETTINGS, type Day, type DayPrices, type Expense, type Game, type PairStatus, type Poll, type ShuttleStock, type BoardPost, type Notice, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
+import { earnId } from "./loyalty";
+import { DEFAULT_SETTINGS, type Day, type DayPrices, type Expense, type Game, type PairStatus, type Poll, type ShuttleStock, type BoardPost, type Notice, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type PointsEarned, type RewardKind, type Player, type Settings, type Team } from "./types";
 
 export interface State {
   players: Player[];
@@ -25,6 +26,8 @@ export interface State {
   board?: BoardPost[];
   /** ข่าวประกาศทั่วไป */
   notices?: Notice[];
+  /** แต้มความขยันที่ได้จากเดือนที่มาครบ (ที่ใช้ไปอยู่ใน day.rewards) */
+  pointsEarned?: PointsEarned[];
 }
 
 /** ค่ารายเดือนที่คนนี้จ่ายในเดือนนั้น ใช้ราคาตอนจ่าย ไม่ใช่ราคาปัจจุบัน */
@@ -68,6 +71,11 @@ export type Action =
   | { type: "setAnnualExpiry"; playerId: string; until: string }
   /** ยกเลิกสมาชิกรายปี (เก็บประวัติการจ่ายไว้) */
   | { type: "clearAnnual"; playerId: string }
+  /** แจกแต้มให้คนที่มาครบเดือนนั้น (ได้ไปแล้วไม่ได้ซ้ำ) */
+  | { type: "awardPoints"; month: string; playerIds: string[]; points: number }
+  /** แลกแต้มเป็นส่วนลดในบิลวันนั้น */
+  | { type: "redeemPoints"; date: string; playerId: string; kind: RewardKind; points: number; amount: number; _id: string }
+  | { type: "removeReward"; date: string; id: string }
   | { type: "updateSettings"; settings: Settings; freeze?: { dates: string[]; prices: DayPrices } }
   /** title: undefined = คงหัวข้อเดิม, null = จัดก๊วน (ค่าเริ่มต้น) */
   | { type: "setAnnouncement"; date: string; message: string | null; title?: string | null; fee?: number | null; cap?: number | null }
@@ -126,6 +134,7 @@ export function normalizeBackup(raw: unknown): State {
     board: Array.isArray(data.board) ? data.board : [],
     notices: Array.isArray(data.notices) ? data.notices : [],
     annualPayments: Array.isArray(data.annualPayments) ? data.annualPayments : [],
+    pointsEarned: Array.isArray(data.pointsEarned) ? data.pointsEarned : [],
     annualRules: Array.isArray(data.annualRules) ? data.annualRules : [],
   };
 }
@@ -301,6 +310,20 @@ export function reducer(state: State, a: Action): State {
       return { ...state, players: state.players.map((p) => (p.id === a.playerId && p.annualUntil ? { ...p, annualUntil: a.until } : p)) };
     case "clearAnnual":
       return { ...state, players: state.players.map((p) => (p.id === a.playerId ? { ...p, annualFrom: undefined, annualUntil: undefined } : p)) };
+    case "awardPoints": {
+      const have = new Set((state.pointsEarned ?? []).map((e) => e.id));
+      const add = a.playerIds
+        .map((playerId) => ({ id: earnId(a.month, playerId), playerId, month: a.month, points: a.points }))
+        .filter((e) => !have.has(e.id));
+      return { ...state, pointsEarned: [...(state.pointsEarned ?? []), ...add] };
+    }
+    case "redeemPoints":
+      return withDay(state, a.date, (d) => ({
+        ...d,
+        rewards: [...(d.rewards ?? []), { id: a._id, playerId: a.playerId, kind: a.kind, points: a.points, amount: a.amount }],
+      }));
+    case "removeReward":
+      return withDay(state, a.date, (d) => ({ ...d, rewards: d.rewards?.filter((r) => r.id !== a.id) }));
     case "updateSettings": {
       const f = a.freeze;
       const dates = new Set(f?.dates ?? []);
@@ -356,6 +379,7 @@ export function reducer(state: State, a: Action): State {
         expenses: [],
         polls: [],
         board: [],
+        pointsEarned: [],
         days: state.days
           .filter((d) => d.date > a.today && d.announcement !== undefined)
           .map((d) => ({ date: d.date, checkIns: [], games: [], drinks: [], announcement: d.announcement })),

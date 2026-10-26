@@ -8,6 +8,7 @@ import { monthOf, type Drink, type Player } from "@/lib/types";
 import { AnnualView } from "./Annual";
 import { ExportReport } from "./ExportReport";
 import { Ledger } from "./Ledger";
+import { LoyaltyAward, LoyaltyRedeem } from "./Loyalty";
 import { StockCard } from "./Stock";
 import { PayQr } from "./PayQr";
 import { SlipReview } from "./Slips";
@@ -174,6 +175,7 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
           value={baht(bill.shuttleFee)}
         />
         <Row label={t("ค่าน้ำ")} value={baht(bill.drinkFee)} />
+        {bill.discount > 0 && <Row label={t("ส่วนลดจากแต้ม")} value={`-${baht(bill.discount)}`} />}
         {bill.carriedOver > 0 && <Row label={t("ค้างจ่ายครั้งก่อน")} value={baht(bill.carriedOver)} />}
         {bill.guests.map((g) => (
           <Row key={g.playerId} label={t("แขก: {name}", { name: g.name })} value={baht(g.amount)} />
@@ -183,6 +185,8 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
           <span className="font-display text-2xl font-semibold">{baht(bill.total)}</span>
         </div>
       </div>
+
+      <LoyaltyRedeem player={player} bill={bill} />
 
       <div className="space-y-2">
         <div className="text-sm font-semibold">{t("ค่าน้ำ")}</div>
@@ -402,6 +406,7 @@ function MonthlyView() {
         </div>
       )}
       <Ledger key={month} month={month} />
+      <LoyaltyAward month={month} />
       <ExportReport month={month} />
       <p className="px-1 text-xs text-zinc-500">
         {t("จ่ายเดือนนี้แล้วไม่คิดค่าสนามรายวัน แตะเพื่อแก้")}

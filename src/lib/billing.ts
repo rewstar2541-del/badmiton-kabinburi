@@ -1,3 +1,4 @@
+import { rewardDiscount } from "./loyalty";
 import { isAnnualMember, isMonthlyPaid, type Day, type DayPrices, type MonthlyPayments, type Player, type Settings } from "./types";
 
 export interface Bill {
@@ -10,6 +11,8 @@ export interface Bill {
   shuttleCount: number;
   shuttleFee: number;
   drinkFee: number;
+  /** ส่วนลดจากการแลกแต้มวันนั้น (หักจาก amount แล้ว) */
+  discount: number;
   /** ราคาที่ใช้คิดของวันนั้น */
   prices: DayPrices;
   /** แอดมินแก้ค่าสนาม / ค่าลูกของคนนี้วันนี้เอง */
@@ -72,6 +75,8 @@ export function dayAmount(
   const drinkFee = day.drinks
     .filter((d) => d.playerId === player.id)
     .reduce((sum, d) => sum + d.amount, 0);
+  const off = rewardDiscount(day, player.id, sFee, drinkFee);
+  const discount = off.shuttle + off.drink;
   return {
     playerId: player.id,
     monthlyMember,
@@ -80,10 +85,11 @@ export function dayAmount(
     shuttleCount,
     shuttleFee: sFee,
     drinkFee,
+    discount,
     prices: p,
     courtAdjusted: ci?.courtFee !== undefined,
     shuttleAdjusted: ci?.shuttleFee !== undefined,
-    amount: courtFee + sFee + drinkFee,
+    amount: courtFee + sFee + drinkFee - discount,
   };
 }
 

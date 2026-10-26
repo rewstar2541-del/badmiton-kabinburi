@@ -8,6 +8,7 @@ import { PendingNotice, PickMe, useMe } from "./PickMe";
 import { SelfPay } from "./SelfPay";
 import { SlipUpload } from "./Slips";
 import { AnnualInfo } from "./Annual";
+import { MyPoints, RedeemHint } from "./Loyalty";
 import { MonthlyDueCard, PlanChoice } from "./Membership";
 import { useState } from "react";
 import { savedPin } from "./PickMe";
@@ -56,6 +57,7 @@ export function MyBillTab() {
                   bill.shuttleFee,
                 ],
                 [t("ค่าน้ำ"), bill.drinkFee],
+                ...(bill.discount > 0 ? [[t("ส่วนลดจากแต้ม"), -bill.discount] as const] : []),
                 ...(bill.carriedOver > 0 ? [[t("ค้างจ่ายครั้งก่อน"), bill.carriedOver] as const] : []),
                 ...bill.guests.map((g) => [t("แขก: {name}", { name: g.name }), g.amount] as const),
               ].map(([label, v]) => (
@@ -74,6 +76,7 @@ export function MyBillTab() {
           ) : (
             bill.total > 0 && (
               <Card className="flex flex-col items-center gap-2">
+                <RedeemHint playerId={player.id} />
                 <PayQr promptPayId={s.promptPayId} amount={bill.total} />
                 <p className="text-center text-xs text-zinc-500">{t("สแกนจ่ายหรือจ่ายสด แล้วกดปุ่มด้านล่าง")}</p>
                 <SelfPay playerId={player.id} amount={bill.total} action="pay" />
@@ -83,6 +86,7 @@ export function MyBillTab() {
           )}
         </>
       )}
+      <MyPoints player={player} />
 
     </div>
   );

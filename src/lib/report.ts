@@ -1,4 +1,5 @@
 import { dayAmount } from "./billing";
+import { rewardDiscount } from "./loyalty";
 import { monthlyAmount, type State } from "./state";
 import { EXPENSE_CATEGORIES, monthOf, type Expense, type ExpenseCategory } from "./types";
 
@@ -62,9 +63,11 @@ export function monthReport(state: State, month: string): MonthReport {
       const p = byId.get(c.playerId);
       if (!p) continue;
       const a = dayAmount(d, p, state.settings, state.monthly);
+      // ส่วนลดจากแต้มหักออกจากค่าลูก / ค่าน้ำ ยอดแต่ละช่องรวมกันจะได้เท่ายอดรวม
+      const off = rewardDiscount(d, p.id, a.shuttleFee, a.drinkFee);
       row.courtFee += a.courtFee;
-      row.shuttleFee += a.shuttleFee;
-      row.drinks += a.drinkFee;
+      row.shuttleFee += a.shuttleFee - off.shuttle;
+      row.drinks += a.drinkFee - off.drink;
       row.total += a.amount;
       if (c.paidAt) row.received += a.amount;
       else row.unpaid += a.amount;
@@ -82,8 +85,8 @@ export function monthReport(state: State, month: string): MonthReport {
       };
       pr.visits++;
       pr.courtFee += a.courtFee;
-      pr.shuttleFee += a.shuttleFee;
-      pr.drinks += a.drinkFee;
+      pr.shuttleFee += a.shuttleFee - off.shuttle;
+      pr.drinks += a.drinkFee - off.drink;
       pr.total += a.amount;
       if (c.paidAt) pr.received += a.amount;
       else pr.unpaid += a.amount;
