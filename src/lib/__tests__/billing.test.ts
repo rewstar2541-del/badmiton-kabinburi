@@ -83,7 +83,7 @@ describe("ใครค้างจ่าย", () => {
     const d1 = day("2026-10-01", [game("g1", 1)]);
     const d2: Day = { ...day("2026-10-04", [game("g2", 1, ["d", "m", "g", "y"])]), checkIns: [{ playerId: "d", at: 0, paidAt: 5 }, { playerId: "m", at: 0 }, { playerId: "g", at: 0 }] };
     const later = day("2026-10-09", [game("g3", 1)]);
-    const list = owingList([d1, d2, later], "2026-10-04", [daily, monthly, guest], S, M);
+    const list = owingList([d1, d2, later], "2026-10-09", [daily, monthly, guest], S, M);
     // รายวัน: ค้างแค่ 1 ต.ค. (40 + 30 + 15) วันที่ 4 จ่ายแล้ว
     // รายเดือน: 30 + 30 + แขกวันที่ 4 (40 + 30) = 130
     expect(list).toEqual([
@@ -94,7 +94,7 @@ describe("ใครค้างจ่าย", () => {
 
   it("จ่ายครบแล้วไม่ขึ้นในรายชื่อ", () => {
     const d = day("2026-10-01", [game("g1", 1)], true);
-    expect(owingList([d], "2026-10-01", [daily, monthly], S, M)).toEqual([]);
+    expect(owingList([d], "2026-10-02", [daily, monthly], S, M)).toEqual([]);
   });
 });
 

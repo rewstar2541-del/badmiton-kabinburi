@@ -155,14 +155,14 @@ export interface Owing {
   days: { date: string; amount: number }[];
 }
 
-/** ยอดค้างจ่ายของทุกคนจนถึงวัน `upTo` เรียงจากค้างมากไปน้อย */
-export function owingList(days: Day[], upTo: string, players: Player[], s: Settings, monthly: MonthlyPayments): Owing[] {
+/** ยอดค้างจ่ายของทุกคนจากวันก่อน `beforeDate` เรียงจากค้างมากไปน้อย */
+export function owingList(days: Day[], beforeDate: string, players: Player[], s: Settings, monthly: MonthlyPayments): Owing[] {
   const byId = new Map(players.map((p) => [p.id, p]));
   // แขกไม่จ่ายเอง ยอดไปรวมที่คนพามา (ถ้าคนพามายังอยู่)
   const payerOf = (p: Player) => (p.guestOf && byId.has(p.guestOf) ? p.guestOf : p.id);
   const owe = new Map<string, Map<string, number>>();
   for (const d of days) {
-    if (d.date > upTo) continue;
+    if (d.date >= beforeDate) continue;
     for (const c of d.checkIns) {
       const p = byId.get(c.playerId);
       if (!p || c.paidAt) continue;
