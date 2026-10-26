@@ -39,7 +39,7 @@ const COPY = {
     askLow: "เตือนเมื่อเหลือไม่ถึงกี่ขวด",
     askCount: "มีน้ำกี่ขวด (นับจริง)",
     countBtn: "นับน้ำจริง",
-    howToBuy: "ซื้อน้ำเพิ่ม: คิดเงิน > รายเดือน > ลงรายจ่าย \"ค่าเครื่องดื่ม\" ใส่จำนวนขวด",
+    howToBuy: "ลงค่าน้ำ 1 รายการ = 1 ขวด · ซื้อน้ำเพิ่ม: คิดเงิน > รายเดือน > ลงรายจ่าย \"ค่าเครื่องดื่ม\" ใส่จำนวนขวด",
   },
 } as const;
 
@@ -75,7 +75,7 @@ export function StockCard({ kind = "shuttle" }: { kind?: Kind }) {
       {info ? (
         <div className={`rounded-2xl px-4 py-3 ${low ? "bg-amber-50 text-amber-900" : "bg-zinc-50"}`}>
           <div className="font-display text-3xl font-semibold tabular-nums">
-            {t(c.count, { n: info.left })}
+            {t(c.count, { n: Math.max(0, info.left) })}
             {kind === "shuttle" && <span className="ml-2 text-sm font-medium text-zinc-500">({tubes(info.left)})</span>}
           </div>
           <div className="mt-1 text-xs text-zinc-500">

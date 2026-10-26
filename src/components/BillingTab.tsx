@@ -209,6 +209,7 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
           />
           <Button type="submit">{t("เพิ่ม")}</Button>
         </form>
+        {state.drinkStock && <p className="text-xs text-zinc-500">{t("ลง 1 รายการต่อ 1 ขวด สต็อกน้ำจะหักให้เอง")}</p>}
       </div>
 
       <FeeEditor key={`${bill.courtFee}|${bill.shuttleFee}`} player={player} bill={bill} />
