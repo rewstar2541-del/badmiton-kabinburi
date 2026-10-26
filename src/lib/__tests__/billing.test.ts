@@ -193,5 +193,6 @@ describe("กติกาวันหมดอายุตามยอดจ่�
     expect(annualExpiryFor(rules, 500, "2026-10-25")).toBe("2027-10-25");
     expect(annualExpiryFor([], 1000, "2026-10-25")).toBe("2027-10-25");
     expect(annualExpiryFor([{ minAmount: 0, endMonth: 3, yearsAhead: 0 }], 100, "2026-10-25")).toBe("2027-03-31");
+    expect(annualExpiryFor([{ minAmount: 0, endMonth: 12, yearsAhead: 0 }], 100, "2026-12-31")).toBe("2027-12-31");
   });
 });
