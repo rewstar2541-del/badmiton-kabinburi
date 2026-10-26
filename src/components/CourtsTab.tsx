@@ -3,6 +3,7 @@
 import { ClubCorner } from "./ClubCorner";
 import { StockWarning } from "./Stock";
 import { PairRequests } from "./Pairs";
+import { GameRatingsCard } from "./RateGame";
 import { useEffect, useState } from "react";
 import { presence, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
@@ -258,6 +259,7 @@ export function CourtsTab() {
           </Card>
         </>
       )}
+      <GameRatingsCard />
       {home > 0 && <p className="px-1 text-xs text-zinc-500">{t("จ่ายเงินแล้วกลับบ้าน {n} คน", { n: home })}</p>}
       <ClubCorner />
     </div>

@@ -7,6 +7,7 @@ import { BoardCard } from "./Board";
 import { BirthdayBanner } from "./Birthday";
 import { PollVote } from "./Polls";
 import { PairCard } from "./Pairs";
+import { RateLastGame } from "./RateGame";
 import { useState } from "react";
 import { today, useStore, useToday } from "@/lib/store";
 import { presence } from "@/lib/matchmaking";
@@ -241,6 +242,7 @@ export function TodayTab({ home }: { home?: boolean } = {}) {
         )}
       </Card>
 
+      {checkedIn && <RateLastGame playerId={player.id} />}
       {!home && checkedIn && status !== "home" && !player.guestOf && <PairCard />}
       {!home && checkedIn && status !== "home" && !player.guestOf && <BringGuest player={player} pin={pin} />}
       <PollVote />

@@ -52,6 +52,8 @@ export interface Rows {
     winner: string | null;
   }[];
   drinks: { id: string; date: string; player_id: string; amount: number; note: string }[];
+  /** คะแนนหลังเล่น (แอดมินเท่านั้น) */
+  ratings?: { game_id: string; player_id: string; stars: number }[];
   monthly: { month: string; player_id: string; paid_at: string; amount?: number | null }[];
   announcements: { date: string; message: string; title?: string | null; fee?: number | null; cap?: number | null }[];
   signups: { date: string; player_id: string; at: string }[];
@@ -131,6 +133,13 @@ export function rowsToState(r: Rows): State {
       shuttles: g.shuttles,
       winner: (g.winner as Game["winner"]) ?? undefined,
     });
+  const ratings = new Map<string, Record<string, number>>();
+  for (const x of r.ratings ?? []) ratings.set(x.game_id, { ...ratings.get(x.game_id), [x.player_id]: x.stars });
+  for (const d of days.values())
+    for (const g of d.games) {
+      const rs = ratings.get(g.id);
+      if (rs) g.ratings = rs;
+    }
   for (const x of r.drinks) day(x.date).drinks.push({ id: x.id, playerId: x.player_id, amount: x.amount, note: x.note });
   for (const x of r.pairs ?? [])
     (day(x.date).pairs ??= []).push({ id: x.id, from: x.from_id, to: x.to_id, status: x.status, at: Date.parse(x.at) });
@@ -276,6 +285,7 @@ export const TABLE_OF: Record<string, TableKey> = {
   pair_requests: "pairs",
   polls: "polls",
   poll_votes: "votes",
+  game_ratings: "ratings",
   board_posts: "board",
   notices: "notices",
 };
@@ -294,6 +304,9 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
     // ค่าน้ำ ค่ารายเดือน และสลิป ผู้เล่นทั่วไปอ่านไม่ได้ (โหลดของตัวเองแยกผ่าน my_private)
     drinks: async () => (isAdmin ? all(() => db.from("drinks").select("id,date,player_id,amount,note").order("id")) : []),
     monthly: async () => (isAdmin ? all(() => db.from("monthly_payments").select("month,player_id,paid_at,amount").order("month").order("player_id")) : []),
+    // ตารางนี้มาทีหลัง (supabase/sql/game_ratings.sql) ยังไม่ได้รัน SQL ก็ใช้แอพต่อได้
+    ratings: async () =>
+      isAdmin ? all(() => db.from("game_ratings").select("game_id,player_id,stars").order("game_id").order("player_id")).catch(() => []) : [],
     // ตารางกติกายังไม่ได้สร้าง (ยังไม่รัน SQL) ให้ข้ามไป ไม่ให้หน้าอื่นพัง
     annualRules: async () => (isAdmin ? all(() => db.from("annual_rules").select("min_amount,end_month,years_ahead").order("min_amount")).catch(() => []) : []),
     annual: async () => (isAdmin ? all(() => db.from("annual_payments").select("id,player_id,paid_on,from_date,until_date,amount").order("paid_on").order("id")) : []),
@@ -575,6 +588,7 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       return check(await db.from("pair_requests").update({ status: a.status }).eq("id", a.id));
     case "votePoll":
     case "requestPair":
+    case "rateGame":
       return; // ออนไลน์ผู้เล่นทำผ่านฟังก์ชันในฐานข้อมูล
     case "removeExpense":
       return check(await db.from("expenses").delete().eq("id", a.id));
@@ -1018,6 +1032,7 @@ export type SocialRequest =
   | { kind: "respondPair"; id: string; accept: boolean }
   | { kind: "cancelPair"; id: string }
   | { kind: "vote"; poll: string; dates: string[] }
+  | { kind: "rate"; game: string; stars: number }
   | { kind: "birthday"; bday: string | null }
   | { kind: "boardPost"; post: { kind: BoardKind; title: string; detail: string; price: number | null; photo: string } }
   | { kind: "boardClose"; id: string }
@@ -1047,6 +1062,8 @@ export async function socialRpc(db: SupabaseClient, req: SocialRequest, playerId
                 ? await db.rpc("board_close", { ...base, p_id: req.id })
                 : req.kind === "boardRemove"
                   ? await db.rpc("board_remove", { ...base, p_id: req.id })
+                : req.kind === "rate"
+                  ? await db.rpc("rate_game", { ...base, p_game: req.game, p_stars: req.stars })
                 : await db.rpc("vote_poll", { ...base, p_poll: req.poll, p_dates: req.dates });
   if (error) return error.message;
   return (data as string | null) ?? null;
