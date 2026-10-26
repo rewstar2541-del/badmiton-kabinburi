@@ -2,6 +2,7 @@
 
 import { eventStyle } from "@/lib/eventKinds";
 import { useState } from "react";
+import { isDemo } from "@/lib/demo";
 import { sendLineNotice, supabase } from "@/lib/remote";
 import { useStore, useToday } from "@/lib/store";
 import { ClosedBanner } from "./Calendar";
@@ -23,6 +24,9 @@ export function AnnounceCard() {
   const [notice, setNotice] = useState(false);
   const announced = day.announcement !== undefined;
 
+  // เช็คก่อนวันปิด: งดเล่นจะปิดวันนี้ แต่แอดมินยังต้องเห็นผลส่งและรายชื่อที่ต้องบอกเอง
+  if (notice) return <ChangeNotice onDone={() => setNotice(false)} />;
+
   const closed = state.closed[date];
   if (closed !== undefined && !announced && !editing)
     return (
@@ -32,24 +36,22 @@ export function AnnounceCard() {
       </div>
     );
 
-  if (announced && notice) return <ChangeNotice onDone={() => setNotice(false)} />;
-
   if (announced && !editing)
     return (
       <div className="space-y-2">
         <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} date={date} />
         <CapLine />
-        <div className="flex flex-wrap justify-end gap-x-4 gap-y-2 px-1 text-xs text-zinc-500">
-          <button className="font-semibold text-amber-700 underline-offset-2 active:underline" onClick={() => setNotice(true)}>
-            {t("แจ้งเลื่อน / งดเล่น")}
-          </button>
+        <Button variant="warn" className="w-full" onClick={() => setNotice(true)}>
+          ⏰ {t("แจ้งเลื่อน / งดเล่น")}
+        </Button>
+        <div className="flex justify-end gap-4 px-1 text-xs text-zinc-500">
           <button className="underline-offset-2 active:underline" onClick={() => setEditing(true)}>
             {t("แก้ข้อความ")}
           </button>
           <button
             className="text-red-500 underline-offset-2 active:underline"
             onClick={() => {
-              if (confirm(t("ยกเลิกประกาศวันนี้? ผู้เล่นจะลงชื่อเองไม่ได้"))) dispatch({ type: "setAnnouncement", date, message: null });
+              if (confirm(t("ยกเลิกประกาศวันนี้? ผู้เล่นจะลงชื่อเองไม่ได้ (ไม่ส่ง LINE แจ้งใคร)"))) dispatch({ type: "setAnnouncement", date, message: null });
             }}
           >
             {t("ยกเลิกประกาศ")}
@@ -69,7 +71,8 @@ export function AnnounceCard() {
   );
 }
 
-/** แอดมินแจ้งเลื่อน/งดเล่นกะทันหัน ส่ง LINE หาทุกคนที่ลงชื่อวันนี้ทีเดียว งดเล่นจะปิดวันนี้ในแอพด้วย */
+/** แอดมินแจ้งเลื่อน/งดเล่นกะทันหัน ส่ง LINE หาทุกคนที่ลงชื่อวันนี้ทีเดียว
+ *  เลื่อน: ต่อเหตุผลไว้หน้าข้อความประกาศ ให้ในแอพตรงกับ LINE / งด: ปิดวันนี้ในแอพพร้อมเหตุผล */
 function ChangeNotice({ onDone }: { onDone: () => void }) {
   const { dispatch } = useStore();
   const { date, day } = useToday();
@@ -80,12 +83,25 @@ function ChangeNotice({ onDone }: { onDone: () => void }) {
   const [result, setResult] = useState<{ sent: number; noLine: string[] } | null>(null);
   const people = new Set([...(day.signups ?? []).map((x) => x.playerId), ...day.checkIns.map((c) => c.playerId)]).size;
 
+  // อัปเดตในแอพ (ใช้ทั้งหลังส่ง LINE สำเร็จ และตอนส่งไม่ได้แต่แอดมินเลือกแก้ในแอพอย่างเดียว)
+  const apply = (text: string) => {
+    if (kind === "cancel") {
+      // ผู้เล่นเปิดแอพจะเห็นว่างดเล่นพร้อมเหตุผล แอดมินเปิดใหม่ได้ที่ปฏิทินก๊วน (รายชื่อคนลงชื่อยังอยู่)
+      dispatch({ type: "setAnnouncement", date, message: null });
+      dispatch({ type: "setClosed", date, reason: text });
+    } else if (day.announcement !== undefined) {
+      dispatch({ type: "setAnnouncement", date, message: `⏰ ${text}\n${day.announcement}`.slice(0, 1000) });
+    }
+  };
+
   if (result)
     return (
       <Card className="space-y-3">
-        <p className="rounded-2xl bg-emerald-50 px-3 py-2.5 text-sm font-medium text-emerald-700">
-          ✓ {t("ส่ง LINE แล้ว {n} คน", { n: result.sent })}
-        </p>
+        {result.sent > 0 ? (
+          <p className="rounded-2xl bg-emerald-50 px-3 py-2.5 text-sm font-medium text-emerald-700">✓ {t("ส่ง LINE แล้ว {n} คน", { n: result.sent })}</p>
+        ) : (
+          <p className="rounded-2xl bg-amber-50 px-3 py-2.5 text-sm font-medium text-amber-900">{t("ไม่มีใครได้รับทาง LINE ต้องบอกเอง")}</p>
+        )}
         {result.noLine.length > 0 && (
           <p className="rounded-2xl bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
             {t("ยังไม่ได้ผูก LINE ต้องบอกเอง")}: {result.noLine.join(", ")}
@@ -97,21 +113,22 @@ function ChangeNotice({ onDone }: { onDone: () => void }) {
       </Card>
     );
 
+  const head = kind === "cancel" ? t("งดเล่นวันนี้") : t("เลื่อนเวลาเล่น");
+
   const send = async () => {
     const text = reason.trim();
     if (!text) return setError(t("ใส่เหตุผลก่อน"));
-    const head = kind === "cancel" ? t("งดเล่นวันนี้") : t("เลื่อนเวลาเล่น");
     if (!confirm(t("ส่ง \"{head}\" เข้า LINE ของคนที่ลงชื่อ {n} คน?", { head, n: people }))) return;
     setBusy(true);
     setError("");
-    const r = supabase ? await sendLineNotice(supabase, date, kind, text) : { sent: people, noLine: [] };
+    // โหมดทดลองห้ามเรียก function จริง แม้เบราว์เซอร์จะล็อกอินแอดมินค้างไว้
+    const r = supabase && !isDemo() ? await sendLineNotice(supabase, date, kind, text) : { sent: people, noLine: [] as string[] };
     setBusy(false);
-    if (r.error) return setError(t(r.error));
-    if (kind === "cancel") {
-      // ปิดวันนี้: ผู้เล่นเปิดแอพจะเห็นว่างดเล่นพร้อมเหตุผล แอดมินเปิดใหม่ได้ที่ปฏิทินก๊วน
-      dispatch({ type: "setAnnouncement", date, message: null });
-      dispatch({ type: "setClosed", date, reason: text });
-    }
+    if (r.error)
+      return setError(
+        r.error === "quota" && "left" in r ? t("โควตา LINE เหลือ {left} ข้อความ ไม่พอส่ง {n} คน", { left: r.left ?? 0, n: r.need ?? 0 }) : t(r.error),
+      );
+    apply(text);
     setResult({ sent: r.sent ?? 0, noLine: r.noLine ?? [] });
   };
 
@@ -124,7 +141,7 @@ function ChangeNotice({ onDone }: { onDone: () => void }) {
             key={k}
             type="button"
             onClick={() => setKind(k)}
-            className={`rounded-2xl px-3 py-2.5 text-sm font-semibold ${kind === k ? (k === "cancel" ? "bg-red-600 text-white" : "bg-ink text-white") : "bg-zinc-100 text-zinc-600"}`}
+            className={`rounded-2xl px-3 py-2.5 text-sm font-semibold ${kind === k ? (k === "cancel" ? "bg-red-50 text-red-700 ring-2 ring-red-500" : "bg-ink text-white") : "bg-zinc-100 text-zinc-600"}`}
           >
             {k === "cancel" ? `⛔ ${t("งดเล่นวันนี้")}` : `⏰ ${t("เลื่อนเวลาเล่น")}`}
           </button>
@@ -139,18 +156,41 @@ function ChangeNotice({ onDone }: { onDone: () => void }) {
         aria-label={t("เหตุผล")}
       />
       <p className="text-xs text-zinc-500">
-        {kind === "cancel" ? t("ส่ง LINE หาคนที่ลงชื่อ {n} คน แล้วปิดวันนี้ในแอพ", { n: people }) : t("ส่ง LINE หาคนที่ลงชื่อ {n} คน", { n: people })}
+        {!people
+          ? t("วันนี้ยังไม่มีคนลงชื่อ")
+          : kind === "cancel"
+            ? t("ลงชื่อ {n} คน คนที่ผูก LINE จะได้ข้อความ แล้วปิดวันนี้ในแอพ", { n: people })
+            : t("ลงชื่อ {n} คน คนที่ผูก LINE จะได้ข้อความ และต่อท้ายในประกาศ", { n: people })}
       </p>
-      {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+      {error && (
+        <div className="space-y-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
+          <p>{error}</p>
+          {reason.trim() && (
+            <button
+              className="font-semibold underline"
+              onClick={() => {
+                apply(reason.trim());
+                onDone();
+              }}
+            >
+              {kind === "cancel" ? t("ปิดวันนี้ในแอพอย่างเดียว ไม่ส่ง LINE") : t("แก้ประกาศในแอพอย่างเดียว ไม่ส่ง LINE")}
+            </button>
+          )}
+        </div>
+      )}
       <div className="flex gap-2">
-        <Button variant={kind === "cancel" ? "danger" : "accent"} className="flex-1" disabled={busy || !people} onClick={send}>
+        <Button
+          variant={kind === "cancel" ? "primary" : "accent"}
+          className={`flex-1 ${kind === "cancel" ? "!bg-red-600 !text-white" : ""}`}
+          disabled={busy || !people}
+          onClick={send}
+        >
           {busy ? t("กำลังส่ง...") : t("ส่งแจ้งทุกคน")}
         </Button>
         <Button onClick={onDone} disabled={busy}>
-          {t("ยกเลิก")}
+          {t("ปิด")}
         </Button>
       </div>
-      {!people && <p className="text-xs text-zinc-500">{t("วันนี้ยังไม่มีคนลงชื่อ")}</p>}
     </Card>
   );
 }

@@ -202,16 +202,18 @@ Deno.serve(async (req) => {
     const reason = (req2.reason ?? "").trim().slice(0, 500);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !reason) return json({ error: "ใส่เหตุผลก่อน" });
     if (!TOKEN) return json({ error: "ยังไม่ได้ใส่ LINE_CHANNEL_ACCESS_TOKEN ใน Supabase" });
-    const [{ data: sg }, { data: ci }] = await Promise.all([
+    const [{ data: sg, error: e1 }, { data: ci, error: e2 }] = await Promise.all([
       db.from("signups").select("player_id").eq("date", date),
       db.from("checkins").select("player_id").eq("date", date),
     ]);
+    if (e1 || e2) return json({ error: (e1 ?? e2)!.message });
     const ids = [...new Set([...(sg ?? []), ...(ci ?? [])].map((r) => r.player_id as string))];
     if (!ids.length) return json({ error: "วันนี้ยังไม่มีคนลงชื่อ" });
-    const [{ data: ps }, { data: au }] = await Promise.all([
+    const [{ data: ps, error: e3 }, { data: au, error: e4 }] = await Promise.all([
       db.from("players").select("id,name,guest_of").in("id", ids),
       db.from("player_auth").select("player_id,line_user_id").in("player_id", ids).not("line_user_id", "is", null),
     ]);
+    if (e3 || e4) return json({ error: (e3 ?? e4)!.message });
     const lineOf = new Map((au ?? []).map((a) => [a.player_id as string, a.line_user_id as string]));
     const to = [...new Set(lineOf.values())];
     // เพื่อนที่พามา ไม่มี LINE เอง คนพามาได้ข้อความแล้ว
@@ -222,7 +224,7 @@ Deno.serve(async (req) => {
     const text = `${head} ${wd} ${d}/${m}\n${reason}\nดูในแอพ: https://badmiton-kabinburi.vercel.app/`;
     if (!to.length) return json({ ok: true, sent: 0, noLine });
     const left = s.monthly_limit - (await used());
-    if (left < to.length) return json({ error: `โควตา LINE เหลือ ${Math.max(0, left)} ข้อความ ไม่พอส่ง ${to.length} คน` });
+    if (left < to.length) return json({ error: "quota", left: Math.max(0, left), need: to.length });
     const msg = [{ type: "text", text }];
     const err = to.length === 1 ? await linePost("/message/push", { to: to[0], messages: msg }) : await linePost("/message/multicast", { to, messages: msg });
     if (!err) await addUsage("announce", to.length);
