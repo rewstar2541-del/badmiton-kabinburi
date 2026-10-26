@@ -144,6 +144,12 @@ function LocalProvider({ children }: { children: ReactNode }) {
     async (req: SocialRequest, playerId: string) => {
       const date = today();
       if (req.kind === "vote") dispatch({ type: "votePoll", id: req.poll, playerId, dates: req.dates });
+      else if (req.kind === "rate") {
+        const d = state.days.find((x) => x.date === date);
+        const g = d?.games.find((x) => x.id === req.game);
+        if (!g?.endedAt || !g.playerIds.includes(playerId)) return "ให้คะแนนได้เฉพาะเกมที่เล่นจบแล้ว";
+        dispatch({ type: "rateGame", date, gameId: req.game, playerId, stars: req.stars });
+      }
       else if (req.kind === "requestPair") dispatch({ type: "requestPair", date, from: playerId, to: req.to });
       else if (req.kind === "birthday") {
         const p = state.players.find((x) => x.id === playerId);
@@ -160,7 +166,7 @@ function LocalProvider({ children }: { children: ReactNode }) {
       else dispatch({ type: "setPairStatus", date, id: req.id, status: req.kind === "cancelPair" ? "cancelled" : req.accept ? "accepted" : "declined" });
       return null;
     },
-    [dispatch, state.players, state.board],
+    [dispatch, state.players, state.board, state.days],
   );
   const setPrefs = useCallback(
     async (playerId: string, _pin: string, prefer: string[], avoid: string[]) => {

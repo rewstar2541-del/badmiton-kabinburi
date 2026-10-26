@@ -1,5 +1,6 @@
 import { clearState, type ClearKind } from "./clear";
 import { guestsOf, markPaid } from "./billing";
+import { clampStars } from "./ratings";
 import { DEFAULT_SETTINGS, type Day, type DayPrices, type Expense, type Game, type PairStatus, type Poll, type ShuttleStock, type BoardPost, type Notice, type Level, type AnnualPayment, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
 
 export interface State {
@@ -86,6 +87,8 @@ export type Action =
   | { type: "removePoll"; id: string }
   /** โหมดทดลองเท่านั้น ออนไลน์ผ่าน vote_poll */
   | { type: "votePoll"; id: string; playerId: string; dates: string[] }
+  /** โหมดทดลองเท่านั้น ออนไลน์ผ่าน rate_game */
+  | { type: "rateGame"; date: string; gameId: string; playerId: string; stars: number }
   /** โหมดทดลองเท่านั้น ออนไลน์ผ่าน request_pair */
   | { type: "requestPair"; date: string; from: string; to: string; _id: string; _at: number }
   | { type: "setPairStatus"; date: string; id: string; status: PairStatus; _at: number }
@@ -228,6 +231,10 @@ export function reducer(state: State, a: Action): State {
       return updateGame(state, a.date, a.gameId, (g) => ({ ...g, shuttles: Math.max(0, a.shuttles) }));
     case "endGame":
       return updateGame(state, a.date, a.gameId, (g) => ({ ...g, endedAt: a._at, winner: a.winner }));
+    case "rateGame":
+      return updateGame(state, a.date, a.gameId, (g) =>
+        g.endedAt && g.playerIds.includes(a.playerId) ? { ...g, ratings: { ...g.ratings, [a.playerId]: clampStars(a.stars) } } : g,
+      );
     case "cancelGame":
       return withDay(state, a.date, (d) => ({ ...d, games: d.games.filter((g) => g.id !== a.gameId) }));
     case "addDrink":

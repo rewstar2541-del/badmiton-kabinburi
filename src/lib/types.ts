@@ -159,6 +159,8 @@ export interface Game {
   endedAt?: number;
   shuttles: number;
   winner?: Team;
+  /** คะแนนที่ผู้เล่นให้เกมนี้หลังเล่น 1-5 (ผู้เล่น -> ดาว) แอดมินเท่านั้นที่เห็น */
+  ratings?: Record<string, number>;
 }
 
 export interface CheckIn {
