@@ -19,6 +19,8 @@ export interface State {
   expenses?: Expense[];
   /** สต็อกลูกแบด (แอดมินเท่านั้น) */
   stock?: ShuttleStock;
+  /** สต็อกน้ำ (แอดมินเท่านั้น) */
+  drinkStock?: ShuttleStock;
   /** โหวตวันตีพิเศษ */
   polls?: Poll[];
   /** บอร์ดของหาย / ฝากขาย (เฉพาะที่ยังเปิดอยู่และเพิ่งปิด) */
@@ -49,7 +51,7 @@ export type Action =
   | { type: "setShuttles"; date: string; gameId: string; shuttles: number }
   | { type: "endGame"; date: string; gameId: string; winner?: Team; _at: number }
   | { type: "cancelGame"; date: string; gameId: string }
-  | { type: "addDrink"; date: string; playerId: string; amount: number; note: string; _id: string }
+  | { type: "addDrink"; date: string; playerId: string; amount: number; note: string; _id: string; _at: number }
   | { type: "removeDrink"; date: string; drinkId: string }
   | { type: "editDrink"; date: string; drinkId: string; amount: number; note: string }
   /** แอดมินแก้ค่าสนาม / ค่าลูกของคนนี้วันนั้น (null = กลับไปคิดตามราคาปกติ) */
@@ -83,6 +85,7 @@ export type Action =
   | { type: "addExpense"; expense: Omit<Expense, "id" | "at">; _id: string; _at: number }
   /** นับลูกจริงแล้ว ตั้งยอดใหม่ ณ ตอนนี้ / เปลี่ยนจุดเตือน */
   | { type: "setStock"; base?: number; low?: number; _at: number }
+  | { type: "setDrinkStock"; base?: number; low?: number; _at: number }
   | { type: "createPoll"; question: string; dates: string[]; _id: string; _at: number }
   /** chosen: วันที่เลือก (เปิดประกาศวันนั้นแยกต่างหาก) */
   | { type: "closePoll"; id: string; chosen?: string }
@@ -122,6 +125,7 @@ export function normalizeBackup(raw: unknown): State {
     monthlyAmounts: data.monthlyAmounts ?? {},
     expenses: Array.isArray(data.expenses) ? data.expenses : [],
     stock: data.stock,
+    drinkStock: data.drinkStock,
     polls: Array.isArray(data.polls) ? data.polls : [],
     board: Array.isArray(data.board) ? data.board : [],
     notices: Array.isArray(data.notices) ? data.notices : [],
@@ -237,7 +241,7 @@ export function reducer(state: State, a: Action): State {
     case "addDrink":
       return withDay(state, a.date, (d) => ({
         ...d,
-        drinks: [...d.drinks, { id: a._id, playerId: a.playerId, amount: a.amount, note: a.note }],
+        drinks: [...d.drinks, { id: a._id, playerId: a.playerId, amount: a.amount, note: a.note, at: a._at }],
       }));
     case "removeDrink":
       return withDay(state, a.date, (d) => ({ ...d, drinks: d.drinks.filter((x) => x.id !== a.drinkId) }));
@@ -373,6 +377,13 @@ export function reducer(state: State, a: Action): State {
       return {
         ...state,
         stock: { low: a.low ?? cur.low, base: a.base ?? cur.base, countedAt: a.base === undefined ? cur.countedAt : a._at },
+      };
+    }
+    case "setDrinkStock": {
+      const cur = state.drinkStock ?? { base: 0, countedAt: a._at, low: 12 };
+      return {
+        ...state,
+        drinkStock: { low: a.low ?? cur.low, base: a.base ?? cur.base, countedAt: a.base === undefined ? cur.countedAt : a._at },
       };
     }
     case "createPoll":

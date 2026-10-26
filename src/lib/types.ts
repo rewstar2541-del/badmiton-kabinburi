@@ -182,9 +182,7 @@ export interface Drink {
   playerId: string;
   amount: number;
   note: string;
-  /** จำนวนลูกที่ซื้อ (เฉพาะซื้อลูกแบด) เข้าสต็อก */
-  shuttles?: number;
-  /** เวลาที่ลง ใช้เทียบกับเวลานับสต็อก */
+  /** เวลาที่ลง ใช้เทียบกับเวลานับสต็อกน้ำ (ไม่มี = เที่ยงของวันนั้น) */
   at?: number;
 }
 
@@ -236,7 +234,7 @@ export interface Poll {
   votes: Record<string, string[]>;
 }
 
-/** สต็อกลูกแบด: นับจริงล่าสุด (base ณ countedAt) แล้วบวกที่ซื้อ ลบที่ใช้ในเกมหลังจากนั้น */
+/** สต็อกลูกแบด/น้ำ: นับจริงล่าสุด (base ณ countedAt) แล้วบวกที่ซื้อ ลบที่ใช้หลังจากนั้น */
 export interface ShuttleStock {
   base: number;
   countedAt: number;
@@ -276,6 +274,8 @@ export interface Expense {
   note: string;
   /** จำนวนลูกที่ซื้อ (เฉพาะซื้อลูกแบด) เข้าสต็อก */
   shuttles?: number;
+  /** จำนวนขวดที่ซื้อ (เฉพาะค่าเครื่องดื่ม) เข้าสต็อกน้ำ */
+  bottles?: number;
   /** เวลาที่ลง ใช้เทียบกับเวลานับสต็อก */
   at?: number;
 }

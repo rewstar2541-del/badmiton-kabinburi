@@ -13,7 +13,7 @@ export const CLEAR_KINDS: { value: ClearKind; label: string; hint: string; dated
   { value: "board", label: "บอร์ดของหาย / ฝากขาย", hint: "โพสต์และรูป", dated: true },
   { value: "photos", label: "รูปกิจกรรม", hint: "รูปและไฟล์รูป", dated: true },
   { value: "closed", label: "วันงดเล่น", hint: "วันที่ตั้งงดเล่นไว้", dated: true },
-  { value: "stock", label: "สต็อกลูกแบด", hint: "ยอดนับและจุดเตือน (เริ่มนับใหม่)", dated: false },
+  { value: "stock", label: "สต็อกลูกแบดและน้ำ", hint: "ยอดนับและจุดเตือน (เริ่มนับใหม่)", dated: false },
 ];
 
 const inRange = (date: string, from: string, to: string) => date >= from && date <= to;
@@ -43,7 +43,7 @@ export function clearCount(state: State, kind: ClearKind, from: string, to: stri
     case "closed":
       return Object.keys(state.closed).filter((d) => inRange(d, from, to)).length;
     case "stock":
-      return state.stock ? 1 : 0;
+      return (state.stock ? 1 : 0) + (state.drinkStock ? 1 : 0);
     case "photos":
       return null;
   }
@@ -88,7 +88,7 @@ export function clearState(state: State, kinds: ClearKind[], from: string, to: s
   if (k.has("polls")) s = { ...s, polls: (s.polls ?? []).filter((p) => out(dayOf(p.createdAt))) };
   if (k.has("board")) s = { ...s, board: (s.board ?? []).filter((b) => out(dayOf(b.at))) };
   if (k.has("closed")) s = { ...s, closed: Object.fromEntries(Object.entries(s.closed).filter(([d]) => out(d))) };
-  if (k.has("stock")) s = { ...s, stock: undefined };
+  if (k.has("stock")) s = { ...s, stock: undefined, drinkStock: undefined };
   return s;
 }
 

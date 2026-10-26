@@ -51,14 +51,15 @@ export interface Rows {
     shuttles: number;
     winner: string | null;
   }[];
-  drinks: { id: string; date: string; player_id: string; amount: number; note: string }[];
+  drinks: { id: string; date: string; player_id: string; amount: number; note: string; created_at?: string }[];
   monthly: { month: string; player_id: string; paid_at: string; amount?: number | null }[];
   announcements: { date: string; message: string; title?: string | null; fee?: number | null; cap?: number | null }[];
   signups: { date: string; player_id: string; at: string }[];
   closed: { date: string; reason: string }[];
   slips: { id: string; date: string; player_id: string; amount: number; created_at: string }[];
-  expenses?: { id: string; date: string; category: Expense["category"]; amount: number; note: string; shuttles?: number | null; created_at?: string }[];
+  expenses?: { id: string; date: string; category: Expense["category"]; amount: number; note: string; shuttles?: number | null; bottles?: number | null; created_at?: string }[];
   stock?: { base: number; counted_at: string; low: number } | null;
+  drinkStock?: { base: number; counted_at: string; low: number } | null;
   pairs?: { id: string; date: string; from_id: string; to_id: string; status: PairStatus; at: string }[];
   polls?: { id: string; question: string; dates: string[]; created_at: string; chosen: string | null; closed: boolean }[];
   votes?: { poll_id: string; player_id: string; dates: string[] }[];
@@ -131,7 +132,8 @@ export function rowsToState(r: Rows): State {
       shuttles: g.shuttles,
       winner: (g.winner as Game["winner"]) ?? undefined,
     });
-  for (const x of r.drinks) day(x.date).drinks.push({ id: x.id, playerId: x.player_id, amount: x.amount, note: x.note });
+  for (const x of r.drinks)
+    day(x.date).drinks.push({ id: x.id, playerId: x.player_id, amount: x.amount, note: x.note, ...(x.created_at ? { at: Date.parse(x.created_at) } : {}) });
   for (const x of r.pairs ?? [])
     (day(x.date).pairs ??= []).push({ id: x.id, from: x.from_id, to: x.to_id, status: x.status, at: Date.parse(x.at) });
   for (const a of r.announcements) {
@@ -193,9 +195,11 @@ export function rowsToState(r: Rows): State {
       amount: e.amount,
       note: e.note,
       ...(e.shuttles ? { shuttles: e.shuttles } : {}),
+      ...(e.bottles ? { bottles: e.bottles } : {}),
       ...(e.created_at ? { at: Date.parse(e.created_at) } : {}),
     })),
     stock: r.stock ? { base: r.stock.base, countedAt: Date.parse(r.stock.counted_at), low: r.stock.low } : undefined,
+    drinkStock: r.drinkStock ? { base: r.drinkStock.base, countedAt: Date.parse(r.drinkStock.counted_at), low: r.drinkStock.low } : undefined,
     polls: (r.polls ?? []).map(
       (p): Poll => ({
         id: p.id,
@@ -273,6 +277,7 @@ export const TABLE_OF: Record<string, TableKey> = {
   day_prices: "prices",
   expenses: "expenses",
   shuttle_stock: "stock",
+  drink_stock: "drinkStock",
   pair_requests: "pairs",
   polls: "polls",
   poll_votes: "votes",
@@ -292,7 +297,8 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
     checkins: () => all(() => db.from("checkins").select("date,player_id,at,paid_at,resting,court_fee,shuttle_fee").gte("date", since).order("date").order("player_id")),
     games: () => all(() => db.from("games").select("id,date,court,player_ids,started_at,ended_at,shuttles,winner").gte("date", since).order("id")),
     // ค่าน้ำ ค่ารายเดือน และสลิป ผู้เล่นทั่วไปอ่านไม่ได้ (โหลดของตัวเองแยกผ่าน my_private)
-    drinks: async () => (isAdmin ? all(() => db.from("drinks").select("id,date,player_id,amount,note").order("id")) : []),
+    // select * ให้ยังโหลดได้ก่อนรัน drink_stock.sql (created_at ใช้นับสต็อกน้ำ)
+    drinks: async () => (isAdmin ? all(() => db.from("drinks").select("*").order("id")) : []),
     monthly: async () => (isAdmin ? all(() => db.from("monthly_payments").select("month,player_id,paid_at,amount").order("month").order("player_id")) : []),
     // ตารางกติกายังไม่ได้สร้าง (ยังไม่รัน SQL) ให้ข้ามไป ไม่ให้หน้าอื่นพัง
     annualRules: async () => (isAdmin ? all(() => db.from("annual_rules").select("min_amount,end_month,years_ahead").order("min_amount")).catch(() => []) : []),
@@ -307,8 +313,10 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
     signups: () => all(() => db.from("signups").select("date,player_id,at").gte("date", since).order("date").order("player_id")),
     slips: async () => (isAdmin ? all(() => db.from("slips").select("id,date,player_id,amount,created_at").is("removed_at", null).order("id")) : []),
     closed: () => all(() => db.from("closed_days").select("date,reason").order("date")),
-    expenses: async () => (isAdmin ? all(() => db.from("expenses").select("id,date,category,amount,note,shuttles,created_at").order("date").order("id")) : []),
+    expenses: async () => (isAdmin ? all(() => db.from("expenses").select("*").order("date").order("id")) : []),
     stock: async () => (isAdmin ? ((await db.from("shuttle_stock").select("base,counted_at,low").eq("id", 1).maybeSingle()).data ?? null) : null),
+    // ยังไม่รัน drink_stock.sql = ไม่มีตาราง ได้ null เหมือนยังไม่เริ่มนับ
+    drinkStock: async () => (isAdmin ? ((await db.from("drink_stock").select("base,counted_at,low").eq("id", 1).maybeSingle()).data ?? null) : null),
     pairs: () => all(() => db.from("pair_requests").select("id,date,from_id,to_id,status,at").gte("date", sinceDate(1)).order("at")),
     polls: () => all(() => db.from("polls").select("id,question,dates,created_at,chosen,closed").gte("created_at", sinceDate(120)).order("created_at")),
     votes: () => all(() => db.from("poll_votes").select("poll_id,player_id,dates").gte("at", sinceDate(120)).order("poll_id")),
@@ -544,6 +552,14 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
           ...(a.low === undefined ? {} : { low: a.low }),
         }),
       );
+    case "setDrinkStock":
+      return check(
+        await db.from("drink_stock").upsert({
+          id: 1,
+          ...(a.base === undefined ? {} : { base: a.base, counted_at: iso(a._at) }),
+          ...(a.low === undefined ? {} : { low: a.low }),
+        }),
+      );
     case "createPoll":
       return check(await db.from("polls").insert({ id: a._id, question: a.question, dates: a.dates, created_at: iso(a._at) }));
     case "closePoll":
@@ -613,7 +629,11 @@ async function clearRemote(db: SupabaseClient, kinds: ClearKind[], from: string,
   if (k.has("polls")) await byTime("polls", "created_at");
   if (k.has("board")) await byTime("board_posts", "created_at");
   if (k.has("closed")) await byDate("closed_days");
-  if (k.has("stock")) check(await db.from("shuttle_stock").delete().eq("id", 1));
+  if (k.has("stock")) {
+    check(await db.from("shuttle_stock").delete().eq("id", 1));
+    // ยังไม่รัน drink_stock.sql ก็ไม่มีอะไรให้ลบ
+    await db.from("drink_stock").delete().eq("id", 1);
+  }
   if (k.has("photos")) {
     const { data, error } = await db.from("event_photos").select("id,path").gte("date", from).lte("date", to);
     if (error) throw new Error(error.message);

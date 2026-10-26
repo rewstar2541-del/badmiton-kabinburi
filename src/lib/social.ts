@@ -41,6 +41,16 @@ export function shuttleStock(state: State): StockInfo | null {
   return { left: s.base + bought - used, bought, used, low: s.low, countedAt: s.countedAt };
 }
 
+/** น้ำที่เหลือ = นับจริงล่าสุด + ขวดที่ซื้อหลังจากนั้น - ค่าน้ำที่ลงหลังจากนั้น (1 รายการ = 1 ขวด) */
+export function drinkStock(state: State): StockInfo | null {
+  const s = state.drinkStock;
+  if (!s) return null;
+  const after = (at: number | undefined, date: string) => (at ?? Date.parse(date + "T12:00:00")) > s.countedAt;
+  const bought = (state.expenses ?? []).filter((e) => e.bottles && after(e.at, e.date)).reduce((n, e) => n + (e.bottles ?? 0), 0);
+  const used = state.days.reduce((n, d) => n + d.drinks.filter((x) => after(x.at, d.date)).length, 0);
+  return { left: s.base + bought - used, bought, used, low: s.low, countedAt: s.countedAt };
+}
+
 export interface MateStat {
   id: string;
   games: number;
