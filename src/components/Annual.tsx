@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { locale, t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
-import { addYears, annualExpiryFor, annualStatus, type AnnualRule, type Player } from "@/lib/types";
-import { Avatar, Button, Card, Sheet, baht, inputClass } from "./ui";
+import { annualExpiryFor, annualStatus, type AnnualRule, type Player } from "@/lib/types";
+import { Button, Card, Sheet, baht, inputClass } from "./ui";
 
-function fmt(date: string) {
+export function fmt(date: string) {
   return new Date(`${date}T00:00:00`).toLocaleDateString(locale(), { day: "numeric", month: "short", year: "numeric" });
 }
 
@@ -35,92 +35,28 @@ export function AnnualInfo({ player }: { player: Player }) {
   );
 }
 
-/** แอดมิน: รายชื่อสมาชิกรายปี บันทึกจ่าย ตั้งวันหมดอายุเอง */
-export function AnnualView() {
-  const { state, dispatch } = useStore();
+/** แอดมิน: รับเงินรายปี ตั้งวันหมดอายุ แก้/ลบประวัติ */
+export function AnnualPaySheet({ player, onClose }: { player: Player; onClose: () => void }) {
+  const { dispatch } = useStore();
   const { date } = useToday();
-  const [target, setTarget] = useState<Player | null>(null);
-  const [q, setQ] = useState("");
-  const people = state.players.filter((p) => !p.guestOf && !p.pending);
-  const members = people
-    .filter((p) => p.annualUntil)
-    .sort((a, b) => (a.annualUntil ?? "").localeCompare(b.annualUntil ?? ""));
-  const soon = members.filter((p) => annualStatus(p, date)?.kind === "soon");
-  const others = people
-    .filter((p) => !p.annualUntil && (!q.trim() || p.name.toLowerCase().includes(q.trim().toLowerCase())))
-    .sort((a, b) => a.name.localeCompare(b.name, "th"));
-  const paid = (state.annualPayments ?? []).filter((x) => x.paidOn.slice(0, 4) === date.slice(0, 4)).reduce((s, x) => s + x.amount, 0);
-
-  const row = (p: Player) => {
-    const st = annualStatus(p, date);
-    return (
-      <li key={p.id} className="flex items-center gap-3 rounded-3xl bg-white px-4 py-3 shadow-[0_8px_24px_-14px_rgba(11,18,32,0.25)]">
-        <Avatar name={p.name} photo={p.photo} size={40} />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate font-semibold">{p.name}</span>
-          <span className={`block text-xs ${st?.kind === "soon" ? "font-semibold text-amber-700" : st?.kind === "expired" ? "text-red-600" : "text-zinc-500"}`}>
-            {!st
-              ? t("ยังไม่เป็นสมาชิกรายปี")
-              : st.kind === "expired"
-                ? t("หมดอายุแล้ว {date}", { date: fmt(st.until) })
-                : st.kind === "upcoming"
-                  ? t("จะเริ่ม {date}", { date: fmt(st.from ?? "") })
-                  : st.kind === "soon"
-                  ? t("ใกล้หมดอายุ {date} (เหลือ {n} วัน)", { date: fmt(st.until), n: st.daysLeft })
-                  : t("ใช้ได้ถึง {date}", { date: fmt(st.until) })}
-          </span>
-        </span>
-        <button className="shrink-0 rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-600" onClick={() => setTarget(p)}>
-          {st ? t("ต่ออายุ/แก้ไข") : t("รับเงิน")}
-        </button>
-      </li>
-    );
-  };
-
   return (
-    <>
-      <div className="grid grid-cols-2 gap-2 rounded-3xl bg-ink p-5 text-center text-white">
-        <div>
-          <div className="font-display text-2xl font-semibold">{members.filter((p) => annualStatus(p, date)?.kind === "active" || annualStatus(p, date)?.kind === "soon").length}</div>
-          <div className="text-[11px] text-white/60">{t("สมาชิกรายปีที่ใช้งานอยู่")}</div>
-        </div>
-        <div>
-          <div className="font-display text-2xl font-semibold">{paid.toLocaleString("th-TH")}</div>
-          <div className="text-[11px] text-white/60">{t("บาทที่เก็บได้ปีนี้")}</div>
-        </div>
-      </div>
-      {soon.length > 0 && (
-        <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 ring-1 ring-amber-300">
-          {t("ใกล้หมดอายุ {n} คน: {names}", { n: soon.length, names: soon.map((p) => p.name).join(", ") })}
-        </p>
-      )}
-      <p className="px-1 text-xs text-zinc-500">{t("สมาชิกรายปีไม่ถูกคิดค่าสนามรายวัน ค่าลูกและค่าน้ำยังคิดตามปกติ")}</p>
-      <ul className="space-y-2">{members.map(row)}</ul>
-      {members.length === 0 && <Card className="py-6 text-center text-sm text-zinc-500">{t("ยังไม่มีสมาชิกรายปี กดรับเงินที่ชื่อด้านล่างเพื่อเพิ่ม")}</Card>}
-      <input className={inputClass} aria-label={t("ค้นหาชื่อเพื่อเพิ่มสมาชิกรายปี")} placeholder={t("ค้นหาชื่อเพื่อเพิ่มสมาชิกรายปี")} value={q} onChange={(e) => setQ(e.target.value)} />
-      {others.length > 0 && <ul className="space-y-2">{others.map(row)}</ul>}
-      <RulesEditor />
-      {target && (
-        <AnnualSheet
-          key={target.id}
-          player={target}
-          onClose={() => setTarget(null)}
-          onSave={(i) => {
-            const prev = target.annualFrom && target.annualUntil ? { from: target.annualFrom, until: target.annualUntil } : undefined;
-            dispatch({ type: "recordAnnual", playerId: target.id, paidOn: date, prev, ...i });
-            setTarget(null);
-          }}
-          onExpiry={(until) => {
-            dispatch({ type: "setAnnualExpiry", playerId: target.id, until });
-            setTarget(null);
-          }}
-          onClear={() => {
-            dispatch({ type: "clearAnnual", playerId: target.id });
-            setTarget(null);
-          }}
-        />
-      )}
-    </>
+    <AnnualSheet
+      player={player}
+      onClose={onClose}
+      onSave={(i) => {
+        const prev = player.annualFrom && player.annualUntil ? { from: player.annualFrom, until: player.annualUntil } : undefined;
+        dispatch({ type: "recordAnnual", playerId: player.id, paidOn: date, prev, ...i });
+        onClose();
+      }}
+      onExpiry={(until) => {
+        dispatch({ type: "setAnnualExpiry", playerId: player.id, until });
+        onClose();
+      }}
+      onClear={() => {
+        dispatch({ type: "clearAnnual", playerId: player.id });
+        onClose();
+      }}
+    />
   );
 }
 
@@ -228,7 +164,7 @@ function AnnualSheet({
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 /** แอดมิน: กติกาวันหมดอายุตามยอดที่จ่าย เช่น 1,000 หมดอายุ มิ.ย. ปีหน้า / 2,000 ขึ้นไป ธ.ค. ปีหน้า */
-function RulesEditor() {
+export function RulesEditor() {
   const { state, dispatch } = useStore();
   const saved = state.annualRules ?? [];
   const [open, setOpen] = useState(false);
