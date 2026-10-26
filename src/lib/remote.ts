@@ -1,7 +1,8 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Action, SelfAction, State } from "./state";
 import { endOf, startOf, type ClearKind } from "./clear";
-import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Notice, type Gender, type Level, type AnnualPayment, type MonthlyPayments, type Plan, type Player, type Settings } from "./types";
+import { earnId } from "./loyalty";
+import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Notice, type Gender, type Level, type AnnualPayment, type Loyalty, type MonthlyPayments, type RewardKind, type Plan, type Player, type Settings } from "./types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -30,6 +31,8 @@ export interface Rows {
     annual_until?: string | null;
   }[];
   annual?: { id: string; player_id: string; paid_on: string; from_date: string; until_date: string; amount: number }[];
+  /** แต้มความขยัน: kind earn = ได้จากเดือนที่มาครบ (date = วันแรกของเดือน) อื่นๆ = แลกในบิลวันนั้น */
+  loyalty?: { id: string; player_id: string; date: string; kind: "earn" | RewardKind; points: number; amount: number }[];
   checkins: {
     date: string;
     player_id: string;
@@ -74,6 +77,7 @@ export interface Rows {
         bank_name?: string;
         bank_account?: string;
         bank_holder?: string;
+        loyalty?: Loyalty | null;
       }
     | null;
 }
@@ -139,6 +143,9 @@ export function rowsToState(r: Rows): State {
     if (a.fee != null) day(a.date).announcementFee = a.fee;
     if (a.cap != null) day(a.date).announcementCap = a.cap;
   }
+  for (const x of r.loyalty ?? [])
+    if (x.kind !== "earn")
+      (day(x.date).rewards ??= []).push({ id: x.id, playerId: x.player_id, kind: x.kind, points: x.points, amount: Number(x.amount) });
   for (const s of r.signups) (day(s.date).signups ??= []).push({ playerId: s.player_id, at: ms(s.at) });
   for (const x of r.slips)
     (day(x.date).slips ??= []).push({ id: x.id, playerId: x.player_id, amount: Number(x.amount), at: ms(x.created_at) });
@@ -168,6 +175,7 @@ export function rowsToState(r: Rows): State {
         bankName: s.bank_name ?? "",
         bankAccount: s.bank_account ?? "",
         bankHolder: s.bank_holder ?? "",
+        ...(s.loyalty ? { loyalty: s.loyalty } : {}),
       }
     : DEFAULT_SETTINGS;
 
@@ -184,6 +192,9 @@ export function rowsToState(r: Rows): State {
     annualPayments: (r.annual ?? []).map(
       (a): AnnualPayment => ({ id: a.id, playerId: a.player_id, paidOn: a.paid_on, from: a.from_date, until: a.until_date, amount: Number(a.amount) }),
     ),
+    pointsEarned: (r.loyalty ?? [])
+      .filter((x) => x.kind === "earn")
+      .map((x) => ({ id: x.id, playerId: x.player_id, month: x.date.slice(0, 7), points: x.points })),
     expenses: (r.expenses ?? []).map((e) => ({
       id: e.id,
       date: e.date,
@@ -262,6 +273,7 @@ export const TABLE_OF: Record<string, TableKey> = {
   drinks: "drinks",
   monthly_payments: "monthly",
   annual_payments: "annual",
+  loyalty_points: "loyalty",
   settings: "settings",
   announcements: "announcements",
   signups: "signups",
@@ -296,8 +308,13 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
       const r = await all(() =>
         db.from("settings").select("court_count,court_fee,first_shuttle_fee,next_shuttle_fee,monthly_fee,promptpay_id,bank_name,bank_account,bank_holder").eq("id", 1),
       );
-      return (r[0] as Rows["settings"]) ?? null;
+      const row = (r[0] as Rows["settings"]) ?? null;
+      // คอลัมน์ loyalty เพิ่มทีหลัง (supabase/sql/loyalty_points.sql) ยังไม่ได้รันก็ยังโหลดตั้งค่าอื่นได้
+      const l = await db.from("settings").select("loyalty").eq("id", 1).maybeSingle();
+      return row && !l.error && l.data?.loyalty ? { ...row, loyalty: l.data.loyalty as Loyalty } : row;
     },
+    // โหลดทั้งหมด (ไม่จำกัดช่วงวัน) แต้มคงเหลือจะได้ถูก ยังไม่ได้สร้างตารางก็ไม่ทำให้แอพพัง
+    loyalty: () => all(() => db.from("loyalty_points").select("id,player_id,date,kind,points,amount").order("date").order("id")).catch(() => []),
     announcements: () => all(() => db.from("announcements").select("date,message,title,fee,cap").gte("date", since).order("date")),
     signups: () => all(() => db.from("signups").select("date,player_id,at").gte("date", since).order("date").order("player_id")),
     slips: async () => (isAdmin ? all(() => db.from("slips").select("id,date,player_id,amount,created_at").is("removed_at", null).order("id")) : []),
@@ -467,6 +484,20 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       return check(await db.from("players").update({ annual_until: a.until }).eq("id", a.playerId).not("annual_until", "is", null));
     case "clearAnnual":
       return check(await db.from("players").update({ annual_from: null, annual_until: null }).eq("id", a.playerId));
+    case "awardPoints":
+      if (!a.playerIds.length) return;
+      return check(
+        await db.from("loyalty_points").upsert(
+          a.playerIds.map((playerId) => ({ id: earnId(a.month, playerId), player_id: playerId, date: `${a.month}-01`, kind: "earn", points: a.points, amount: 0 })),
+          { ignoreDuplicates: true },
+        ),
+      );
+    case "redeemPoints":
+      return check(
+        await db.from("loyalty_points").insert({ id: a._id, player_id: a.playerId, date: a.date, kind: a.kind, points: a.points, amount: a.amount }),
+      );
+    case "removeReward":
+      return check(await db.from("loyalty_points").delete().eq("id", a.id).neq("kind", "earn"));
     case "updateSettings": {
       const s = a.settings;
       if (a.freeze?.dates.length) {
@@ -495,6 +526,8 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
           bank_name: s.bankName.trim(),
           bank_account: s.bankAccount.trim(),
           bank_holder: s.bankHolder.trim(),
+          // ส่งเฉพาะเมื่อเคยตั้ง ร้านที่ยังไม่ได้รัน SQL จะได้บันทึกตั้งค่าอื่นได้
+          ...(s.loyalty ? { loyalty: s.loyalty } : {}),
         }),
       );
     }
@@ -573,6 +606,9 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       for (const table of ["games", "drinks", "slips", "signups", "checkins", "day_prices", "expenses"])
         check(await db.from(table).delete().gte("date", "1900-01-01"));
       check(await db.from("monthly_payments").delete().neq("month", ""));
+      const lp = await db.from("loyalty_points").delete().neq("id", "");
+      // ยังไม่ได้สร้างตารางแต้ม (ยังไม่ได้รัน SQL) ข้ามไป
+      if (lp.error && lp.error.code !== "PGRST205" && lp.error.code !== "42P01") check(lp);
       check(await db.from("announcements").delete().lte("date", a.today));
       return check(await db.from("players").delete().not("guest_of", "is", null));
     }
@@ -669,6 +705,11 @@ async function importState(db: SupabaseClient, s: State) {
         s.annualPayments.map((x) => ({ id: x.id, player_id: x.playerId, paid_on: x.paidOn, from_date: x.from, until_date: x.until, amount: x.amount })),
       ),
     );
+  const loyalty = [
+    ...(s.pointsEarned ?? []).map((e) => ({ id: e.id, player_id: e.playerId, date: `${e.month}-01`, kind: "earn", points: e.points, amount: 0 })),
+    ...days.flatMap((d) => (d.rewards ?? []).map((r) => ({ id: r.id, player_id: r.playerId, date: d.date, kind: r.kind, points: r.points, amount: r.amount }))),
+  ];
+  if (loyalty.length) check(await db.from("loyalty_points").upsert(loyalty));
   await persist(db, { type: "updateSettings", settings: s.settings });
 }
 

@@ -9,17 +9,17 @@ import { useEffect, useState, type ReactNode } from "react";
 import { clearTourneyHistory, pastTourneyCount } from "@/lib/tourneyStore";
 import { isValidPromptPayId } from "@/lib/promptpay";
 import { useStore } from "@/lib/store";
-import type { Settings } from "@/lib/types";
 import { datesToFreeze } from "@/lib/billing";
 import { normalizeBackup, today } from "@/lib/state";
 import { ClubCalendar } from "./Calendar";
 import { EventPhotos } from "./EventPhotos";
 import { LoginTab } from "./LoginTab";
+import { LoyaltySettings } from "./Loyalty";
 import { Button, Card, SectionTitle, inputClass } from "./ui";
 import { TourneySetup } from "./Tourney";
 import { t } from "@/lib/i18n";
 
-const NUMBER_FIELDS: { key: keyof Settings; label: string }[] = [
+const NUMBER_FIELDS: { key: "courtCount" | "courtFee" | "firstShuttleFee" | "nextShuttleFee" | "monthlyFee"; label: string }[] = [
   { key: "courtCount", label: "จำนวนสนาม" },
   { key: "courtFee", label: "ค่าสนามต่อครั้ง (คนไม่จ่ายรายเดือน)" },
   { key: "firstShuttleFee", label: "ค่าลูกแรกของวัน ต่อคน" },
@@ -80,7 +80,8 @@ export function SettingsTab() {
                       prices: { courtFee: old.courtFee, firstShuttleFee: old.firstShuttleFee, nextShuttleFee: old.nextShuttleFee },
                     }
                   : undefined;
-                dispatch({ type: "updateSettings", settings: s, freeze });
+                // กติกาแต้มบันทึกแยกในการ์ดของมันเอง ใช้ค่าล่าสุด ไม่ทับด้วยค่าตอนเปิดหน้านี้
+                dispatch({ type: "updateSettings", settings: { ...s, loyalty: state.settings.loyalty }, freeze });
                 setSaved(true);
               }}
             >
@@ -156,6 +157,9 @@ export function SettingsTab() {
               {t("เปิดจอสนาม")}
             </a>
           </Card>
+      </Section>
+      <Section id="loyalty" icon="⭐" title={t("คะแนนสะสมความขยัน")} hint={t("มาครบเดือนได้แต้ม แลกส่วนลด")}>
+        <LoyaltySettings />
       </Section>
       <Section id="board" icon="📸" title={t("บอร์ดและรูปกิจกรรม")} hint={t("ของหาย ขายของ รูปภาพ")}>
         <BoardCard />

@@ -8,6 +8,7 @@ import { PendingNotice, PickMe, useMe } from "./PickMe";
 import { SelfPay } from "./SelfPay";
 import { SlipUpload } from "./Slips";
 import { AnnualInfo } from "./Annual";
+import { MyPoints } from "./Loyalty";
 import { MonthlyDueCard, PlanChoice } from "./Membership";
 import { useState } from "react";
 import { savedPin } from "./PickMe";
@@ -35,6 +36,7 @@ export function MyBillTab() {
       <PlanChoice player={player} />
       <AnnualInfo player={player} />
       <MonthlyDueCard player={player} />
+      <MyPoints player={player} />
 
       {!checkedIn && bill.total === 0 ? (
         <Card className="py-8 text-center text-sm text-zinc-500">{t("วันนี้ยังไม่ได้เช็คอิน")}</Card>
@@ -56,6 +58,7 @@ export function MyBillTab() {
                   bill.shuttleFee,
                 ],
                 [t("ค่าน้ำ"), bill.drinkFee],
+                ...(bill.discount > 0 ? [[t("ส่วนลดจากแต้ม"), -bill.discount] as const] : []),
                 ...(bill.carriedOver > 0 ? [[t("ค้างจ่ายครั้งก่อน"), bill.carriedOver] as const] : []),
                 ...bill.guests.map((g) => [t("แขก: {name}", { name: g.name }), g.amount] as const),
               ].map(([label, v]) => (

@@ -134,6 +134,47 @@ export interface Settings {
   bankName: string;
   bankAccount: string;
   bankHolder: string;
+  /** คะแนนสะสมความขยัน (ไม่มี = ยังไม่เคยตั้ง ถือว่าปิด) */
+  loyalty?: Loyalty;
+}
+
+/** คะแนนสะสมความขยัน: เดือนไหนมาเล่นครบตามจำนวนวัน ได้แต้ม แลกส่วนลดค่าลูกหรือน้ำฟรีได้ */
+export interface Loyalty {
+  enabled: boolean;
+  /** มาเล่นอย่างน้อยกี่วันในเดือน ถึงได้แต้ม */
+  days: number;
+  /** แต้มที่ได้ต่อเดือนที่มาครบ */
+  points: number;
+  /** ส่วนลดค่าลูก: ใช้กี่แต้ม ลดกี่บาท */
+  shuttleCost: number;
+  shuttleValue: number;
+  /** น้ำฟรี: ใช้กี่แต้ม ฟรีไม่เกินกี่บาท */
+  drinkCost: number;
+  drinkValue: number;
+}
+
+export const DEFAULT_LOYALTY: Loyalty = { enabled: true, days: 8, points: 10, shuttleCost: 10, shuttleValue: 25, drinkCost: 5, drinkValue: 15 };
+
+export type RewardKind = "shuttle" | "drink";
+
+/** การแลกแต้มในบิลของวันนั้น */
+export interface Reward {
+  id: string;
+  playerId: string;
+  kind: RewardKind;
+  /** แต้มที่ใช้ */
+  points: number;
+  /** มูลค่าส่วนลด (บาท) ลดได้ไม่เกินค่าลูก / ค่าน้ำของวันนั้น */
+  amount: number;
+}
+
+/** แต้มที่ได้จากเดือนที่มาเล่นครบ */
+export interface PointsEarned {
+  id: string;
+  playerId: string;
+  /** YYYY-MM */
+  month: string;
+  points: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -210,6 +251,8 @@ export interface Day {
   slips?: Slip[];
   /** ราคาของวันนั้น (ไม่มี = ใช้ราคาปัจจุบันในตั้งค่า) */
   prices?: DayPrices;
+  /** แลกแต้มเป็นส่วนลดในบิลวันนั้น */
+  rewards?: Reward[];
 }
 
 export type PairStatus = "pending" | "accepted" | "declined" | "cancelled";
