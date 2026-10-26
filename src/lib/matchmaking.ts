@@ -143,7 +143,9 @@ export function nextMatch(
     .slice(1)
     .map((e, i) => ({ p: e.player, rank: i + 1 }))
     .filter((x) => x.rank < Math.max(4, window) || mates.has(x.p.id));
-  const { partners, opponents } = pairHistory(day, past);
+  const full = pairHistory(day, past);
+  // ใน 4 คนที่มีคู่ "อยากจับคู่ด้วย" ใช้แค่ประวัติวันนี้ ไม่ให้เกมวันก่อน ๆ แยกคู่ที่ขอไว้
+  const todayOnly = pairHistory(day);
 
   let best: { teams: [string, string, string, string]; score: number } | null = null;
   for (let i = 0; i < pool.length; i++)
@@ -152,6 +154,7 @@ export function nextMatch(
         const four = [head, pool[i].p, pool[j].p, pool[k].p];
         const levels = four.map((p) => strength(p.level));
         const spread = Math.max(...levels) - Math.min(...levels);
+        const { partners, opponents } = four.some((a, x) => four.slice(x + 1).some((b) => wants(a, b))) ? todayOnly : full;
         const split = splitTeams(four, partners, pairs, opponents);
         // ได้ลงพร้อมคู่ที่ขอไว้ = ดีมาก
         const ids = new Set(four.map((p) => p.id));

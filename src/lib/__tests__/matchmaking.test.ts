@@ -119,6 +119,16 @@ describe("matchmaking", () => {
     expect(mateOf(m, "a")).not.toBe("b");
   });
 
+  it("คนที่ตั้งอยากจับคู่ด้วย ยังได้คู่กันแม้เคยคู่กันวันก่อน ๆ", () => {
+    const ps = ["a", "b", "c", "d"].map((id) => p(id, 3));
+    ps[0].prefer = ["b"];
+    const game = (id: string) => ({ id, court: 1, playerIds: ["a", "b", "c", "d"] as [string, string, string, string], startedAt: 1, endedAt: 2, shuttles: 1 });
+    const past = [{ ...dayWith([]), date: "2026-10-03", games: [game("1"), game("2"), game("3")] }];
+    const m = nextMatch(dayWith(ps), ps, 8, past)!;
+    const i = m.indexOf("a");
+    expect(m[i < 2 ? 1 - i : 5 - i]).toBe("b");
+  });
+
   it("แบ่งทีมเลี่ยงการเจอคู่แข่งเดิม", () => {
     const four = ["a", "b", "c", "d"].map((id) => p(id, 3));
     // a เคยเจอ c กับ d ฝั่งตรงข้ามบ่อย: ควรอยู่ทีมเดียวกับ c หรือ d แทน
