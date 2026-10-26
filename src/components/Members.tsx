@@ -40,11 +40,12 @@ const TONE: Record<Tone, string> = {
 /** สถานะสมาชิกของคนนี้ในเดือนที่เลือก รวมรายเดือนและรายปีไว้ที่เดียว */
 function statusOf(p: Player, month: string, today: string, paid: Record<string, number>): Status {
   const annual = annualStatus(p, today);
+  if (annual?.kind === "upcoming") return { text: t("รายปี เริ่ม {date}", { date: fmt(annual.from ?? annual.until) }), tone: "ok", todo: false };
   if (annual?.kind === "active") return { text: t("รายปี ถึง {date}", { date: fmt(annual.until) }), tone: "ok", todo: false };
   if (annual?.kind === "soon")
     return { text: t("รายปี ใกล้หมด {date} (อีก {n} วัน)", { date: fmt(annual.until), n: annual.daysLeft }), tone: "warn", todo: true };
   if (paid[p.id]) return { text: t("รายเดือน จ่ายแล้ว"), tone: "ok", todo: false };
-  if (annual?.kind === "expired") return { text: t("รายปี หมดอายุ {date}", { date: fmt(annual.until) }), tone: "bad", todo: true };
+  if (annual?.kind === "expired") return { text: t("รายปี หมดอายุ {date}", { date: fmt(annual.until) }), tone: "bad", todo: annual.daysLeft >= -60 };
   if (p.plan === "monthly" && month === monthOf(today)) return { text: t("รายเดือน ยังไม่จ่าย"), tone: "warn", todo: true };
   return { text: p.plan === "monthly" ? t("รายเดือน") : t("รายวัน"), tone: "plain", todo: false };
 }
@@ -74,7 +75,7 @@ export function MembersView() {
       <Avatar name={p.name} photo={p.photo} size={40} />
       <span className="min-w-0 flex-1">
         <span className="block truncate font-semibold">{p.name}</span>
-        <span className={`mt-0.5 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${TONE[s.tone]}`}>{s.text}</span>
+        <span className={`mt-0.5 inline-block rounded-2xl px-2.5 py-0.5 text-sm font-semibold leading-snug ${TONE[s.tone]}`}>{s.text}</span>
       </span>
       <button className="min-h-11 shrink-0 rounded-full bg-zinc-100 px-4 text-sm font-semibold text-zinc-700" onClick={() => setPicked(p)}>
         {t("รับเงิน")}
@@ -99,7 +100,7 @@ export function MembersView() {
         </button>
       </div>
 
-      {todo.length > 0 && (
+      {todo.length > 0 && !q.trim() && (
         <div className="space-y-2 rounded-3xl bg-amber-50 p-4 ring-1 ring-amber-300">
           <h3 className="font-display font-semibold text-amber-950">{t("ที่ต้องทำ {n} คน", { n: todo.length })}</h3>
           <ul className="space-y-2">{todo.map(row)}</ul>
@@ -201,8 +202,8 @@ function MonthlyPaySheet({ player, month, onClose }: { player: Player; month: st
             variant="ghost"
             className="w-full text-red-600"
             onClick={() => {
-              if (confirm(t("ยกเลิกรายเดือน {month} ของ {name}? (กลับไปคิดรายวัน)", { month: monthLabel(month), name: player.name })))
-                dispatch({ type: "setMonthlyPaid", month, playerId: player.id, paid: false });
+              if (!confirm(t("ยกเลิกรายเดือน {month} ของ {name}? (กลับไปคิดรายวัน)", { month: monthLabel(month), name: player.name }))) return;
+              dispatch({ type: "setMonthlyPaid", month, playerId: player.id, paid: false });
               onClose();
             }}
           >

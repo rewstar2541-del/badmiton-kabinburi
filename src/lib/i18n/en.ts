@@ -1115,6 +1115,7 @@ export const en: Record<string, string> = {
   "รายปี ใกล้หมด {date} (อีก {n} วัน)": "Annual, expiring {date} ({n} days left)",
   "รายเดือน จ่ายแล้ว": "Monthly, paid",
   "รายปี หมดอายุ {date}": "Annual, expired {date}",
+  "รายปี เริ่ม {date}": "Annual, starts {date}",
   "รายเดือน ยังไม่จ่าย": "Monthly, not paid",
   "รายเดือนจ่ายแล้ว {a} คน · รายปี {b} คน": "{a} paid monthly · {b} annual",
   "ที่ต้องทำ {n} คน": "{n} to follow up",
