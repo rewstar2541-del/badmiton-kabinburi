@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { locale, t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
-import { addYears, annualExpiryFor, annualStatus, type AnnualRule, type Player } from "@/lib/types";
+import { annualExpiryFor, annualStatus, type AnnualRule, type Player } from "@/lib/types";
 import { Avatar, Button, Card, Sheet, baht, inputClass } from "./ui";
 
 function fmt(date: string) {
@@ -141,14 +141,16 @@ function AnnualSheet({
   const { date } = useToday();
   const mine = (state.annualPayments ?? []).filter((x) => x.playerId === player.id).reverse();
   const history = [...(state.annualPayments ?? [])].reverse();
-  const last = history.find((x) => x.playerId === player.id) ?? history[0];
+  const rules = state.annualRules ?? [];
+  // ยอดตั้งต้น: ยอดล่าสุดของคนนี้ ไม่เคยจ่ายใช้แพ็กเกจถูกสุด ไม่มีแพ็กเกจใช้ยอดล่าสุดของก๊วน
+  const last = history.find((x) => x.playerId === player.id) ?? (rules.length ? undefined : history[0]);
+  const cheapest = rules.find((r) => r.minAmount > 0);
   const active = annualStatus(player, date)?.kind === "active" || annualStatus(player, date)?.kind === "soon";
   // ต่ออายุขณะยังไม่หมด: เริ่มต่อจากวันหมดอายุเดิม ไม่เสียวันที่เหลือ
   const start = active && player.annualUntil ? player.annualUntil : date;
   const [from, setFrom] = useState(active ? player.annualFrom ?? date : date);
   const [manual, setManual] = useState<string | null>(null);
-  const [amount, setAmount] = useState(last ? String(last.amount) : "");
-  const rules = state.annualRules ?? [];
+  const [amount, setAmount] = useState(last ? String(last.amount) : cheapest ? String(cheapest.minAmount) : "");
   const base = active ? start : from;
   // วันหมดอายุตามกติกายอดจ่าย (แอดมินแก้เองได้ ถ้าแก้แล้วจะไม่ถูกเปลี่ยนตามยอดอีก)
   const auto = annualExpiryFor(rules, Number(amount) || 0, base);
@@ -166,6 +168,35 @@ function AnnualSheet({
       }
     >
       <div className="space-y-3">
+        {rules.some((r) => r.minAmount > 0) && (
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap gap-2" role="group" aria-label={t("แพ็กเกจรายปี")}>
+              {rules
+                .filter((r) => r.minAmount > 0)
+                .map((r) => {
+                  const on = Number(amount) === r.minAmount && !manual;
+                  return (
+                    <button
+                      key={r.minAmount}
+                      type="button"
+                      aria-pressed={on}
+                      className={`min-h-11 rounded-2xl px-3 py-2 text-left text-sm ${on ? "bg-ink text-white" : "bg-zinc-100 text-ink"}`}
+                      onClick={() => {
+                        setAmount(String(r.minAmount));
+                        setManual(null);
+                      }}
+                    >
+                      <span className="block font-semibold">{baht(r.minAmount)}</span>
+                      <span className={`block text-xs ${on ? "text-white/70" : "text-zinc-500"}`}>
+                        {t("ถึง {date}", { date: fmt(annualExpiryFor(rules, r.minAmount, base)) })}
+                      </span>
+                    </button>
+                  );
+                })}
+            </div>
+            {active && <p className="text-xs text-zinc-500">{t("ยังไม่หมดอายุ นับต่อจากวันหมดอายุเดิม {date}", { date: fmt(start) })}</p>}
+          </div>
+        )}
         <label className="block text-sm">
           <span className="text-zinc-500">{t("เริ่มใช้งาน")}</span>
           <input type="date" className={inputClass} value={from} onChange={(e) => setFrom(e.target.value)} />
@@ -228,7 +259,7 @@ function AnnualSheet({
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 /** แอดมิน: กติกาวันหมดอายุตามยอดที่จ่าย เช่น 1,000 หมดอายุ มิ.ย. ปีหน้า / 2,000 ขึ้นไป ธ.ค. ปีหน้า */
-function RulesEditor() {
+export function RulesEditor() {
   const { state, dispatch } = useStore();
   const saved = state.annualRules ?? [];
   const [open, setOpen] = useState(false);
