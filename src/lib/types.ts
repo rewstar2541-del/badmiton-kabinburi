@@ -316,3 +316,21 @@ export function annualStatus(player: Pick<Player, "annualFrom" | "annualUntil"> 
   if (player.annualFrom && date < player.annualFrom) return { kind: "upcoming", from: player.annualFrom, until: player.annualUntil, daysLeft };
   return { kind: daysLeft <= ANNUAL_SOON_DAYS ? "soon" : "active", until: player.annualUntil, daysLeft };
 }
+
+/** กติกาวันหมดอายุสมาชิกรายปีตามยอดที่จ่าย: จ่ายตั้งแต่ minAmount หมดอายุสิ้นเดือน endMonth ของอีก yearsAhead ปีข้างหน้า */
+export interface AnnualRule {
+  minAmount: number;
+  /** 1-12 */
+  endMonth: number;
+  /** 0 = ปีเดียวกับวันเริ่ม, 1 = ปีหน้า */
+  yearsAhead: number;
+}
+
+/** วันหมดอายุตามกติกา ใช้กติกาที่ minAmount สูงสุดที่ยอดจ่ายถึง ไม่มีกติกาที่ตรง = ครบ 1 ปีนับจากวันเริ่ม */
+export function annualExpiryFor(rules: AnnualRule[], amount: number, from: string): string {
+  const rule = [...rules].filter((r) => amount >= r.minAmount).sort((a, b) => b.minAmount - a.minAmount)[0];
+  if (!rule) return addYears(from, 1);
+  const y = Number(from.slice(0, 4)) + rule.yearsAhead;
+  const last = new Date(Date.UTC(y, rule.endMonth, 0)).getUTCDate();
+  return `${y}-${String(rule.endMonth).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
+}
