@@ -100,10 +100,10 @@ export function SettingsTab() {
                   />
                 </label>
               ))}
-              <label className="block space-y-1 rounded-2xl bg-amber-50 p-3 text-sm">
+              <label className="block space-y-1 rounded-2xl bg-zinc-50 p-3 text-sm">
                 <span className="font-medium">⭐ {t("สิทธิ์สมาชิกรายปี: ลงชื่อล่วงหน้าได้ก่อนคนอื่น")}</span>
-                <span className="block text-xs text-zinc-600">
-                  {t("คนทั่วไปลงชื่อได้ไม่เกินกี่วันก่อนวันเล่น สมาชิกรายปีลงได้ทันทีที่สร้างวันจัดก๊วน เว้นว่าง = ทุกคนลงได้เท่ากัน")}
+                <span className="block text-sm text-zinc-600">
+                  {t("คนทั่วไปลงชื่อได้ก่อนวันเล่นกี่วัน (สมาชิกรายปีลงได้ทันที) 0 = คนทั่วไปลงได้เฉพาะวันเล่น")}
                 </span>
                 <input
                   className={inputClass}

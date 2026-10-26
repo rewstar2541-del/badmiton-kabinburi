@@ -60,7 +60,8 @@ export function ClubCalendar({ bare }: { bare?: boolean } = {}) {
   const mine = Boolean(me && signups.some((x) => x.playerId === me));
   const meP = me ? state.players.find((p) => p.id === me) : undefined;
   // สิทธิ์สมาชิกรายปี: คนทั่วไปยังลงชื่อวันนี้ไม่ได้จนถึงวันที่เปิด
-  const opensOn = picked ? signupOpensOn(state.settings, meP, picked, now) : undefined;
+  const opensOn = picked && meP ? signupOpensOn(state.settings, meP, picked, now) : undefined;
+  const lapsed = Boolean(opensOn && meP?.annualUntil && picked! > meP.annualUntil);
   const earlyPerk = Boolean(picked && isAnnualMember(meP, picked) && signupOpensOn(state.settings, undefined, picked, now));
   const setSession = (date: string, message: null) => {
     dispatch({ type: "setAnnouncement", date, message });
@@ -235,6 +236,9 @@ export function ClubCalendar({ bare }: { bare?: boolean } = {}) {
                 {me && picked >= now && !mine && opensOn ? (
                   <p className="rounded-xl bg-amber-50 px-3 py-2 text-center text-sm text-amber-900">
                     {t("สมาชิกรายปีลงชื่อได้ก่อน คนทั่วไปลงชื่อได้ตั้งแต่ {date}", { date: dayLabel(opensOn) })}
+                    {lapsed && meP?.annualUntil && (
+                      <span className="mt-1 block text-xs">{t("สมาชิกรายปีของคุณหมดวันที่ {date} ต่ออายุเพื่อลงชื่อก่อน", { date: dayLabel(meP.annualUntil) })}</span>
+                    )}
                   </p>
                 ) : (
                   me &&

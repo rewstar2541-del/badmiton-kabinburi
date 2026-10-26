@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Action, SelfAction, State } from "./state";
 import { endOf, startOf, type ClearKind } from "./clear";
+import { t } from "./i18n";
 import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Notice, type Gender, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Plan, type Player, type Settings } from "./types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -513,10 +514,12 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
           bank_holder: s.bankHolder.trim(),
         }),
       );
-      // ยังไม่รัน SQL ของคอลัมน์นี้: ปิดสิทธิ์อยู่แล้วก็ไม่ต้องแจ้ง error
       const early = await db.from("settings").update({ open_signup_days: s.openSignupDays ?? null }).eq("id", 1);
-      if (s.openSignupDays != null) check(early);
-      return;
+      // ยังไม่รัน supabase/sql/annual_early_signup.sql: ปิดสิทธิ์อยู่แล้วก็ไม่ต้องแจ้ง error
+      const noColumn = early.error && /open_signup_days/.test(early.error.message);
+      if (noColumn && s.openSignupDays == null) return;
+      if (noColumn) throw new Error(t("ยังเปิดสิทธิ์สมาชิกรายปีไม่ได้ ต้องรัน SQL ก่อน"));
+      return check(early);
     }
     case "setClosed":
       return a.reason === null
