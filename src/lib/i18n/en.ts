@@ -1100,4 +1100,6 @@ export const en: Record<string, string> = {
   "จ่ายเมื่อ {time}": "Paid {time}",
   "ขอบคุณที่มาเล่นด้วยกัน": "Thanks for playing with us",
   "บันทึกใบเสร็จเป็นรูป": "Save receipt as image",
+  "สร้างรูปไม่สำเร็จ ลองแคปหน้าจอแทน": "Couldn't create the image. Take a screenshot instead.",
+  "แชร์ / บันทึกรูป": "Share / save image",
 };

@@ -79,7 +79,8 @@ export function MyBillTab() {
                   name={player.name}
                   date={date}
                   paidAt={day.checkIns.find((c) => c.playerId === player.id)?.paidAt}
-                  lines={lines}
+                  // ตัดรายการที่เป็น 0 ออก แต่เก็บค่าสนามของสมาชิกไว้ ให้เห็นว่าทำไมไม่เสียค่าสนาม
+                  lines={lines.filter(([, v], i) => v !== 0 || (i === 0 && (bill.annualMember || monthly)))}
                   total={bill.total}
                 />
               )}
