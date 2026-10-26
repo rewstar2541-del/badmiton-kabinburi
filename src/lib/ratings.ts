@@ -21,8 +21,8 @@ export interface RatedGame {
 /** เกมที่ได้คะแนนเฉลี่ยไม่เกินนี้ ถือว่าคู่ไม่เหมาะ แสดงให้แอดมินดู */
 export const LOW_RATING = 2.5;
 
-/** สรุปคะแนนของวัน: เฉลี่ยทั้งวัน จำนวนคนที่ให้ และเกมที่ได้คะแนนต่ำ (ต่ำสุดก่อน) */
-export function daySummary(day: Day): { avg: number; count: number; games: number; low: RatedGame[] } {
+/** สรุปคะแนนของวัน: เฉลี่ยทั้งวัน จำนวนครั้งที่ให้ เกมที่มีคะแนน/เกมที่จบแล้ว และเกมที่ได้คะแนนต่ำ (ต่ำสุดก่อน) */
+export function daySummary(day: Day): { avg: number; count: number; games: number; finished: number; low: RatedGame[] } {
   const rated: RatedGame[] = [];
   let sum = 0;
   let count = 0;
@@ -38,6 +38,7 @@ export function daySummary(day: Day): { avg: number; count: number; games: numbe
     avg: count ? sum / count : 0,
     count,
     games: rated.length,
+    finished: day.games.filter((g) => g.endedAt).length,
     low: rated.filter((r) => r.avg <= LOW_RATING).sort((a, b) => a.avg - b.avg || a.game.startedAt - b.game.startedAt),
   };
 }

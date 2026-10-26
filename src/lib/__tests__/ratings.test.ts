@@ -27,6 +27,7 @@ describe("game ratings", () => {
     const s = daySummary(day([G("g1", 100, { a: 5, b: 4 }), G("g2", 200, { a: 2, c: 3 }), G("g3", 300, { a: 1 }), G("g4", 400)]));
     expect(s.count).toBe(5);
     expect(s.games).toBe(3);
+    expect(s.finished).toBe(4);
     expect(s.avg).toBe(3);
     expect(s.low.map((r) => r.game.id)).toEqual(["g3", "g2"]);
   });
