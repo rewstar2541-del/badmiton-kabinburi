@@ -307,7 +307,8 @@ export interface AnnualRule {
 export function annualExpiryFor(rules: AnnualRule[], amount: number, from: string): string {
   const rule = [...rules].filter((r) => amount >= r.minAmount).sort((a, b) => b.minAmount - a.minAmount)[0];
   if (!rule) return addYears(from, 1);
+  const end = (y: number) => `${y}-${String(rule.endMonth).padStart(2, "0")}-${String(new Date(Date.UTC(y, rule.endMonth, 0)).getUTCDate()).padStart(2, "0")}`;
   const y = Number(from.slice(0, 4)) + rule.yearsAhead;
-  const last = new Date(Date.UTC(y, rule.endMonth, 0)).getUTCDate();
-  return `${y}-${String(rule.endMonth).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
+  // "ปีเดียวกัน" แต่เดือนนั้นผ่านไปแล้ว (หรือวันเริ่มคือวันสุดท้ายพอดี) ให้เป็นปีถัดไป
+  return end(y) <= from ? end(y + 1) : end(y);
 }

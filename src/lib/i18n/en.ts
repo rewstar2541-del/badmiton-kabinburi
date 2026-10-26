@@ -1111,4 +1111,7 @@ export const en: Record<string, string> = {
   "ยอดต้องไม่ซ้ำกัน": "Amounts must be different",
   "บันทึกกติกา": "Save rules",
   "ยังไม่มีสมาชิกรายปี กดรับเงินที่ชื่อด้านล่างเพื่อเพิ่ม": "No annual members yet. Tap Receive payment on a name below to add",
+  "แพ็กเกจรายปี": "Annual packages",
+  "ยังไม่หมดอายุ นับต่อจากวันหมดอายุเดิม {date}": "Not expired yet, counting on from the current expiry {date}",
+  "ค่าสนาม ค่าลูก รายเดือน รายปี PromptPay จอทีวี": "Court fee, shuttles, monthly, annual, PromptPay, TV screen",
 };

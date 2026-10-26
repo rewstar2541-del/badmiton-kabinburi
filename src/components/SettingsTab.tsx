@@ -12,6 +12,7 @@ import { useStore } from "@/lib/store";
 import type { Settings } from "@/lib/types";
 import { datesToFreeze } from "@/lib/billing";
 import { normalizeBackup, today } from "@/lib/state";
+import { RulesEditor } from "./Annual";
 import { ClubCalendar } from "./Calendar";
 import { EventPhotos } from "./EventPhotos";
 import { LoginTab } from "./LoginTab";
@@ -63,7 +64,7 @@ export function SettingsTab() {
       <Section id="tourney" icon="🏆" title={t("งานแข่ง")} hint={t("สร้างงาน เปิดวันแข่ง จบงาน")}>
         <TourneySetup />
       </Section>
-      <Section id="prices" icon="💰" title={t("ราคาและสนาม")} hint={t("ค่าสนาม ค่าลูก รายเดือน PromptPay จอทีวี")}>
+      <Section id="prices" icon="💰" title={t("ราคาและสนาม")} hint={t("ค่าสนาม ค่าลูก รายเดือน รายปี PromptPay จอทีวี")}>
           <Card>
             <form
               className="space-y-3"
@@ -142,6 +143,7 @@ export function SettingsTab() {
               </Button>
             </form>
           </Card>
+          <RulesEditor />
           <Card className="flex items-center gap-3">
             <div className="min-w-0 flex-1">
               <h2 className="font-display font-semibold">{t("จอสนาม")}</h2>
