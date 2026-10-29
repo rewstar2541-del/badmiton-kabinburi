@@ -61,7 +61,12 @@ export function LineCard() {
   const save = async (patch: Partial<LineSettings>) => {
     if (!supabase || !s) return;
     setS({ ...s, ...patch });
-    await updateLineSettings(supabase, patch);
+    try {
+      await updateLineSettings(supabase, patch);
+    } catch (e) {
+      setS(s);
+      setMsg(String(e instanceof Error ? e.message : e));
+    }
   };
 
   const limit = s?.monthly_limit ?? 300;
@@ -101,6 +106,7 @@ export function LineCard() {
             {st && (
               <p className="text-xs text-zinc-500">
                 {t("ถึงคิว {a} · ประกาศ {b} · ไม่ได้ส่ง {c}", { a: st.usage.turn, b: st.usage.announce, c: st.usage.skipped })}
+                {!!st.usage.annual && <> · {t("เตือนรายปี {n}", { n: st.usage.annual })}</>}
               </p>
             )}
             <p className="text-xs text-zinc-500">{t("ครบแล้วหยุดส่งเอง แพ็กเกจฟรีไม่เสียเงิน")}</p>
@@ -117,6 +123,12 @@ export function LineCard() {
             hint={t("1 ข้อความต่อคน ส่งเฉพาะคนที่มาใน 60 วัน")}
             checked={s.notify_announce}
             onChange={() => save({ notify_announce: !s.notify_announce })}
+          />
+          <Row
+            label={t("เตือนสมาชิกรายปีใกล้หมดอายุ")}
+            hint={t("ส่งหาสมาชิกคนละ 2 ครั้ง (เหลือ 30 และ 7 วัน) และสรุปรายชื่อให้แอดมิน ระบบเช็คทุกวัน 9 โมงเช้า ใช้โควตาเหมือนแจ้งถึงคิว")}
+            checked={s.notify_annual}
+            onChange={() => save({ notify_annual: !s.notify_annual })}
           />
 
           <div className="grid grid-cols-2 gap-2">
