@@ -18,7 +18,7 @@ export function MatchBuilder({ court, onClose }: { court: number; onClose: () =>
   const { date, day } = useToday();
   const queue = waitingQueue(day, state.players);
   const byId = new Map(state.players.map((p) => [p.id, p]));
-  const suggest = (): Slots => nextMatch(day, state.players) ?? [0, 1, 2, 3].map((i) => queue[i]?.player.id ?? null);
+  const suggest = (): Slots => nextMatch(day, state.players, undefined, state.days) ?? [0, 1, 2, 3].map((i) => queue[i]?.player.id ?? null);
   const [picked, setSlots] = useState<Slots>(suggest);
   const [selected, setSelected] = useState<number | null>(null);
   // แอดมินอีกเครื่องอาจส่งคนในช่องลงสนามอื่นไปแล้ว หรือใช้สนามนี้ไปแล้ว: เอาคนนั้นออกจากช่องเสมอ

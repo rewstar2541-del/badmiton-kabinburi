@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextMatch, splitTeams, waitingQueue } from "../matchmaking";
+import { nextMatch, pairHistory, splitTeams, waitingQueue } from "../matchmaking";
 import type { Day, Level, Player } from "../types";
 
 const p = (id: string, level: Level): Player => ({ id, name: id, level });
@@ -69,6 +69,73 @@ describe("matchmaking", () => {
     expect(m).not.toContain("b");
     const teamOf = (id: string) => (m.indexOf(id as never) < 2 ? "A" : "B");
     expect(teamOf("a")).toBe(teamOf("c"));
+  });
+
+  it("เกมวันก่อน ๆ นับน้อยกว่าวันนี้ และเกิน 60 วันไม่นับ", () => {
+    const g = (id: string): Day["games"][number] => ({ id, court: 1, playerIds: ["a", "b", "c", "d"], startedAt: 1, endedAt: 2, shuttles: 1 });
+    const today = { ...dayWith([]), games: [g("t")] };
+    const past = [
+      { ...dayWith([]), date: "2026-10-03", games: [g("y")] },
+      { ...dayWith([]), date: "2026-07-01", games: [g("old")] },
+    ];
+    const h = pairHistory(today, past);
+    expect(h.partners.get("a|b")).toBeGreaterThan(1);
+    expect(h.partners.get("a|b")).toBeLessThan(1.6);
+    expect(h.opponents.get("a|c")).toBe(h.partners.get("a|b"));
+    expect(h.partners.get("a|c")).toBeUndefined();
+  });
+
+  it("วันก่อน ๆ รวมไม่เกิน 1 ต่อคู่ และไม่นับวันนี้หรือวันที่ผิดซ้ำ", () => {
+    const g = (id: string): Day["games"][number] => ({ id, court: 1, playerIds: ["a", "b", "c", "d"], startedAt: 1, endedAt: 2, shuttles: 1 });
+    const today = { ...dayWith([]), games: [g("t")] };
+    const past = [
+      // วันเดียวกับวันนี้ (state.days มีวันนี้อยู่ด้วย) วันอนาคต และวันที่อ่านไม่ได้: ไม่นับ
+      today,
+      { ...dayWith([]), date: "2026-10-05", games: [g("f")] },
+      { ...dayWith([]), date: "bad", games: [g("x")] },
+      // เมื่อวานเล่นด้วยกัน 5 เกม: นับแค่ 1
+      { ...dayWith([]), date: "2026-10-03", games: ["1", "2", "3", "4", "5"].map(g) },
+    ];
+    expect(pairHistory(today, past).partners.get("a|b")).toBe(2);
+  });
+
+  it("ไม่ให้คู่หูเดิมจากวันก่อน ๆ ได้คู่กันอีก แต่ไม่ข้ามคิว", () => {
+    const ps = ["a", "b", "c", "d", "e"].map((id) => p(id, 3));
+    // a คู่ b และ c คู่ d มาหลายครั้งในช่วงที่ผ่านมา
+    const past = ["2026-09-30", "2026-10-01", "2026-10-02", "2026-10-03"].map((date, i) => ({
+      ...dayWith([]),
+      date,
+      games: [{ id: `g${i}`, court: 1, playerIds: ["a", "b", "c", "d"] as [string, string, string, string], startedAt: 1, endedAt: 2, shuttles: 1 }],
+    }));
+    const mateOf = (m: string[], id: string) => {
+      const i = m.indexOf(id);
+      return m[i < 2 ? 1 - i : 5 - i];
+    };
+    // ไม่มีประวัติ: a ได้คู่ b
+    expect(mateOf(nextMatch(dayWith(ps), ps)!, "a")).toBe("b");
+    // มีประวัติ: ยังเป็น 4 คนต้นคิวเหมือนเดิม (ประวัติวันก่อน ๆ ไม่ทำให้ e แซงคิว) แต่ a ไม่ได้คู่ b ซ้ำ
+    const m = nextMatch(dayWith(ps), ps, 8, past)!;
+    expect([...m].sort()).toEqual(["a", "b", "c", "d"]);
+    expect(mateOf(m, "a")).not.toBe("b");
+  });
+
+  it("คนที่ตั้งอยากจับคู่ด้วย ยังได้คู่กันแม้เคยคู่กันวันก่อน ๆ", () => {
+    const ps = ["a", "b", "c", "d"].map((id) => p(id, 3));
+    ps[0].prefer = ["b"];
+    const game = (id: string) => ({ id, court: 1, playerIds: ["a", "b", "c", "d"] as [string, string, string, string], startedAt: 1, endedAt: 2, shuttles: 1 });
+    const past = [{ ...dayWith([]), date: "2026-10-03", games: [game("1"), game("2"), game("3")] }];
+    const m = nextMatch(dayWith(ps), ps, 8, past)!;
+    const i = m.indexOf("a");
+    expect(m[i < 2 ? 1 - i : 5 - i]).toBe("b");
+  });
+
+  it("แบ่งทีมเลี่ยงการเจอคู่แข่งเดิม", () => {
+    const four = ["a", "b", "c", "d"].map((id) => p(id, 3));
+    // a เคยเจอ c กับ d ฝั่งตรงข้ามบ่อย: ควรอยู่ทีมเดียวกับ c หรือ d แทน
+    const opponents = new Map([["a|c", 3], ["a|d", 3]]);
+    const { teams } = splitTeams(four, new Map(), [], opponents);
+    const mate = teams[teams.indexOf("a") < 2 ? 1 - teams.indexOf("a") : 5 - teams.indexOf("a")];
+    expect(["c", "d"]).toContain(mate);
   });
 });
 

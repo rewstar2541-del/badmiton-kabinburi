@@ -38,22 +38,50 @@ export function waitingQueue(day: Day, players: Player[]): QueueEntry[] {
   return entries.sort((a, b) => a.gamesPlayed - b.gamesPlayed || a.waitingSince - b.waitingSince);
 }
 
-/** จำนวนครั้งที่ a กับ b เคยอยู่ทีมเดียวกันวันนี้ */
-function partnerCounts(day: Day): Map<string, number> {
-  const m = new Map<string, number>();
-  const add = (x: string, y: string) => {
-    const k = x < y ? `${x}|${y}` : `${y}|${x}`;
-    m.set(k, (m.get(k) ?? 0) + 1);
-  };
-  for (const g of day.games) {
-    add(g.playerIds[0], g.playerIds[1]);
-    add(g.playerIds[2], g.playerIds[3]);
-  }
-  return m;
+/** ดูย้อนหลังกี่วัน และน้ำหนักลดลงครึ่งหนึ่งทุกกี่วัน */
+const HISTORY_DAYS = 60;
+const HALF_LIFE_DAYS = 14;
+
+export interface PairHistory {
+  /** เคยอยู่ทีมเดียวกันกี่ครั้ง (ถ่วงน้ำหนัก) */
+  partners: Map<string, number>;
+  /** เคยอยู่คนละฝั่งกี่ครั้ง (ถ่วงน้ำหนัก) */
+  opponents: Map<string, number>;
 }
 
 function pairKey(x: string, y: string) {
   return x < y ? `${x}|${y}` : `${y}|${x}`;
+}
+
+/**
+ * สถิติคู่จากเกมที่บันทึกไว้: วันนี้นับเต็ม 1 ต่อเกม
+ * วันก่อน ๆ นับน้อยลงตามระยะเวลา (เมื่อวาน ~0.5 สองสัปดาห์ก่อน 0.25) รวมไม่เกิน 1 ต่อคู่ เกิน 60 วันไม่นับ
+ */
+export function pairHistory(day: Day, past: Day[] = []): PairHistory {
+  const add = (m: Map<string, number>, x: string, y: string, w: number) => {
+    const k = pairKey(x, y);
+    m.set(k, (m.get(k) ?? 0) + w);
+  };
+  const count = (h: PairHistory, games: Day["games"], w: number) => {
+    for (const { playerIds: [a1, a2, b1, b2] } of games) {
+      add(h.partners, a1, a2, w);
+      add(h.partners, b1, b2, w);
+      for (const a of [a1, a2]) for (const b of [b1, b2]) add(h.opponents, a, b, w);
+    }
+  };
+  const today: PairHistory = { partners: new Map(), opponents: new Map() };
+  const before: PairHistory = { partners: new Map(), opponents: new Map() };
+  count(today, day.games, 1);
+  const now = Date.parse(day.date);
+  for (const d of past) {
+    const ago = (now - Date.parse(d.date)) / 86_400_000;
+    if (!(ago >= 1 && ago <= HISTORY_DAYS)) continue;
+    count(before, d.games, 0.5 ** (1 + ago / HALF_LIFE_DAYS));
+  }
+  // วันก่อน ๆ รวมกันไม่เกิน 1 ต่อคู่ ขาประจำจะได้ไม่ถูกข้ามคิวมากไป และการซ้ำวันนี้ยังสำคัญกว่าเสมอ
+  for (const k of ["partners", "opponents"] as const)
+    for (const [key, w] of before[k]) add(today[k], ...(key.split("|") as [string, string]), Math.min(w, 1));
+  return today;
 }
 
 const wants = (a: Player, b: Player) => Boolean(a.prefer?.includes(b.id) || b.prefer?.includes(a.id));
@@ -64,11 +92,12 @@ export function hasAvoid(four: Player[]): boolean {
   return four.some((a, i) => four.slice(i + 1).some((b) => avoids(a, b)));
 }
 
-/** แบ่ง 4 คนเป็น 2 ทีมให้ฝีมือรวมใกล้กันที่สุด ไม่ซ้ำคู่เดิม และให้คนที่ขอคู่กันได้อยู่ทีมเดียวกัน */
+/** แบ่ง 4 คนเป็น 2 ทีมให้ฝีมือรวมใกล้กันที่สุด ไม่ซ้ำคู่และคู่แข่งเดิม และให้คนที่ขอคู่กันได้อยู่ทีมเดียวกัน */
 export function splitTeams(
   four: Player[],
   partners: Map<string, number> = new Map(),
   pairs: [string, string][] = [],
+  opponents: Map<string, number> = new Map(),
 ): { teams: [string, string, string, string]; cost: number } {
   const paired = (a: Player, b: Player) => pairs.some(([x, y]) => (x === a.id && y === b.id) || (x === b.id && y === a.id));
   const [p0, p1, p2, p3] = four;
@@ -82,10 +111,11 @@ export function splitTeams(
     const gap = Math.abs(strength(a1.level) + strength(a2.level) - (strength(b1.level) + strength(b2.level)));
     const repeat =
       (partners.get(pairKey(a1.id, a2.id)) ?? 0) + (partners.get(pairKey(b1.id, b2.id)) ?? 0);
+    const faced = [a1, a2].reduce((n, a) => n + [b1, b2].reduce((m, b) => m + (opponents.get(pairKey(a.id, b.id)) ?? 0), 0), 0);
     const liked = Number(wants(a1, a2)) + Number(wants(b1, b2));
     // ขอจับคู่กันไว้ (ตอบรับแล้ว) ต้องอยู่ทีมเดียวกัน
     const together = Number(paired(a1, a2)) + Number(paired(b1, b2));
-    const cost = gap * 10 + repeat * 4 - liked * 6 - together * 200;
+    const cost = gap * 10 + repeat * 4 + faced * 2 - liked * 6 - together * 200;
     if (cost < best.cost) best = { teams: [a1.id, a2.id, b1.id, b2.id], cost };
   }
   return best;
@@ -94,11 +124,13 @@ export function splitTeams(
 /**
  * เลือก 4 คนลงสนามถัดไป
  * คนแรกของคิวได้ลงแน่นอน อีก 3 คนเลือกจากคนต้นคิว (window) ให้ฝีมือใกล้กันและไม่ซ้ำคู่
+ * past = วันก่อน ๆ (state.days) ใช้ถ่วงน้ำหนักไม่ให้เจอคนเดิมบ่อยเกินไป
  */
 export function nextMatch(
   day: Day,
   players: Player[],
   window = 8,
+  past: Day[] = [],
 ): [string, string, string, string] | null {
   const queue = waitingQueue(day, players);
   if (queue.length < 4) return null;
@@ -111,7 +143,9 @@ export function nextMatch(
     .slice(1)
     .map((e, i) => ({ p: e.player, rank: i + 1 }))
     .filter((x) => x.rank < Math.max(4, window) || mates.has(x.p.id));
-  const partners = partnerCounts(day);
+  const full = pairHistory(day, past);
+  // ใน 4 คนที่มีคู่ "อยากจับคู่ด้วย" ใช้แค่ประวัติวันนี้ ไม่ให้เกมวันก่อน ๆ แยกคู่ที่ขอไว้
+  const todayOnly = pairHistory(day);
 
   let best: { teams: [string, string, string, string]; score: number } | null = null;
   for (let i = 0; i < pool.length; i++)
@@ -120,7 +154,8 @@ export function nextMatch(
         const four = [head, pool[i].p, pool[j].p, pool[k].p];
         const levels = four.map((p) => strength(p.level));
         const spread = Math.max(...levels) - Math.min(...levels);
-        const split = splitTeams(four, partners, pairs);
+        const { partners, opponents } = four.some((a, x) => four.slice(x + 1).some((b) => wants(a, b))) ? todayOnly : full;
+        const split = splitTeams(four, partners, pairs, opponents);
         // ได้ลงพร้อมคู่ที่ขอไว้ = ดีมาก
         const ids = new Set(four.map((p) => p.id));
         const pairBonus = pairs.filter(([a, b]) => ids.has(a) && ids.has(b)).length * 40;
