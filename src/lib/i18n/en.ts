@@ -1124,4 +1124,12 @@ export const en: Record<string, string> = {
   "จบก๊วน? จะจบเกมที่กำลังเล่นอยู่ {n} เกม (ไม่บันทึกผล) ล้างคิว แล้วไปหน้าคิดเงิน": "End the session? This ends {n} running game(s) without a result, clears the queue and opens billing",
   "จบก๊วน? ล้างคิว แล้วไปหน้าคิดเงิน": "End the session? Clears the queue and opens billing",
   "วันนี้ยังไม่ได้ประกาศจัดก๊วน เช็คอินเองไม่ได้": "No session announced today, so self check-in is off",
+  "ประวัติโอน": "Transfers",
+  "สลิป {n} รูป · รวม {amount}": "{n} slips · total {amount}",
+  "รอตรวจ {n}": "{n} to check",
+  "รอตรวจ": "To check",
+  "ผู้เล่นที่ถูกลบ": "Deleted player",
+  "ซ่อนสลิป": "Hide slip",
+  "เดือนนี้ยังไม่มีใครส่งสลิป": "No slips sent this month",
+  "หน้านี้ไว้ดูย้อนหลัง กดรับเงินหรือลบสลิปที่หน้าวันนี้หรือสมาชิก": "This page is for looking back. To take a payment or delete a slip, use Today or Members.",
 };
