@@ -332,7 +332,7 @@ export function BillingTab() {
           <button
             key={id}
             onClick={() => setView(id)}
-            className={`rounded-xl py-2 text-sm font-semibold transition ${view === id ? "bg-ink text-white" : "text-zinc-500"}`}
+            className={`min-h-11 rounded-xl text-sm font-semibold transition ${view === id ? "bg-ink text-white" : "text-zinc-500"}`}
           >
             {t(label)}
           </button>

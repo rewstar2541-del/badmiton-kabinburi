@@ -13,46 +13,56 @@ export function SlipHistory() {
   const { date } = useToday();
   const [month, setMonth] = useState(monthOf(date));
   const [q, setQ] = useState("");
-  const [images, setImages] = useState<Record<string, string | null>>({});
+  // เปิดดูได้ทีละใบ ไม่เก็บรูปค้างไว้หลายใบ (มือถือเครื่องเล็กจะหน่วง)
+  const [open, setOpen] = useState<{ id: string; img: string | null } | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<{ id: string; text: string } | null>(null);
   const byId = new Map(state.players.map((p) => [p.id, p]));
-  const paidMonth = state.monthly[month] ?? {};
+  const isCurrent = month >= monthOf(date);
 
+  // ปิดยอดแล้ว = วันที่ส่งถูกกดจ่ายแล้ว หรือกดจ่ายวันไหนก็ได้หลังส่งสลิป (โอนยอดค้างวันที่ไม่ได้มา)
+  // หรือจ่ายรายเดือนของเดือนที่ส่ง / เดือนก่อนสำหรับคนรายเดือน (โอนค่าเดือนที่แล้วช่วงต้นเดือน)
+  const paidAfter = (playerId: string, at: number) =>
+    state.days.some((d) => d.checkIns.some((c) => c.playerId === playerId && c.paidAt && c.paidAt >= at));
   const all = state.days
     .filter((d) => d.date.startsWith(month))
     .flatMap((d) =>
       (d.slips ?? []).map((s) => ({
         ...s,
-        date: d.date,
         player: byId.get(s.playerId),
-        // ปิดยอดแล้ว = แอดมินกดจ่ายแล้วของวันนั้น หรือจ่ายรายเดือนของเดือนนั้นแล้ว
-        paid: Boolean(d.checkIns.find((c) => c.playerId === s.playerId)?.paidAt || paidMonth[s.playerId]),
+        paid: Boolean(
+          d.checkIns.find((c) => c.playerId === s.playerId)?.paidAt ||
+            state.monthly[month]?.[s.playerId] ||
+            (byId.get(s.playerId)?.plan === "monthly" && state.monthly[shiftMonth(month, -1)]?.[s.playerId]) ||
+            paidAfter(s.playerId, s.at),
+        ),
       })),
     )
     .sort((a, b) => b.at - a.at);
   const needle = q.trim().toLowerCase();
   const shown = needle ? all.filter((s) => (s.player?.name ?? "").toLowerCase().includes(needle)) : all;
-  const total = all.reduce((n, s) => n + s.amount, 0);
   const waiting = all.filter((s) => !s.paid).length;
 
   const show = async (id: string) => {
-    if (id in images)
-      return setImages((m) => {
-        const next = { ...m };
-        delete next[id];
-        return next;
-      });
+    setError(null);
+    if (open?.id === id) return setOpen(null);
     setLoading(id);
     try {
-      const img = await slipImage(id);
-      setImages((m) => ({ ...m, [id]: img }));
-      setError("");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      const img = await Promise.race([
+        slipImage(id),
+        new Promise<never>((_, fail) => setTimeout(() => fail(new Error("timeout")), 20000)),
+      ]);
+      setOpen({ id, img });
+    } catch {
+      setError({ id, text: t("โหลดสลิปไม่สำเร็จ ลองใหม่") });
     } finally {
-      setLoading(null);
+      setLoading((cur) => (cur === id ? null : cur));
     }
+  };
+  const go = (delta: number) => {
+    setMonth(shiftMonth(month, delta));
+    setOpen(null);
+    setError(null);
   };
 
   const when = (at: number) =>
@@ -61,23 +71,28 @@ export function SlipHistory() {
   return (
     <>
       <div className="flex items-center justify-between rounded-3xl bg-ink px-3 py-3 text-white">
-        <button className="grid size-11 place-items-center rounded-full bg-white/10" onClick={() => setMonth(shiftMonth(month, -1))} aria-label={t("เดือนก่อน")}>
+        <button className="grid size-11 place-items-center rounded-full bg-white/10" onClick={() => go(-1)} aria-label={t("เดือนก่อน")}>
           ‹
         </button>
         <div className="text-center">
           <div className="font-display text-lg font-semibold">{monthLabel(month)}</div>
           <div className="text-sm text-white/70">
-            {t("สลิป {n} รูป · รวม {amount}", { n: all.length, amount: baht(total) })}
-            {waiting > 0 && ` · ${t("รอตรวจ {n}", { n: waiting })}`}
+            <span className="whitespace-nowrap">{t("สลิป {n} รูป", { n: all.length })}</span>
+            {waiting > 0 && <span className="whitespace-nowrap"> · {t("รอตรวจ {n}", { n: waiting })}</span>}
           </div>
         </div>
-        <button className="grid size-11 place-items-center rounded-full bg-white/10" onClick={() => setMonth(shiftMonth(month, 1))} aria-label={t("เดือนถัดไป")}>
+        <button
+          className="grid size-11 place-items-center rounded-full bg-white/10 disabled:opacity-30"
+          onClick={() => go(1)}
+          disabled={isCurrent}
+          aria-label={t("เดือนถัดไป")}
+        >
           ›
         </button>
       </div>
 
+      <p className="text-sm text-zinc-500">{t("หน้านี้ไว้ดูย้อนหลัง กดรับเงินหรือลบสลิปที่หน้าวันนี้หรือสมาชิก")}</p>
       {all.length > 0 && <SearchInput value={q} onChange={setQ} />}
-      {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
 
       <ul className="space-y-2">
         {shown.map((s) => (
@@ -86,9 +101,8 @@ export function SlipHistory() {
               <Avatar name={s.player?.name ?? "?"} photo={s.player?.photo} size={40} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold">{s.player?.name ?? t("ผู้เล่นที่ถูกลบ")}</span>
-                <span className="block text-xs text-zinc-500">
-                  {when(s.at)} · {t("ยอดตอนส่ง {amount}", { amount: baht(s.amount) })}
-                </span>
+                <span className="block text-sm text-zinc-600">{when(s.at)}</span>
+                <span className="block text-sm font-semibold">{t("ยอดตอนส่ง {amount}", { amount: baht(s.amount) })}</span>
               </span>
               {s.paid ? (
                 <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{t("จ่ายแล้ว")}</span>
@@ -97,20 +111,22 @@ export function SlipHistory() {
               )}
             </div>
             <button className="min-h-11 w-full rounded-2xl bg-sky-50 text-sm font-semibold text-sky-700" disabled={loading === s.id} onClick={() => show(s.id)}>
-              {loading === s.id ? t("กำลังโหลด...") : s.id in images ? t("ซ่อนสลิป") : t("ดูสลิป")}
+              {loading === s.id ? t("กำลังโหลด...") : open?.id === s.id ? t("ซ่อนสลิป") : t("ดูสลิป")}
             </button>
-            {images[s.id] && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={images[s.id]!} alt={t("สลิปโอนเงิน")} className="w-full rounded-xl" />
-            )}
-            {s.id in images && !images[s.id] && <p className="text-xs text-zinc-500">{t("ไม่พบรูป")}</p>}
+            {error?.id === s.id && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error.text}</p>}
+            {open?.id === s.id &&
+              (open.img ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={open.img} alt={t("สลิปโอนเงิน")} className="max-h-[70vh] w-full rounded-xl object-contain" />
+              ) : (
+                <p className="text-sm text-zinc-500">{t("ไม่พบรูป")}</p>
+              ))}
           </li>
         ))}
       </ul>
       {shown.length === 0 && (
         <Card className="py-10 text-center text-sm text-zinc-500">{all.length ? t("ไม่พบชื่อที่ค้นหา") : t("เดือนนี้ยังไม่มีใครส่งสลิป")}</Card>
       )}
-      <p className="text-xs text-zinc-500">{t("หน้านี้ไว้ดูย้อนหลัง กดรับเงินหรือลบสลิปที่หน้าวันนี้หรือสมาชิก")}</p>
     </>
   );
 }
