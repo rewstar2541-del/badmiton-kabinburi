@@ -165,9 +165,11 @@ export function CourtsTab() {
         className="w-full"
         onClick={() => {
           const running = [...active.values()];
-          const msg = running.length ? t("จบก๊วน? จะจบเกมที่กำลังเล่นอยู่ {n} เกม (ไม่บันทึกผล) แล้วไปหน้าคิดเงิน", { n: running.length }) : t("จบก๊วน? ไปหน้าคิดเงิน");
+          const msg = running.length ? t("จบก๊วน? จะจบเกมที่กำลังเล่นอยู่ {n} เกม (ไม่บันทึกผล) ล้างคิว แล้วไปหน้าคิดเงิน", { n: running.length }) : t("จบก๊วน? ล้างคิว แล้วไปหน้าคิดเงิน");
           if (!confirm(msg)) return;
           running.forEach((g) => dispatch({ type: "endGame", date, gameId: g.id }));
+          // ล้างคิว: คนที่ยังรอหรือเพิ่งลงจากสนามเป็นพักทั้งหมด (ยังไม่จ่าย ยังเห็นในหน้าคิดเงิน)
+          day.checkIns.filter((c) => !c.paidAt && !c.resting).forEach((c) => dispatch({ type: "setResting", date, playerId: c.playerId, resting: true }));
           goToTab("billing");
         }}
       >

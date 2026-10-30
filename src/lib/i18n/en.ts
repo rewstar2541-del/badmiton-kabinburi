@@ -1136,6 +1136,6 @@ export const en: Record<string, string> = {
   "ไม่พบชื่อที่ยังไม่ผูก LINE": "No names without a LINE link",
   "ไม่พบบัญชี LINE นี้": "LINE account not found",
   "จบก๊วน": "End session",
-  "จบก๊วน? จะจบเกมที่กำลังเล่นอยู่ {n} เกม (ไม่บันทึกผล) แล้วไปหน้าคิดเงิน": "End the session? This ends {n} running game(s) without a result and opens billing",
-  "จบก๊วน? ไปหน้าคิดเงิน": "End the session? Opens billing",
+  "จบก๊วน? จะจบเกมที่กำลังเล่นอยู่ {n} เกม (ไม่บันทึกผล) ล้างคิว แล้วไปหน้าคิดเงิน": "End the session? This ends {n} running game(s) without a result, clears the queue and opens billing",
+  "จบก๊วน? ล้างคิว แล้วไปหน้าคิดเงิน": "End the session? Clears the queue and opens billing",
 };
