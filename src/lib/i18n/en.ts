@@ -1135,4 +1135,7 @@ export const en: Record<string, string> = {
   "ผูก \"{line}\" กับ {name}?": "Link \"{line}\" to {name}?",
   "ไม่พบชื่อที่ยังไม่ผูก LINE": "No names without a LINE link",
   "ไม่พบบัญชี LINE นี้": "LINE account not found",
+  "จบก๊วน": "End session",
+  "จบก๊วน? จะจบเกมที่กำลังเล่นอยู่ {n} เกม (ไม่บันทึกผล) แล้วไปหน้าคิดเงิน": "End the session? This ends {n} running game(s) without a result and opens billing",
+  "จบก๊วน? ไปหน้าคิดเงิน": "End the session? Opens billing",
 };

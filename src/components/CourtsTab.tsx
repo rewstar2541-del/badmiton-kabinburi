@@ -12,6 +12,7 @@ import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle } from "./ui";
 import { t } from "@/lib/i18n";
 import { MyRestCard } from "./RestButton";
 import { PendingNotice, PickMe, useMe } from "./PickMe";
+import { goToTab } from "./Membership";
 
 function useNow(intervalMs = 15000) {
   const [now, setNow] = useState(() => Date.now());
@@ -160,6 +161,18 @@ export function CourtsTab() {
       <StockWarning />
       <PairRequests />
       <SectionTitle right={t("ว่าง {n} สนาม", { n: courts.length - active.size })}>{t("สนาม")}</SectionTitle>
+      <Button
+        className="w-full"
+        onClick={() => {
+          const running = [...active.values()];
+          const msg = running.length ? t("จบก๊วน? จะจบเกมที่กำลังเล่นอยู่ {n} เกม (ไม่บันทึกผล) แล้วไปหน้าคิดเงิน", { n: running.length }) : t("จบก๊วน? ไปหน้าคิดเงิน");
+          if (!confirm(msg)) return;
+          running.forEach((g) => dispatch({ type: "endGame", date, gameId: g.id }));
+          goToTab("billing");
+        }}
+      >
+        {t("จบก๊วน")}
+      </Button>
       <div className="grid gap-3 sm:grid-cols-2">
         {courts.map((c) => {
           const g = active.get(c);
