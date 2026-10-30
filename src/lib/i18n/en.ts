@@ -1138,4 +1138,5 @@ export const en: Record<string, string> = {
   "จบก๊วน": "End session",
   "จบก๊วน? จะจบเกมที่กำลังเล่นอยู่ {n} เกม (ไม่บันทึกผล) ล้างคิว แล้วไปหน้าคิดเงิน": "End the session? This ends {n} running game(s) without a result, clears the queue and opens billing",
   "จบก๊วน? ล้างคิว แล้วไปหน้าคิดเงิน": "End the session? Clears the queue and opens billing",
+  "เลยเที่ยงคืนแล้ว เช็คอินได้อีกครั้งตอนเช้า": "It is past midnight. Check-in opens again in the morning",
 };

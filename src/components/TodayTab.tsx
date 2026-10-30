@@ -133,7 +133,9 @@ export function TodayTab({ home }: { home?: boolean } = {}) {
   const q = signupQueue(day);
   const waitPos = waitingPosition(day, player.id);
   const full = !!q.cap && q.confirmed.length >= q.cap;
-  const selfIn = canSelfCheckIn(day, player.id);
+  // หลังเที่ยงคืนวันที่เปลี่ยนแล้ว คนที่เพิ่งจ่ายเมื่อวานจะเห็นปุ่มเช็คอินอีก กดพลาดแล้วเกิดบิลใหม่: ปิดไว้จนตี 6 ถ้าวันนี้ยังไม่ประกาศ
+  const lateNight = new Date().getHours() < 6 && day.announcement === undefined;
+  const selfIn = canSelfCheckIn(day, player.id) && !lateNight;
 
   return (
     <div className="space-y-4">
@@ -236,7 +238,7 @@ export function TodayTab({ home }: { home?: boolean } = {}) {
             <Button variant="accent" disabled={busy || !selfIn} onClick={() => act("checkIn")} className="flex items-center justify-center gap-1.5">
               <Icon.CheckIn width={18} height={18} /> {t("ถึงสนามแล้ว เช็คอิน")}
             </Button>
-            {!selfIn && <p className="text-center text-xs text-zinc-500">{t("เต็มแล้ว ลงชื่อสำรองได้")}</p>}
+            {!selfIn && <p className="text-center text-xs text-zinc-500">{lateNight ? t("เลยเที่ยงคืนแล้ว เช็คอินได้อีกครั้งตอนเช้า") : t("เต็มแล้ว ลงชื่อสำรองได้")}</p>}
           </div>
         )}
       </Card>
