@@ -1129,4 +1129,10 @@ export const en: Record<string, string> = {
   "สรุปเดือน": "Month summary",
   "จบเสมอ": "Draw",
   "ส่งสลิปไม่สำเร็จ ตรวจสัญญาณแล้วลองใหม่": "Could not send the slip. Check your signal and try again",
+  "LINE ที่ยังไม่มีชื่อ": "LINE accounts without a name",
+  "ผูกกับชื่อ": "Link to name",
+  "ผูก \"{line}\" กับชื่อไหน": "Link \"{line}\" to which name",
+  "ผูก \"{line}\" กับ {name}?": "Link \"{line}\" to {name}?",
+  "ไม่พบชื่อที่ยังไม่ผูก LINE": "No names without a LINE link",
+  "ไม่พบบัญชี LINE นี้": "LINE account not found",
 };

@@ -1001,6 +1001,22 @@ export async function resolveClaim(db: SupabaseClient, lineUserId: string, ok: b
   return (data as string | null) ?? null;
 }
 
+export type UnlinkedLine = { line_user_id: string; line_name: string | null; picture: string | null; last_seen: string };
+
+/** LINE ที่เพิ่งเข้าสู่ระบบแต่ยังไม่ได้ผูกกับชื่อ (แอดมิน) */
+export async function listUnlinkedLines(db: SupabaseClient): Promise<UnlinkedLine[]> {
+  const { data, error } = await db.rpc("list_unlinked_lines");
+  if (error) throw new Error(error.message);
+  return (data ?? []) as UnlinkedLine[];
+}
+
+/** แอดมินผูก LINE กับชื่อในก๊วนเอง คืนข้อความผิดพลาด หรือ null */
+export async function adminLinkLine(db: SupabaseClient, lineUserId: string, playerId: string): Promise<string | null> {
+  const { data, error } = await db.rpc("admin_link_line", { p_line_user: lineUserId, p_player: playerId });
+  if (error) return error.message;
+  return (data as string | null) ?? null;
+}
+
 /** คนนอกก๊วนสมัครแข่ง: สร้างผู้เล่นและเข้าระบบทันที ไม่ต้องรออนุมัติ */
 export async function registerTourney(db: SupabaseClient, ticket: string, name: string, level: number): Promise<{ id?: string; token?: string; error?: string }> {
   const { data, error } = await db.rpc("register_tourney_player", { p_ticket: ticket, p_name: name, p_level: level });

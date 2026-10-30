@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { listClaims, resolveClaim, supabase, type LineClaim } from "@/lib/remote";
+import { adminLinkLine, listClaims, listUnlinkedLines, resolveClaim, supabase, type LineClaim, type UnlinkedLine } from "@/lib/remote";
 import { resizeToSquare } from "@/lib/image";
 import { today, useStore } from "@/lib/store";
 import { DEFAULT_LEVEL, LEVELS, isAnnualMember, isMonthlyPaid, type Gender, type Level, type Player } from "@/lib/types";
-import { Avatar, Button, Card, Icon, LevelBadge, SearchInput, SectionTitle, inputClass } from "./ui";
+import { Avatar, Button, Card, Icon, LevelBadge, SearchInput, SectionTitle, Sheet, inputClass } from "./ui";
 import { cameSince, daysBefore, rosterCompare, visibleRoster, visitCounts } from "@/lib/roster";
 import { LevelGroups, RosterSortSwitch, useRosterSort } from "./RosterSort";
 import { t } from "@/lib/i18n";
@@ -301,6 +301,7 @@ export function PlayersTab() {
   return (
     <div className="space-y-4">
       <LineClaims />
+      <UnlinkedLines linked={admin.emailOf} onLinked={admin.reload} />
       <LevelRequests />
       {pending.length > 0 && <PendingList players={pending} />}
       <SectionTitle>{t("ลงทะเบียนผู้เล่นใหม่")}</SectionTitle>
@@ -413,6 +414,77 @@ function LevelRequests() {
         </Card>
       ))}
     </div>
+  );
+}
+
+/** LINE ที่เพิ่งเข้าสู่ระบบแต่ยังไม่มีชื่อ: แอดมินเลือกผูกกับชื่อในก๊วนเองได้เลย ไม่ต้องรอให้เจ้าตัวกดขอ */
+function UnlinkedLines({ linked, onLinked }: { linked: Map<string, string>; onLinked?: () => Promise<void> | void }) {
+  const { state, auth } = useStore();
+  const enabled = auth.online && auth.isAdmin && Boolean(supabase);
+  const [lines, setLines] = useState<UnlinkedLine[]>([]);
+  const [pick, setPick] = useState<UnlinkedLine | null>(null);
+  const [q, setQ] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const refresh = useCallback(() => listUnlinkedLines(supabase!).then(setLines), []);
+  useEffect(() => {
+    if (!enabled) return;
+    refresh().catch(() => {}); // ยังไม่ได้รัน supabase/sql/admin_link_line.sql: ไม่แสดงกล่องนี้
+  }, [enabled, refresh, state.players.length]);
+  if (!enabled || lines.length === 0) return null;
+
+  const candidates = state.players
+    .filter((p) => !p.guestOf && !p.pending && !linked.has(p.id) && p.name.toLowerCase().includes(q.trim().toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name, "th"));
+  const link = async (p: Player) => {
+    setBusy(true);
+    const err = await adminLinkLine(supabase!, pick!.line_user_id, p.id);
+    setBusy(false);
+    if (err) return setError(t(err));
+    setPick(null);
+    setQ("");
+    setError("");
+    await Promise.all([refresh().catch(() => {}), onLinked?.()]);
+  };
+
+  return (
+    <>
+      <SectionTitle right={t("{n} คน", { n: lines.length })}>{t("LINE ที่ยังไม่มีชื่อ")}</SectionTitle>
+      <ul className="space-y-2">
+        {lines.map((l) => (
+          <li key={l.line_user_id}>
+            <Card className="flex items-center gap-3">
+              <Avatar name={l.line_name ?? "?"} photo={l.picture ?? undefined} size={44} />
+              <span className="min-w-0 flex-1 truncate font-semibold">{l.line_name ?? "?"}</span>
+              <Button variant="accent" className="px-4 py-2 text-sm" onClick={() => setPick(l)}>
+                {t("ผูกกับชื่อ")}
+              </Button>
+            </Card>
+          </li>
+        ))}
+      </ul>
+      {pick && (
+        <Sheet title={t("ผูก \"{line}\" กับชื่อไหน", { line: pick.line_name ?? "?" })} onClose={() => setPick(null)}>
+          <SearchInput value={q} onChange={setQ} />
+          {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+          <ul className="space-y-2">
+            {candidates.map((p) => (
+              <li key={p.id}>
+                <button
+                  disabled={busy}
+                  className="flex min-h-12 w-full items-center gap-3 rounded-2xl bg-zinc-50 px-3 py-2 text-left active:bg-zinc-100"
+                  onClick={() => confirm(t("ผูก \"{line}\" กับ {name}?", { line: pick.line_name ?? "?", name: p.name })) && link(p)}
+                >
+                  <Avatar name={p.name} photo={p.photo} size={36} />
+                  <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
+                </button>
+              </li>
+            ))}
+            {candidates.length === 0 && <li className="py-6 text-center text-sm text-zinc-500">{t("ไม่พบชื่อที่ยังไม่ผูก LINE")}</li>}
+          </ul>
+        </Sheet>
+      )}
+    </>
   );
 }
 
