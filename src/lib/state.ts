@@ -47,7 +47,7 @@ export type Action =
   | { type: "setResting"; date: string; playerId: string; resting: boolean }
   | { type: "startGame"; date: string; court: number; playerIds: Game["playerIds"]; _id: string; _at: number }
   | { type: "setShuttles"; date: string; gameId: string; shuttles: number }
-  | { type: "endGame"; date: string; gameId: string; winner?: Team; _at: number }
+  | { type: "endGame"; date: string; gameId: string; winner?: Team; draw?: boolean; _at: number }
   | { type: "cancelGame"; date: string; gameId: string }
   | { type: "addDrink"; date: string; playerId: string; amount: number; note: string; _id: string }
   | { type: "removeDrink"; date: string; drinkId: string }
@@ -231,7 +231,7 @@ export function reducer(state: State, a: Action): State {
     case "setShuttles":
       return updateGame(state, a.date, a.gameId, (g) => ({ ...g, shuttles: Math.max(0, a.shuttles) }));
     case "endGame":
-      return updateGame(state, a.date, a.gameId, (g) => ({ ...g, endedAt: a._at, winner: a.winner }));
+      return updateGame(state, a.date, a.gameId, (g) => ({ ...g, endedAt: a._at, winner: a.winner, draw: a.draw || undefined }));
     case "cancelGame":
       return withDay(state, a.date, (d) => ({ ...d, games: d.games.filter((g) => g.id !== a.gameId) }));
     case "addDrink":

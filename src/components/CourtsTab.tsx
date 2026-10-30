@@ -59,7 +59,7 @@ function CourtSide({ ids, byId, team }: { ids: string[]; byId: Map<string, Playe
 
 function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, Player>; date: string; now: number }) {
   const { dispatch, auth } = useStore();
-  const end = (winner?: Team) => dispatch({ type: "endGame", date, gameId: game.id, winner });
+  const end = (winner?: Team, draw?: boolean) => dispatch({ type: "endGame", date, gameId: game.id, winner, draw });
   const setShuttles = (n: number) => dispatch({ type: "setShuttles", date, gameId: game.id, shuttles: n });
 
   return (
@@ -112,6 +112,9 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
         </Button>
       </div>
       <div className="flex justify-center gap-4 text-xs text-zinc-400">
+        <button className="underline-offset-2 active:underline" onClick={() => end(undefined, true)}>
+          {t("จบเสมอ")}
+        </button>
         <button className="underline-offset-2 active:underline" onClick={() => end()}>
           {t("จบไม่บันทึกผล")}
         </button>

@@ -1127,4 +1127,5 @@ export const en: Record<string, string> = {
   "ยกเลิกการจ่ายรายเดือน": "Cancel monthly payment",
   "สมาชิก": "Members",
   "สรุปเดือน": "Month summary",
+  "จบเสมอ": "Draw",
 };

@@ -50,6 +50,7 @@ export interface Rows {
     ended_at: string | null;
     shuttles: number;
     winner: string | null;
+    draw?: boolean | null;
   }[];
   drinks: { id: string; date: string; player_id: string; amount: number; note: string }[];
   monthly: { month: string; player_id: string; paid_at: string; amount?: number | null }[];
@@ -130,6 +131,7 @@ export function rowsToState(r: Rows): State {
       endedAt: g.ended_at ? ms(g.ended_at) : undefined,
       shuttles: g.shuttles,
       winner: (g.winner as Game["winner"]) ?? undefined,
+      draw: g.draw || undefined,
     });
   for (const x of r.drinks) day(x.date).drinks.push({ id: x.id, playerId: x.player_id, amount: x.amount, note: x.note });
   for (const x of r.pairs ?? [])
@@ -290,7 +292,7 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
   const fetchers: { [K in TableKey]: () => Promise<Rows[K]> } = {
     players: () => all(() => db.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of,pending,plan,bio,level_request,birthday,annual_from,annual_until").order("id")),
     checkins: () => all(() => db.from("checkins").select("date,player_id,at,paid_at,resting,court_fee,shuttle_fee").gte("date", since).order("date").order("player_id")),
-    games: () => all(() => db.from("games").select("id,date,court,player_ids,started_at,ended_at,shuttles,winner").gte("date", since).order("id")),
+    games: () => all(() => db.from("games").select("*").gte("date", since).order("id")),
     // ค่าน้ำ ค่ารายเดือน และสลิป ผู้เล่นทั่วไปอ่านไม่ได้ (โหลดของตัวเองแยกผ่าน my_private)
     drinks: async () => (isAdmin ? all(() => db.from("drinks").select("id,date,player_id,amount,note").order("id")) : []),
     monthly: async () => (isAdmin ? all(() => db.from("monthly_payments").select("month,player_id,paid_at,amount").order("month").order("player_id")) : []),
@@ -403,7 +405,12 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
     case "setShuttles":
       return check(await db.from("games").update({ shuttles: Math.max(0, a.shuttles) }).eq("id", a.gameId));
     case "endGame":
-      return check(await db.from("games").update({ ended_at: iso(a._at), winner: a.winner ?? null }).eq("id", a.gameId));
+    {
+      const res = await db.from("games").update({ ended_at: iso(a._at), winner: a.winner ?? null, ...(a.draw ? { draw: true } : {}) }).eq("id", a.gameId);
+      // ยังไม่ได้รัน supabase/sql/game_draw.sql: บันทึกจบเกมไปก่อน (ผลเสมอจะไม่ถูกเก็บ)
+      if (res.error && a.draw) return check(await db.from("games").update({ ended_at: iso(a._at), winner: null }).eq("id", a.gameId));
+      return check(res);
+    }
     case "cancelGame":
       return check(await db.from("games").delete().eq("id", a.gameId));
     case "addDrink":
@@ -645,6 +652,7 @@ async function importState(db: SupabaseClient, s: State) {
       ended_at: g.endedAt ? iso(g.endedAt) : null,
       shuttles: g.shuttles,
       winner: g.winner ?? null,
+      ...(g.draw ? { draw: true } : {}),
     })),
   );
   const drinks = days.flatMap((d) =>
