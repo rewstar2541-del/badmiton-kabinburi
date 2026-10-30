@@ -1128,4 +1128,5 @@ export const en: Record<string, string> = {
   "สมาชิก": "Members",
   "สรุปเดือน": "Month summary",
   "จบเสมอ": "Draw",
+  "ส่งสลิปไม่สำเร็จ ตรวจสัญญาณแล้วลองใหม่": "Could not send the slip. Check your signal and try again",
 };
