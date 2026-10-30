@@ -162,7 +162,7 @@ export function CourtsTab() {
       <PairRequests />
       <SectionTitle right={t("ว่าง {n} สนาม", { n: courts.length - active.size })}>{t("สนาม")}</SectionTitle>
       <Button
-        className="w-full"
+        className="w-full !rounded-3xl !bg-red-600 !py-4 !text-base !text-white shadow-[0_10px_24px_-10px_rgba(220,38,38,0.7)] active:scale-[0.98]"
         onClick={() => {
           const running = [...active.values()];
           const msg = running.length ? t("จบก๊วน? จะจบเกมที่กำลังเล่นอยู่ {n} เกม (ไม่บันทึกผล) ล้างคิว แล้วไปหน้าคิดเงิน", { n: running.length }) : t("จบก๊วน? ล้างคิว แล้วไปหน้าคิดเงิน");
@@ -173,7 +173,7 @@ export function CourtsTab() {
           goToTab("billing");
         }}
       >
-        {t("จบก๊วน")}
+        🏁 {t("จบก๊วน")}
       </Button>
       <div className="grid gap-3 sm:grid-cols-2">
         {courts.map((c) => {
