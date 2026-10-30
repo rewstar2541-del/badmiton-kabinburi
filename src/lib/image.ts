@@ -11,15 +11,34 @@ export async function resizeToSquare(file: File, size = 160, quality = 0.8): Pro
   return canvas.toDataURL("image/jpeg", quality);
 }
 
+/** อ่านรูปเป็นภาพที่วาดลง canvas ได้ ถ้า createImageBitmap ใช้ไม่ได้ (เบราว์เซอร์ในแอป LINE บางรุ่น) ใช้ <img> แทน */
+async function decode(file: File): Promise<{ img: CanvasImageSource; width: number; height: number; done: () => void }> {
+  try {
+    const b = await createImageBitmap(file);
+    return { img: b, width: b.width, height: b.height, done: () => b.close() };
+  } catch {
+    const url = URL.createObjectURL(file);
+    try {
+      const el = new Image();
+      el.src = url;
+      await el.decode();
+      return { img: el, width: el.naturalWidth, height: el.naturalHeight, done: () => URL.revokeObjectURL(url) };
+    } catch (e) {
+      URL.revokeObjectURL(url);
+      throw e;
+    }
+  }
+}
+
 /** ย่อรูปสลิปให้อ่านตัวเลขได้ แต่ไฟล์เล็กพอส่งขึ้นฐานข้อมูล (ไม่เกินราว 500KB) */
 export async function resizeSlip(file: File, maxSide = 1280): Promise<string> {
-  const bitmap = await createImageBitmap(file);
+  const bitmap = await decode(file);
   const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(bitmap.width * scale);
   canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
+  canvas.getContext("2d")!.drawImage(bitmap.img, 0, 0, canvas.width, canvas.height);
+  bitmap.done();
   let quality = 0.8;
   let url = canvas.toDataURL("image/jpeg", quality);
   while (url.length > 500_000 && quality > 0.3) {

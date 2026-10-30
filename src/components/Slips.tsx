@@ -86,7 +86,11 @@ export function SlipUpload({ playerId, amount }: { playerId: string; amount: num
           if (!f) return;
           setBusy(true);
           try {
-            const err = await sendSlip(playerId, pin, amount, await resizeSlip(f));
+            // ไม่ให้ค้างตลอดไปถ้าเน็ตหลุดหรือเบราว์เซอร์ไม่ตอบ
+            const err = await Promise.race([
+              sendSlip(playerId, pin, amount, await resizeSlip(f)),
+              new Promise<string>((ok) => setTimeout(() => ok("ส่งสลิปไม่สำเร็จ ตรวจสัญญาณแล้วลองใหม่"), 30000)),
+            ]);
             setError(err ? t(err) : "");
           } catch {
             setError(t("อ่านรูปไม่ได้ ลองเลือกรูปใหม่"));

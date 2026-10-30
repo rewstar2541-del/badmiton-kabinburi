@@ -159,6 +159,8 @@ export interface Game {
   endedAt?: number;
   shuttles: number;
   winner?: Team;
+  /** จบเสมอ (ไม่มีทีมชนะ นับว่าเล่นแล้ว ไม่นับแพ้ชนะ) */
+  draw?: boolean;
 }
 
 export interface CheckIn {
