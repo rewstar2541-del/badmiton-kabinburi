@@ -92,7 +92,7 @@ export function Shortcuts({ items }: { items: Shortcut[] }) {
   const [why, setWhy] = useState("");
   return (
     <div className="space-y-2">
-    <div className="grid grid-cols-4 gap-2">
+    <div className={`grid gap-2 ${items.length > 4 ? "grid-cols-3" : "grid-cols-4"}`}>
       {items.map((s) => {
         const inner = (
           <>
@@ -354,6 +354,8 @@ export function AdminHome() {
       <Shortcuts
         items={[
           { icon: Icon.CheckIn, label: t("เช็คอิน"), onClick: () => goToTab("checkin") },
+          { icon: Icon.Vote, label: t("ลงชื่อ"), onClick: () => open("signups") },
+          { icon: Icon.Users, label: t("ผู้เล่น"), onClick: () => goToTab("players") },
           { icon: Icon.Shuffle, label: t("จัดคู่"), onClick: () => goToTab("courts") },
           { icon: Icon.Wallet, label: t("คิดเงิน"), onClick: () => goToTab("billing") },
           { icon: Icon.Megaphone, label: t("ประกาศ"), onClick: () => open("announce") },
@@ -373,7 +375,6 @@ export function AdminHome() {
       <SectionTitle>{t("จัดการก๊วน")}</SectionTitle>
       <Tiles
         items={[
-          { icon: Icon.Users, label: t("ผู้เล่น"), onClick: () => goToTab("players"), badge: pending.length },
           { icon: Icon.Calendar, label: t("ปฏิทิน"), onClick: () => open("calendar") },
           { icon: Icon.Vote, label: t("โหวตวันตี"), onClick: () => open("poll") },
           { icon: Icon.Box, label: t("ของหาย/ฝากขาย"), onClick: () => open("board") },
