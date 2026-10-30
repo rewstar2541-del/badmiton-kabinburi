@@ -1,6 +1,6 @@
 import { clearState, type ClearKind } from "./clear";
 import { guestsOf, markPaid } from "./billing";
-import { DEFAULT_SETTINGS, type Day, type DayPrices, type Expense, type Game, type PairStatus, type Poll, type ShuttleStock, type BoardPost, type Notice, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
+import { DEFAULT_SETTINGS, type Day, type DayPrices, type Expense, type Game, type PairStatus, type Poll, type BoardPost, type Notice, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
 
 export interface State {
   players: Player[];
@@ -17,8 +17,6 @@ export interface State {
   annualRules?: AnnualRule[];
   /** รายจ่ายของก๊วน (แอดมินเท่านั้น) */
   expenses?: Expense[];
-  /** สต็อกลูกแบด (แอดมินเท่านั้น) */
-  stock?: ShuttleStock;
   /** โหวตวันตีพิเศษ */
   polls?: Poll[];
   /** บอร์ดของหาย / ฝากขาย (เฉพาะที่ยังเปิดอยู่และเพิ่งปิด) */
@@ -82,7 +80,6 @@ export type Action =
   | { type: "clearData"; kinds: ClearKind[]; from: string; to: string }
   | { type: "addExpense"; expense: Omit<Expense, "id" | "at">; _id: string; _at: number }
   /** นับลูกจริงแล้ว ตั้งยอดใหม่ ณ ตอนนี้ / เปลี่ยนจุดเตือน */
-  | { type: "setStock"; base?: number; low?: number; _at: number }
   | { type: "createPoll"; question: string; dates: string[]; _id: string; _at: number }
   /** chosen: วันที่เลือก (เปิดประกาศวันนั้นแยกต่างหาก) */
   | { type: "closePoll"; id: string; chosen?: string }
@@ -121,7 +118,6 @@ export function normalizeBackup(raw: unknown): State {
     closed: data.closed ?? {},
     monthlyAmounts: data.monthlyAmounts ?? {},
     expenses: Array.isArray(data.expenses) ? data.expenses : [],
-    stock: data.stock,
     polls: Array.isArray(data.polls) ? data.polls : [],
     board: Array.isArray(data.board) ? data.board : [],
     notices: Array.isArray(data.notices) ? data.notices : [],
@@ -368,13 +364,6 @@ export function reducer(state: State, a: Action): State {
       return clearState(state, a.kinds, a.from, a.to);
     case "addExpense":
       return { ...state, expenses: [...(state.expenses ?? []), { ...a.expense, id: a._id, at: a._at }] };
-    case "setStock": {
-      const cur = state.stock ?? { base: 0, countedAt: a._at, low: 12 };
-      return {
-        ...state,
-        stock: { low: a.low ?? cur.low, base: a.base ?? cur.base, countedAt: a.base === undefined ? cur.countedAt : a._at },
-      };
-    }
     case "createPoll":
       return { ...state, polls: [...(state.polls ?? []), { id: a._id, question: a.question, dates: a.dates, createdAt: a._at, closed: false, votes: {} }] };
     case "closePoll":

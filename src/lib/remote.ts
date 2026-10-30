@@ -59,7 +59,6 @@ export interface Rows {
   closed: { date: string; reason: string }[];
   slips: { id: string; date: string; player_id: string; amount: number; created_at: string }[];
   expenses?: { id: string; date: string; category: Expense["category"]; amount: number; note: string; shuttles?: number | null; created_at?: string }[];
-  stock?: { base: number; counted_at: string; low: number } | null;
   pairs?: { id: string; date: string; from_id: string; to_id: string; status: PairStatus; at: string }[];
   polls?: { id: string; question: string; dates: string[]; created_at: string; chosen: string | null; closed: boolean }[];
   votes?: { poll_id: string; player_id: string; dates: string[] }[];
@@ -197,7 +196,6 @@ export function rowsToState(r: Rows): State {
       ...(e.shuttles ? { shuttles: e.shuttles } : {}),
       ...(e.created_at ? { at: Date.parse(e.created_at) } : {}),
     })),
-    stock: r.stock ? { base: r.stock.base, countedAt: Date.parse(r.stock.counted_at), low: r.stock.low } : undefined,
     polls: (r.polls ?? []).map(
       (p): Poll => ({
         id: p.id,
@@ -274,7 +272,6 @@ export const TABLE_OF: Record<string, TableKey> = {
   closed_days: "closed",
   day_prices: "prices",
   expenses: "expenses",
-  shuttle_stock: "stock",
   pair_requests: "pairs",
   polls: "polls",
   poll_votes: "votes",
@@ -310,7 +307,6 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
     slips: async () => (isAdmin ? all(() => db.from("slips").select("id,date,player_id,amount,created_at").is("removed_at", null).order("id")) : []),
     closed: () => all(() => db.from("closed_days").select("date,reason").order("date")),
     expenses: async () => (isAdmin ? all(() => db.from("expenses").select("id,date,category,amount,note,shuttles,created_at").order("date").order("id")) : []),
-    stock: async () => (isAdmin ? ((await db.from("shuttle_stock").select("base,counted_at,low").eq("id", 1).maybeSingle()).data ?? null) : null),
     pairs: () => all(() => db.from("pair_requests").select("id,date,from_id,to_id,status,at").gte("date", sinceDate(1)).order("at")),
     polls: () => all(() => db.from("polls").select("id,question,dates,created_at,chosen,closed").gte("created_at", sinceDate(120)).order("created_at")),
     votes: () => all(() => db.from("poll_votes").select("poll_id,player_id,dates").gte("at", sinceDate(120)).order("poll_id")),
@@ -543,14 +539,6 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       return; // ออนไลน์ใช้ submitSlip
     case "addExpense":
       return check(await db.from("expenses").insert({ id: a._id, ...a.expense, created_at: iso(a._at) }));
-    case "setStock":
-      return check(
-        await db.from("shuttle_stock").upsert({
-          id: 1,
-          ...(a.base === undefined ? {} : { base: a.base, counted_at: iso(a._at) }),
-          ...(a.low === undefined ? {} : { low: a.low }),
-        }),
-      );
     case "createPoll":
       return check(await db.from("polls").insert({ id: a._id, question: a.question, dates: a.dates, created_at: iso(a._at) }));
     case "closePoll":
@@ -620,7 +608,6 @@ async function clearRemote(db: SupabaseClient, kinds: ClearKind[], from: string,
   if (k.has("polls")) await byTime("polls", "created_at");
   if (k.has("board")) await byTime("board_posts", "created_at");
   if (k.has("closed")) await byDate("closed_days");
-  if (k.has("stock")) check(await db.from("shuttle_stock").delete().eq("id", 1));
   if (k.has("photos")) {
     const { data, error } = await db.from("event_photos").select("id,path").gte("date", from).lte("date", to);
     if (error) throw new Error(error.message);

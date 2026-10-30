@@ -16,7 +16,6 @@ const state: State = {
     { id: "e1", date: "2026-09-02", category: "court", amount: 100, note: "" },
     { id: "e2", date: "2026-10-02", category: "court", amount: 100, note: "" },
   ],
-  stock: { base: 10, countedAt: 0, low: 5 },
 };
 
 describe("clear by type and date", () => {
@@ -27,11 +26,9 @@ describe("clear by type and date", () => {
     expect(s.days[1].games).toHaveLength(1);
     expect(s.expenses!.map((e) => e.id)).toEqual(["e2"]);
     expect(s.players).toHaveLength(1);
-    expect(s.stock).toBeDefined();
   });
   it("counts what would be removed", () => {
     expect(clearCount(state, "games", "2026-01-01", "2026-12-31")).toBe(2);
     expect(clearCount(state, "signups", "2026-10-01", "2026-10-31")).toBe(1);
-    expect(clearState(state, ["stock"], "2026-01-01", "2026-01-02").stock).toBeUndefined();
   });
 });
