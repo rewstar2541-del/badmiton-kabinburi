@@ -79,7 +79,6 @@ export type Action =
   /** ล้างเฉพาะประเภทที่เลือก ในช่วงวันที่ */
   | { type: "clearData"; kinds: ClearKind[]; from: string; to: string }
   | { type: "addExpense"; expense: Omit<Expense, "id" | "at">; _id: string; _at: number }
-  /** นับลูกจริงแล้ว ตั้งยอดใหม่ ณ ตอนนี้ / เปลี่ยนจุดเตือน */
   | { type: "createPoll"; question: string; dates: string[]; _id: string; _at: number }
   /** chosen: วันที่เลือก (เปิดประกาศวันนั้นแยกต่างหาก) */
   | { type: "closePoll"; id: string; chosen?: string }
