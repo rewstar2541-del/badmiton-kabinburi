@@ -1138,4 +1138,5 @@ export const en: Record<string, string> = {
   "จบก๊วน": "End session",
   "จบก๊วน? จะจบเกมที่กำลังเล่นอยู่ {n} เกม (ไม่บันทึกผล) ล้างคิว แล้วไปหน้าคิดเงิน": "End the session? This ends {n} running game(s) without a result, clears the queue and opens billing",
   "จบก๊วน? ล้างคิว แล้วไปหน้าคิดเงิน": "End the session? Clears the queue and opens billing",
+  "วันนี้ยังไม่ได้ประกาศจัดก๊วน เช็คอินเองไม่ได้": "No session announced today, so self check-in is off",
 };
