@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { nextMatch } from "../matchmaking";
-import { activePairs, canSelfCheckIn, partnerStats, shuttleStock, signupQueue, waitingPosition } from "../social";
+import { activePairs, canSelfCheckIn, partnerStats, signupQueue, waitingPosition } from "../social";
 import { EMPTY_STATE, type State } from "../state";
 import type { Day, Player } from "../types";
 
@@ -24,27 +24,6 @@ describe("pair requests", () => {
     const day = { ...base, games: [{ id: "g", court: 1, playerIds: ["a", "j", "b", "c"] as [string, string, string, string], startedAt: 200, shuttles: 1 }] };
     expect(activePairs(day)).toHaveLength(0);
     expect(activePairs(base)).toHaveLength(1);
-  });
-});
-
-describe("shuttle stock", () => {
-  it("adds purchases and subtracts shuttles used after the last count", () => {
-    const state: State = {
-      ...EMPTY_STATE,
-      stock: { base: 20, countedAt: 1000, low: 12 },
-      expenses: [
-        { id: "x", date: "2026-10-01", category: "shuttle", amount: 480, note: "", shuttles: 24, at: 2000 },
-        { id: "y", date: "2026-09-01", category: "shuttle", amount: 480, note: "", shuttles: 24, at: 500 },
-      ],
-      days: [
-        { date: "2026-10-02", checkIns: [], drinks: [], games: [
-          { id: "g1", court: 1, playerIds: ["a", "b", "c", "d"], startedAt: 3000, shuttles: 3 },
-          { id: "g0", court: 1, playerIds: ["a", "b", "c", "d"], startedAt: 900, shuttles: 5 },
-        ] },
-      ],
-    };
-    expect(shuttleStock(state)).toMatchObject({ left: 20 + 24 - 3, bought: 24, used: 3 });
-    expect(shuttleStock(EMPTY_STATE)).toBeNull();
   });
 });
 

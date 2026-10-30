@@ -1,7 +1,6 @@
 "use client";
 
 import { ClubCorner } from "./ClubCorner";
-import { StockWarning } from "./Stock";
 import { PairRequests } from "./Pairs";
 import { useEffect, useState } from "react";
 import { presence, waitingQueue } from "@/lib/matchmaking";
@@ -158,7 +157,6 @@ export function CourtsTab() {
 
   return (
     <div className="space-y-4">
-      <StockWarning />
       <PairRequests />
       <SectionTitle right={t("ว่าง {n} สนาม", { n: courts.length - active.size })}>{t("สนาม")}</SectionTitle>
       <Button

@@ -6,7 +6,6 @@ import { t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
 import { type Drink, type Player } from "@/lib/types";
 import { MembersView } from "./Members";
-import { StockCard } from "./Stock";
 import { PayQr } from "./PayQr";
 import { SlipReview } from "./Slips";
 import { Avatar, Button, Card, Icon, SectionTitle, Sheet, baht, inputClass } from "./ui";
@@ -312,7 +311,6 @@ function DailyView() {
       </ul>
 
       {openRow && <BillDetail player={openRow.player} bill={openRow.bill} onClose={() => setOpen(null)} />}
-      <StockCard />
     </>
   );
 }

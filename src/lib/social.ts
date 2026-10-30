@@ -22,25 +22,6 @@ export function myPair(day: Day, playerId: string): PairRequest | undefined {
     .sort((a, b) => b.at - a.at)[0];
 }
 
-export interface StockInfo {
-  left: number;
-  bought: number;
-  used: number;
-  low: number;
-  countedAt: number;
-}
-
-/** ลูกที่เหลือ = นับจริงล่าสุด + ที่ซื้อหลังจากนั้น - ที่ใช้ในเกมหลังจากนั้น */
-export function shuttleStock(state: State): StockInfo | null {
-  const s = state.stock;
-  if (!s) return null;
-  const bought = (state.expenses ?? [])
-    .filter((e) => e.shuttles && (e.at ?? Date.parse(e.date + "T12:00:00")) > s.countedAt)
-    .reduce((n, e) => n + (e.shuttles ?? 0), 0);
-  const used = state.days.flatMap((d) => d.games).filter((g) => g.startedAt > s.countedAt).reduce((n, g) => n + g.shuttles, 0);
-  return { left: s.base + bought - used, bought, used, low: s.low, countedAt: s.countedAt };
-}
-
 export interface MateStat {
   id: string;
   games: number;

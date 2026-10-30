@@ -184,9 +184,9 @@ export interface Drink {
   playerId: string;
   amount: number;
   note: string;
-  /** จำนวนลูกที่ซื้อ (เฉพาะซื้อลูกแบด) เข้าสต็อก */
+  /** จำนวนลูกที่ซื้อ (ข้อมูลเก่า ตอนยังมีสต็อกลูก) */
   shuttles?: number;
-  /** เวลาที่ลง ใช้เทียบกับเวลานับสต็อก */
+  /** เวลาที่ลง */
   at?: number;
 }
 
@@ -238,14 +238,6 @@ export interface Poll {
   votes: Record<string, string[]>;
 }
 
-/** สต็อกลูกแบด: นับจริงล่าสุด (base ณ countedAt) แล้วบวกที่ซื้อ ลบที่ใช้ในเกมหลังจากนั้น */
-export interface ShuttleStock {
-  base: number;
-  countedAt: number;
-  /** เตือนเมื่อเหลือน้อยกว่านี้ */
-  low: number;
-}
-
 export interface Slip {
   id: string;
   playerId: string;
@@ -276,9 +268,9 @@ export interface Expense {
   category: ExpenseCategory;
   amount: number;
   note: string;
-  /** จำนวนลูกที่ซื้อ (เฉพาะซื้อลูกแบด) เข้าสต็อก */
+  /** จำนวนลูกที่ซื้อ (ข้อมูลเก่า ตอนยังมีสต็อกลูก) */
   shuttles?: number;
-  /** เวลาที่ลง ใช้เทียบกับเวลานับสต็อก */
+  /** เวลาที่ลง */
   at?: number;
 }
 

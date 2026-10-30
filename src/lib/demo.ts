@@ -46,7 +46,7 @@ export function demoState(): State {
   s.players.slice(0, 8).forEach((p, i) => run({ type: "checkIn", date, playerId: p.id }, now - (40 - i * 3) * 60000));
   run({ type: "setMonthlyPaid", month: date.slice(0, 7), playerId: s.players[0].id, paid: true });
   run({ type: "setMonthlyPaid", month: date.slice(0, 7), playerId: s.players[3].id, paid: true });
-  // เกมที่จบแล้ววันนี้ พร้อมผลแพ้ชนะ (ให้เห็นสถิติคู่หู) และสต็อกลูกแบด
+  // เกมที่จบแล้ววันนี้ พร้อมผลแพ้ชนะ (ให้เห็นสถิติคู่หู)
   const ids = s.players.map((p) => p.id);
   const played: [number[], "A" | "B", number][] = [
     [[5, 0, 1, 2], "A", 2],
@@ -60,7 +60,6 @@ export function demoState(): State {
     run({ type: "setShuttles", date, gameId: g.id, shuttles });
     run({ type: "endGame", date, gameId: g.id, winner }, start + 8 * 60000);
   });
-  run({ type: "setStock", base: 30, low: 24 }, now - 3 * 3600000);
   // วันเกิดวันนี้ และบอร์ดของหาย / ฝากขาย ตัวอย่าง
   s = { ...s, players: s.players.map((p, i) => (i === 7 ? { ...p, birthday: date.slice(5) } : p)) };
   run({ type: "addBoardPost", post: { playerId: ids[2], kind: "sell", title: "ไม้ Yonex Astrox 77 มือสอง", detail: "ใช้มา 6 เดือน เอ็นใหม่", price: 2500 } }, now - 2 * 86400000);

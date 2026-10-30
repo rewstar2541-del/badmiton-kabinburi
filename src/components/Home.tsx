@@ -19,7 +19,6 @@ import { PairCard } from "./Pairs";
 import { useMe, savedPin } from "./PickMe";
 import { PollAdmin } from "./Polls";
 import { RestButton } from "./RestButton";
-import { StockWarning } from "./Stock";
 import { TodayTab } from "./TodayTab";
 import { Card, Icon, SectionTitle, Sheet } from "./ui";
 
@@ -361,7 +360,6 @@ export function AdminHome() {
           { icon: Icon.Megaphone, label: t("ประกาศ"), onClick: () => open("announce") },
         ]}
       />
-      <StockWarning />
       <NoticeBanners />
       <BirthdayBanner />
       <SectionTitle right={todo.length ? t("{n} เรื่อง", { n: todo.length }) : undefined}>{t("ต้องจัดการ")}</SectionTitle>

@@ -6,7 +6,6 @@ import { locale, t } from "@/lib/i18n";
 import { monthReport } from "@/lib/report";
 import { today, useStore } from "@/lib/store";
 import { EXPENSE_CATEGORIES, monthOf, type ExpenseCategory } from "@/lib/types";
-import { TUBE } from "./Stock";
 import { Button, Card, Icon, baht, inputClass } from "./ui";
 
 /** บัญชีรายรับรายจ่ายของก๊วนรายเดือน รายรับมาจากเงินที่เก็บได้ รายจ่ายแอดมินลงเอง */
@@ -20,20 +19,14 @@ export function Ledger({ month }: { month: string }) {
   const [category, setCategory] = useState<ExpenseCategory>("court");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
-  const [tubeCount, setTubeCount] = useState("");
-  const tubesBought = category === "shuttle" ? Math.max(0, Math.floor(Number(tubeCount) || 0)) : 0;
   const value = Number(amount);
   const valid = value > 0 && Number.isInteger(value) && monthOf(date) === month;
 
   const save = () => {
     if (!valid) return;
-    dispatch({
-      type: "addExpense",
-      expense: { date, category, amount: value, note: note.trim(), ...(tubesBought ? { shuttles: tubesBought * TUBE } : {}) },
-    });
+    dispatch({ type: "addExpense", expense: { date, category, amount: value, note: note.trim() } });
     setAmount("");
     setNote("");
-    setTubeCount("");
     setAdding(false);
   };
 
@@ -126,17 +119,6 @@ export function Ledger({ month }: { month: string }) {
               onChange={(e) => setAmount(e.target.value)}
             />
           </div>
-          {category === "shuttle" && (
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              className={inputClass}
-              placeholder={t("กี่หลอด (หลอดละ {n} ลูก) เข้าสต็อก", { n: TUBE })}
-              value={tubeCount}
-              onChange={(e) => setTubeCount(e.target.value)}
-            />
-          )}
           <input className={inputClass} placeholder={t("หมายเหตุ (ไม่ใส่ก็ได้)")} maxLength={80} value={note} onChange={(e) => setNote(e.target.value)} />
           <div className="grid grid-cols-2 gap-2">
             <Button onClick={() => setAdding(false)}>{t("ยกเลิก")}</Button>
