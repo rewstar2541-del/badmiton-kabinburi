@@ -4,6 +4,7 @@ import { downloadBlob, inAppBrowser } from "@/lib/download";
 import { OpenOutside } from "./OpenOutside";
 import { BoardCard } from "./Board";
 import { ClearData } from "./ClearData";
+import { PackageAdmin } from "./Packages";
 import { PollAdmin } from "./Polls";
 import { useState, type ReactNode } from "react";
 import { isValidPromptPayId } from "@/lib/promptpay";
@@ -23,11 +24,13 @@ const NUMBER_FIELDS: { key: keyof Settings; label: string }[] = [
   { key: "courtFee", label: "ค่าสนามต่อครั้ง (คนไม่จ่ายรายเดือน)" },
   { key: "firstShuttleFee", label: "ค่าลูกแรกของวัน ต่อคน" },
   { key: "nextShuttleFee", label: "ค่าลูกถัดไป ต่อคน ต่อลูก" },
-  { key: "monthlyFee", label: "ค่าสมาชิกรายเดือน" },
 ];
 
 export function SettingsTab() {
   const { state, dispatch, auth } = useStore();
+  // ยังไม่มีตารางแพ็กเกจ: ใช้ช่องค่ารายเดือนเดิมไปก่อน
+  const packagesReady = state.packages !== undefined;
+  const numberFields = packagesReady ? NUMBER_FIELDS : [...NUMBER_FIELDS, { key: "monthlyFee" as const, label: "ค่าสมาชิกรายเดือน" }];
   const [s, setS] = useState(state.settings);
   const [saved, setSaved] = useState(false);
   const ppOk = !s.promptPayId || isValidPromptPayId(s.promptPayId);
@@ -62,7 +65,12 @@ export function SettingsTab() {
       <Section id="tourney" icon="🏆" title={t("งานแข่ง")} hint={t("สร้างงาน เปิดวันแข่ง จบงาน")}>
         <TourneySetup />
       </Section>
-      <Section id="prices" icon="💰" title={t("ราคาและสนาม")} hint={t("ค่าสนาม ค่าลูก รายเดือน PromptPay จอทีวี")}>
+      {packagesReady && (
+        <Section id="packages" icon="🎫" title={t("แพ็กเกจสมาชิก")} hint={t("รายวัน รายเดือน รายปี ตั้งชื่อ ราคา วันหมดอายุ")}>
+          <PackageAdmin />
+        </Section>
+      )}
+      <Section id="prices" icon="💰" title={t("ราคาและสนาม")} hint={t("ค่าสนาม ค่าลูก PromptPay จอทีวี")}>
           <Card>
             <form
               className="space-y-3"
@@ -79,13 +87,14 @@ export function SettingsTab() {
                       prices: { courtFee: old.courtFee, firstShuttleFee: old.firstShuttleFee, nextShuttleFee: old.nextShuttleFee },
                     }
                   : undefined;
-                dispatch({ type: "updateSettings", settings: s, freeze });
+                // ค่ารายเดือนมาจากแพ็กเกจ ไม่ทับด้วยค่าในฟอร์มนี้
+                dispatch({ type: "updateSettings", settings: packagesReady ? { ...s, monthlyFee: state.settings.monthlyFee } : s, freeze });
                 setSaved(true);
               }}
             >
               <h2 className="font-display font-semibold">{t("ราคาและสนาม")}</h2>
               <p className="text-xs text-zinc-500">{t("ราคาใหม่ใช้ตั้งแต่วันนี้ (มีคนจ่ายแล้วเริ่มพรุ่งนี้) บิลเก่าไม่เปลี่ยน แก้ยอดรายคนที่ คิดเงิน > กดชื่อ")}</p>
-              {NUMBER_FIELDS.map((f) => (
+              {numberFields.map((f) => (
                 <label key={f.key} className="block text-sm">
                   {t(f.label)}
                   <input

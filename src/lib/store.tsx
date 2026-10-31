@@ -55,7 +55,7 @@ interface Ctx {
   /** ผู้เล่นขอจับคู่ / ตอบรับ / ยกเลิก และโหวตวันตีพิเศษ คืนข้อความผิดพลาด หรือ null */
   social: (req: SocialRequest, playerId: string, pin: string) => Promise<string | null>;
   /** ผู้เล่นส่งรูปสลิปโอนเงิน คืนข้อความผิดพลาด หรือ null */
-  sendSlip: (playerId: string, pin: string, amount: number, image: string) => Promise<string | null>;
+  sendSlip: (playerId: string, pin: string, amount: number, image: string, packageId?: string) => Promise<string | null>;
   /** ผู้เล่นเพิ่มค่าน้ำของตัวเองวันนี้ */
   addMyDrink: (playerId: string, pin: string, amount: number, note: string) => Promise<string | null>;
   /** ผู้เล่นลบสลิปของตัวเองที่ส่งผิด (เฉพาะที่ส่งวันนี้) คืนข้อความผิดพลาด หรือ null */
@@ -218,8 +218,8 @@ function LocalProvider({ children }: { children: ReactNode }) {
   }, []);
   // รูปสลิปในโหมดเครื่องเดียว เก็บไว้ในหน่วยความจำ (หายเมื่อรีเฟรช)
   const images = useRef(new Map<string, string>());
-  const sendSlip = useCallback(async (playerId: string, _pin: string, amount: number, image: string) => {
-    const a = prepare({ type: "addSlip", date: today(), playerId, amount });
+  const sendSlip = useCallback(async (playerId: string, _pin: string, amount: number, image: string, packageId?: string) => {
+    const a = prepare({ type: "addSlip", date: today(), playerId, amount, packageId });
     if (a.type === "addSlip") images.current.set(a._id, image);
     apply(a);
     return null;
@@ -402,8 +402,8 @@ function RemoteProvider({ children }: { children: ReactNode }) {
   );
 
   const sendSlip = useCallback(
-    async (playerId: string, pin: string, amount: number, image: string) => {
-      const err = await submitSlip(db, playerId, pin, amount, image);
+    async (playerId: string, pin: string, amount: number, image: string, packageId?: string) => {
+      const err = await submitSlip(db, playerId, pin, amount, image, packageId);
       if (!err) await reload();
       return err;
     },

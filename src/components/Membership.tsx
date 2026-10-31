@@ -108,6 +108,8 @@ export function MonthlyDueCard({ player }: { player: Player }) {
   const { date } = useToday();
   if (!monthlyDue(state, player, date)) return null;
   const fee = state.settings.monthlyFee;
+  // สลิปค่ารายเดือนผูกกับแพ็กรายเดือน แอดมินจะเห็นว่าโอนค่าอะไร
+  const monthlyPackage = state.packages?.find((p) => p.kind === "monthly" && p.price === fee);
   return (
     <div className="space-y-3 rounded-3xl bg-amber-50 p-4 ring-2 ring-amber-400">
       <div className="flex items-start gap-3">
@@ -123,7 +125,7 @@ export function MonthlyDueCard({ player }: { player: Player }) {
       </div>
       <div className="flex flex-col items-center gap-2 rounded-2xl bg-white p-3">
         <PayQr promptPayId={state.settings.promptPayId} amount={fee} />
-        <SlipUpload playerId={player.id} amount={fee} />
+        <SlipUpload playerId={player.id} amount={fee} packageId={monthlyPackage?.id} />
         <SelfPay playerId={player.id} amount={fee} action="payMonth" />
       </div>
     </div>

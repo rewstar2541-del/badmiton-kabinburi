@@ -1,6 +1,6 @@
 import { clearState, type ClearKind } from "./clear";
 import { guestsOf, markPaid } from "./billing";
-import { DEFAULT_SETTINGS, type Day, type DayPrices, type Expense, type Game, type PairStatus, type Poll, type BoardPost, type Notice, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Player, type Settings, type Team } from "./types";
+import { DEFAULT_SETTINGS, type Day, type DayPrices, type Expense, type Game, type PairStatus, type Poll, type BoardPost, type Notice, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Package, type Player, type Settings, type Team } from "./types";
 
 export interface State {
   players: Player[];
@@ -15,6 +15,8 @@ export interface State {
   annualPayments?: AnnualPayment[];
   /** กติกาวันหมดอายุสมาชิกรายปีตามยอดจ่าย (แอดมินตั้งเอง) */
   annualRules?: AnnualRule[];
+  /** แพ็กเกจสมาชิกที่ผู้เล่นสมัครเองได้ */
+  packages?: Package[];
   /** รายจ่ายของก๊วน (แอดมินเท่านั้น) */
   expenses?: Expense[];
   /** โหวตวันตีพิเศษ */
@@ -55,7 +57,9 @@ export type Action =
   | { type: "removeSlip"; date: string; slipId: string }
   | { type: "markPaid"; date: string; playerId: string; _at: number }
   | { type: "unmarkPaid"; date: string; playerId: string }
-  | { type: "setMonthlyPaid"; month: string; playerId: string; paid: boolean; _at: number }
+  | { type: "setMonthlyPaid"; month: string; playerId: string; paid: boolean; amount?: number; _at: number }
+  | { type: "savePackage"; pkg: Package }
+  | { type: "removePackage"; id: string }
   /** freeze: เก็บราคาเดิมไว้กับวันก่อนๆ ตอนเปลี่ยนราคา บิลเก่าจะได้ไม่เปลี่ยนตาม */
   /** บันทึกจ่ายค่าสมาชิกรายปี กำหนดช่วงวันใช้งานเอง (until รวมวันนั้น) */
   | { type: "recordAnnual"; playerId: string; paidOn: string; from: string; until: string; amount: number; _id: string; prev?: { from: string; until: string } }
@@ -73,7 +77,7 @@ export type Action =
   | { type: "signUp"; date: string; playerId: string; _at: number }
   | { type: "cancelSignUp"; date: string; playerId: string }
   /** ใช้ในโหมดเก็บในเครื่องเท่านั้น ออนไลน์ส่งผ่าน submit_slip */
-  | { type: "addSlip"; date: string; playerId: string; amount: number; _id: string; _at: number }
+  | { type: "addSlip"; date: string; playerId: string; amount: number; packageId?: string; _id: string; _at: number }
   /** ล้างประวัติทั้งหมด (ช่วงทดลองใช้) เก็บผู้เล่น ตั้งค่า วันงดเล่น และวันจัดก๊วนหลังวันนี้ไว้ */
   | { type: "clearHistory"; today: string }
   /** ล้างเฉพาะประเภทที่เลือก ในช่วงวันที่ */
@@ -122,6 +126,7 @@ export function normalizeBackup(raw: unknown): State {
     notices: Array.isArray(data.notices) ? data.notices : [],
     annualPayments: Array.isArray(data.annualPayments) ? data.annualPayments : [],
     annualRules: Array.isArray(data.annualRules) ? data.annualRules : [],
+    packages: Array.isArray(data.packages) ? data.packages : [],
   };
 }
 
@@ -261,7 +266,7 @@ export function reducer(state: State, a: Action): State {
       const month = { ...state.monthly[a.month] };
       const amounts = { ...state.monthlyAmounts?.[a.month] };
       if (a.paid) {
-        if (!month[a.playerId]) amounts[a.playerId] = state.settings.monthlyFee;
+        if (!month[a.playerId]) amounts[a.playerId] = a.amount ?? state.settings.monthlyFee;
         month[a.playerId] = a._at;
       } else {
         delete month[a.playerId];
@@ -290,6 +295,12 @@ export function reducer(state: State, a: Action): State {
     }
     case "setAnnualRules":
       return { ...state, annualRules: a.rules };
+    case "savePackage": {
+      const rest = (state.packages ?? []).filter((p) => p.id !== a.pkg.id);
+      return { ...state, packages: [...rest, a.pkg].sort((x, y) => x.sort - y.sort || x.price - y.price) };
+    }
+    case "removePackage":
+      return { ...state, packages: (state.packages ?? []).filter((p) => p.id !== a.id) };
     case "removeAnnualPayment":
       return { ...state, annualPayments: (state.annualPayments ?? []).filter((x) => x.id !== a.id) };
     case "setAnnualExpiry":
@@ -341,7 +352,7 @@ export function reducer(state: State, a: Action): State {
     case "addSlip":
       return withDay(state, a.date, (d) => ({
         ...d,
-        slips: [...(d.slips ?? []), { id: a._id, playerId: a.playerId, amount: a.amount, at: a._at }],
+        slips: [...(d.slips ?? []), { id: a._id, playerId: a.playerId, amount: a.amount, at: a._at, ...(a.packageId ? { packageId: a.packageId } : {}) }],
       }));
     case "cancelSignUp":
       return withDay(state, a.date, (d) => ({ ...d, signups: d.signups?.filter((x) => x.playerId !== a.playerId) }));

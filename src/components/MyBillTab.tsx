@@ -8,7 +8,8 @@ import { PendingNotice, PickMe, useMe } from "./PickMe";
 import { SelfPay } from "./SelfPay";
 import { SlipUpload } from "./Slips";
 import { AnnualInfo } from "./Annual";
-import { MonthlyDueCard, PlanChoice } from "./Membership";
+import { MonthlyDueCard, PlanChoice, monthlyDue } from "./Membership";
+import { PackagePicker } from "./Packages";
 import { useState } from "react";
 import { savedPin } from "./PickMe";
 import { Auto } from "@/lib/autoTranslate";
@@ -84,6 +85,8 @@ export function MyBillTab() {
         </>
       )}
 
+      {/* ค้างค่ารายเดือนอยู่ จ่ายที่การ์ดด้านบน ไม่โชว์ QR ซ้ำ กันโอนสองรอบ */}
+      {!monthlyDue(state, player, date) && <PackagePicker player={player} />}
     </div>
   );
 }

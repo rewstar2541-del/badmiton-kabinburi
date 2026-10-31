@@ -243,6 +243,18 @@ export interface Slip {
   playerId: string;
   amount: number;
   at: number;
+  /** โอนค่าแพ็กเกจสมาชิก (ไม่มี = ค่าเล่นรายวัน) */
+  packageId?: string;
+}
+
+/** แพ็กเกจสมาชิกที่แอดมินตั้ง: monthly = ใช้ได้ถึงสิ้นเดือนที่จ่าย, term = ใช้ได้ถึงวันที่ until */
+export interface Package {
+  id: string;
+  name: string;
+  price: number;
+  kind: "monthly" | "term";
+  until?: string;
+  sort: number;
 }
 
 export interface SignUp {
