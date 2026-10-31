@@ -217,7 +217,8 @@ function Header() {
           <ModeSwitch />
         </div>
       )}
-      {festival && <FestivalBanner f={festival} />}
+      {/* ผู้เล่น: คำอวยพรเทศกาลอยู่ในแถบข่าวหน้าแรกแทน */}
+      {festival && !(player && !auth.isAdmin) && <FestivalBanner f={festival} />}
     </header>
   );
 }
@@ -297,7 +298,7 @@ function Shell() {
           </div>
         )}
         {tab === "event" && (auth.isAdmin ? <TourneyAdmin /> : <TourneyHome />)}
-        {tab === "home" && (
+        {tab === "home" && auth.isAdmin && (
           <div className="mb-4 empty:hidden">
             <TourneyBanner />
           </div>

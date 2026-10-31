@@ -7,16 +7,16 @@ import { today, useStore } from "@/lib/store";
 import type { Notice } from "@/lib/types";
 import { Button, Card, Icon, inputClass } from "./ui";
 
-const active = (list: Notice[] | undefined) => {
+export const activeNotices = (list: Notice[] | undefined) => {
   const d = today();
   return (list ?? []).filter((n) => !n.until || n.until >= d).sort((a, b) => (a.kind === b.kind ? b.at - a.at : a.kind === "urgent" ? -1 : 1));
 };
 const dateLabel = (d: string) => new Date(d + "T00:00:00").toLocaleDateString(locale(), { day: "numeric", month: "short" });
 
 /** ข่าวประกาศทั่วไปที่ยังไม่หมดอายุ แสดงบนสุด (ด่วน = สีแดง ข่าว = สีฟ้า) แอดมินกดลบได้ */
-export function NoticeBanners({ tv }: { tv?: boolean }) {
+export function NoticeBanners({ tv, urgentOnly }: { tv?: boolean; urgentOnly?: boolean }) {
   const { state, auth, dispatch } = useStore();
-  const list = active(state.notices);
+  const list = activeNotices(state.notices).filter((n) => !urgentOnly || n.kind === "urgent");
   if (!list.length) return null;
   return (
     <div className="space-y-2">

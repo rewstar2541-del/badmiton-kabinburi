@@ -7,7 +7,7 @@ import { BoardCard } from "./Board";
 import { BirthdayBanner } from "./Birthday";
 import { PollVote } from "./Polls";
 import { PairCard } from "./Pairs";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { today, useStore, useToday } from "@/lib/store";
 import { presence } from "@/lib/matchmaking";
 import { BringGuest } from "./Guests";
@@ -51,7 +51,23 @@ export function AnnouncementBanner({ message, title, fee, date }: { message: str
 
 /** หน้าแรกของผู้เล่น: ดูประกาศ ลงชื่อ และเช็คอินเองเมื่อถึงสนาม */
 /** home: ใช้ในหน้าแรกแบบใหม่ ซ่อนส่วนที่ย้ายไปอยู่ในเมนูก๊วนและปุ่มลัดแล้ว */
-export function TodayTab({ home }: { home?: boolean } = {}) {
+/** หน้าแรกผู้เล่น: การ์ดดำใบเดียว สถานะ + ประกาศ + ปุ่มลงชื่อ/เช็คอิน */
+function HomeCard({ top, children }: { top: ReactNode; children?: ReactNode }) {
+  return (
+    <div className="relative space-y-3 overflow-hidden rounded-3xl bg-ink p-4 text-white shadow-lg shadow-ink/20">
+      <div className="pointer-events-none absolute -top-20 -right-12 size-48 rounded-full bg-lime/20 blur-3xl" />
+      <div className="relative">{top}</div>
+      {children && <div className="relative space-y-3">{children}</div>}
+    </div>
+  );
+}
+
+function Panel({ home, top, children }: { home?: boolean; top?: ReactNode; children: ReactNode }) {
+  return home ? <HomeCard top={top}>{children}</HomeCard> : <Card className="space-y-4">{children}</Card>;
+}
+
+/** home: ใช้ในหน้าแรกแบบใหม่ top = หัวการ์ดสถานะ (ใส่ปุ่มไว้ในการ์ดเดียวกัน) */
+export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode; news?: ReactNode } = {}) {
   const { state, self } = useStore();
   const { date, day } = useToday();
   const [me, setMe] = useMe();
@@ -81,6 +97,18 @@ export function TodayTab({ home }: { home?: boolean } = {}) {
         <BirthdayBanner />
         {announced && <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />}
         <PendingNotice name={player.name} onNotMe={() => setMe(null)} />
+      </div>
+    );
+
+  if (!announced && !hereToday && home)
+    return (
+      <div className="space-y-4">
+        <NoticeBanners urgentOnly />
+        <HomeCard top={top} />
+        {news}
+        <PlanChoice player={player} />
+        <MonthlyReminder player={player} />
+        <PollVote />
       </div>
     );
 
@@ -139,14 +167,28 @@ export function TodayTab({ home }: { home?: boolean } = {}) {
 
   return (
     <div className="space-y-4">
-      <NoticeBanners />
-      <BirthdayBanner />
-      <PlanChoice player={player} />
-      <MonthlyReminder player={player} />
-      <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />
-      <CapLine />
+      <NoticeBanners urgentOnly={home} />
+      {!home && <BirthdayBanner />}
+      {!home && <PlanChoice player={player} />}
+      {!home && <MonthlyReminder player={player} />}
+      {!home && <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />}
+      {!home && <CapLine />}
 
-      <Card className="space-y-4">
+      <Panel home={home} top={top}>
+        {home && announced && (
+          <div className="rounded-2xl bg-white/10 px-3 py-2 text-sm">
+            <span className="font-semibold text-lime">
+              {eventStyle(day.announcementTitle).emoji} {day.announcementTitle ? <Auto text={day.announcementTitle} /> : t("วันนี้มีจัดก๊วน")}
+            </span>
+            {!!day.announcementFee && ` · ${t("ค่าใช้จ่ายคนละ {amount}", { amount: baht(day.announcementFee) })}`}
+            {!!q.cap && ` · ${t("รับ {cap} คน · ลงชื่อแล้ว {n}", { cap: q.cap, n: q.confirmed.length })}`}
+            {day.announcement && (
+              <span className="mt-0.5 line-clamp-2 block whitespace-pre-line text-white/80">
+                <Auto text={day.announcement} />
+              </span>
+            )}
+          </div>
+        )}
         {!home && (
         <div className="flex items-center gap-3">
           <Avatar name={player.name} photo={player.photo} size={52} />
@@ -169,7 +211,7 @@ export function TodayTab({ home }: { home?: boolean } = {}) {
 
         {checkedIn ? (
           <div className="grid gap-2">
-            <div className="flex items-center justify-center gap-1.5 rounded-2xl bg-emerald-50 py-3 font-semibold text-emerald-700">
+            <div className={`items-center justify-center gap-1.5 rounded-2xl bg-emerald-50 py-3 font-semibold text-emerald-700 ${home ? "hidden" : "flex"}`}>
               <Icon.Check width={18} height={18} /> {status === "home" ? t("จ่ายแล้ว ถือว่ากลับบ้านแล้ว") : t("มาถึงสนามแล้ว")}
             </div>
             {status !== "home" && (
@@ -187,7 +229,7 @@ export function TodayTab({ home }: { home?: boolean } = {}) {
                   {t("เลิกเล่นแล้ว ไปจ่ายเงิน")}
                 </Button>
                 {played ? (
-                  <p className="text-center text-xs text-zinc-500">{t("เล่นแล้ว เช็คอินผิดให้แอดมินยกเลิก")}</p>
+                  <p className={`text-center text-xs ${home ? "text-white/60" : "text-zinc-500"}`}>{t("เล่นแล้ว เช็คอินผิดให้แอดมินยกเลิก")}</p>
                 ) : undo ? (
                   <div className="space-y-2 rounded-2xl bg-red-50 p-3">
                     <p className="text-center text-sm font-medium text-red-700">{t("กดเช็คอินผิดใช่ไหม?")}</p>
@@ -204,7 +246,7 @@ export function TodayTab({ home }: { home?: boolean } = {}) {
                     </button>
                   </div>
                 ) : (
-                  <button className="text-sm font-semibold text-red-600" onClick={() => setUndo(true)}>
+                  <button className={`text-sm font-semibold ${home ? "text-red-300" : "text-red-600"}`} onClick={() => setUndo(true)}>
                     {t("กดเช็คอินผิด / ยกเลิก")}
                   </button>
                 )}
@@ -219,29 +261,32 @@ export function TodayTab({ home }: { home?: boolean } = {}) {
                 <div className="text-xs">{t("มีคนยกเลิกจะเลื่อนขึ้นเอง หรือให้แอดมินเช็คอินให้")}</div>
               </div>
             ) : (
-              <div className="flex items-center justify-center gap-1.5 rounded-2xl bg-sky-50 py-3 font-semibold text-sky-700">
+              <div className={`items-center justify-center gap-1.5 rounded-2xl bg-sky-50 py-3 font-semibold text-sky-700 ${home ? "hidden" : "flex"}`}>
                 <Icon.Check width={18} height={18} /> {t("ลงชื่อแล้ว")}
               </div>
             )}
             <Button variant="accent" disabled={busy || !selfIn} onClick={() => act("checkIn")} className="flex items-center justify-center gap-1.5">
               <Icon.CheckIn width={18} height={18} /> {t("ถึงสนามแล้ว เช็คอิน")}
             </Button>
-            <Button variant="ghost" disabled={busy} className="!text-red-600" onClick={() => act("cancelSignUp")}>
+            <Button variant="ghost" disabled={busy} className={home ? "!text-red-300 active:!bg-white/10" : "!text-red-600"} onClick={() => act("cancelSignUp")}>
               {t("ยกเลิกลงชื่อ")}
             </Button>
           </div>
         ) : (
           <div className="grid gap-2">
-            <Button variant="primary" disabled={busy} onClick={() => act("signUp")}>
+            <Button variant={home ? "accent" : "primary"} disabled={busy} onClick={() => act("signUp")}>
               {full ? t("เต็มแล้ว ลงชื่อสำรอง") : day.announcementTitle ? t("ลงชื่อไปร่วม") : t("ลงชื่อว่าจะมา")}
             </Button>
-            <Button variant="accent" disabled={busy || !selfIn} onClick={() => act("checkIn")} className="flex items-center justify-center gap-1.5">
+            <Button variant={home ? "secondary" : "accent"} disabled={busy || !selfIn} onClick={() => act("checkIn")} className={`flex items-center justify-center gap-1.5 ${home ? "!bg-white/10 !text-white disabled:!text-white/40" : ""}`}>
               <Icon.CheckIn width={18} height={18} /> {t("ถึงสนามแล้ว เช็คอิน")}
             </Button>
-            {!selfIn && <p className="text-center text-xs text-zinc-500">{notOpen ? t("วันนี้ยังไม่ได้ประกาศจัดก๊วน เช็คอินเองไม่ได้") : t("เต็มแล้ว ลงชื่อสำรองได้")}</p>}
+            {!selfIn && <p className={`text-center text-xs ${home ? "text-white/60" : "text-zinc-500"}`}>{notOpen ? t("วันนี้ยังไม่ได้ประกาศจัดก๊วน เช็คอินเองไม่ได้") : t("เต็มแล้ว ลงชื่อสำรองได้")}</p>}
           </div>
         )}
-      </Card>
+      </Panel>
+      {home && news}
+      {home && <PlanChoice player={player} />}
+      {home && <MonthlyReminder player={player} />}
 
       {!home && checkedIn && status !== "home" && !player.guestOf && <PairCard />}
       {!home && checkedIn && status !== "home" && !player.guestOf && <BringGuest player={player} pin={pin} />}

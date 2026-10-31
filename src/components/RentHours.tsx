@@ -14,7 +14,7 @@ const range = (a: number, b: number) => Array.from({ length: Math.max(b - a + 1,
 
 function HourSelect({ value, from, to, onChange, label, disabled }: { value: number; from: number; to: number; onChange: (h: number) => void; label: string; disabled?: boolean }) {
   return (
-    <select aria-label={label} disabled={disabled} className="min-h-11 rounded-xl bg-zinc-100 px-2 text-sm disabled:opacity-60" value={value} onChange={(e) => onChange(Number(e.target.value))}>
+    <select aria-label={label} disabled={disabled} className="min-h-11 rounded-xl bg-zinc-100 px-2 text-base disabled:opacity-60" value={value} onChange={(e) => onChange(Number(e.target.value))}>
       {range(from, to).map((h) => (
         <option key={h} value={h}>
           {hh(h)}

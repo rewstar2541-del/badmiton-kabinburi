@@ -41,7 +41,7 @@ import { Button, Card, Icon, SectionTitle, Sheet, inputClass } from "./ui";
 
 /* ---------- ส่วนที่ใช้ร่วมกัน ---------- */
 
-function dayLabel(date: string) {
+export function dayLabel(date: string) {
   return new Date(date + "T00:00:00").toLocaleDateString("th-TH", { weekday: "short", day: "numeric", month: "short" });
 }
 
