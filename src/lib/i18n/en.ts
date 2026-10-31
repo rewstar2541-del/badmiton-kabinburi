@@ -1154,4 +1154,8 @@ export const en: Record<string, string> = {
   "ล้างรายชื่อที่ค้างของวันนี้?": "Clear today's leftover sign-ups?",
   "ล้างรายชื่อที่ค้าง": "Clear leftover sign-ups",
   "มีชื่อลงค้าง วันนี้ไม่ได้จัดก๊วน": "Leftover sign-ups, no session today",
+  "ค่าเล่นรายวัน (ค่าสนาม ค่าลูก ค่าน้ำ)": "Daily play fees (court, shuttles, drinks)",
+  "ยังไม่ได้ตั้งค่ารายเดือน (ตั้งที่ ตั้งค่า)": "Monthly fee not set (set it in Settings)",
+  "ได้รับค่าเล่นที่ค้างทั้งหมดถึงวันนี้ของ {name} {amount}?": "Received all of {name}'s unpaid play fees up to today, {amount}?",
+  "ค้างถึงวันนี้ {amount}": "Owes {amount} up to today",
 };
