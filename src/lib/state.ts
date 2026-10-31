@@ -329,6 +329,8 @@ export function reducer(state: State, a: Action): State {
         announcementTitle: a.message === null ? undefined : a.title === undefined ? d.announcementTitle : (a.title ?? undefined),
         announcementFee: a.message === null ? undefined : a.fee === undefined ? d.announcementFee : (a.fee ?? undefined),
         announcementCap: a.message === null ? undefined : a.cap === undefined ? d.announcementCap : (a.cap ?? undefined),
+        // ยกเลิกจัดก๊วน ล้างคนลงชื่อของวันนั้นด้วย
+        signups: a.message === null ? undefined : d.signups,
       }));
     case "signUp":
       return withDay(state, a.date, (d) =>

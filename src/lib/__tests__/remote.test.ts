@@ -80,8 +80,21 @@ describe("prepare + reducer", () => {
     expect(s.days[0]).toMatchObject({ announcement: "วันนี้มีก๊วน", signups: [{ playerId: "a", at: 1 }] });
     s = reducer(s, prepare({ type: "cancelSignUp", date: "2026-10-04", playerId: "a" }));
     s = reducer(s, prepare({ type: "setAnnouncement", date: "2026-10-04", message: null }));
-    expect(s.days[0].signups).toEqual([]);
+    expect(s.days[0].signups ?? []).toEqual([]);
     expect(s.days[0].announcement).toBeUndefined();
+  });
+
+  it("ยกเลิกจัดก๊วน ล้างคนลงชื่อของวันนั้น แต่ไม่แตะวันอื่น", () => {
+    let s = reducer(EMPTY_STATE, prepare({ type: "setAnnouncement", date: "2026-10-04", message: "มีก๊วน" }));
+    s = reducer(s, prepare({ type: "setAnnouncement", date: "2026-10-05", message: "มีก๊วน" }));
+    for (const date of ["2026-10-04", "2026-10-05"])
+      for (const playerId of ["a", "b"]) s = reducer(s, prepare({ type: "signUp", date, playerId }, 1));
+    s = reducer(s, prepare({ type: "setAnnouncement", date: "2026-10-04", message: null }));
+    expect(s.days.find((d) => d.date === "2026-10-04")?.signups ?? []).toEqual([]);
+    expect(s.days.find((d) => d.date === "2026-10-05")?.signups).toHaveLength(2);
+    // ตั้งเป็นวันจัดก๊วนใหม่ ไม่มีคนลงชื่อค้างจากรอบก่อน
+    s = reducer(s, prepare({ type: "setAnnouncement", date: "2026-10-04", message: "มีก๊วนอีกครั้ง" }));
+    expect(s.days.find((d) => d.date === "2026-10-04")?.signups ?? []).toEqual([]);
   });
 });
 
