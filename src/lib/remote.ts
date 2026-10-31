@@ -516,19 +516,20 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
         ? check(await db.from("closed_days").delete().eq("date", a.date))
         : check(await db.from("closed_days").upsert({ date: a.date, reason: a.reason }));
     case "setAnnouncement":
-      return a.message === null
-        ? check(await db.from("announcements").delete().eq("date", a.date))
-        : check(
-            await db
-              .from("announcements")
-              .upsert({
-                date: a.date,
-                message: a.message,
-                ...(a.title === undefined ? {} : { title: a.title }),
-                ...(a.fee === undefined ? {} : { fee: a.fee }),
-                ...(a.cap === undefined ? {} : { cap: a.cap }),
-              }),
-          );
+      if (a.message === null) {
+        // ยกเลิกจัดก๊วน ล้างคนลงชื่อของวันนั้นด้วย
+        check(await db.from("signups").delete().eq("date", a.date));
+        return check(await db.from("announcements").delete().eq("date", a.date));
+      }
+      return check(
+        await db.from("announcements").upsert({
+          date: a.date,
+          message: a.message,
+          ...(a.title === undefined ? {} : { title: a.title }),
+          ...(a.fee === undefined ? {} : { fee: a.fee }),
+          ...(a.cap === undefined ? {} : { cap: a.cap }),
+        }),
+      );
     case "signUp":
       return check(
         await db.from("signups").upsert({ date: a.date, player_id: a.playerId, at: iso(a._at) }, { ignoreDuplicates: true }),

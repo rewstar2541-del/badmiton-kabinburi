@@ -42,7 +42,7 @@ export function AnnounceCard() {
           <button
             className="text-red-500 underline-offset-2 active:underline"
             onClick={() => {
-              if (confirm(t("ยกเลิกประกาศวันนี้? ผู้เล่นจะลงชื่อเองไม่ได้"))) dispatch({ type: "setAnnouncement", date, message: null });
+              if (confirm(t("ยกเลิกประกาศวันนี้? คนที่ลงชื่อไว้จะถูกล้างออก และผู้เล่นจะลงชื่อเองไม่ได้"))) dispatch({ type: "setAnnouncement", date, message: null });
             }}
           >
             {t("ยกเลิกประกาศ")}

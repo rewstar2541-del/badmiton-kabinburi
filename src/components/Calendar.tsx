@@ -170,7 +170,7 @@ export function ClubCalendar({ bare }: { bare?: boolean } = {}) {
                     <button
                       className="font-semibold text-red-500"
                       onClick={() => {
-                        if (confirm(t("ยกเลิกวันจัดก๊วนนี้?"))) setSession(picked, null);
+                        if (confirm(t("ยกเลิกวันจัดก๊วนนี้? คนที่ลงชื่อไว้จะถูกล้างออก"))) setSession(picked, null);
                       }}
                     >
                       {t("ยกเลิกอีเว้นนี้")}
@@ -376,7 +376,7 @@ function MultiPanel({ sel, setSel, view }: { sel: string[]; setSel: (v: string[]
               <Button
                 className="w-full"
                 onClick={() => {
-                  if (!confirm(t("ยกเลิกอีเว้น {n} วัน?", { n: withEvent.length }))) return;
+                  if (!confirm(t("ยกเลิกอีเว้น {n} วัน? คนที่ลงชื่อไว้ในวันเหล่านั้นจะถูกล้างออก", { n: withEvent.length }))) return;
                   for (const d of withEvent) dispatch({ type: "setAnnouncement", date: d, message: null });
                   setSel([]);
                 }}

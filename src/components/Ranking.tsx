@@ -5,8 +5,11 @@ import { monthRanking } from "@/lib/club";
 import { locale, t } from "@/lib/i18n";
 import type { State } from "@/lib/state";
 import { today, useStore } from "@/lib/store";
+import { appName } from "@/lib/brand";
+import { rankingImage } from "@/lib/shareImage";
 import { useMe } from "./PickMe";
-import { Avatar, Card, Icon } from "./ui";
+import { useShareImage } from "./ShareImage";
+import { Avatar, Button, Card, Icon } from "./ui";
 
 /**
  * ประวัติเกมย้อนหลังสำหรับอันดับ/สรุปรายปี
@@ -54,6 +57,22 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
   const byId = new Map((data?.players ?? []).map((p) => [p.id, p]));
   const mine = rows.findIndex((r) => r.id === me);
   const shown = all ? rows : rows.slice(0, 10);
+  const img = useShareImage();
+  const shareImg = () =>
+    img.share(
+      () =>
+        rankingImage({
+          club: appName().join(" "),
+          title: t("ตารางอันดับ"),
+          month: monthLabel(month),
+          rows: shown.map((r, i) => {
+            const p = byId.get(r.id);
+            return { rank: i + 1, name: p?.name ?? "?", photo: p?.photo, record: t("ชนะ {w}/{g}", { w: r.wins, g: r.games }), delta: r.delta, me: r.id === me };
+          }),
+          note: t("แต้มขึ้นลงตามผลแพ้ชนะ ชนะทีมเก่งกว่าได้แต้มมากกว่า"),
+        }),
+      `ranking-${month}.png`,
+    );
 
   return (
     <Card className="space-y-3">
@@ -109,6 +128,11 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
               {all ? t("ย่อ") : t("ดูทั้งหมด {n} คน", { n: rows.length })}
             </button>
           )}
+          <Button variant="accent" className="w-full" disabled={img.busy} onClick={shareImg}>
+            {img.busy ? t("กำลังสร้างรูป...") : t("แชร์เป็นรูป")}
+          </Button>
+          {img.failed && <p className="text-center text-xs text-red-600">{t("สร้างรูปไม่สำเร็จ ลองใหม่อีกครั้ง")}</p>}
+          {img.overlay}
         </>
       )}
       <p className="text-xs text-zinc-500">
