@@ -62,6 +62,75 @@ export function HomeCard({ top, children }: { top: ReactNode; children?: ReactNo
   );
 }
 
+/** ก๊วนครั้งถัดไปภายใน 7 วัน (เช่นพรุ่งนี้) ลงชื่อล่วงหน้าได้เลยจากหน้าแรก */
+function NextSession({ dark }: { dark?: boolean }) {
+  const { state, self } = useStore();
+  const { date } = useToday();
+  const [me] = useMe();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const limit = new Date(date + "T00:00:00");
+  limit.setDate(limit.getDate() + 7);
+  const end = `${limit.getFullYear()}-${String(limit.getMonth() + 1).padStart(2, "0")}-${String(limit.getDate()).padStart(2, "0")}`;
+  const next = state.days
+    .filter((d) => d.date > date && d.date <= end && d.announcement !== undefined && !(d.date in state.closed))
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
+  if (!next || !me) return null;
+  const tmr = new Date(date + "T00:00:00");
+  tmr.setDate(tmr.getDate() + 1);
+  const isTomorrow = next.date === `${tmr.getFullYear()}-${String(tmr.getMonth() + 1).padStart(2, "0")}-${String(tmr.getDate()).padStart(2, "0")}`;
+  const when = isTomorrow ? t("พรุ่งนี้") : new Date(next.date + "T00:00:00").toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "short" });
+  const q = signupQueue(next);
+  const mine = next.signups?.some((x) => x.playerId === me) ?? false;
+  const waitPos = mine ? waitingPosition(next, me) : 0;
+  const full = !!q.cap && q.confirmed.length >= q.cap;
+  const go = async (on: boolean) => {
+    setBusy(true);
+    const err = await self(on ? "signUp" : "cancelSignUp", me, savedPin.get(), next.date);
+    setBusy(false);
+    setError(err ? t(err) : "");
+  };
+  return (
+    <div className={`space-y-2 rounded-2xl p-3 ${dark ? "bg-white/10" : "bg-white ring-1 ring-zinc-100"}`}>
+      <div className="text-sm">
+        <span className={`font-semibold ${dark ? "text-lime" : "text-ink"}`}>
+          {eventStyle(next.announcementTitle).emoji} {t("{when} มีก๊วน", { when })}
+        </span>
+        {next.announcementTitle && (
+          <>
+            {" · "}
+            <Auto text={next.announcementTitle} />
+          </>
+        )}
+        <span className={dark ? "text-white/70" : "text-zinc-500"}>
+          {" · "}
+          {q.cap ? t("ลงชื่อแล้ว {n}/{cap} คน", { n: Math.min(q.confirmed.length, q.cap), cap: q.cap }) : t("ลงชื่อแล้ว {n} คน", { n: next.signups?.length ?? 0 })}
+        </span>
+        {next.announcement && (
+          <span className={`mt-0.5 line-clamp-1 block ${dark ? "text-white/70" : "text-zinc-500"}`}>
+            <Auto text={next.announcement} />
+          </span>
+        )}
+      </div>
+      {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+      {mine ? (
+        <div className="flex items-center gap-2">
+          <span className={`flex-1 text-sm font-semibold ${dark ? "text-emerald-300" : "text-emerald-700"}`}>
+            ✓ {waitPos > 0 ? t("คุณอยู่รายชื่อสำรองลำดับที่ {n}", { n: waitPos }) : t("ลงชื่อแล้ว")}
+          </span>
+          <button disabled={busy} className={`min-h-10 rounded-xl px-3 text-sm font-semibold ${dark ? "text-red-300" : "text-red-600"}`} onClick={() => go(false)}>
+            {t("ยกเลิกลงชื่อ")}
+          </button>
+        </div>
+      ) : (
+        <Button variant="accent" className="w-full" disabled={busy} onClick={() => go(true)}>
+          {full ? t("เต็มแล้ว ลงชื่อสำรอง") : t("ลงชื่อล่วงหน้า")}
+        </Button>
+      )}
+    </div>
+  );
+}
+
 function Panel({ home, top, children }: { home?: boolean; top?: ReactNode; children: ReactNode }) {
   return home ? <HomeCard top={top}>{children}</HomeCard> : <Card className="space-y-4">{children}</Card>;
 }
@@ -104,7 +173,9 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
     return (
       <div className="space-y-4">
         <NoticeBanners urgentOnly />
-        <HomeCard top={top} />
+        <HomeCard top={top}>
+          <NextSession dark />
+        </HomeCard>
         {news}
         <PlanChoice player={player} />
         <MonthlyReminder player={player} />
@@ -284,6 +355,7 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
           </div>
         )}
       </Panel>
+      {home && <NextSession />}
       {home && news}
       {home && <PlanChoice player={player} />}
       {home && <MonthlyReminder player={player} />}
