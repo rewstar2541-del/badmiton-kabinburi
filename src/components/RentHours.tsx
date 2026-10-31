@@ -113,6 +113,18 @@ export function RentHoursSheet({ rent, onClose }: { rent: DayRent; onClose: () =
         {t("ค่าเช่ารวม {rent} · หารได้ {got}", { rent: baht(rent.perHour * (rent.end - rent.start)), got: baht(collected) })}
       </div>
       <HourTable rent={rent} day={day} />
+      {day.checkIns.some((c) => c.courtFee !== undefined && !c.paidAt) && (
+        <Button
+          className="w-full"
+          onClick={() => {
+            if (!confirm(t("ล้างยอดที่แก้เองของทุกคนที่ยังไม่จ่าย แล้วหารค่าเช่าใหม่?"))) return;
+            for (const c of day.checkIns)
+              if (c.courtFee !== undefined && !c.paidAt) dispatch({ type: "setBillFees", date: day.date, playerId: c.playerId, courtFee: null, shuttleFee: c.shuttleFee ?? null });
+          }}
+        >
+          {t("ให้ทุกคนหารค่าเช่า (ล้างยอดที่แก้เอง)")}
+        </Button>
+      )}
       <ul className="space-y-2">
         {day.checkIns.map((c) => {
           const p = byId.get(c.playerId);

@@ -86,7 +86,8 @@ export function dayAmount(
     : (ci.courtFee ?? (day.rent ? rentFeeOf(day, ci) : monthlyMember || annualMember ? 0 : p.courtFee));
   const shuttleCount = shuttleCountFor(day, player.id);
   const sFee = ci?.shuttleFee ?? shuttleFee(shuttleCount, p);
-  const drinkFee = day.drinks
+  // สนามเช่าไม่เก็บค่าน้ำ
+  const drinkFee = day.rent ? 0 : day.drinks
     .filter((d) => d.playerId === player.id)
     .reduce((sum, d) => sum + d.amount, 0);
   return {

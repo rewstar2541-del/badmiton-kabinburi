@@ -172,7 +172,7 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
           }
           value={baht(bill.shuttleFee)}
         />
-        <Row label={t("ค่าน้ำ")} value={baht(bill.drinkFee)} />
+        {!day.rent && <Row label={t("ค่าน้ำ")} value={baht(bill.drinkFee)} />}
         {bill.carriedOver > 0 && <Row label={t("ค้างจ่ายครั้งก่อน")} value={baht(bill.carriedOver)} />}
         {bill.guests.map((g) => (
           <Row key={g.playerId} label={t("แขก: {name}", { name: g.name })} value={baht(g.amount)} />
@@ -183,6 +183,7 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
         </div>
       </div>
 
+      {!day.rent && (
       <div className="space-y-2">
         <div className="text-sm font-semibold">{t("ค่าน้ำ")}</div>
         {drinks.map((d) => (
@@ -209,6 +210,7 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
           <Button type="submit">{t("เพิ่ม")}</Button>
         </form>
       </div>
+      )}
 
       <FeeEditor key={`${bill.courtFee}|${bill.shuttleFee}`} player={player} bill={bill} />
 
