@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { locale, t } from "@/lib/i18n";
-import type { State } from "@/lib/state";
+import type { Intent, State } from "@/lib/state";
 import { useStore, useToday } from "@/lib/store";
-import { annualStatus, isMonthlyPaid, type Package, type Player } from "@/lib/types";
+import { annualStatus, isMonthlyPaid, monthOf, type Package, type Player } from "@/lib/types";
+import { datesToFreeze } from "@/lib/billing";
+import { today } from "@/lib/state";
 import { PayQr } from "./PayQr";
 import { SlipUpload } from "./Slips";
 import { Button, Card, baht, inputClass } from "./ui";
@@ -29,8 +31,24 @@ export function packageDone(state: State, player: Player | undefined, pkg: Packa
   return (state.annualPayments ?? []).some((a) => a.playerId === player.id && a.paidOn >= date);
 }
 
+/** แอดมินรับเงินแพ็กแล้ว: รายเดือน = จ่ายเดือนของ date + เปลี่ยนเป็นแบบรายเดือน, ระยะยาว = สมาชิกถึงวันหมดอายุแพ็ก */
+export function applyPackage(dispatch: (a: Intent) => void, player: Player, pkg: Package, date: string, paidOn: string) {
+  if (pkg.kind === "monthly") {
+    dispatch({ type: "setMonthlyPaid", month: monthOf(date), playerId: player.id, paid: true, amount: pkg.price });
+    if (player.plan !== "monthly") dispatch({ type: "updatePlayer", player: { ...player, plan: "monthly" } });
+    return;
+  }
+  const prev = player.annualFrom && player.annualUntil ? { from: player.annualFrom, until: player.annualUntil } : undefined;
+  // ต่ออายุก่อนหมด: นับต่อจากช่วงเดิม ไม่ตัดวันที่จ่ายไว้แล้ว
+  const active = prev && prev.until >= date;
+  const from = active ? prev.from : date;
+  // แพ็กที่สั้นกว่าช่วงเดิมไม่ตัดวันหมดอายุให้สั้นลง
+  const until = active && prev.until > packageUntil(pkg, date) ? prev.until : packageUntil(pkg, date);
+  dispatch({ type: "recordAnnual", playerId: player.id, paidOn, from, until, amount: pkg.price, prev });
+}
+
 /** เรียงแพ็กให้เหมือนกันทุกหน้า */
-const sorted = (list: Package[] | undefined) => [...(list ?? [])].sort((a, b) => a.sort - b.sort || a.price - b.price);
+export const sorted = (list: Package[] | undefined) => [...(list ?? [])].sort((a, b) => a.sort - b.sort || a.price - b.price);
 
 /** ค่าสมาชิกรายเดือนใน settings = ราคาแพ็กรายเดือนแรก (ส่วนอื่นของแอพยังใช้ค่านี้) */
 function monthlyFeeOf(list: Package[]) {
@@ -43,6 +61,20 @@ export function PackageAdmin() {
   const { date } = useToday();
   const list = sorted(state.packages);
   const [edit, setEdit] = useState<Package | null>(null);
+  // แก้ราคารายวัน (= ค่าสนามต่อครั้ง)
+  const [daily, setDaily] = useState<string | null>(null);
+  const saveDaily = () => {
+    const fee = Number(daily);
+    const old = state.settings;
+    if (daily === null || !daily || fee === old.courtFee) return setDaily(null);
+    // ราคาใหม่ใช้ตั้งแต่วันนี้ เก็บราคาเดิมไว้กับวันก่อนๆ บิลเก่าจะได้ไม่เปลี่ยน (เหมือนหน้า ราคาและสนาม)
+    const freeze = {
+      dates: datesToFreeze(state.days, today()),
+      prices: { courtFee: old.courtFee, firstShuttleFee: old.firstShuttleFee, nextShuttleFee: old.nextShuttleFee },
+    };
+    dispatch({ type: "updateSettings", settings: { ...old, courtFee: fee }, freeze });
+    setDaily(null);
+  };
 
   const syncFee = (next: Package[]) => {
     const fee = monthlyFeeOf(next);
@@ -64,13 +96,38 @@ export function PackageAdmin() {
     <Card className="space-y-3">
       <h2 className="font-display font-semibold">{t("แพ็กเกจสมาชิก")}</h2>
       <p className="text-sm text-zinc-500">{t("ผู้เล่นเลือกแพ็กเกจ โอน แล้วแนบสลิป แอดมินกดยืนยันในประวัติโอน ระบบตั้งวันหมดอายุให้เอง")}</p>
-      <div className="flex items-center gap-3 rounded-2xl bg-zinc-50 p-3">
-        <span className="min-w-0 flex-1">
-          <span className="block font-display font-semibold">{t("รายวัน")}</span>
-          <span className="block text-sm text-zinc-500">{t("จ่ายค่าสนามทุกครั้งที่มา (แก้ราคาที่ ราคาและสนาม)")}</span>
-        </span>
-        <span className="shrink-0 font-display text-lg font-semibold">{baht(state.settings.courtFee)}</span>
-      </div>
+      {daily === null ? (
+        <button className="flex w-full items-center gap-3 rounded-2xl bg-zinc-100 p-3 text-left active:scale-[0.99]" onClick={() => setDaily(String(state.settings.courtFee))}>
+          <span className="min-w-0 flex-1">
+            <span className="block font-display font-semibold">{t("รายวัน")}</span>
+            <span className="block text-sm text-zinc-500">{t("ค่าสนามต่อครั้ง จ่ายทุกครั้งที่มา")}</span>
+          </span>
+          <span className="shrink-0 font-display text-lg font-semibold">{baht(state.settings.courtFee)}</span>
+          <span className="shrink-0 text-sm text-zinc-500">{t("แก้")}</span>
+        </button>
+      ) : (
+        <form
+          className="space-y-3 rounded-3xl bg-zinc-50 p-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            saveDaily();
+          }}
+        >
+          <label className="block text-sm font-medium">
+            {t("ค่าสนามต่อครั้ง (รายวัน)")}
+            <input className={`${inputClass} mt-1`} inputMode="numeric" value={daily} onChange={(e) => setDaily(e.target.value.replace(/\D/g, ""))} />
+          </label>
+          <p className="text-xs text-zinc-500">{t("ราคาใหม่ใช้ตั้งแต่วันนี้ (มีคนจ่ายแล้วเริ่มพรุ่งนี้) บิลเก่าไม่เปลี่ยน แก้ยอดรายคนที่ คิดเงิน > กดชื่อ")}</p>
+          <div className="flex gap-2">
+            <Button type="submit" variant="primary" className="flex-1" disabled={!daily}>
+              {t("บันทึก")}
+            </Button>
+            <Button type="button" onClick={() => setDaily(null)}>
+              {t("ยกเลิก")}
+            </Button>
+          </div>
+        </form>
+      )}
       {list.map((p) => (
         <button key={p.id} className="flex w-full items-center gap-3 rounded-2xl bg-zinc-100 p-3 text-left active:scale-[0.99]" onClick={() => setEdit(p)}>
           <span className="min-w-0 flex-1">
@@ -248,4 +305,58 @@ export function PackagePicker({ player }: { player: Player }) {
 /** แพ็กของสลิปนี้ (ถ้ามี) */
 export function slipPackage(state: State, packageId: string | undefined) {
   return packageId ? state.packages?.find((p) => p.id === packageId) : undefined;
+}
+
+/** แอดมิน (หน้ารายชื่อ): เปลี่ยนเป็นรายวัน หรือให้สมัครแพ็กที่รับเงินสดไว้แล้ว */
+export function PlanPanel({ player, onDone }: { player: Player; onDone: () => void }) {
+  const { state, dispatch } = useStore();
+  const { date } = useToday();
+  const list = sorted(state.packages).filter((p) => p.kind === "monthly" || (p.until ?? "") >= date);
+  // จ่ายแพ็กนี้ไปแล้ว (กันกดซ้ำแล้วนับเงินสองรอบ)
+  const paid = (pkg: Package) =>
+    pkg.kind === "monthly" ? isMonthlyPaid(state.monthly, date, player.id) : Boolean(player.annualUntil && player.annualUntil >= packageUntil(pkg, date));
+  const pick = (pkg: Package) => {
+    if (paid(pkg)) return;
+    const msg = t("รับเงิน {pkg} {amount} จาก {name} แล้ว? (สมาชิกถึง {date})", {
+      pkg: pkg.name,
+      amount: baht(pkg.price),
+      name: player.name,
+      date: fmtDate(packageUntil(pkg, date)),
+    });
+    if (!confirm(msg)) return;
+    applyPackage(dispatch, player, pkg, date, date);
+    onDone();
+  };
+  return (
+    <div className="space-y-2 rounded-2xl bg-zinc-50 p-3">
+      <div className="text-sm font-semibold">{t("เลือกแพ็กของ {name}", { name: player.name })}</div>
+      <button
+        className={`flex w-full items-center gap-3 rounded-2xl p-3 text-left ${player.plan === "daily" ? "bg-ink text-white" : "bg-white"}`}
+        onClick={() => {
+          if (player.plan !== "daily") dispatch({ type: "updatePlayer", player: { ...player, plan: "daily" } });
+          onDone();
+        }}
+      >
+        <span className="min-w-0 flex-1 font-semibold">{t("รายวัน")}</span>
+        <span className="shrink-0 text-sm">{t("{amount}/ครั้ง", { amount: baht(state.settings.courtFee) })}</span>
+      </button>
+      {list.map((p) => (
+        <button key={p.id} className="flex w-full items-center gap-3 rounded-2xl bg-white p-3 text-left disabled:opacity-60" disabled={paid(p)} onClick={() => pick(p)}>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-semibold">{p.name}</span>
+            <span className="block text-xs text-zinc-500">{t("ใช้ได้ถึง {date}", { date: fmtDate(packageUntil(p, date)) })}</span>
+          </span>
+          {paid(p) ? (
+            <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{t("จ่ายแล้ว")}</span>
+          ) : (
+            <span className="shrink-0 font-semibold">{baht(p.price)}</span>
+          )}
+        </button>
+      ))}
+      <p className="text-xs text-zinc-500">{t("กดแพ็ก = รับเงินแล้ว ระบบตั้งวันหมดอายุให้ ถ้าเขาโอนมา กดยืนยันที่ประวัติโอนแทน")}</p>
+      <Button className="w-full" onClick={onDone}>
+        {t("ปิด")}
+      </Button>
+    </div>
+  );
 }
