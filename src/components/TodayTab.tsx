@@ -12,6 +12,7 @@ import { today, useStore, useToday } from "@/lib/store";
 import { presence } from "@/lib/matchmaking";
 import { BringGuest } from "./Guests";
 import type { SelfAction } from "@/lib/state";
+import type { Day } from "@/lib/types";
 import { ClosedBanner, ClubCalendar } from "./Calendar";
 import { PendingNotice, PickMe, savedPin, useMe } from "./PickMe";
 import { Avatar, Button, Card, Icon, LevelBadge, baht } from "./ui";
@@ -62,6 +63,23 @@ export function HomeCard({ top, children }: { top: ReactNode; children?: ReactNo
   );
 }
 
+const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+/** ก๊วนครั้งถัดไปหลังวันนี้ ภายใน 7 วัน + คำเรียกวัน (พรุ่งนี้ / วันจันทร์ 10 พ.ย.) */
+export function nextSessionOf(days: Day[], closed: Record<string, string>, date: string): { next: Day; when: string } | null {
+  const limit = new Date(date + "T00:00:00");
+  limit.setDate(limit.getDate() + 7);
+  const end = ymd(limit);
+  const next = days
+    .filter((d) => d.date > date && d.date <= end && d.announcement !== undefined && !(d.date in closed))
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
+  if (!next) return null;
+  const tmr = new Date(date + "T00:00:00");
+  tmr.setDate(tmr.getDate() + 1);
+  const when = next.date === ymd(tmr) ? t("พรุ่งนี้") : new Date(next.date + "T00:00:00").toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "short" });
+  return { next, when };
+}
+
 /** ก๊วนครั้งถัดไปภายใน 7 วัน (เช่นพรุ่งนี้) ลงชื่อล่วงหน้าได้เลยจากหน้าแรก */
 function NextSession({ dark }: { dark?: boolean }) {
   const { state, self } = useStore();
@@ -69,17 +87,9 @@ function NextSession({ dark }: { dark?: boolean }) {
   const [me] = useMe();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const limit = new Date(date + "T00:00:00");
-  limit.setDate(limit.getDate() + 7);
-  const end = `${limit.getFullYear()}-${String(limit.getMonth() + 1).padStart(2, "0")}-${String(limit.getDate()).padStart(2, "0")}`;
-  const next = state.days
-    .filter((d) => d.date > date && d.date <= end && d.announcement !== undefined && !(d.date in state.closed))
-    .sort((a, b) => a.date.localeCompare(b.date))[0];
-  if (!next || !me) return null;
-  const tmr = new Date(date + "T00:00:00");
-  tmr.setDate(tmr.getDate() + 1);
-  const isTomorrow = next.date === `${tmr.getFullYear()}-${String(tmr.getMonth() + 1).padStart(2, "0")}-${String(tmr.getDate()).padStart(2, "0")}`;
-  const when = isTomorrow ? t("พรุ่งนี้") : new Date(next.date + "T00:00:00").toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "short" });
+  const found = nextSessionOf(state.days, state.closed, date);
+  if (!found || !me) return null;
+  const { next, when } = found;
   const q = signupQueue(next);
   const mine = next.signups?.some((x) => x.playerId === me) ?? false;
   const waitPos = mine ? waitingPosition(next, me) : 0;
