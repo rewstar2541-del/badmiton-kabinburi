@@ -40,7 +40,7 @@ export function NewsCarousel() {
           emoji: (
             <span className="flex -space-x-3">
               {bdays.slice(0, 3).map((p) => (
-                <Avatar key={p.id} name={p.name} photo={p.photo} size={48} ring />
+                <Avatar key={p.id} name={p.name} photo={p.photo} size={bdays.length > 1 ? 36 : 48} ring />
               ))}
             </span>
           ),

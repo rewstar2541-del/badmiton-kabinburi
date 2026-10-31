@@ -21,7 +21,7 @@ export function BirthdayBanner({ tv }: { tv?: boolean }) {
       </span>
       <div className="flex shrink-0 -space-x-2">
         {list.slice(0, 3).map((p) => (
-          <Avatar key={p.id} name={p.name} photo={p.photo} size={tv ? 44 : 56} ring />
+          <Avatar key={p.id} name={p.name} photo={p.photo} size={tv ? 44 : list.length > 1 ? 40 : 56} ring />
         ))}
       </div>
       <div className="min-w-0">
