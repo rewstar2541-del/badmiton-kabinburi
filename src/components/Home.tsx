@@ -127,6 +127,31 @@ export function Shortcuts({ items }: { items: Shortcut[] }) {
   );
 }
 
+/** จุดแดงเรื่องใหม่บนเมนูก๊วน: จำในเครื่องว่าเปิดดูล่าสุดเมื่อไร (ครั้งแรกถือว่าดูแล้ว ไม่ขึ้นเลขเยอะ) */
+function useSeen(key: string, first: () => string) {
+  const k = `badminton-kabinburi:seen:${key}`;
+  const [seen, setSeen] = useState<string>(() => {
+    try {
+      const v = localStorage.getItem(k);
+      if (v !== null) return v;
+      const v0 = first();
+      localStorage.setItem(k, v0);
+      return v0;
+    } catch {
+      return first();
+    }
+  });
+  const mark = (v: string) => {
+    setSeen(v);
+    try {
+      localStorage.setItem(k, v);
+    } catch {
+      // ไม่จำก็ได้
+    }
+  };
+  return [seen, mark] as const;
+}
+
 export type Tile = { icon: IconC; label: string; onClick: () => void; badge?: number };
 
 /** ช่องเมนูสีๆ 3 คอลัมน์ */
@@ -233,6 +258,12 @@ export function PlayerHome() {
   const lang = useLang();
   const [me] = useMe();
   const { open, sheet } = useSheets<"rest" | "pair" | "calendar" | "rank" | "board" | "photos">();
+  // วันที่ประกาศจัดก๊วนล่วงหน้าที่ยังไม่เคยเปิดดู / โพสต์ของหาย-ฝากขายใหม่ของคนอื่น
+  const upcoming = state.days.filter((d) => d.date > date && d.announcement !== undefined).map((d) => d.date);
+  const [calSeen, markCal] = useSeen("calendar-days", () => upcoming.join(","));
+  const newDays = upcoming.filter((d) => !calSeen.split(",").includes(d)).length;
+  const [boardSeen, markBoard] = useSeen("board", () => String(Date.now()));
+  const newPosts = (state.board ?? []).filter((b) => b.at > Number(boardSeen) && b.playerId !== me).length;
   const player = state.players.find((p) => p.id === me);
   if (!player || player.pending) return <TodayTab />;
 
@@ -307,9 +338,9 @@ export function PlayerHome() {
       <SectionTitle>{t("เมนูก๊วน")}</SectionTitle>
       <Tiles
         items={[
-          { icon: Icon.Calendar, label: t("ปฏิทินก๊วน"), onClick: () => open("calendar") },
+          { icon: Icon.Calendar, label: t("ปฏิทินก๊วน"), onClick: () => (markCal(upcoming.join(",")), open("calendar")), badge: newDays },
           { icon: Icon.Trophy, label: t("อันดับ"), onClick: () => open("rank") },
-          { icon: Icon.Box, label: t("ของหาย/ฝากขาย"), onClick: () => open("board") },
+          { icon: Icon.Box, label: t("ของหาย/ฝากขาย"), onClick: () => (markBoard(String(Date.now())), open("board")), badge: newPosts },
           { icon: Icon.Camera, label: t("รูปกิจกรรม"), onClick: () => open("photos") },
           { icon: Icon.Court, label: t("สนามตอนนี้"), onClick: () => goToTab("courts") },
           { icon: Icon.User, label: t("โปรไฟล์"), onClick: () => goToTab("profile") },
