@@ -118,13 +118,17 @@ function NextSession({ dark }: { dark?: boolean }) {
           <span className={`flex-1 text-sm font-semibold ${dark ? "text-emerald-300" : "text-emerald-700"}`}>
             ✓ {waitPos > 0 ? t("คุณอยู่รายชื่อสำรองลำดับที่ {n}", { n: waitPos }) : t("ลงชื่อแล้ว")}
           </span>
-          <button disabled={busy} className={`min-h-10 rounded-xl px-3 text-sm font-semibold ${dark ? "text-red-300" : "text-red-600"}`} onClick={() => go(false)}>
+          <button
+            disabled={busy}
+            className={`min-h-11 rounded-xl px-3 text-sm font-semibold ${dark ? "text-red-300" : "text-red-600"}`}
+            onClick={() => (!full || confirm(t("ยกเลิกลงชื่อ{when}? ก๊วนเต็มแล้ว ถ้าลงใหม่จะต่อคิวสำรอง", { when }))) && go(false)}
+          >
             {t("ยกเลิกลงชื่อ")}
           </button>
         </div>
       ) : (
-        <Button variant="accent" className="w-full" disabled={busy} onClick={() => go(true)}>
-          {full ? t("เต็มแล้ว ลงชื่อสำรอง") : t("ลงชื่อล่วงหน้า")}
+        <Button variant={dark ? "accent" : "secondary"} className="w-full" disabled={busy} onClick={() => go(true)}>
+          {full ? t("เต็มแล้ว ลงชื่อสำรอง") : t("ลงชื่อล่วงหน้า{when}", { when })}
         </Button>
       )}
     </div>
