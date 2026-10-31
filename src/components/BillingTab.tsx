@@ -8,6 +8,7 @@ import { type Drink, type Player } from "@/lib/types";
 import { MembersView } from "./Members";
 import { PayQr } from "./PayQr";
 import { SlipHistory } from "./SlipHistory";
+import { CourtSplit } from "./CourtSplit";
 import { SlipReview } from "./Slips";
 import { Avatar, Button, Card, Icon, SectionTitle, Sheet, baht, inputClass } from "./ui";
 import { Auto } from "@/lib/autoTranslate";
@@ -248,6 +249,7 @@ function DailyView() {
   const { state } = useStore();
   const { day } = useToday();
   const [open, setOpen] = useState<string | null>(null);
+  const [split, setSplit] = useState(false);
   const byId = new Map(state.players.map((p) => [p.id, p]));
 
   const rows = day.checkIns
@@ -279,6 +281,12 @@ function DailyView() {
           <span>{t("ใช้ลูก {n} ลูก", { n: shuttlesUsed })}</span>
         </div>
       </div>
+
+      {rows.length > 0 && (
+        <Button className="w-full" onClick={() => setSplit(true)}>
+          {t("⏱ หารค่าสนามตามชั่วโมง (สนามเช่า)")}
+        </Button>
+      )}
 
       <ul className="space-y-2">
         {rows.map(({ player, bill }) => (
@@ -315,6 +323,7 @@ function DailyView() {
         {rows.length === 0 && <Card className="py-10 text-center text-sm text-zinc-500">{t("ยังไม่มีคนเช็คอินวันนี้")}</Card>}
       </ul>
 
+      {split && <CourtSplit onClose={() => setSplit(false)} />}
       {openRow && <BillDetail player={openRow.player} bill={openRow.bill} onClose={() => setOpen(null)} />}
     </>
   );
