@@ -20,6 +20,8 @@ export function SlipHistory() {
   const [error, setError] = useState<{ id: string; text: string } | null>(null);
   // สลิปที่กดยืนยันรับเงินไว้ รอกดยืนยันซ้ำ (กันกดพลาด)
   const [confirming, setConfirming] = useState<string | null>(null);
+  // วันที่แอดมินกดเปิด/พับเอง (ไม่มี = ใช้ค่าเริ่มต้น)
+  const [openDays, setOpenDays] = useState<Record<string, boolean>>({});
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const isCurrent = month >= monthOf(date);
 
@@ -94,11 +96,81 @@ export function SlipHistory() {
     setMonth(shiftMonth(month, delta));
     setOpen(null);
     setError(null);
+    setOpenDays({});
   };
 
-  const when = (at: number) =>
-    new Date(at).toLocaleString(locale(), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const when = (at: number) => new Date(at).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
+  const dayLabel = (date: string) =>
+    new Date(`${date}T00:00:00`).toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "short" });
 
+  const row = (s: (typeof all)[number]) => {
+    const owed = owedOf(s);
+    const payer = owed[0]?.payer;
+    return (
+    <li key={s.id} className="space-y-2 rounded-3xl bg-white px-4 py-3 shadow-[0_8px_24px_-14px_rgba(11,18,32,0.25)]">
+      <div className="flex items-center gap-3">
+        <Avatar name={s.player?.name ?? "?"} photo={s.player?.photo} size={40} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-semibold">{s.player?.name ?? t("ผู้เล่นที่ถูกลบ")}</span>
+          <span className="block text-sm text-zinc-600">{when(s.at)}</span>
+          <span className="block text-sm font-semibold">{t("ยอดตอนส่ง {amount}", { amount: baht(s.amount) })}</span>
+        </span>
+        {s.paid ? (
+          <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{t("จ่ายแล้ว")}</span>
+        ) : !owed.length && s.player ? (
+          <span className="shrink-0 rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-600">{t("ไม่มียอดค้าง")}</span>
+        ) : (
+          <span className="shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">{t("รอตรวจ")}</span>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <button className="min-h-11 flex-1 rounded-2xl bg-sky-50 text-sm font-semibold text-sky-700" disabled={loading === s.id} onClick={() => show(s.id)}>
+          {loading === s.id ? t("กำลังโหลด...") : open?.id === s.id ? t("ซ่อนสลิป") : t("ดูสลิป")}
+        </button>
+        {payer && confirming !== s.id && (
+          <Button variant="accent" className="min-h-11 flex-1 !px-2" onClick={() => setConfirming(s.id)}>
+            {t("ยืนยันรับเงิน")}
+          </Button>
+        )}
+      </div>
+      {error?.id === s.id && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error.text}</p>}
+      {open?.id === s.id &&
+        (open.img ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={open.img} alt={t("สลิปโอนเงิน")} className="max-h-[70vh] w-full rounded-xl object-contain" />
+        ) : (
+          <p className="text-sm text-zinc-500">{t("ไม่พบรูป")}</p>
+        ))}
+      {payer && confirming === s.id && (
+        <div className="space-y-2 rounded-2xl bg-lime/20 p-3">
+          <p className="text-sm">{t("ยอดตอนส่ง {amount}", { amount: baht(s.amount) })} · {t("เลือกว่ารับเงินค่าอะไรของ {name}", { name: payer.name })}</p>
+          {!owed.some((o) => o.amount === s.amount) && (
+            <p className="text-sm font-semibold text-amber-800">{t("ยอดไม่ตรงกับสลิป ดูสลิปให้แน่ใจก่อน")}</p>
+          )}
+          {owed.map((o) => (
+            <Button key={o.kind === "day" ? "day" : o.month} variant="accent" className="w-full" onClick={() => receive(s, o)}>
+              {o.kind === "day"
+                ? t("รับยอดค้างรายวัน {amount}", { amount: baht(o.amount) })
+                : t("รับค่ารายเดือน {month} {amount}", { month: monthLabel(o.month), amount: baht(o.amount) })}
+            </Button>
+          ))}
+          <Button className="w-full" onClick={() => setConfirming(null)}>
+            {t("ยกเลิก")}
+          </Button>
+        </div>
+      )}
+    </li>
+    );
+  };
+
+  // แยกเป็นวันๆ (ใหม่สุดก่อน) วันที่ยังมีสลิปรอตรวจ และวันล่าสุดเปิดไว้ วันอื่นพับไว้ กดหัววันเพื่อเปิด/ปิด
+  const pending = (x: (typeof all)[number]) => !x.paid && (owedOf(x).length > 0 || !x.player);
+  const days: [string, typeof all][] = [];
+  for (const x of shown) {
+    const last = days[days.length - 1];
+    if (last?.[0] === x.day.date) last[1].push(x);
+    else days.push([x.day.date, [x]]);
+  }
   return (
     <>
       <div className="flex items-center justify-between rounded-3xl bg-ink px-3 py-3 text-white">
@@ -126,63 +198,29 @@ export function SlipHistory() {
       {all.length > 0 && <SearchInput value={q} onChange={setQ} />}
 
       <ul className="space-y-2">
-        {shown.map((s) => {
-          const owed = owedOf(s);
-          const payer = owed[0]?.payer;
+        {days.map(([date, slips]) => {
+          const isOpen = needle !== "" || (openDays[date] ?? (date === days[0][0] || slips.some(pending)));
+          const left = slips.filter(pending).length;
           return (
-          <li key={s.id} className="space-y-2 rounded-3xl bg-white px-4 py-3 shadow-[0_8px_24px_-14px_rgba(11,18,32,0.25)]">
-            <div className="flex items-center gap-3">
-              <Avatar name={s.player?.name ?? "?"} photo={s.player?.photo} size={40} />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-semibold">{s.player?.name ?? t("ผู้เล่นที่ถูกลบ")}</span>
-                <span className="block text-sm text-zinc-600">{when(s.at)}</span>
-                <span className="block text-sm font-semibold">{t("ยอดตอนส่ง {amount}", { amount: baht(s.amount) })}</span>
-              </span>
-              {s.paid ? (
-                <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{t("จ่ายแล้ว")}</span>
-              ) : !owed.length && s.player ? (
-                <span className="shrink-0 rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-600">{t("ไม่มียอดค้าง")}</span>
-              ) : (
-                <span className="shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">{t("รอตรวจ")}</span>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <button className="min-h-11 flex-1 rounded-2xl bg-sky-50 text-sm font-semibold text-sky-700" disabled={loading === s.id} onClick={() => show(s.id)}>
-                {loading === s.id ? t("กำลังโหลด...") : open?.id === s.id ? t("ซ่อนสลิป") : t("ดูสลิป")}
-              </button>
-              {payer && confirming !== s.id && (
-                <Button variant="accent" className="min-h-11 flex-1 !px-2" onClick={() => setConfirming(s.id)}>
-                  {t("ยืนยันรับเงิน")}
-                </Button>
-              )}
-            </div>
-            {error?.id === s.id && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error.text}</p>}
-            {open?.id === s.id &&
-              (open.img ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={open.img} alt={t("สลิปโอนเงิน")} className="max-h-[70vh] w-full rounded-xl object-contain" />
-              ) : (
-                <p className="text-sm text-zinc-500">{t("ไม่พบรูป")}</p>
-              ))}
-            {payer && confirming === s.id && (
-              <div className="space-y-2 rounded-2xl bg-lime/20 p-3">
-                <p className="text-sm">{t("ยอดตอนส่ง {amount}", { amount: baht(s.amount) })} · {t("เลือกว่ารับเงินค่าอะไรของ {name}", { name: payer.name })}</p>
-                {!owed.some((o) => o.amount === s.amount) && (
-                  <p className="text-sm font-semibold text-amber-800">{t("ยอดไม่ตรงกับสลิป ดูสลิปให้แน่ใจก่อน")}</p>
+            <li key={date} className="space-y-2">
+              <button
+                className="flex min-h-11 w-full items-center gap-2 rounded-2xl bg-zinc-100 px-4 py-2 text-left"
+                aria-expanded={isOpen}
+                onClick={() => setOpenDays((m) => ({ ...m, [date]: !isOpen }))}
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold">{dayLabel(date)}</span>
+                  <span className="block text-sm text-zinc-600">
+                    {t("สลิป {n} รูป", { n: slips.length })} · {baht(slips.reduce((sum, x) => sum + x.amount, 0))}
+                  </span>
+                </span>
+                {left > 0 && (
+                  <span className="shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">{t("รอตรวจ {n}", { n: left })}</span>
                 )}
-                {owed.map((o) => (
-                  <Button key={o.kind === "day" ? "day" : o.month} variant="accent" className="w-full" onClick={() => receive(s, o)}>
-                    {o.kind === "day"
-                      ? t("รับยอดค้างรายวัน {amount}", { amount: baht(o.amount) })
-                      : t("รับค่ารายเดือน {month} {amount}", { month: monthLabel(o.month), amount: baht(o.amount) })}
-                  </Button>
-                ))}
-                <Button className="w-full" onClick={() => setConfirming(null)}>
-                  {t("ยกเลิก")}
-                </Button>
-              </div>
-            )}
-          </li>
+                <span className="shrink-0 text-zinc-500" aria-hidden>{isOpen ? "▾" : "▸"}</span>
+              </button>
+              {isOpen && <ul className="space-y-2">{slips.map(row)}</ul>}
+            </li>
           );
         })}
       </ul>
