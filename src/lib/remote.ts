@@ -518,8 +518,9 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
     case "setAnnouncement":
       if (a.message === null) {
         // ยกเลิกจัดก๊วน ล้างคนลงชื่อของวันนั้นด้วย
-        check(await db.from("signups").delete().eq("date", a.date));
-        return check(await db.from("announcements").delete().eq("date", a.date));
+        // ลบประกาศก่อน ถ้าพังกลางทางรายชื่อยังอยู่ครบ
+        check(await db.from("announcements").delete().eq("date", a.date));
+        return check(await db.from("signups").delete().eq("date", a.date));
       }
       return check(
         await db.from("announcements").upsert({
