@@ -10,6 +10,7 @@ import { cameSince, daysBefore, rosterCompare, visibleRoster, visitCounts } from
 import { LevelGroups, RosterSortSwitch, useRosterSort } from "./RosterSort";
 import { t } from "@/lib/i18n";
 import { useAdmins } from "./AdminsCard";
+import { PlanPanel, fmtDate } from "./Packages";
 
 const GENDERS: { value: Gender; label: string }[] = [
   { value: "male", label: "ชาย" },
@@ -183,6 +184,8 @@ export function PlayersTab() {
   const { state, dispatch, auth } = useStore();
   const admin = useAdmins();
   const [editing, setEditing] = useState<string | null>(null);
+  // แถวที่เปิดเลือกแพ็กเกจอยู่ (ทีละคน)
+  const [planFor, setPlanFor] = useState<string | null>(null);
   const date = today();
   const pending = state.players.filter((p) => p.pending);
   const all = state.players.filter((p) => !p.pending);
@@ -248,10 +251,20 @@ export function PlayersTab() {
                     <Button
                       variant="ghost"
                       className={`px-3 py-2 text-xs ${p.plan === "monthly" ? "text-emerald-700" : "text-zinc-500"}`}
-                      title={t("กดเพื่อสลับรายวัน/รายเดือน")}
-                      onClick={() => dispatch({ type: "updatePlayer", player: { ...p, plan: p.plan === "monthly" ? "daily" : "monthly" } })}
+                      title={t("กดเพื่อเลือกแพ็กเกจ")}
+                      onClick={() =>
+                        state.packages?.length
+                          ? setPlanFor(planFor === p.id ? null : p.id)
+                          : dispatch({ type: "updatePlayer", player: { ...p, plan: p.plan === "monthly" ? "daily" : "monthly" } })
+                      }
                     >
-                      {p.plan === "monthly" ? t("รายเดือน") : p.plan === "daily" ? t("รายวัน") : t("ยังไม่เลือกแบบสมาชิก")}
+                      {isAnnualMember(p, date) && p.annualUntil
+                        ? t("สมาชิกถึง {date}", { date: fmtDate(p.annualUntil) })
+                        : p.plan === "monthly"
+                          ? t("รายเดือน")
+                          : p.plan === "daily"
+                            ? t("รายวัน")
+                            : t("ยังไม่เลือกแบบสมาชิก")}
                     </Button>
                   )}
                   {p.guestOf && (
@@ -289,6 +302,7 @@ export function PlayersTab() {
                     {t("แก้ไข")}
                   </Button>
                 </div>
+                {planFor === p.id && <PlanPanel player={p} onDone={() => setPlanFor(null)} />}
                 </div>
               )}
             </Card>

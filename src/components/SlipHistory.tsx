@@ -6,7 +6,7 @@ import { locale, t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
 import { annualStatus, monthOf, type Package, type Player } from "@/lib/types";
 import { monthLabel, shiftMonth } from "./Members";
-import { fmtDate, packageDone, packageUntil, slipPackage } from "./Packages";
+import { applyPackage, fmtDate, packageDone, packageUntil, slipPackage } from "./Packages";
 import { Avatar, Button, Card, SearchInput, baht } from "./ui";
 
 /** คิดเงิน > ประวัติโอน: สลิปทุกใบที่ผู้เล่นส่งมาในเดือนที่เลือก ใหม่สุดก่อน (แอดมิน) */
@@ -87,24 +87,7 @@ export function SlipHistory() {
   const receive = (s: (typeof all)[number], owed: Owed) => {
     if (owed.kind === "day") dispatch({ type: "markPaid", date: s.day.date, playerId: owed.payer.id });
     else if (owed.kind === "month") dispatch({ type: "setMonthlyPaid", month: owed.month, playerId: owed.payer.id, paid: true });
-    else if (owed.pkg.kind === "monthly") {
-      dispatch({ type: "setMonthlyPaid", month: monthOf(s.day.date), playerId: owed.payer.id, paid: true, amount: owed.amount });
-      if (owed.payer.plan !== "monthly") dispatch({ type: "updatePlayer", player: { ...owed.payer, plan: "monthly" } });
-    } else {
-      const p = owed.payer;
-      const prev = p.annualFrom && p.annualUntil ? { from: p.annualFrom, until: p.annualUntil } : undefined;
-      // ต่ออายุก่อนหมด: นับต่อจากช่วงเดิม ไม่ตัดวันที่จ่ายไว้แล้ว
-      const from = prev && prev.until >= s.day.date ? prev.from : s.day.date;
-      dispatch({
-        type: "recordAnnual",
-        playerId: p.id,
-        paidOn: date,
-        from,
-        until: owed.until,
-        amount: owed.amount,
-        prev,
-      });
-    }
+    else applyPackage(dispatch, owed.payer, owed.pkg, s.day.date, date);
     setConfirming(null);
     // วันนั้นไม่มีสลิปรอตรวจแล้ว อย่าพับเองทันที ให้เห็นว่ากดสำเร็จ
     setOpenDays((m) => ({ ...m, [s.day.date]: true }));
