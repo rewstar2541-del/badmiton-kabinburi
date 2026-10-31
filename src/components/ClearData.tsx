@@ -45,6 +45,7 @@ export function ClearData() {
           onSubmit={async (e) => {
             e.preventDefault();
             if (!valid) return;
+            setError("");
             const rest = kinds.filter((k) => k !== "tourneys");
             if (rest.length) dispatch({ type: "clearData", kinds: rest, from, to });
             if (kinds.includes("tourneys")) {

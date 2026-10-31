@@ -30,24 +30,28 @@ export function SlipHistory() {
   const all = state.days
     .filter((d) => d.date.startsWith(month))
     .flatMap((d) =>
-      (d.slips ?? []).map((s) => ({
-        ...s,
-        day: d,
-        player: byId.get(s.playerId),
-        paid: Boolean(
-          d.checkIns.find((c) => c.playerId === s.playerId)?.paidAt ||
-            state.monthly[month]?.[s.playerId] ||
-            (byId.get(s.playerId)?.plan === "monthly" && state.monthly[shiftMonth(month, -1)]?.[s.playerId]) ||
-            paidAfter(s.playerId, s.at),
-        ),
-      })),
+      (d.slips ?? []).map((s) => {
+        // แขกจ่ายรวมในบิลคนพามา ดูการจ่ายของคนพามาด้วย
+        const pid = byId.get(s.playerId)?.guestOf ?? s.playerId;
+        return {
+          ...s,
+          day: d,
+          player: byId.get(s.playerId),
+          paid: Boolean(
+            d.checkIns.find((c) => c.playerId === s.playerId)?.paidAt ||
+              state.monthly[month]?.[pid] ||
+              (byId.get(pid)?.plan === "monthly" && state.monthly[shiftMonth(month, -1)]?.[pid]) ||
+              paidAfter(pid, s.at),
+          ),
+        };
+      }),
     )
     .sort((a, b) => b.at - a.at);
   const needle = q.trim().toLowerCase();
   const shown = needle ? all.filter((s) => (s.player?.name ?? "").toLowerCase().includes(needle)) : all;
 
   // ยังไม่ปิดยอด: ทางเลือกที่แอดมินกดรับได้ คนรายเดือนที่ยังไม่จ่ายเดือนนั้นขึ้นค่ารายเดือนก่อน
-  // (เดือนก่อนด้วยถ้ายังค้าง ต้นเดือนมักโอนค่าเดือนที่แล้ว) แล้วค่อยยอดรายวันที่ค้างถึงวันที่ส่งสลิป
+  // (ต้นเดือนมีเดือนก่อนด้วยถ้ายังค้าง เพราะมักโอนค่าเดือนที่แล้ว) แล้วค่อยยอดรายวันที่ค้างถึงวันที่ส่งสลิป
   type Owed = { kind: "day"; amount: number; payer: Player } | { kind: "month"; month: string; amount: number; payer: Player };
   const owedOf = (s: (typeof all)[number]): Owed[] => {
     // แขกจ่ายรวมในบิลคนพามา ปิดยอดที่คนพามา (ปิดยอดแขกไปด้วย)
@@ -55,7 +59,8 @@ export function SlipHistory() {
     if (s.paid || !p) return [];
     const out: Owed[] = [];
     if (p.plan === "monthly" && !["active", "soon"].includes(annualStatus(p, s.day.date)?.kind ?? ""))
-      for (const m of [shiftMonth(month, -1), month])
+      // เดือนที่เลือกขึ้นก่อน เดือนก่อนเฉพาะสลิปช่วงต้นเดือน (วันที่ 1-10)
+      for (const m of Number(s.day.date.slice(8)) <= 10 ? [month, shiftMonth(month, -1)] : [month])
         if (!state.monthly[m]?.[p.id]) out.push({ kind: "month", month: m, amount: state.settings.monthlyFee, payer: p });
     const total = billFor(state.days, s.day, p, state.settings, state.monthly, state.players).total;
     if (total > 0) out.push({ kind: "day", amount: total, payer: p });
