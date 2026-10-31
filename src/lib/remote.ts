@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Action, SelfAction, State } from "./state";
 import { endOf, startOf, type ClearKind } from "./clear";
-import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Notice, type Gender, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Plan, type Player, type Settings } from "./types";
+import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Notice, type Gender, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Package, type Plan, type Player, type Settings } from "./types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -57,7 +57,8 @@ export interface Rows {
   announcements: { date: string; message: string; title?: string | null; fee?: number | null; cap?: number | null }[];
   signups: { date: string; player_id: string; at: string }[];
   closed: { date: string; reason: string }[];
-  slips: { id: string; date: string; player_id: string; amount: number; created_at: string }[];
+  slips: { id: string; date: string; player_id: string; amount: number; created_at: string; package_id?: string | null }[];
+  packages?: null | { id: string; name: string; price: number; kind: Package["kind"]; until_date: string | null; sort: number }[];
   expenses?: { id: string; date: string; category: Expense["category"]; amount: number; note: string; shuttles?: number | null; created_at?: string }[];
   pairs?: { id: string; date: string; from_id: string; to_id: string; status: PairStatus; at: string }[];
   polls?: { id: string; question: string; dates: string[]; created_at: string; chosen: string | null; closed: boolean }[];
@@ -143,7 +144,7 @@ export function rowsToState(r: Rows): State {
   }
   for (const s of r.signups) (day(s.date).signups ??= []).push({ playerId: s.player_id, at: ms(s.at) });
   for (const x of r.slips)
-    (day(x.date).slips ??= []).push({ id: x.id, playerId: x.player_id, amount: Number(x.amount), at: ms(x.created_at) });
+    (day(x.date).slips ??= []).push({ id: x.id, playerId: x.player_id, amount: Number(x.amount), at: ms(x.created_at), ...(x.package_id ? { packageId: x.package_id } : {}) });
   for (const d of days.values()) {
     d.slips?.sort((a, b) => a.at - b.at);
     d.signups?.sort((a, b) => a.at - b.at);
@@ -184,6 +185,10 @@ export function rowsToState(r: Rows): State {
     monthly,
     monthlyAmounts,
     annualRules: (r.annualRules ?? []).map((x): AnnualRule => ({ minAmount: Number(x.min_amount), endMonth: x.end_month, yearsAhead: x.years_ahead })).sort((a, b) => a.minAmount - b.minAmount),
+    // null = ยังไม่ได้รัน packages.sql (หน้าตั้งค่ายังใช้ช่องค่ารายเดือนเดิม)
+    packages: r.packages === null ? undefined : (r.packages ?? [])
+      .map((p): Package => ({ id: p.id, name: p.name, price: Number(p.price), kind: p.kind, ...(p.until_date ? { until: p.until_date } : {}), sort: p.sort }))
+      .sort((a, b) => a.sort - b.sort || a.price - b.price),
     annualPayments: (r.annual ?? []).map(
       (a): AnnualPayment => ({ id: a.id, playerId: a.player_id, paidOn: a.paid_on, from: a.from_date, until: a.until_date, amount: Number(a.amount) }),
     ),
@@ -265,6 +270,7 @@ export const TABLE_OF: Record<string, TableKey> = {
   monthly_payments: "monthly",
   annual_payments: "annual",
   annual_rules: "annualRules",
+  packages: "packages",
   settings: "settings",
   announcements: "announcements",
   signups: "signups",
@@ -304,7 +310,15 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
     },
     announcements: () => all(() => db.from("announcements").select("date,message,title,fee,cap").gte("date", since).order("date")),
     signups: () => all(() => db.from("signups").select("date,player_id,at").gte("date", since).order("date").order("player_id")),
-    slips: async () => (isAdmin ? all(() => db.from("slips").select("id,date,player_id,amount,created_at").is("removed_at", null).order("id")) : []),
+    // package_id มาหลังรัน SQL แพ็กเกจ ยังไม่รันให้โหลดแบบเดิม
+    slips: async () =>
+      isAdmin
+        ? all(() => db.from("slips").select("id,date,player_id,amount,created_at,package_id").is("removed_at", null).order("id")).catch(() =>
+            all(() => db.from("slips").select("id,date,player_id,amount,created_at").is("removed_at", null).order("id")),
+          )
+        : [],
+    // ตารางแพ็กเกจยังไม่ได้สร้าง (ยังไม่รัน SQL) ให้ข้ามไป
+    packages: async () => all(() => db.from("packages").select("id,name,price,kind,until_date,sort").order("sort")).catch(() => null),
     closed: () => all(() => db.from("closed_days").select("date,reason").order("date")),
     expenses: async () => (isAdmin ? all(() => db.from("expenses").select("id,date,category,amount,note,shuttles,created_at").order("date").order("id")) : []),
     pairs: () => all(() => db.from("pair_requests").select("id,date,from_id,to_id,status,at").gte("date", sinceDate(1)).order("at")),
@@ -456,9 +470,17 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
           .eq("paid_at", data.paid_at),
       );
     }
+    case "savePackage": {
+      const p = a.pkg;
+      return check(
+        await db.from("packages").upsert({ id: p.id, name: p.name, price: p.price, kind: p.kind, until_date: p.kind === "term" ? (p.until ?? null) : null, sort: p.sort }),
+      );
+    }
+    case "removePackage":
+      return check(await db.from("packages").delete().eq("id", a.id));
     case "setMonthlyPaid":
       return a.paid
-        ? check(await db.from("monthly_payments").upsert({ month: a.month, player_id: a.playerId, paid_at: iso(a._at) }))
+        ? check(await db.from("monthly_payments").upsert({ month: a.month, player_id: a.playerId, paid_at: iso(a._at), ...(a.amount === undefined ? {} : { amount: a.amount }) }))
         : check(await db.from("monthly_payments").delete().eq("month", a.month).eq("player_id", a.playerId));
     case "recordAnnual":
       if (a.prev && (a.from > a.prev.from || a.until < a.prev.until))
@@ -698,8 +720,9 @@ export async function signUpDay(db: SupabaseClient, playerId: string, pin: strin
   return (data as string | null) ?? null;
 }
 
-export async function submitSlip(db: SupabaseClient, playerId: string, pin: string, amount: number, image: string) {
-  const { data, error } = await db.rpc("submit_slip", { p_player: playerId, p_pin: pin, p_amount: amount, p_image: image });
+export async function submitSlip(db: SupabaseClient, playerId: string, pin: string, amount: number, image: string, packageId?: string) {
+  // ส่ง p_package เฉพาะสลิปแพ็กเกจ สลิปค่าเล่นใช้ได้แม้ยังไม่รัน SQL แพ็กเกจ
+  const { data, error } = await db.rpc("submit_slip", { p_player: playerId, p_pin: pin, p_amount: amount, p_image: image, ...(packageId ? { p_package: packageId } : {}) });
   if (error) return error.message;
   return (data as string | null) ?? null;
 }
@@ -934,7 +957,7 @@ export function mergePrivate(state: State, r: Omit<PrivateRows, "error">): State
   for (const x of r.slips) {
     const d = day(x.date);
     if (!d.slips?.some((y) => y.id === x.id))
-      d.slips = [...(d.slips ?? []), { id: x.id, playerId: x.player_id, amount: x.amount, at: ms(x.created_at) }];
+      d.slips = [...(d.slips ?? []), { id: x.id, playerId: x.player_id, amount: x.amount, at: ms(x.created_at), ...(x.package_id ? { packageId: x.package_id } : {}) }];
   }
   const monthly = { ...state.monthly };
   const monthlyAmounts = { ...state.monthlyAmounts };

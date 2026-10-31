@@ -14,6 +14,7 @@ import { useTourney } from "@/lib/tourneyStore";
 import { AnnualInfo } from "./Annual";
 import { lineLoginEnabled, photoFromLine, startLineLogin } from "@/lib/lineLogin";
 import { PlanSwitch, goToTab } from "./Membership";
+import { PackagePicker } from "./Packages";
 import { BadgesCard, MonthCard, PartnerPrefs } from "./MyExtras";
 import { PartnerStats } from "./PartnerStats";
 import { PendingNotice, PickMe, savedPin, useMe } from "./PickMe";
@@ -136,7 +137,14 @@ export function ProfileTab() {
         </div>,
         true,
       )}
-      {sheet("plan", t("แบบสมาชิก"), <PlanSwitch player={player} bare />)}
+      {sheet(
+        "plan",
+        t("แบบสมาชิก"),
+        <div className="space-y-3">
+          <PackagePicker player={player} />
+          <PlanSwitch player={player} bare />
+        </div>,
+      )}
       {sheet("month", t("สรุปเดือนนี้"), <MonthCard player={player} />)}
       {sheet("badges", t("เหรียญของฉัน"), <BadgesCard player={player} />)}
       {sheet("partners", t("สถิติกับคู่"), <PartnerStats player={player} />)}

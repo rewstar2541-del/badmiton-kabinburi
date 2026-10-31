@@ -12,7 +12,7 @@ function time(at: number) {
 }
 
 /** ผู้เล่นแนบรูปสลิปหลังโอน ให้แอดมินตรวจ */
-export function SlipUpload({ playerId, amount }: { playerId: string; amount: number }) {
+export function SlipUpload({ playerId, amount, packageId }: { playerId: string; amount: number; packageId?: string }) {
   const { sendSlip, removeSlip } = useStore();
   const { day } = useToday();
   const pin = savedPin.get();
@@ -20,7 +20,8 @@ export function SlipUpload({ playerId, amount }: { playerId: string; amount: num
   const [error, setError] = useState("");
   const [removing, setRemoving] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const mine = (day.slips ?? []).filter((s) => s.playerId === playerId);
+  // แยกสลิปค่าเล่นกับสลิปแพ็กเกจ แต่ละที่เห็นเฉพาะของตัวเอง
+  const mine = (day.slips ?? []).filter((s) => s.playerId === playerId && s.packageId === packageId);
 
   return (
     <div className="w-full space-y-3 border-t border-dashed border-zinc-200 pt-3">
@@ -88,7 +89,7 @@ export function SlipUpload({ playerId, amount }: { playerId: string; amount: num
           try {
             // ไม่ให้ค้างตลอดไปถ้าเน็ตหลุดหรือเบราว์เซอร์ไม่ตอบ
             const err = await Promise.race([
-              sendSlip(playerId, pin, amount, await resizeSlip(f)),
+              sendSlip(playerId, pin, amount, await resizeSlip(f), packageId),
               new Promise<string>((ok) => setTimeout(() => ok("ส่งสลิปไม่สำเร็จ ตรวจสัญญาณแล้วลองใหม่"), 30000)),
             ]);
             setError(err ? t(err) : "");

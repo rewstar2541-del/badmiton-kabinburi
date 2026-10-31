@@ -290,8 +290,26 @@ create table if not exists public.slips (
   image text not null,
   created_at timestamp with time zone default now() not null,
   removed_at timestamp with time zone,
+  package_id text,
   constraint slips_pkey PRIMARY KEY (id)
 );
+
+-- แพ็กเกจสมาชิก (supabase/sql/packages.sql): monthly = ถึงสิ้นเดือนที่จ่าย, term = ถึง until_date
+create table if not exists public.packages (
+  id text primary key default (gen_random_uuid())::text,
+  name text not null check (length(btrim(name)) between 1 and 60),
+  price numeric not null check (price >= 0),
+  kind text not null check (kind in ('monthly', 'term')),
+  until_date date,
+  sort int not null default 0,
+  created_at timestamptz not null default now(),
+  check (kind <> 'term' or until_date is not null)
+);
+alter table public.packages enable row level security;
+create policy packages_read on public.packages for select to anon, authenticated using (true);
+create policy packages_admin on public.packages for all to authenticated using (public.is_admin()) with check (public.is_admin());
+grant select on table public.packages to anon, authenticated;
+grant insert, update, delete on table public.packages to authenticated;
 
 create table if not exists public.translations (
   src text not null,
@@ -745,7 +763,7 @@ begin
   return jsonb_build_object(
     'drinks', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'date', date, 'player_id', player_id, 'amount', amount, 'note', note)) from drinks where player_id = any(ids)), '[]'),
     'monthly', coalesce((select jsonb_agg(jsonb_build_object('month', month, 'player_id', player_id, 'paid_at', paid_at, 'amount', amount)) from monthly_payments where player_id = p_player), '[]'),
-    'slips', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'date', date, 'player_id', player_id, 'amount', amount, 'created_at', created_at)) from slips where player_id = p_player and removed_at is null), '[]')
+    'slips', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'date', date, 'player_id', player_id, 'amount', amount, 'created_at', created_at, 'package_id', package_id)) from slips where player_id = p_player and removed_at is null), '[]')
   );
 end $function$
 ;
@@ -1146,7 +1164,7 @@ AS $function$
 $function$
 ;
 
-CREATE OR REPLACE FUNCTION public.submit_slip(p_player text, p_pin text, p_amount numeric, p_image text)
+CREATE OR REPLACE FUNCTION public.submit_slip(p_player text, p_pin text, p_amount numeric, p_image text, p_package text DEFAULT NULL::text)
  RETURNS text
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -1163,7 +1181,10 @@ begin
   if (select count(*) from slips where date = d and player_id = p_player and removed_at is null) >= 3 then
     return 'ส่งสลิปวันนี้ครบ 3 รูปแล้ว';
   end if;
-  insert into slips(date, player_id, amount, image) values (d, p_player, coalesce(p_amount, 0), p_image);
+  if p_package is not null and not exists (select 1 from packages where id = p_package) then
+    return 'ไม่พบแพ็กเกจนี้ ลองโหลดหน้าใหม่';
+  end if;
+  insert into slips(date, player_id, amount, image, package_id) values (d, p_player, coalesce(p_amount, 0), p_image, p_package);
   return null;
 end $function$
 ;
@@ -1620,8 +1641,8 @@ revoke execute on function public.signup_confirmed(p_date date, p_player text) f
 grant execute on function public.signup_confirmed(p_date date, p_player text) to public, anon, authenticated;
 revoke execute on function public.slip_image(p_id uuid) from public, anon, authenticated;
 grant execute on function public.slip_image(p_id uuid) to authenticated;
-revoke execute on function public.submit_slip(p_player text, p_pin text, p_amount numeric, p_image text) from public, anon, authenticated;
-grant execute on function public.submit_slip(p_player text, p_pin text, p_amount numeric, p_image text) to anon, authenticated;
+revoke execute on function public.submit_slip(p_player text, p_pin text, p_amount numeric, p_image text, p_package text) from public, anon, authenticated;
+grant execute on function public.submit_slip(p_player text, p_pin text, p_amount numeric, p_image text, p_package text) to anon, authenticated;
 revoke execute on function public.ticket_line_user(p_ticket text) from public, anon, authenticated;
 revoke execute on function public.undo_my_check_in(p_player text, p_pin text, p_cancel_signup boolean) from public, anon, authenticated;
 grant execute on function public.undo_my_check_in(p_player text, p_pin text, p_cancel_signup boolean) to public, anon, authenticated;
@@ -1649,6 +1670,7 @@ grant execute on function public.vote_poll(p_player text, p_pin text, p_poll tex
 -- alter publication supabase_realtime add table public.slips;
 -- alter publication supabase_realtime add table public.closed_days;
 -- alter publication supabase_realtime add table public.day_prices;
+-- alter publication supabase_realtime add table public.packages;
 -- alter publication supabase_realtime add table public.expenses;
 -- alter publication supabase_realtime add table public.shuttle_stock;
 -- alter publication supabase_realtime add table public.pair_requests;

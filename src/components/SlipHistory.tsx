@@ -4,8 +4,9 @@ import { useState } from "react";
 import { billFor } from "@/lib/billing";
 import { locale, t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
-import { annualStatus, monthOf, type Player } from "@/lib/types";
+import { annualStatus, monthOf, type Package, type Player } from "@/lib/types";
 import { monthLabel, shiftMonth } from "./Members";
+import { fmtDate, packageDone, packageUntil, slipPackage } from "./Packages";
 import { Avatar, Button, Card, SearchInput, baht } from "./ui";
 
 /** คิดเงิน > ประวัติโอน: สลิปทุกใบที่ผู้เล่นส่งมาในเดือนที่เลือก ใหม่สุดก่อน (แอดมิน) */
@@ -35,6 +36,10 @@ export function SlipHistory() {
       (d.slips ?? []).map((s) => {
         // แขกจ่ายรวมในบิลคนพามา ดูการจ่ายของคนพามาด้วย
         const pid = byId.get(s.playerId)?.guestOf ?? s.playerId;
+        // สลิปสมัครแพ็กเกจ: ปิดยอดเมื่อแพ็กนั้นถูกยืนยันแล้ว
+        const pkg = slipPackage(state, s.packageId);
+        if (pkg)
+          return { ...s, day: d, player: byId.get(s.playerId), pkg, paid: packageDone(state, byId.get(s.playerId), pkg, d.date) };
         return {
           ...s,
           day: d,
@@ -45,6 +50,7 @@ export function SlipHistory() {
               (byId.get(pid)?.plan === "monthly" && state.monthly[shiftMonth(month, -1)]?.[pid]) ||
               paidAfter(pid, s.at),
           ),
+          pkg: undefined as Package | undefined,
         };
       }),
     )
@@ -54,12 +60,18 @@ export function SlipHistory() {
 
   // ยังไม่ปิดยอด: ทางเลือกที่แอดมินกดรับได้ คนรายเดือนที่ยังไม่จ่ายเดือนนั้นขึ้นค่ารายเดือนก่อน
   // (ต้นเดือนมีเดือนก่อนด้วยถ้ายังค้าง เพราะมักโอนค่าเดือนที่แล้ว) แล้วค่อยยอดรายวันที่ค้างถึงวันที่ส่งสลิป
-  type Owed = { kind: "day"; amount: number; payer: Player } | { kind: "month"; month: string; amount: number; payer: Player };
+  type Owed =
+    | { kind: "day"; amount: number; payer: Player }
+    | { kind: "month"; month: string; amount: number; payer: Player }
+    | { kind: "package"; pkg: Package; until: string; amount: number; payer: Player };
   const owedOf = (s: (typeof all)[number]): Owed[] => {
     // แขกจ่ายรวมในบิลคนพามา ปิดยอดที่คนพามา (ปิดยอดแขกไปด้วย)
     const p = s.player?.guestOf ? byId.get(s.player.guestOf) : s.player;
     if (s.paid || !p) return [];
     const out: Owed[] = [];
+    // สลิปสมัครแพ็กเกจ: รับเป็นแพ็กนั้นก่อน
+    if (s.pkg && s.player && !s.player.guestOf && packageUntil(s.pkg, s.day.date) >= s.day.date)
+      out.push({ kind: "package", pkg: s.pkg, until: packageUntil(s.pkg, s.day.date), amount: s.pkg.price, payer: s.player });
     if (p.plan === "monthly" && !["active", "soon"].includes(annualStatus(p, s.day.date)?.kind ?? ""))
       // เดือนที่เลือกขึ้นก่อน เดือนก่อนเฉพาะสลิปช่วงต้นเดือน (วันที่ 1-10)
       for (const m of Number(s.day.date.slice(8)) <= 10 ? [month, shiftMonth(month, -1)] : [month])
@@ -74,7 +86,25 @@ export function SlipHistory() {
   const waiting = all.filter((s) => !s.paid && (owedById.get(s.id)!.length || !s.player)).length;
   const receive = (s: (typeof all)[number], owed: Owed) => {
     if (owed.kind === "day") dispatch({ type: "markPaid", date: s.day.date, playerId: owed.payer.id });
-    else dispatch({ type: "setMonthlyPaid", month: owed.month, playerId: owed.payer.id, paid: true });
+    else if (owed.kind === "month") dispatch({ type: "setMonthlyPaid", month: owed.month, playerId: owed.payer.id, paid: true });
+    else if (owed.pkg.kind === "monthly") {
+      dispatch({ type: "setMonthlyPaid", month: monthOf(s.day.date), playerId: owed.payer.id, paid: true, amount: owed.amount });
+      if (owed.payer.plan !== "monthly") dispatch({ type: "updatePlayer", player: { ...owed.payer, plan: "monthly" } });
+    } else {
+      const p = owed.payer;
+      const prev = p.annualFrom && p.annualUntil ? { from: p.annualFrom, until: p.annualUntil } : undefined;
+      // ต่ออายุก่อนหมด: นับต่อจากช่วงเดิม ไม่ตัดวันที่จ่ายไว้แล้ว
+      const from = prev && prev.until >= s.day.date ? prev.from : s.day.date;
+      dispatch({
+        type: "recordAnnual",
+        playerId: p.id,
+        paidOn: date,
+        from,
+        until: owed.until,
+        amount: owed.amount,
+        prev,
+      });
+    }
     setConfirming(null);
     // วันนั้นไม่มีสลิปรอตรวจแล้ว อย่าพับเองทันที ให้เห็นว่ากดสำเร็จ
     setOpenDays((m) => ({ ...m, [s.day.date]: true }));
@@ -118,6 +148,11 @@ export function SlipHistory() {
           <span className="block truncate font-semibold">{s.player?.name ?? t("ผู้เล่นที่ถูกลบ")}</span>
           <span className="block text-sm text-zinc-600">{when(s.at)}</span>
           <span className="block text-sm font-semibold">{t("ยอดตอนส่ง {amount}", { amount: baht(s.amount) })}</span>
+          {s.pkg && (
+            <span className="mt-0.5 inline-block rounded-full bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-700">
+              {t("สมัคร {name} ถึง {date}", { name: s.pkg.name, date: fmtDate(packageUntil(s.pkg, s.day.date)) })}
+            </span>
+          )}
         </span>
         {s.paid ? (
           <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{t("จ่ายแล้ว")}</span>
@@ -152,10 +187,12 @@ export function SlipHistory() {
             <p className="text-sm font-semibold text-amber-800">{t("ยอดไม่ตรงกับสลิป ดูสลิปให้แน่ใจก่อน")}</p>
           )}
           {owed.map((o) => (
-            <Button key={o.kind === "day" ? "day" : o.month} variant="accent" className="w-full" onClick={() => receive(s, o)}>
+            <Button key={o.kind === "month" ? o.month : o.kind} variant="accent" className="w-full" onClick={() => receive(s, o)}>
               {o.kind === "day"
                 ? t("รับยอดค้างรายวัน {amount}", { amount: baht(o.amount) })
-                : t("รับค่ารายเดือน {month} {amount}", { month: monthLabel(o.month), amount: baht(o.amount) })}
+                : o.kind === "package"
+                  ? t("รับค่า {name} {amount} (สมาชิกถึง {date})", { name: o.pkg.name, amount: baht(o.amount), date: fmtDate(o.until) })
+                  : t("รับค่ารายเดือน {month} {amount}", { month: monthLabel(o.month), amount: baht(o.amount) })}
             </Button>
           ))}
           <Button className="w-full" onClick={() => setConfirming(null)}>
