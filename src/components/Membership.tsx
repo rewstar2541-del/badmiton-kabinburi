@@ -10,6 +10,7 @@ import { savedPin } from "./PickMe";
 import { SelfPay } from "./SelfPay";
 import { SlipUpload } from "./Slips";
 import { Card, Icon, baht } from "./ui";
+import { openPackages } from "./Packages";
 
 /** แจ้งเตือนรอบจ่ายรายเดือนตั้งแต่วันที่นี้ของเดือน */
 export const MONTHLY_DUE_DAY = 5;
@@ -46,8 +47,10 @@ function usePlan(player: Player) {
 /** เข้าครั้งแรก: เลือกเป็นสมาชิกรายวันหรือรายเดือน */
 export function PlanChoice({ player }: { player: Player }) {
   const { state } = useStore();
+  const { date } = useToday();
   const { busy, error, choose } = usePlan(player);
-  if (player.plan || player.guestOf) return null;
+  // มีแพ็กเกจแล้ว ผู้เล่นเลือกแพ็กที่ การ์ดแบบสมาชิก แทน
+  if (player.plan || player.guestOf || openPackages(state.packages, date).length) return null;
   const s = state.settings;
   return (
     <Card className="space-y-3 ring-2 ring-lime">
@@ -134,8 +137,10 @@ export function MonthlyDueCard({ player }: { player: Player }) {
 
 /** เปลี่ยนแบบสมาชิก */
 export function PlanSwitch({ player, bare }: { player: Player; bare?: boolean }) {
+  const { state } = useStore();
+  const { date } = useToday();
   const { busy, error, choose } = usePlan(player);
-  if (player.guestOf || !player.plan) return null;
+  if (player.guestOf || !player.plan || openPackages(state.packages, date).length) return null;
   const Box = bare ? "div" : Card;
   return (
     <Box className="space-y-2">

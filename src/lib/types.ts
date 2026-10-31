@@ -134,6 +134,8 @@ export interface Settings {
   bankName: string;
   bankAccount: string;
   bankHolder: string;
+  /** ธีมเทศกาล (ไม่มี = ยังไม่ได้รัน SQL ใช้อัตโนมัติตามวันที่) */
+  festival?: import("./festival").FestivalSetting;
 }
 
 export const DEFAULT_SETTINGS: Settings = {

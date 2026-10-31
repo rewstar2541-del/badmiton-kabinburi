@@ -31,6 +31,11 @@ export function packageDone(state: State, player: Player | undefined, pkg: Packa
   return (state.annualPayments ?? []).some((a) => a.playerId === player.id && a.paidOn >= date);
 }
 
+/** แพ็กที่ผู้เล่นเลือกซื้อได้ตอนนี้ (รายเดือน หรือยังไม่หมดอายุ) */
+export function openPackages(list: Package[] | undefined, date: string) {
+  return sorted(list).filter((p) => p.kind === "monthly" || (p.until ?? "") >= date);
+}
+
 /** แอดมินรับเงินแพ็กแล้ว: รายเดือน = จ่ายเดือนของ date + เปลี่ยนเป็นแบบรายเดือน, ระยะยาว = สมาชิกถึงวันหมดอายุแพ็ก */
 export function applyPackage(dispatch: (a: Intent) => void, player: Player, pkg: Package, date: string, paidOn: string) {
   if (pkg.kind === "monthly") {
@@ -239,7 +244,7 @@ export function PackagePicker({ player }: { player: Player }) {
   const { date } = useToday();
   // แพ็กที่หมดอายุไปแล้วไม่ให้เลือก (แอดมินลืมเปลี่ยนวันที่)
   const all = sorted(state.packages);
-  const list = all.filter((p) => p.kind === "monthly" || (p.until ?? "") >= date);
+  const list = openPackages(state.packages, date);
   const [picked, setPicked] = useState<string | null>(null);
   if (!list.length || player.guestOf) return null;
 
@@ -311,7 +316,7 @@ export function slipPackage(state: State, packageId: string | undefined) {
 export function PlanPanel({ player, onDone }: { player: Player; onDone: () => void }) {
   const { state, dispatch } = useStore();
   const { date } = useToday();
-  const list = sorted(state.packages).filter((p) => p.kind === "monthly" || (p.until ?? "") >= date);
+  const list = openPackages(state.packages, date);
   // จ่ายแพ็กนี้ไปแล้ว (กันกดซ้ำแล้วนับเงินสองรอบ)
   const paid = (pkg: Package) =>
     pkg.kind === "monthly" ? isMonthlyPaid(state.monthly, date, player.id) : Boolean(player.annualUntil && player.annualUntil >= packageUntil(pkg, date));

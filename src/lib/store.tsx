@@ -6,7 +6,7 @@ import { isDemo, demoState } from "./demo";
 import { randomToken, readSession, remember, restoreRemembered, writeSession } from "./session";
 import { clearLineTicket, handleLineCallback, readLineTicket } from "./lineLogin";
 import { canSelfCheckIn } from "./social";
-import { boardPhoto, loadHistory, socialRpc, type SocialRequest, addGuest, claimPlayer, signUpDay, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, addMyDrink, removeMySlip, setMyPlan, updateMyProfile, type ProfileInput, supabase } from "./remote";
+import { boardPhoto, loadHistory, socialRpc, type SocialRequest, addGuest, claimPlayer, signUpDay, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, addMyDrink, removeMyDrink, removeMySlip, setMyPlan, updateMyProfile, type ProfileInput, supabase } from "./remote";
 import { EMPTY_STATE, guestCheck, prepare, reducer, today, type Intent, type SelfAction, type State } from "./state";
 import { DEFAULT_SETTINGS, monthOf, type Level, type Plan, type Player } from "./types";
 import { t } from "@/lib/i18n";
@@ -60,6 +60,7 @@ interface Ctx {
   addMyDrink: (playerId: string, pin: string, amount: number, note: string) => Promise<string | null>;
   /** ผู้เล่นลบสลิปของตัวเองที่ส่งผิด (เฉพาะที่ส่งวันนี้) คืนข้อความผิดพลาด หรือ null */
   removeSlip: (playerId: string, pin: string, slipId: string) => Promise<string | null>;
+  removeMyDrink: (playerId: string, pin: string, drinkId: string) => Promise<string | null>;
   /** ผู้เล่นตั้งคนที่อยากจับคู่/ไม่อยากเจอ คืนข้อความผิดพลาด หรือ null */
   setPrefs: (playerId: string, pin: string, prefer: string[], avoid: string[]) => Promise<string | null>;
   /** ผู้เล่นเลือกสมาชิกรายวัน/รายเดือน คืนข้อความผิดพลาด หรือ null */
@@ -229,6 +230,10 @@ function LocalProvider({ children }: { children: ReactNode }) {
     apply(prepare({ type: "addDrink", date: today(), playerId, amount, note: note || "น้ำ" }));
     return null;
   }, []);
+  const removeMyDrinkLocal = useCallback(async (_p: string, _pin: string, drinkId: string) => {
+    apply(prepare({ type: "removeDrink", date: today(), drinkId }));
+    return null;
+  }, []);
   const removeSlipLocal = useCallback(async (_p: string, _pin: string, slipId: string) => {
     images.current.delete(slipId);
     apply(prepare({ type: "removeSlip", date: today(), slipId }));
@@ -249,7 +254,7 @@ function LocalProvider({ children }: { children: ReactNode }) {
       : undefined,
   };
   return (
-    <StoreCtx.Provider value={{ state, dispatch, self, social, sendSlip, addMyDrink: addMyDrinkLocal, removeSlip: removeSlipLocal, setPrefs, setPlan: setPlanLocal, updateProfile: updateProfileLocal, addGuest: addGuestLocal, register: registerLocal, login: loginLocal, slipImage: getSlip, boardPhoto: async (id) => state.board?.find((b) => b.id === id)?.photo ?? null, history: async () => state, ready: true, error: null, clearError: () => {}, auth }}>
+    <StoreCtx.Provider value={{ state, dispatch, self, social, sendSlip, addMyDrink: addMyDrinkLocal, removeMyDrink: removeMyDrinkLocal, removeSlip: removeSlipLocal, setPrefs, setPlan: setPlanLocal, updateProfile: updateProfileLocal, addGuest: addGuestLocal, register: registerLocal, login: loginLocal, slipImage: getSlip, boardPhoto: async (id) => state.board?.find((b) => b.id === id)?.photo ?? null, history: async () => state, ready: true, error: null, clearError: () => {}, auth }}>
       {children}
     </StoreCtx.Provider>
   );
@@ -419,6 +424,18 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     [db, reload],
   );
 
+  const removeMyDrinkRemote = useCallback(
+    async (playerId: string, pin: string, drinkId: string) => {
+      const err = await removeMyDrink(db, playerId, pin, drinkId);
+      if (!err) {
+        apply(prepare({ type: "removeDrink", date: today(), drinkId }));
+        await reload();
+      }
+      return err;
+    },
+    [db, reload],
+  );
+
   const removeSlipRemote = useCallback(
     async (playerId: string, pin: string, slipId: string) => {
       const err = await removeMySlip(db, playerId, pin, slipId);
@@ -512,7 +529,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  return <StoreCtx.Provider value={{ state, dispatch, self, social, sendSlip, addMyDrink: addMyDrinkRemote, removeSlip: removeSlipRemote, setPrefs, setPlan: setPlanRemote, updateProfile: updateProfileRemote, addGuest: addGuestRemote, register: registerRemote, login: loginRemote, slipImage: getSlip, boardPhoto: getBoardPhoto, history, ready, error: saveError ?? error, clearError: () => { setSaveError(null); setError(null); }, auth }}>{children}</StoreCtx.Provider>;
+  return <StoreCtx.Provider value={{ state, dispatch, self, social, sendSlip, addMyDrink: addMyDrinkRemote, removeMyDrink: removeMyDrinkRemote, removeSlip: removeSlipRemote, setPrefs, setPlan: setPlanRemote, updateProfile: updateProfileRemote, addGuest: addGuestRemote, register: registerRemote, login: loginRemote, slipImage: getSlip, boardPhoto: getBoardPhoto, history, ready, error: saveError ?? error, clearError: () => { setSaveError(null); setError(null); }, auth }}>{children}</StoreCtx.Provider>;
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
