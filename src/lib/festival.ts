@@ -1,6 +1,7 @@
 /** ธีมเทศกาล: เปลี่ยนสีหลักของแอพ + ของตกแต่งหัวแอพ (auto = ตามวันที่) */
-export type Festival = "halloween" | "christmas" | "newyear" | "songkran";
-export type FestivalSetting = "auto" | "off" | Festival;
+export type Festival = "halloween" | "christmas" | "newyear" | "songkran" | "birthday";
+/** วันเกิดสมาชิก ขึ้นเองเฉพาะโหมดอัตโนมัติ (เลือกเองไม่ได้) */
+export type FestivalSetting = "auto" | "off" | Exclude<Festival, "birthday">;
 
 export const FESTIVALS: {
   id: Festival;
@@ -55,6 +56,16 @@ export const FESTIVALS: {
     decor: ["🌸", "🐘", "🔫", "🌼", "☀️"],
     falling: ["💧", "🌸", "💦", "🌼"],
   },
+  {
+    id: "birthday",
+    name: "วันเกิดสมาชิก",
+    emoji: "🎂",
+    greeting: "สุขสันต์วันเกิด",
+    wish: "ตีสนุก แข็งแรง ชนะทุกเกม 🎉",
+    colors: ["#ff7eb3", "#ffb347"],
+    decor: ["🎈", "🎁", "🎉", "🧁", "✨"],
+    falling: ["🎈", "🎉", "🎊", "✨"],
+  },
 ];
 
 /** ช่วงวันที่ของแต่ละเทศกาล (MM-DD) ใช้ตอนตั้งเป็นอัตโนมัติ */
@@ -66,11 +77,12 @@ const RANGES: [Festival, string, string][] = [
   ["newyear", "01-01", "01-05"],
 ];
 
-export function activeFestival(setting: FestivalSetting | undefined, date: string): Festival | null {
+/** birthday = วันนี้มีสมาชิกวันเกิด (อัตโนมัติ: เทศกาลตามวันที่มาก่อน ไม่มีเทศกาลค่อยเป็นธีมวันเกิด) */
+export function activeFestival(setting: FestivalSetting | undefined, date: string, birthday = false): Festival | null {
   if (setting === "off") return null;
   if (setting && setting !== "auto") return setting;
   const md = date.slice(5);
-  return RANGES.find(([, from, to]) => md >= from && md <= to)?.[0] ?? null;
+  return RANGES.find(([, from, to]) => md >= from && md <= to)?.[0] ?? (birthday ? "birthday" : null);
 }
 
 export function festivalInfo(f: Festival | null) {

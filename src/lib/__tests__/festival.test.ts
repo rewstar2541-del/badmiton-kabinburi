@@ -13,4 +13,9 @@ describe("ธีมเทศกาล", () => {
     expect(activeFestival("songkran", "2026-10-31")).toBe("songkran");
     expect(activeFestival("off", "2026-10-31")).toBeNull();
   });
+  it("วันเกิดสมาชิก: ขึ้นเองเมื่อไม่มีเทศกาล ปิดได้", () => {
+    expect(activeFestival("auto", "2027-03-01", true)).toBe("birthday");
+    expect(activeFestival("auto", "2026-10-31", true)).toBe("halloween");
+    expect(activeFestival("off", "2027-03-01", true)).toBeNull();
+  });
 });

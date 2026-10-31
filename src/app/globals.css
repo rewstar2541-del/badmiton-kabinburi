@@ -39,6 +39,10 @@ html[data-festival="songkran"] {
   --color-lime: #6fdcff;
   --color-lime-dark: #1fa8d6;
 }
+html[data-festival="birthday"] {
+  --color-lime: #ff9fc6;
+  --color-lime-dark: #e0528f;
+}
 
 body {
   background: var(--background);

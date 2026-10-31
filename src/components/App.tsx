@@ -1,5 +1,7 @@
 "use client";
 
+import { birthdays } from "@/lib/club";
+
 import { Bell } from "./Bell";
 import { RefereeView, TourneyAdmin, TourneyCourts, TourneyHome, WatchView } from "./Tourney";
 import { useTourney } from "@/lib/tourneyStore";
@@ -249,7 +251,7 @@ function Shell() {
     if (me && !me.guestOf && !me.pending) syncLinePhotoOnOpen(me.photo);
   }, [me]);
   // ธีมเทศกาล: เปลี่ยนสีหลักทั้งแอพ
-  const festival = activeFestival(state.settings.festival, date);
+  const festival = activeFestival(state.settings.festival, date, birthdays(state.players, date).length > 0);
   const festivalOn = festivalInfo(festival);
   useEffect(() => {
     if (festival) document.documentElement.dataset.festival = festival;
