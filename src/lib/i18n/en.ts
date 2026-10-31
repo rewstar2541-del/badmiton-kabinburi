@@ -1149,4 +1149,8 @@ export const en: Record<string, string> = {
   "กำลังสร้างรูป...": "Making image...",
   "สร้างรูปไม่สำเร็จ ลองใหม่อีกครั้ง": "Couldn't make the image. Please try again.",
   "กดค้างที่รูป > บันทึกรูปภาพ หรือส่งต่อในไลน์ (หรือแคปจอ)": "Press and hold the image > Save image or forward in LINE (or take a screenshot)",
+  "มีชื่อลงไว้ {n} คน แต่วันนี้ไม่ได้จัดก๊วน": "{n} signed up, but there's no session today",
+  "เป็นชื่อค้างจากประกาศที่ยกเลิกไปแล้ว": "left over from a cancelled announcement",
+  "ล้างรายชื่อที่ค้างของวันนี้?": "Clear today's leftover sign-ups?",
+  "ล้างรายชื่อที่ค้าง": "Clear leftover sign-ups",
 };
