@@ -13,6 +13,8 @@ begin
   return null;
 end $$;
 
+-- มีฟังก์ชันชื่อนี้อยู่แล้ว (ชื่อพารามิเตอร์ต่างกัน) ลบของเดิมก่อน
+drop function if exists public.remove_my_drink(text, text, text);
 create or replace function public.remove_my_drink(p_player text, p_pin text, p_drink text)
 returns text language plpgsql security definer set search_path to 'public' as $$
 declare
