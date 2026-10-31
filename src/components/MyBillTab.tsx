@@ -8,8 +8,7 @@ import { PendingNotice, PickMe, useMe } from "./PickMe";
 import { SelfPay } from "./SelfPay";
 import { SlipUpload } from "./Slips";
 import { AnnualInfo } from "./Annual";
-import { MonthlyDueCard, PlanChoice, monthlyDue } from "./Membership";
-import { PackagePicker } from "./Packages";
+import { MonthlyDueCard, PlanChoice } from "./Membership";
 import { MyRentHours } from "./RentHours";
 import { useState } from "react";
 import { savedPin } from "./PickMe";
@@ -57,7 +56,7 @@ export function MyBillTab() {
                     (bill.shuttleAdjusted ? ` (${t("แอดมินแก้ยอด")})` : ""),
                   bill.shuttleFee,
                 ],
-                [t("ค่าน้ำ"), bill.drinkFee],
+                ...(day.rent ? [] : [[t("ค่าน้ำ"), bill.drinkFee] as const]),
                 ...(bill.carriedOver > 0 ? [[t("ค้างจ่ายครั้งก่อน"), bill.carriedOver] as const] : []),
                 ...bill.guests.map((g) => [t("แขก: {name}", { name: g.name }), g.amount] as const),
               ].map(([label, v]) => (
@@ -69,7 +68,7 @@ export function MyBillTab() {
             </div>
           </div>
           {checkedIn && day.rent && <MyRentHours key={JSON.stringify(day.checkIns.find((c) => c.playerId === player.id)?.hours ?? null)} player={player} day={day} rent={day.rent} />}
-          {checkedIn && <MyDrinks playerId={player.id} paid={Boolean(day.checkIns.find((c) => c.playerId === player.id)?.paidAt)} drinks={day.drinks.filter((d) => d.playerId === player.id)} />}
+          {checkedIn && !day.rent && <MyDrinks playerId={player.id} paid={Boolean(day.checkIns.find((c) => c.playerId === player.id)?.paidAt)} drinks={day.drinks.filter((d) => d.playerId === player.id)} />}
           {bill.paid ? (
             <Card className="flex items-center justify-center gap-1.5 py-6 font-semibold text-emerald-700">
               <Icon.Check width={18} height={18} /> {t("จ่ายแล้ว ขอบคุณครับ")}
@@ -86,9 +85,6 @@ export function MyBillTab() {
           )}
         </>
       )}
-
-      {/* ค้างค่ารายเดือนอยู่ จ่ายที่การ์ดด้านบน ไม่โชว์ QR ซ้ำ กันโอนสองรอบ */}
-      {!monthlyDue(state, player, date) && <PackagePicker player={player} />}
     </div>
   );
 }

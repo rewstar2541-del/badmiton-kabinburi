@@ -26,9 +26,9 @@ export function AnnouncementBanner({ message, title, fee, date }: { message: str
   const st = eventStyle(title);
   const when = new Date((date ?? today()) + "T00:00:00").toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" });
   return (
-    <div className={`overflow-hidden rounded-3xl p-4 shadow-sm ${st.box}`}>
+    <div className={`overflow-hidden rounded-3xl p-3 shadow-sm ${st.box}`}>
       <div className="flex items-start gap-3">
-        <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-white/70 text-3xl shadow-sm" aria-hidden>
+        <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/70 text-2xl shadow-sm" aria-hidden>
           {st.emoji}
         </span>
         <div className="min-w-0 flex-1">
@@ -36,12 +36,12 @@ export function AnnouncementBanner({ message, title, fee, date }: { message: str
             <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold tracking-wide ${st.badge}`}>{title ? t("อีเว้นพิเศษ") : t("ประกาศ")}</span>
             <span className="text-xs font-medium opacity-70">{when}</span>
           </div>
-          <div className="mt-1 font-display text-xl leading-tight font-semibold">{title ? <Auto text={title} /> : t("วันนี้มีจัดก๊วน")}</div>
+          <div className="font-display text-lg leading-tight font-semibold">{title ? <Auto text={title} /> : t("วันนี้มีจัดก๊วน")}</div>
           {!!fee && <div className="mt-1 inline-block rounded-full bg-white/70 px-2.5 py-0.5 text-sm font-semibold">{t("ค่าใช้จ่ายคนละ {amount}", { amount: baht(fee) })}</div>}
         </div>
       </div>
       {message && (
-        <p className="mt-3 rounded-2xl bg-white/60 px-3 py-2 text-[15px] leading-snug font-medium whitespace-pre-line">
+        <p className="mt-2 rounded-2xl bg-white/60 px-3 py-1.5 text-sm leading-snug font-medium whitespace-pre-line">
           <Auto text={message} />
         </p>
       )}

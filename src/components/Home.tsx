@@ -47,7 +47,9 @@ export function Hero({
   chips = [],
   icon: I,
   onClick,
+  compact,
 }: {
+  compact?: boolean;
   label: string;
   big: ReactNode;
   small?: string;
@@ -58,19 +60,19 @@ export function Hero({
 }) {
   const Box = onClick ? "button" : "div";
   return (
-    <Box onClick={onClick} className="relative block w-full overflow-hidden rounded-3xl bg-ink p-5 text-left text-white shadow-lg shadow-ink/20 active:scale-[0.99]">
+    <Box onClick={onClick} className={`relative block w-full overflow-hidden ${compact ? "p-4" : "p-5"} rounded-3xl bg-ink text-left text-white shadow-lg shadow-ink/20 active:scale-[0.99]`}>
       <div className="pointer-events-none absolute -top-20 -right-12 size-48 rounded-full bg-lime/20 blur-3xl" />
       <span className="absolute top-4 right-4 grid size-11 place-items-center rounded-2xl bg-white/10 text-lime">
         <I width={24} height={24} />
       </span>
       <div className="relative pr-14 text-sm text-white/70">{label}</div>
-      <div className="relative pr-14 font-display text-4xl leading-tight font-semibold">
+      <div className={`relative pr-14 font-display leading-tight font-semibold ${compact ? "text-2xl" : "text-4xl"}`}>
         {big}
         {small && <span className="ml-1.5 text-lg font-medium text-white/80">{small}</span>}
       </div>
       {sub && <div className="relative text-[15px] text-white/80">{sub}</div>}
       {chips.length > 0 && (
-        <div className="relative mt-3 flex flex-wrap gap-1.5">
+        <div className={`relative flex flex-wrap gap-1.5 ${compact ? "mt-2" : "mt-3"}`}>
           {chips.map((c) => (
             <span key={c} className="rounded-full bg-white/10 px-2.5 py-1 text-sm font-semibold text-lime">
               {c}
@@ -262,7 +264,8 @@ export function PlayerHome() {
 
   return (
     <div className="space-y-5">
-      <Hero label={t("วันนี้ของฉัน · {date}", { date: shortDate() })} big={hero.big} sub={hero.sub} chips={chips} icon={Icon.Shuttle} />
+      <Hero compact label={t("วันนี้ของฉัน · {date}", { date: shortDate() })} big={hero.big} sub={hero.sub} chips={chips} icon={Icon.Shuttle} />
+      <TodayTab home />
       <Shortcuts
         items={[
           { icon: Icon.Pause, label: t("ขอพัก"), onClick: () => open("rest"), disabled: here ? undefined : t("เช็คอินที่สนามก่อน ถึงจะขอพักได้") },
@@ -276,7 +279,6 @@ export function PlayerHome() {
           { icon: Icon.Book, label: t("คู่มือ"), href: guideHref(lang, false) },
         ]}
       />
-      <TodayTab home />
       <SectionTitle>{t("เมนูก๊วน")}</SectionTitle>
       <Tiles
         items={[
