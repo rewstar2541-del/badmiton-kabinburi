@@ -1,5 +1,7 @@
 "use client";
 
+import { birthdays } from "@/lib/club";
+
 import { Auto } from "@/lib/autoTranslate";
 
 import { NewsCarousel } from "./NewsCarousel";
@@ -277,7 +279,7 @@ export function PlayerHome() {
   const pos = queue.findIndex((e) => e.player.id === player.id) + 1;
   const court = day.games.find((g) => !g.endedAt && g.playerIds.includes(player.id))?.court;
   const closed = state.closed[date];
-  const fest = festivalInfo(activeFestival(state.settings.festival, date));
+  const fest = festivalInfo(activeFestival(state.settings.festival, date, birthdays(state.players, date).length > 0));
 
   const hero: { big: string; sub: string } =
     status === "playing"
@@ -387,7 +389,7 @@ export function AdminHome() {
   const waiting = waitingQueue(day, state.players).length;
   const announced = day.announcement !== undefined;
   const closed = state.closed[date] !== undefined;
-  const fest = festivalInfo(activeFestival(state.settings.festival, date));
+  const fest = festivalInfo(activeFestival(state.settings.festival, date, birthdays(state.players, date).length > 0));
   const [boardSeen, markBoard] = useSeen("board", () => String(Date.now()));
   const [me] = useMe();
   const newPosts = (state.board ?? []).filter((b) => b.at > Number(boardSeen) && b.playerId !== me).length;

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useMe } from "./PickMe";
 import { t } from "@/lib/i18n";
 import { today, useStore } from "@/lib/store";
 import { birthdays } from "@/lib/club";
@@ -11,9 +12,9 @@ import { BirthdayBanner } from "./Birthday";
 import { FestivalBanner } from "./FestivalDecor";
 import { NoticeBanners, activeNotices } from "./Notices";
 import { dayLabel } from "./Tourney";
-import { Icon, Sheet } from "./ui";
+import { Avatar, Icon, Sheet } from "./ui";
 
-type Item = { key: string; emoji: string; title: string; sub?: string; tone: string; onClick: () => void; auto?: boolean };
+type Item = { key: string; emoji: ReactNode; title: string; sub?: string; tone: string; onClick: () => void; auto?: boolean };
 
 /** หน้าแรกผู้เล่น: ข่าวทั้งหมด (เทศกาล สมัครแข่ง ข่าวสาร วันเกิด) ขึ้นทีละเรื่องในแถวเดียว เปลี่ยนเองทุก 5 วินาที ปัดเองได้ */
 export function NewsCarousel() {
@@ -25,17 +26,38 @@ export function NewsCarousel() {
   // ผู้ใช้เพิ่งแตะ/ปัด: หยุดเลื่อนเองสักพัก
   const touched = useRef(0);
   const date = today();
-  const fest = festivalInfo(activeFestival(state.settings.festival, date));
+  const fest = festivalInfo(activeFestival(state.settings.festival, date, birthdays(state.players, date).length > 0));
   const bdays = birthdays(state.players, date);
   const notices = activeNotices(state.notices).filter((n) => n.kind !== "urgent");
   const open = () => setAll(true);
+  const [me] = useMe();
+  const mine = bdays.find((p) => p.id === me);
+  // วันเกิด: ขึ้นก่อน เอารูปเจ้าของวันเกิดมาโชว์
+  const bdayItem: Item[] = bdays.length
+    ? [
+        {
+          key: "bday",
+          emoji: (
+            <span className="flex -space-x-3">
+              {bdays.slice(0, 3).map((p) => (
+                <Avatar key={p.id} name={p.name} photo={p.photo} size={48} ring />
+              ))}
+            </span>
+          ),
+          title: mine ? t("สุขสันต์วันเกิดนะ {name} 🎉", { name: mine.name }) : `🎂 ${t("สุขสันต์วันเกิด {name}", { name: bdays.map((p) => p.name).join(", ") })}`,
+          sub: mine ? t("ทั้งก๊วนขออวยพรให้ ตีสนุก ชนะทุกเกม") : t("ตีสนุก แข็งแรง ชนะทุกเกม"),
+          tone: "bg-violet-50 ring-pink-200 text-ink",
+          onClick: open,
+        },
+      ]
+    : [];
   const items: Item[] = [
+    ...bdayItem,
     ...(tr && !mode && !tr.divisions.every((d) => d.drawn)
       ? [{ key: "tourney", emoji: "🏆", title: t("เปิดรับสมัครแข่ง {n}", { n: tr.name }), sub: t("ปิดรับ {d} · แตะเพื่อสมัคร", { d: dayLabel(tr.closeDate) }), tone: "bg-amber-50 ring-amber-200 text-amber-950", onClick: () => setPeek(true) }]
       : []),
     ...notices.map((n) => ({ key: n.id, emoji: "📢", title: n.title, sub: n.body, tone: "bg-sky-50 ring-sky-200 text-sky-950", onClick: open, auto: true })),
-    ...(bdays.length ? [{ key: "bday", emoji: "🎂", title: t("สุขสันต์วันเกิด {name}", { name: bdays.map((p) => p.name).join(", ") }), sub: t("ตีสนุก แข็งแรง ชนะทุกเกม"), tone: "bg-violet-50 ring-zinc-200 text-ink", onClick: open }] : []),
-    ...(fest ? [{ key: "fest", emoji: fest.emoji, title: t(fest.greeting), sub: t(fest.wish), tone: "bg-white ring-zinc-200 text-ink", onClick: open }] : []),
+    ...(fest && fest.id !== "birthday" ? [{ key: "fest", emoji: fest.emoji, title: t(fest.greeting), sub: t(fest.wish), tone: "bg-white ring-zinc-200 text-ink", onClick: open }] : []),
   ];
   const n = items.length;
   const cur = Math.min(idx, Math.max(n - 1, 0));
@@ -84,9 +106,9 @@ export function NewsCarousel() {
       )}
       {all && (
         <Sheet title={<h3 className="font-display text-lg font-semibold">{t("ข่าววันนี้")}</h3>} onClose={() => setAll(false)}>
-          {fest && <FestivalBanner f={fest} />}
-          <NoticeBanners />
           <BirthdayBanner />
+          {fest && fest.id !== "birthday" && <FestivalBanner f={fest} />}
+          <NoticeBanners />
         </Sheet>
       )}
     </div>
