@@ -250,7 +250,7 @@ export function PlayerHome() {
           ? { big: t("พักอยู่"), sub: t("ระบบข้ามคิวให้") }
           : status === "home"
             ? { big: t("จ่ายแล้ว"), sub: t("ขอบคุณที่มาเล่นวันนี้") }
-            : signedUp
+            : signedUp && announced
               ? { big: t("ลงชื่อแล้ว"), sub: t("ถึงสนามแล้วกดเช็คอินด้านล่าง") }
               : announced
                 ? { big: t("ยังไม่ได้ลงชื่อ"), sub: t("ลงชื่อได้ด้านล่าง") }
@@ -318,7 +318,9 @@ export function AdminHome() {
       .join(", ") + (ids.length > 4 ? " …" : "");
   const checked = new Set(day.checkIns.map((c) => c.playerId));
   const q = signupQueue(day);
-  const notArrived = q.confirmed.filter((id) => !checked.has(id));
+  // ชื่อค้างในวันที่ไม่มีประกาศ (ยกเลิกไปแล้ว) ไม่นับ แจ้งเป็นแถวเตือนแทน
+  const stale = day.announcement === undefined ? (day.signups ?? []).filter((s) => !checked.has(s.playerId)).map((s) => s.playerId) : [];
+  const notArrived = stale.length ? [] : q.confirmed.filter((id) => !checked.has(id));
   // ค้างจ่าย: เลิกเล่นแล้ว (พัก ไม่ได้อยู่ในสนาม) แต่ยังไม่จ่าย ไม่นับคนที่ยังเล่นหรือรอคิว
   const unpaid = day.checkIns.filter((c) => !c.paidAt && presence(day, c.playerId) === "resting").map((c) => c.playerId);
   const pending = state.players.filter((p) => p.pending);
@@ -329,6 +331,9 @@ export function AdminHome() {
 
   const todo: Row[] = [
     ...(!announced && !closed ? [{ icon: Icon.Megaphone, title: t("ยังไม่ได้ประกาศวันนี้"), sub: t("แตะเพื่อประกาศจัดก๊วน"), onClick: () => open("announce") }] : []),
+    ...(stale.length
+      ? [{ icon: Icon.CheckIn, title: t("มีชื่อลงค้าง วันนี้ไม่ได้จัดก๊วน"), sub: names(stale), right: <CountBadge n={stale.length} tone="bg-amber-50 text-amber-700" />, onClick: () => goToTab("checkin") }]
+      : []),
     ...(notArrived.length
       ? [{ icon: Icon.CheckIn, title: t("ลงชื่อแล้ว ยังไม่มา"), sub: names(notArrived), right: <CountBadge n={notArrived.length} tone="bg-amber-50 text-amber-700" />, onClick: () => goToTab("checkin") }]
       : []),
@@ -345,7 +350,7 @@ export function AdminHome() {
       <Hero
         label={t("วันนี้มาแล้ว · {date}", { date: shortDate() })}
         big={String(day.checkIns.length)}
-        small={t("คน · ลงชื่อ {n}", { n: day.signups?.length ?? 0 })}
+        small={t("คน · ลงชื่อ {n}", { n: day.announcement === undefined ? 0 : (day.signups?.length ?? 0) })}
         chips={[t("กำลังเล่น {n}", { n: playing }), t("รอคิว {n}", { n: waiting }), ...(q.waiting.length ? [t("สำรอง {n}", { n: q.waiting.length })] : [])]}
         icon={Icon.Users}
         onClick={() => open("signups")}

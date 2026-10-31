@@ -1153,4 +1153,5 @@ export const en: Record<string, string> = {
   "เป็นชื่อค้างจากประกาศที่ยกเลิกไปแล้ว": "left over from a cancelled announcement",
   "ล้างรายชื่อที่ค้างของวันนี้?": "Clear today's leftover sign-ups?",
   "ล้างรายชื่อที่ค้าง": "Clear leftover sign-ups",
+  "มีชื่อลงค้าง วันนี้ไม่ได้จัดก๊วน": "Leftover sign-ups, no session today",
 };
