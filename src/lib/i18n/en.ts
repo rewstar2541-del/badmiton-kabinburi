@@ -1133,4 +1133,8 @@ export const en: Record<string, string> = {
   "ซ่อนสลิป": "Hide slip",
   "เดือนนี้ยังไม่มีใครส่งสลิป": "No slips sent this month",
   "หน้านี้ไว้ดูย้อนหลัง กดรับเงินหรือลบสลิปที่หน้าวันนี้หรือสมาชิก": "This page is for looking back. To take a payment or delete a slip, use Today or Members.",
+  "แชร์เป็นรูป": "Share as image",
+  "กำลังสร้างรูป...": "Making image...",
+  "สร้างรูปไม่สำเร็จ ลองใหม่อีกครั้ง": "Couldn't make the image. Please try again.",
+  "กดค้างที่รูป > บันทึกรูปภาพ หรือส่งต่อในไลน์ (หรือแคปจอ)": "Press and hold the image > Save image or forward in LINE (or take a screenshot)",
 };
