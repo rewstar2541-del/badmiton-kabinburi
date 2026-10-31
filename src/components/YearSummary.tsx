@@ -22,6 +22,16 @@ export function YearSummaryView({ year: initial, onClose }: { year?: string; onC
   const name = (id: string) => byId.get(id)?.name ?? "?";
   const [title, sub] = appName();
   const img = useShareImage();
+  const [copied, setCopied] = useState(false);
+  const copyLink = async () => {
+    const url = `${location.origin}/?summary=${year}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+    } catch {
+      prompt(t("คัดลอกลิงก์นี้"), url);
+    }
+  };
 
   const share = () => {
     if (!s) return;
@@ -160,11 +170,15 @@ export function YearSummaryView({ year: initial, onClose }: { year?: string; onC
 
       <div className="grid grid-cols-2 gap-2">
         {onClose ? <Button onClick={onClose}>{t("ปิด")}</Button> : <Button onClick={() => (location.href = "/")}>{t("เปิดแอพ")}</Button>}
-        <Button variant="accent" disabled={!s || img.busy} onClick={share}>
+        <Button variant="accent" disabled={!s || s.sessions === 0 || img.busy} onClick={share}>
           {img.busy ? t("กำลังสร้างรูป...") : t("แชร์เป็นรูป")}
         </Button>
       </div>
-      {img.failed && <p className="text-center text-xs text-red-600">{t("สร้างรูปไม่สำเร็จ ลองใหม่อีกครั้ง")}</p>}
+      {img.failed && <p className="text-center text-sm text-red-600">{t("สร้างรูปไม่สำเร็จ ลองใหม่อีกครั้ง")}</p>}
+      {/* รูปกดลิงก์ไม่ได้ แนบลิงก์ส่งตามไปได้ */}
+      <button className="w-full py-2 text-sm font-semibold text-zinc-600 underline" onClick={copyLink}>
+        {copied ? t("คัดลอกลิงก์แล้ว") : t("คัดลอกลิงก์")}
+      </button>
       {img.overlay}
     </div>
   );

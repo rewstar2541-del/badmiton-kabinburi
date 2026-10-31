@@ -456,7 +456,7 @@ export const en: Record<string, string> = {
   "ลงชื่อแล้ว {n} คน": "{n} signed up",
   "ลงชื่อแล้ว": "Signed up",
   "ลงชื่อล่วงหน้าได้ไม่เกิน 90 วัน": "You can sign up at most 90 days ahead",
-  "กดค้างที่รูป > บันทึกรูปภาพ (หรือแคปจอ)": "Press and hold the image, then choose \"Save image\" (or take a screenshot)",
+  "กดค้างที่รูป > บันทึกรูปภาพ (หรือแคปจอ)": "Press and hold the image, then choose “Save image” (or take a screenshot)",
   "แก้ราคา": "Edit price",
   "แก้ยอดแล้ว (กดดู)": "Court / shuttle fee adjusted (tap to view)",
   "แก้ยอดคนนี้ (วันนี้)": "Adjust this player's court / shuttle fee today",
@@ -1136,5 +1136,5 @@ export const en: Record<string, string> = {
   "แชร์เป็นรูป": "Share as image",
   "กำลังสร้างรูป...": "Making image...",
   "สร้างรูปไม่สำเร็จ ลองใหม่อีกครั้ง": "Couldn't make the image. Please try again.",
-  "กดค้างที่รูป > บันทึกรูปภาพ หรือส่งต่อในไลน์ (หรือแคปจอ)": "Press and hold the image > Save image or forward in LINE (or take a screenshot)",
+  "กดนิ้วค้างที่รูป แล้วเลือก “บันทึกรูปภาพ” หรือส่งต่อในไลน์": "Press and hold the image, then choose “Save image” or forward it in LINE",
 };
