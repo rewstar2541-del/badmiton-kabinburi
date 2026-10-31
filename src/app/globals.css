@@ -114,3 +114,26 @@ html.dark {
 .dark .text-violet-700 { color: #c4b5fd; }
 .dark .divide-zinc-100 > :not(:last-child) { border-color: #26324a; }
 .dark .ring-zinc-200 { --tw-ring-color: #34415b; }
+
+/* ธีมเทศกาล: ของตกแต่งขยับเบาๆ */
+@keyframes festival-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -4px; }
+}
+@keyframes festival-wiggle {
+  0%, 100% { transform: rotate(-6deg); }
+  50% { transform: rotate(6deg); }
+}
+@keyframes festival-drop {
+  0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+  10% { opacity: 0.8; }
+  90% { opacity: 0.6; }
+  100% { transform: translateY(110vh) rotate(200deg); opacity: 0; }
+}
+.festival-float { animation: festival-float 3s ease-in-out infinite; }
+.festival-wiggle { animation: festival-wiggle 2.4s ease-in-out infinite; }
+.festival-drop { animation: festival-drop linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .festival-float, .festival-wiggle { animation: none; }
+  .festival-falling { display: none; }
+}

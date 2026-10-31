@@ -9,6 +9,7 @@ import { MembersView } from "./Members";
 import { PayQr } from "./PayQr";
 import { SlipHistory } from "./SlipHistory";
 import { CourtSplit } from "./CourtSplit";
+import { RentHoursSheet } from "./RentHours";
 import { SlipReview } from "./Slips";
 import { Avatar, Button, Card, Icon, SectionTitle, Sheet, baht, inputClass } from "./ui";
 import { Auto } from "@/lib/autoTranslate";
@@ -284,7 +285,7 @@ function DailyView() {
 
       {rows.length > 0 && (
         <Button className="w-full" onClick={() => setSplit(true)}>
-          {t("⏱ หารค่าสนามตามชั่วโมง (สนามเช่า)")}
+          {day.rent ? t("⏱ สนามเช่า: เวลามา-กลับของแต่ละคน") : t("⏱ หารค่าสนามตามชั่วโมง (สนามเช่า)")}
         </Button>
       )}
 
@@ -323,7 +324,7 @@ function DailyView() {
         {rows.length === 0 && <Card className="py-10 text-center text-sm text-zinc-500">{t("ยังไม่มีคนเช็คอินวันนี้")}</Card>}
       </ul>
 
-      {split && <CourtSplit onClose={() => setSplit(false)} />}
+      {split && (day.rent ? <RentHoursSheet rent={day.rent} onClose={() => setSplit(false)} /> : <CourtSplit onClose={() => setSplit(false)} />)}
       {openRow && <BillDetail player={openRow.player} bill={openRow.bill} onClose={() => setOpen(null)} />}
     </>
   );

@@ -39,6 +39,8 @@ export interface Rows {
     resting?: boolean;
     court_fee?: number | null;
     shuttle_fee?: number | null;
+    from_hour?: number | null;
+    to_hour?: number | null;
   }[];
   prices: { date: string; court_fee: number; first_shuttle_fee: number; next_shuttle_fee: number }[];
   games: {
@@ -54,7 +56,7 @@ export interface Rows {
   }[];
   drinks: { id: string; date: string; player_id: string; amount: number; note: string }[];
   monthly: { month: string; player_id: string; paid_at: string; amount?: number | null }[];
-  announcements: { date: string; message: string; title?: string | null; fee?: number | null; cap?: number | null }[];
+  announcements: { date: string; message: string; title?: string | null; fee?: number | null; cap?: number | null; rent_start?: number | null; rent_end?: number | null; rent_per_hour?: number | null }[];
   signups: { date: string; player_id: string; at: string }[];
   closed: { date: string; reason: string }[];
   slips: { id: string; date: string; player_id: string; amount: number; created_at: string; package_id?: string | null }[];
@@ -116,6 +118,7 @@ export function rowsToState(r: Rows): State {
       ...(c.resting ? { resting: true } : {}),
       ...(c.court_fee != null ? { courtFee: Number(c.court_fee) } : {}),
       ...(c.shuttle_fee != null ? { shuttleFee: Number(c.shuttle_fee) } : {}),
+      ...(c.from_hour != null && c.to_hour != null ? { hours: { from: c.from_hour, to: c.to_hour } } : {}),
     });
   for (const x of r.prices ?? [])
     day(x.date).prices = {
@@ -142,6 +145,8 @@ export function rowsToState(r: Rows): State {
     if (a.title) day(a.date).announcementTitle = a.title;
     if (a.fee != null) day(a.date).announcementFee = a.fee;
     if (a.cap != null) day(a.date).announcementCap = a.cap;
+    if (a.rent_start != null && a.rent_end != null && a.rent_per_hour != null)
+      day(a.date).rent = { start: a.rent_start, end: a.rent_end, perHour: Number(a.rent_per_hour) };
   }
   for (const s of r.signups) (day(s.date).signups ??= []).push({ playerId: s.player_id, at: ms(s.at) });
   for (const x of r.slips)
@@ -297,7 +302,11 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
   }
   const fetchers: { [K in TableKey]: () => Promise<Rows[K]> } = {
     players: () => all(() => db.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of,pending,plan,bio,level_request,birthday,annual_from,annual_until").order("id")),
-    checkins: () => all(() => db.from("checkins").select("date,player_id,at,paid_at,resting,court_fee,shuttle_fee").gte("date", since).order("date").order("player_id")),
+    // คอลัมน์สนามเช่ายังไม่มี (ยังไม่รัน SQL) ให้โหลดแบบเดิม
+    checkins: () =>
+      all(() => db.from("checkins").select("date,player_id,at,paid_at,resting,court_fee,shuttle_fee,from_hour,to_hour").gte("date", since).order("date").order("player_id")).catch(() =>
+        all(() => db.from("checkins").select("date,player_id,at,paid_at,resting,court_fee,shuttle_fee").gte("date", since).order("date").order("player_id")),
+      ),
     games: () => all(() => db.from("games").select("*").gte("date", since).order("id")),
     // ค่าน้ำ ค่ารายเดือน และสลิป ผู้เล่นทั่วไปอ่านไม่ได้ (โหลดของตัวเองแยกผ่าน my_private)
     drinks: async () => (isAdmin ? all(() => db.from("drinks").select("id,date,player_id,amount,note").order("id")) : []),
@@ -311,7 +320,10 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
       const r = await all(() => db.from("settings").select(`${cols},festival`).eq("id", 1)).catch(() => all(() => db.from("settings").select(cols).eq("id", 1)));
       return (r[0] as Rows["settings"]) ?? null;
     },
-    announcements: () => all(() => db.from("announcements").select("date,message,title,fee,cap").gte("date", since).order("date")),
+    announcements: () =>
+      all(() => db.from("announcements").select("date,message,title,fee,cap,rent_start,rent_end,rent_per_hour").gte("date", since).order("date")).catch(() =>
+        all(() => db.from("announcements").select("date,message,title,fee,cap").gte("date", since).order("date")),
+      ),
     signups: () => all(() => db.from("signups").select("date,player_id,at").gte("date", since).order("date").order("player_id")),
     // package_id มาหลังรัน SQL แพ็กเกจ ยังไม่รันให้โหลดแบบเดิม
     slips: async () =>
@@ -434,6 +446,14 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       return check(await db.from("drinks").delete().eq("id", a.drinkId));
     case "editDrink":
       return check(await db.from("drinks").update({ amount: a.amount, note: a.note }).eq("id", a.drinkId));
+    case "setHours":
+      return check(
+        await db
+          .from("checkins")
+          .update({ from_hour: a.hours?.from ?? null, to_hour: a.hours?.to ?? null })
+          .eq("date", a.date)
+          .eq("player_id", a.playerId),
+      );
     case "setBillFees":
       return check(
         await db
@@ -554,6 +574,7 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
           ...(a.title === undefined ? {} : { title: a.title }),
           ...(a.fee === undefined ? {} : { fee: a.fee }),
           ...(a.cap === undefined ? {} : { cap: a.cap }),
+          ...(a.rent === undefined ? {} : { rent_start: a.rent?.start ?? null, rent_end: a.rent?.end ?? null, rent_per_hour: a.rent?.perHour ?? null }),
         }),
       );
     case "signUp":
@@ -735,6 +756,13 @@ export async function submitSlip(db: SupabaseClient, playerId: string, pin: stri
 export async function addMyDrink(db: SupabaseClient, playerId: string, pin: string, amount: number, note: string) {
   const { data, error } = await db.rpc("add_my_drink", { p_player: playerId, p_pin: pin, p_amount: amount, p_note: note });
   if (error) return error.message;
+  return (data as string | null) ?? null;
+}
+
+/** สนามเช่า: ผู้เล่นบอกเวลามา/กลับของตัวเองวันนี้ */
+export async function setMyHours(db: SupabaseClient, playerId: string, pin: string, from: number, to: number) {
+  const { data, error } = await db.rpc("set_my_hours", { p_player: playerId, p_pin: pin, p_from: from, p_to: to });
+  if (error) return error.code === "PGRST202" ? "ยังเลือกเวลาเองไม่ได้ ให้แอดมินช่วยก่อน" : error.message;
   return (data as string | null) ?? null;
 }
 

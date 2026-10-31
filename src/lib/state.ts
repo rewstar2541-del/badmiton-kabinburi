@@ -1,6 +1,6 @@
 import { clearState, type ClearKind } from "./clear";
 import { guestsOf, markPaid } from "./billing";
-import { DEFAULT_SETTINGS, type Day, type DayPrices, type Expense, type Game, type PairStatus, type Poll, type BoardPost, type Notice, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Package, type Player, type Settings, type Team } from "./types";
+import { DEFAULT_SETTINGS, type Day, type DayPrices, type DayRent, type Expense, type Game, type PairStatus, type Poll, type BoardPost, type Notice, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Package, type Player, type Settings, type Team } from "./types";
 
 export interface State {
   players: Player[];
@@ -72,7 +72,9 @@ export type Action =
   | { type: "clearAnnual"; playerId: string }
   | { type: "updateSettings"; settings: Settings; freeze?: { dates: string[]; prices: DayPrices } }
   /** title: undefined = คงหัวข้อเดิม, null = จัดก๊วน (ค่าเริ่มต้น) */
-  | { type: "setAnnouncement"; date: string; message: string | null; title?: string | null; fee?: number | null; cap?: number | null }
+  | { type: "setAnnouncement"; date: string; message: string | null; title?: string | null; fee?: number | null; cap?: number | null; rent?: DayRent | null }
+  /** สนามเช่า: แก้ชั่วโมงที่คนนี้อยู่ (null = ตามเวลาเช็คอิน) */
+  | { type: "setHours"; date: string; playerId: string; hours: { from: number; to: number } | null }
   | { type: "setClosed"; date: string; reason: string | null }
   | { type: "signUp"; date: string; playerId: string; _at: number }
   | { type: "cancelSignUp"; date: string; playerId: string }
@@ -318,6 +320,11 @@ export function reducer(state: State, a: Action): State {
         ...d,
         drinks: d.drinks.map((x) => (x.id === a.drinkId ? { ...x, amount: a.amount, note: a.note } : x)),
       }));
+    case "setHours":
+      return withDay(state, a.date, (d) => ({
+        ...d,
+        checkIns: d.checkIns.map((c) => (c.playerId === a.playerId ? { ...c, hours: a.hours ?? undefined } : c)),
+      }));
     case "setBillFees":
       return withDay(state, a.date, (d) => ({
         ...d,
@@ -340,6 +347,7 @@ export function reducer(state: State, a: Action): State {
         announcementTitle: a.message === null ? undefined : a.title === undefined ? d.announcementTitle : (a.title ?? undefined),
         announcementFee: a.message === null ? undefined : a.fee === undefined ? d.announcementFee : (a.fee ?? undefined),
         announcementCap: a.message === null ? undefined : a.cap === undefined ? d.announcementCap : (a.cap ?? undefined),
+        rent: a.message === null ? undefined : a.rent === undefined ? d.rent : (a.rent ?? undefined),
         // ยกเลิกจัดก๊วน ล้างคนลงชื่อของวันนั้นด้วย
         signups: a.message === null ? undefined : d.signups,
       }));

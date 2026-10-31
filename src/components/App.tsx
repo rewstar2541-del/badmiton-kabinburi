@@ -26,6 +26,7 @@ import { Avatar, Icon } from "./ui";
 import { LANGS, t, useLang } from "@/lib/i18n";
 import { setTheme, useTheme } from "@/lib/theme";
 import { activeFestival, festivalInfo } from "@/lib/festival";
+import { FestivalBanner, FestivalFalling } from "./FestivalDecor";
 
 type TabId = "event" | "home" | "today" | "checkin" | "courts" | "billing" | "players" | "settings" | "mybill" | "profile";
 type Tab = { id: TabId; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> };
@@ -210,13 +211,13 @@ function Header() {
           <ThemeSwitch />
         </div>
       </div>
-      {festival && <div className="mt-2 truncate rounded-full bg-lime/30 px-3 py-1 text-center text-sm font-semibold">{t(festival.greeting)}</div>}
       {auth.canAdmin && (
         <div className="mt-3 flex items-center justify-end gap-2 text-sm text-zinc-600">
           {t("วันนี้ฉันเป็น")}
           <ModeSwitch />
         </div>
       )}
+      {festival && <FestivalBanner f={festival} />}
     </header>
   );
 }
@@ -251,6 +252,7 @@ function Shell() {
   }, [me]);
   // ธีมเทศกาล: เปลี่ยนสีหลักทั้งแอพ
   const festival = activeFestival(state.settings.festival, date);
+  const festivalOn = festivalInfo(festival);
   useEffect(() => {
     if (festival) document.documentElement.dataset.festival = festival;
     else delete document.documentElement.dataset.festival;
@@ -273,6 +275,7 @@ function Shell() {
   return (
     <Fragment key={lang}>
       <DemoBar />
+      {festivalOn && <FestivalFalling f={festivalOn} />}
       <Header />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-1 pb-32">
         {error && (

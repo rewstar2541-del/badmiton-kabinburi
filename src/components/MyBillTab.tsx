@@ -10,6 +10,7 @@ import { SlipUpload } from "./Slips";
 import { AnnualInfo } from "./Annual";
 import { MonthlyDueCard, PlanChoice, monthlyDue } from "./Membership";
 import { PackagePicker } from "./Packages";
+import { MyRentHours } from "./RentHours";
 import { useState } from "react";
 import { savedPin } from "./PickMe";
 import { Auto } from "@/lib/autoTranslate";
@@ -67,6 +68,7 @@ export function MyBillTab() {
               ))}
             </div>
           </div>
+          {checkedIn && day.rent && <MyRentHours key={JSON.stringify(day.checkIns.find((c) => c.playerId === player.id)?.hours ?? null)} player={player} day={day} rent={day.rent} />}
           {checkedIn && <MyDrinks playerId={player.id} paid={Boolean(day.checkIns.find((c) => c.playerId === player.id)?.paidAt)} drinks={day.drinks.filter((d) => d.playerId === player.id)} />}
           {bill.paid ? (
             <Card className="flex items-center justify-center gap-1.5 py-6 font-semibold text-emerald-700">

@@ -1,4 +1,5 @@
 import { isAnnualMember, isMonthlyPaid, type Day, type DayPrices, type MonthlyPayments, type Player, type Settings } from "./types";
+import { rentShares } from "./courtSplit";
 
 export interface Bill {
   playerId: string;
@@ -55,6 +56,19 @@ export function shuttleFormula(b: Pick<Bill, "shuttleCount" | "prices" | "shuttl
 }
 
 /** ยอดของวันนั้นวันเดียว ไม่รวมยอดค้าง */
+// หารค่าเช่าครั้งเดียวต่อวันต่อเวลาจ่าย (บิลเรียกซ้ำหลายรอบ)
+const rentCache = new WeakMap<Day, Map<number, Map<string, number>>>();
+
+/** สนามเช่า: คนที่จ่ายแล้วคิดจากคนที่เช็คอินก่อนเวลาจ่าย (ยอดไม่เปลี่ยนหลังจ่าย) คนยังไม่จ่ายคิดจากทุกคนตอนนี้ */
+function rentFeeOf(day: Day, ci: Day["checkIns"][number]): number {
+  const key = ci.paidAt ?? Infinity;
+  let byKey = rentCache.get(day);
+  if (!byKey) rentCache.set(day, (byKey = new Map()));
+  let shares = byKey.get(key);
+  if (!shares) byKey.set(key, (shares = rentShares(day.rent!, day.checkIns.filter((c) => c.at <= key))));
+  return shares.get(ci.playerId) ?? 0;
+}
+
 export function dayAmount(
   day: Day,
   player: Player,
@@ -66,7 +80,10 @@ export function dayAmount(
   const p = pricesFor(day, s);
   const ci = day.checkIns.find((c) => c.playerId === player.id);
   // ยังไม่เช็คอิน = ยังไม่ได้มาเล่นวันนี้ ไม่คิดค่าสนาม
-  const courtFee = !ci ? 0 : (ci.courtFee ?? (monthlyMember || annualMember ? 0 : p.courtFee));
+  // สนามเช่า: ทุกคนหารค่าเช่าตามชั่วโมงที่อยู่ (สมาชิกก็หาร เพราะเป็นค่าเช่าแยก) แอดมินแก้รายคนได้
+  const courtFee = !ci
+    ? 0
+    : (ci.courtFee ?? (day.rent ? rentFeeOf(day, ci) : monthlyMember || annualMember ? 0 : p.courtFee));
   const shuttleCount = shuttleCountFor(day, player.id);
   const sFee = ci?.shuttleFee ?? shuttleFee(shuttleCount, p);
   const drinkFee = day.drinks
