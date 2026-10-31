@@ -738,6 +738,13 @@ export async function addMyDrink(db: SupabaseClient, playerId: string, pin: stri
   return (data as string | null) ?? null;
 }
 
+/** ผู้เล่นลบค่าน้ำของตัวเองที่ลงผิด (วันนี้ ยังไม่จ่าย) */
+export async function removeMyDrink(db: SupabaseClient, playerId: string, pin: string, drinkId: string) {
+  const { data, error } = await db.rpc("remove_my_drink", { p_player: playerId, p_pin: pin, p_drink: drinkId });
+  if (error) return error.code === "PGRST202" ? "ยังลบค่าน้ำเองไม่ได้ ให้แอดมินช่วยก่อน" : error.message;
+  return (data as string | null) ?? null;
+}
+
 /** ผู้เล่นลบสลิปของตัวเองที่ส่งผิด (เฉพาะที่ส่งวันนี้) */
 export async function removeMySlip(db: SupabaseClient, playerId: string, pin: string, slipId: string) {
   const { data, error } = await db.rpc("remove_my_slip", { p_player: playerId, p_pin: pin, p_slip: slipId });

@@ -67,7 +67,7 @@ export function MyBillTab() {
               ))}
             </div>
           </div>
-          {checkedIn && <MyDrinks playerId={player.id} drinks={day.drinks.filter((d) => d.playerId === player.id)} />}
+          {checkedIn && <MyDrinks playerId={player.id} paid={Boolean(day.checkIns.find((c) => c.playerId === player.id)?.paidAt)} drinks={day.drinks.filter((d) => d.playerId === player.id)} />}
           {bill.paid ? (
             <Card className="flex items-center justify-center gap-1.5 py-6 font-semibold text-emerald-700">
               <Icon.Check width={18} height={18} /> {t("จ่ายแล้ว ขอบคุณครับ")}
@@ -92,8 +92,8 @@ export function MyBillTab() {
 }
 
 /** ผู้เล่นเพิ่มค่าน้ำเอง (แก้/ลบได้เฉพาะแอดมิน) */
-function MyDrinks({ playerId, drinks }: { playerId: string; drinks: { id: string; amount: number; note: string }[] }) {
-  const { addMyDrink } = useStore();
+function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean; drinks: { id: string; amount: number; note: string }[] }) {
+  const { addMyDrink, removeMyDrink } = useStore();
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -105,13 +105,32 @@ function MyDrinks({ playerId, drinks }: { playerId: string; drinks: { id: string
     setError(err ? t(err) : "");
     if (!err) setAmount("");
   };
+  // ลงผิด ลบเองได้ (ก่อนจ่าย)
+  const remove = async (id: string, amount: number) => {
+    if (!confirm(t("ลบค่าน้ำ {amount}?", { amount: baht(amount) }))) return;
+    setBusy(true);
+    const err = await removeMyDrink(playerId, savedPin.get(), id);
+    setBusy(false);
+    setError(err ? t(err) : "");
+  };
   return (
     <Card className="space-y-2">
       <div className="text-sm font-semibold">{t("ค่าน้ำ")}</div>
       {drinks.map((d) => (
-        <div key={d.id} className="flex justify-between text-sm text-zinc-600">
-          <Auto text={d.note} />
+        <div key={d.id} className="flex items-center gap-2 text-sm text-zinc-600">
+          <span className="min-w-0 flex-1 truncate">
+            <Auto text={d.note} />
+          </span>
           <span>{baht(d.amount)}</span>
+          {!paid && (
+            <button
+              disabled={busy}
+              className="min-h-11 shrink-0 rounded-xl bg-red-50 px-3 text-xs font-semibold text-red-600"
+              onClick={() => void remove(d.id, d.amount)}
+            >
+              {t("ลบ")}
+            </button>
+          )}
         </div>
       ))}
       <div className="grid grid-cols-4 gap-2">
@@ -134,7 +153,7 @@ function MyDrinks({ playerId, drinks }: { playerId: string; drinks: { id: string
         </Button>
       </form>
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
-      <p className="text-xs text-zinc-500">{t("เพิ่มผิด บอกแอดมินให้ลบได้")}</p>
+      <p className="text-xs text-zinc-500">{paid ? t("จ่ายแล้ว ลงผิด บอกแอดมินให้แก้") : t("ลงผิด กดลบได้ก่อนจ่าย")}</p>
     </Card>
   );
 }
