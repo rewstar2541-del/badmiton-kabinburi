@@ -1,7 +1,7 @@
 "use client";
 
 import { Bell } from "./Bell";
-import { RefereeView, TourneyAdmin, TourneyBanner, TourneyCourts, TourneyHome, WatchView } from "./Tourney";
+import { RefereeView, TourneyAdmin, TourneyCourts, TourneyHome, WatchView } from "./Tourney";
 import { useTourney } from "@/lib/tourneyStore";
 import { YearSummaryView } from "./YearSummary";
 import { Fragment, useEffect, useState, type ComponentType, type SVGProps } from "react";
@@ -26,7 +26,7 @@ import { Avatar, Icon } from "./ui";
 import { LANGS, t, useLang } from "@/lib/i18n";
 import { setTheme, useTheme } from "@/lib/theme";
 import { activeFestival, festivalInfo } from "@/lib/festival";
-import { FestivalBanner, FestivalFalling } from "./FestivalDecor";
+import { FestivalFalling } from "./FestivalDecor";
 
 type TabId = "event" | "home" | "today" | "checkin" | "courts" | "billing" | "players" | "settings" | "mybill" | "profile";
 type Tab = { id: TabId; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> };
@@ -187,8 +187,6 @@ function Header() {
   const { state, auth } = useStore();
   const [me] = useMe();
   const player = state.players.find((p) => p.id === me && !p.pending);
-  const { date } = useToday();
-  const festival = festivalInfo(activeFestival(state.settings.festival, date));
   return (
     <header className="mx-auto w-full max-w-3xl px-4 pt-[calc(env(safe-area-inset-top)+14px)] pb-3">
       <div className="flex items-center gap-3">
@@ -217,8 +215,7 @@ function Header() {
           <ModeSwitch />
         </div>
       )}
-      {/* ผู้เล่น: คำอวยพรเทศกาลอยู่ในแถบข่าวหน้าแรกแทน */}
-      {festival && !(player && !auth.isAdmin) && <FestivalBanner f={festival} />}
+
     </header>
   );
 }
@@ -298,11 +295,6 @@ function Shell() {
           </div>
         )}
         {tab === "event" && (auth.isAdmin ? <TourneyAdmin /> : <TourneyHome />)}
-        {tab === "home" && auth.isAdmin && (
-          <div className="mb-4 empty:hidden">
-            <TourneyBanner />
-          </div>
-        )}
         {tab === "home" && (auth.isAdmin ? <AdminHome /> : <PlayerHome />)}
         {tab === "profile" && <ProfileTab />}
         {tab === "checkin" && <CheckInTab />}

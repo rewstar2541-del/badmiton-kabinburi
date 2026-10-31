@@ -52,7 +52,7 @@ export function AnnouncementBanner({ message, title, fee, date }: { message: str
 /** หน้าแรกของผู้เล่น: ดูประกาศ ลงชื่อ และเช็คอินเองเมื่อถึงสนาม */
 /** home: ใช้ในหน้าแรกแบบใหม่ ซ่อนส่วนที่ย้ายไปอยู่ในเมนูก๊วนและปุ่มลัดแล้ว */
 /** หน้าแรกผู้เล่น: การ์ดดำใบเดียว สถานะ + ประกาศ + ปุ่มลงชื่อ/เช็คอิน */
-function HomeCard({ top, children }: { top: ReactNode; children?: ReactNode }) {
+export function HomeCard({ top, children }: { top: ReactNode; children?: ReactNode }) {
   return (
     <div className="relative space-y-3 overflow-hidden rounded-3xl bg-ink p-4 text-white shadow-lg shadow-ink/20">
       <div className="pointer-events-none absolute -top-20 -right-12 size-48 rounded-full bg-lime/20 blur-3xl" />

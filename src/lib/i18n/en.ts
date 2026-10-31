@@ -1247,6 +1247,8 @@ export const en: Record<string, string> = {
   "ให้ทุกคนหารค่าเช่า (ล้างยอดที่แก้เอง)": "Everyone splits the rent (clear manual fees)",
   "ล้างยอดที่แก้เองของทุกคนที่ยังไม่จ่าย แล้วหารค่าเช่าใหม่?": "Clear manual fees for everyone unpaid and split the rent again?",
   "ข่าววันนี้": "Today's news",
+  "ไปหน้าเช็คอิน": "Open check-in",
+  "รับ {cap} คน": "Takes {cap}",
   "แก้ยอดเอง {amount}": "Set manually {amount}",
   "วันนี้ไม่ใช่สนามเช่า": "Today isn't a rented-court day",
   "เวลาไม่ถูกต้อง": "Invalid time",

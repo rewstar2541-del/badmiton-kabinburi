@@ -1,5 +1,7 @@
 "use client";
 
+import { Auto } from "@/lib/autoTranslate";
+
 import { NewsCarousel } from "./NewsCarousel";
 import { activeFestival, festivalInfo } from "@/lib/festival";
 
@@ -9,7 +11,6 @@ import { signupQueue } from "@/lib/social";
 import { useStore, useToday } from "@/lib/store";
 import { LANGS, locale, setLang, t, useLang } from "@/lib/i18n";
 import { AnnounceCard } from "./AnnounceCard";
-import { BirthdayBanner } from "./Birthday";
 import { BoardCard } from "./Board";
 import { ClubCalendar } from "./Calendar";
 import { SignupList } from "./CheckInTab";
@@ -22,8 +23,8 @@ import { PairCard } from "./Pairs";
 import { useMe, savedPin } from "./PickMe";
 import { PollAdmin } from "./Polls";
 import { RestButton } from "./RestButton";
-import { TodayTab } from "./TodayTab";
-import { Card, Icon, SectionTitle, Sheet } from "./ui";
+import { HomeCard, TodayTab } from "./TodayTab";
+import { Button, Card, Icon, SectionTitle, Sheet } from "./ui";
 
 type IconC = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -386,9 +387,12 @@ export function AdminHome() {
   const waiting = waitingQueue(day, state.players).length;
   const announced = day.announcement !== undefined;
   const closed = state.closed[date] !== undefined;
+  const fest = festivalInfo(activeFestival(state.settings.festival, date));
+  const [boardSeen, markBoard] = useSeen("board", () => String(Date.now()));
+  const [me] = useMe();
+  const newPosts = (state.board ?? []).filter((b) => b.at > Number(boardSeen) && b.playerId !== me).length;
 
   const todo: Row[] = [
-    ...(!announced && !closed ? [{ icon: Icon.Megaphone, title: t("ยังไม่ได้ประกาศวันนี้"), sub: t("แตะเพื่อประกาศจัดก๊วน"), onClick: () => open("announce") }] : []),
     ...(stale.length
       ? [{ icon: Icon.CheckIn, title: t("มีชื่อลงค้าง วันนี้ไม่ได้จัดก๊วน"), sub: names(stale), right: <CountBadge n={stale.length} tone="bg-amber-50 text-amber-700" />, onClick: () => goToTab("checkin") }]
       : []),
@@ -405,14 +409,52 @@ export function AdminHome() {
 
   return (
     <div className="space-y-5">
-      <Hero
-        label={t("วันนี้มาแล้ว · {date}", { date: shortDate() })}
-        big={String(day.checkIns.length)}
-        small={t("คน · ลงชื่อ {n}", { n: day.announcement === undefined ? 0 : (day.signups?.length ?? 0) })}
-        chips={[t("กำลังเล่น {n}", { n: playing }), t("รอคิว {n}", { n: waiting }), ...(q.waiting.length ? [t("สำรอง {n}", { n: q.waiting.length })] : [])]}
-        icon={Icon.Users}
-        onClick={() => open("signups")}
-      />
+      <NoticeBanners urgentOnly />
+      <HomeCard
+        top={
+          <button className="block w-full text-left" onClick={() => open("signups")}>
+            <div className="text-sm text-white/70">
+              {fest && <span aria-hidden>{fest.emoji} </span>}
+              {t("วันนี้มาแล้ว · {date}", { date: shortDate() })}
+            </div>
+            <div className="font-display text-3xl leading-tight font-semibold">
+              {day.checkIns.length}
+              <span className="ml-1.5 text-lg font-medium text-white/80">{t("คน · ลงชื่อ {n}", { n: announced ? (day.signups?.length ?? 0) : 0 })}</span>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {[t("กำลังเล่น {n}", { n: playing }), t("รอคิว {n}", { n: waiting }), ...(q.waiting.length ? [t("สำรอง {n}", { n: q.waiting.length })] : [])].map((c) => (
+                <span key={c} className="rounded-full bg-white/10 px-2.5 py-1 text-sm font-semibold text-lime">
+                  {c}
+                </span>
+              ))}
+            </div>
+          </button>
+        }
+      >
+        {announced ? (
+          <>
+            <button className="block w-full rounded-2xl bg-white/10 px-3 py-2 text-left text-sm" onClick={() => open("announce")}>
+              <span className="font-semibold text-lime">📣 {day.announcementTitle ? <Auto text={day.announcementTitle} /> : t("วันนี้มีจัดก๊วน")}</span>
+              {!!q.cap && ` · ${t("รับ {cap} คน", { cap: q.cap })}`}
+              {day.announcement && (
+                <span className="mt-0.5 line-clamp-2 block whitespace-pre-line text-white/80">
+                  <Auto text={day.announcement} />
+                </span>
+              )}
+            </button>
+            <Button variant="accent" className="flex w-full items-center justify-center gap-2" onClick={() => goToTab("checkin")}>
+              <Icon.CheckIn width={18} height={18} /> {t("ไปหน้าเช็คอิน")}
+            </Button>
+          </>
+        ) : closed ? (
+          <div className="rounded-2xl bg-white/10 px-3 py-2 text-sm">{t("วันนี้งดเล่น")}</div>
+        ) : (
+          <Button variant="accent" className="flex w-full items-center justify-center gap-2" onClick={() => open("announce")}>
+            <Icon.Megaphone width={18} height={18} /> {t("ประกาศจัดก๊วนวันนี้")}
+          </Button>
+        )}
+      </HomeCard>
+      <NewsCarousel />
       <Shortcuts
         items={[
           { icon: Icon.CheckIn, label: t("เช็คอิน"), onClick: () => goToTab("checkin") },
@@ -423,8 +465,6 @@ export function AdminHome() {
           { icon: Icon.Megaphone, label: t("ประกาศ"), onClick: () => open("announce") },
         ]}
       />
-      <NoticeBanners />
-      <BirthdayBanner />
       <SectionTitle right={todo.length ? t("{n} เรื่อง", { n: todo.length }) : undefined}>{t("ต้องจัดการ")}</SectionTitle>
       {todo.length ? (
         <Rows items={todo} />
@@ -438,7 +478,7 @@ export function AdminHome() {
         items={[
           { icon: Icon.Calendar, label: t("ปฏิทิน"), onClick: () => open("calendar") },
           { icon: Icon.Vote, label: t("โหวตวันตี"), onClick: () => open("poll") },
-          { icon: Icon.Box, label: t("ของหาย/ฝากขาย"), onClick: () => open("board") },
+          { icon: Icon.Box, label: t("ของหาย/ฝากขาย"), onClick: () => (markBoard(String(Date.now())), open("board")), badge: newPosts },
           { icon: Icon.Camera, label: t("รูปกิจกรรม"), onClick: () => open("photos") },
           { icon: Icon.Trophy, label: t("อันดับ"), onClick: () => open("rank") },
         ]}
