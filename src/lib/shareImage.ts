@@ -35,6 +35,8 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
     img.crossOrigin = "anonymous";
     img.onload = () => ok(img);
     img.onerror = () => ok(null);
+    // เน็ตช้า: ไม่รอเกิน 4 วินาที ใช้ตัวอักษรแทน
+    setTimeout(() => ok(null), 4000);
     img.src = src;
   });
 }
@@ -47,6 +49,9 @@ async function photos(people: Person[]) {
   return map;
 }
 
+/** รอฟอนต์ของแอพ แต่ไม่เกิน 3 วินาที (ไม่งั้นปุ่มค้าง) */
+const fontsReady = () => Promise.race([document.fonts?.ready, new Promise((ok) => setTimeout(ok, 3000))]);
+
 function setup(height: number) {
   const c = document.createElement("canvas");
   c.width = W;
@@ -58,6 +63,8 @@ function setup(height: number) {
 
 function roundRect(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, fill: string) {
   g.fillStyle = fill;
+  // เบราว์เซอร์เก่า (iOS ต่ำกว่า 16) ไม่มี roundRect วาดมุมตรงแทน
+  if (!g.roundRect) return g.fillRect(x, y, w, h);
   g.beginPath();
   g.roundRect(x, y, w, h, r);
   g.fill();
@@ -109,11 +116,45 @@ function header(g: CanvasRenderingContext2D, f: ReturnType<typeof fonts>, club: 
   }
 }
 
-function footer(g: CanvasRenderingContext2D, f: ReturnType<typeof fonts>, text: string, y: number) {
+const FOOT = 24;
+const FOOT_LINE = 36;
+
+/** ตัดข้อความเป็นหลายบรรทัด (ตัดที่ช่องว่าง ภาษาไทย/จีนที่ไม่มีช่องว่างตัดทีละตัว) */
+function wrap(g: CanvasRenderingContext2D, text: string, max: number) {
+  const lines: string[] = [];
+  let line = "";
+  for (const part of text.split(/(?<=\s)/)) {
+    const next = line + part;
+    if (g.measureText(next.trimEnd()).width <= max) {
+      line = next;
+      continue;
+    }
+    if (line) lines.push(line.trimEnd());
+    line = "";
+    for (const ch of [...part]) {
+      if (g.measureText(line + ch).width > max && line) {
+        lines.push(line);
+        line = "";
+      }
+      line += ch;
+    }
+  }
+  if (line.trim()) lines.push(line.trimEnd());
+  return lines;
+}
+
+function footerLines(f: ReturnType<typeof fonts>, text: string) {
+  const g = document.createElement("canvas").getContext("2d")!;
+  g.font = f.body(400, FOOT);
+  return wrap(g, text, W - PAD * 2);
+}
+
+/** ข้อความท้ายรูป วาดจากบรรทัดสุดท้ายขึ้นไป */
+function footer(g: CanvasRenderingContext2D, f: ReturnType<typeof fonts>, lines: string[], bottom: number) {
   g.fillStyle = "#71717a";
-  g.font = f.body(400, 24);
+  g.font = f.body(400, FOOT);
   g.textAlign = "center";
-  g.fillText(fit(g, text, W - PAD * 2), W / 2, y);
+  lines.forEach((l, i) => g.fillText(l, W / 2, bottom - (lines.length - 1 - i) * FOOT_LINE));
 }
 
 const toBlob = (c: HTMLCanvasElement) =>
@@ -123,12 +164,13 @@ export type RankImageRow = Person & { rank: number; record: string; delta: numbe
 
 /** รูปตารางอันดับรายเดือน */
 export async function rankingImage(o: { club: string; title: string; month: string; rows: RankImageRow[]; note: string }): Promise<Blob> {
-  await document.fonts?.ready;
+  await fontsReady();
   const f = fonts();
   const imgs = await photos(o.rows);
   const HEAD = 250;
   const ROW = 92;
-  const height = HEAD + 32 + o.rows.length * ROW + 32 + 80;
+  const note = footerLines(f, o.note);
+  const height = HEAD + 32 + o.rows.length * ROW + 32 + 50 + note.length * FOOT_LINE;
   const { c, g } = setup(height);
   g.fillStyle = "#f4f4f5";
   g.fillRect(0, 0, W, height);
@@ -164,7 +206,7 @@ export async function rankingImage(o: { club: string; title: string; month: stri
     g.fillText(fit(g, r.name, W - PAD * 2 - 150 - 130 - recordW - 24), PAD + 150, mid + 2);
   });
 
-  footer(g, f, o.note, height - 50);
+  footer(g, f, note, height - 50);
   return toBlob(c);
 }
 
@@ -180,7 +222,7 @@ export async function yearImage(o: {
   lines: string[];
   link: string;
 }): Promise<Blob> {
-  await document.fonts?.ready;
+  await fontsReady();
   const f = fonts();
   const imgs = await photos([...o.lists.flatMap((l) => l.items), ...(o.duo?.people ?? [])]);
   const STAT = 150;
@@ -190,7 +232,8 @@ export async function yearImage(o: {
   const body =
     lists.reduce((s, l) => s + 70 + l.items.length * ITEM + 20, 0) + (o.duo ? 70 + 110 + 20 : 0) + o.lines.length * 46 + (o.lines.length ? 20 : 0);
   const hasBody = body > 0;
-  const height = HEAD + (hasBody ? 32 + body + 48 : 0) + 100;
+  const link = footerLines(f, o.link);
+  const height = HEAD + (hasBody ? 32 + body + 48 : 0) + 70 + link.length * FOOT_LINE;
   const { c, g } = setup(height);
   g.fillStyle = "#f4f4f5";
   g.fillRect(0, 0, W, height);
@@ -217,7 +260,7 @@ export async function yearImage(o: {
       g.textAlign = "left";
       g.fillStyle = INK;
       g.font = f.display(600, 36);
-      g.fillText(s, PAD, y + 35);
+      g.fillText(fit(g, s, W - PAD * 2), PAD, y + 35);
       y += 70;
     };
     for (const l of lists) {
@@ -268,7 +311,7 @@ export async function yearImage(o: {
     }
   }
 
-  footer(g, f, o.link, height - 50);
+  footer(g, f, link, height - 50);
   return toBlob(c);
 }
 
@@ -277,13 +320,14 @@ export async function yearImage(o: {
  * เว็บในแอพ LINE / Facebook บันทึกไฟล์ไม่ได้ จึงคืนรูป (data URL) ให้แสดงเต็มจอแล้วกดค้างบันทึกเอง
  */
 export async function shareImage(blob: Blob, name: string): Promise<string | null> {
-  if (inAppBrowser())
-    return new Promise((ok, fail) => {
+  const dataUrl = () =>
+    new Promise<string>((ok, fail) => {
       const r = new FileReader();
       r.onload = () => ok(r.result as string);
       r.onerror = () => fail(r.error);
       r.readAsDataURL(blob);
     });
+  if (inAppBrowser()) return dataUrl();
   const file = new File([blob], name, { type: "image/png" });
   if (navigator.canShare?.({ files: [file] })) {
     try {
@@ -291,6 +335,8 @@ export async function shareImage(blob: Blob, name: string): Promise<string | nul
       return null;
     } catch (e) {
       if ((e as Error).name === "AbortError") return null;
+      // iPhone ไม่ยอมเปิดเมนูแชร์ถ้าสร้างรูปนานเกินไปหลังกดปุ่ม แสดงรูปเต็มจอให้กดค้างแชร์แทน
+      return dataUrl();
     }
   }
   downloadBlob(blob, name);
