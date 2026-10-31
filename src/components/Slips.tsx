@@ -114,9 +114,13 @@ export function SlipReview({ playerId, month, unsettled }: { playerId: string; m
   const days = month ? state.days.filter((d) => d.date.startsWith(month)) : [day];
   // unsettled: ไม่แสดงสลิปของวันที่บิลรายวันปิดยอดแล้ว (เป็นสลิปค่าเล่น ไม่ใช่ค่ารายเดือน)
   const settled = (d: (typeof days)[number]) => Boolean(d.checkIns.find((c) => c.playerId === playerId)?.paidAt);
-  const slips = days
-    .filter((d) => !(unsettled && settled(d)))
-    .flatMap((d) => (d.slips ?? []).filter((s) => s.playerId === playerId).map((s) => ({ ...s, date: d.date })));
+  // ยอดตรงค่ารายเดือนพอดียังแสดงเสมอ (สมาชิกรายเดือนอาจโอนค่าเดือนวันเดียวกับที่จ่ายค่าลูก)
+  const fee = state.settings.monthlyFee;
+  const slips = days.flatMap((d) =>
+    (d.slips ?? [])
+      .filter((s) => s.playerId === playerId && !(unsettled && settled(d) && !(fee > 0 && s.amount === fee)))
+      .map((s) => ({ ...s, date: d.date })),
+  );
   if (!slips.length) return null;
 
   const show = async (id: string) => {

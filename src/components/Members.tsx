@@ -139,13 +139,13 @@ export function MembersView() {
                   className="rounded-3xl bg-sky-50 p-4 text-left active:scale-[0.98] disabled:opacity-60"
                   disabled={owed <= 0}
                   onClick={() => {
-                    if (!confirm(t("ได้รับค่าเล่นที่ค้างของ {name} {amount}?", { name: picked.name, amount: baht(owed) }))) return;
+                    if (!confirm(t("ได้รับค่าเล่นที่ค้างทั้งหมดถึงวันนี้ของ {name} {amount}?", { name: picked.name, amount: baht(owed) }))) return;
                     dispatch({ type: "markPaid", date, playerId: picked.id });
                     setPicked(null);
                   }}
                 >
                   <span className="block font-display font-semibold">{t("ค่าเล่นรายวัน (ค่าสนาม ค่าลูก ค่าน้ำ)")}</span>
-                  <span className="block text-sm text-zinc-500">{owed > 0 ? t("ค้าง {amount}", { amount: baht(owed) }) : t("ไม่มียอดค้าง")}</span>
+                  <span className="block text-sm text-zinc-500">{owed > 0 ? t("ค้างถึงวันนี้ {amount}", { amount: baht(owed) }) : t("ไม่มียอดค้าง")}</span>
                 </button>
               );
             })()}
