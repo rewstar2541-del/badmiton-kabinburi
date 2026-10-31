@@ -6,11 +6,13 @@ import { yearSummary } from "@/lib/club";
 import { locale, t } from "@/lib/i18n";
 import { today } from "@/lib/store";
 import { useHistory, yearLabel } from "./Ranking";
+import { yearImage } from "@/lib/shareImage";
+import { useShareImage } from "./ShareImage";
 import { Avatar, Button } from "./ui";
 
 const dayLabel = (d: string) => new Date(d + "T00:00:00").toLocaleDateString(locale(), { day: "numeric", month: "long" });
 
-/** สรุปก๊วนรายปี แชร์เป็นลิงก์ ?summary=YYYY ได้ (ไม่ต้องเข้าสู่ระบบ) */
+/** สรุปก๊วนรายปี แชร์เป็นรูป (ในรูปมีลิงก์ ?summary=YYYY ให้เปิดดูได้โดยไม่ต้องเข้าสู่ระบบ) */
 export function YearSummaryView({ year: initial, onClose }: { year?: string; onClose?: () => void }) {
   const thisYear = today().slice(0, 4);
   const [year, setYear] = useState(initial && /^\d{4}$/.test(initial) ? initial : thisYear);
@@ -18,23 +20,54 @@ export function YearSummaryView({ year: initial, onClose }: { year?: string; onC
   const s = useMemo(() => (data ? yearSummary(data, year) : null), [data, year]);
   const byId = new Map((data?.players ?? []).map((p) => [p.id, p]));
   const name = (id: string) => byId.get(id)?.name ?? "?";
-  const [copied, setCopied] = useState(false);
   const [title, sub] = appName();
+  const img = useShareImage();
 
-  const share = async () => {
-    const url = `${location.origin}/?summary=${year}`;
-    const text = t("สรุปก๊วนปี {year}", { year: yearLabel(year) });
-    try {
-      if (navigator.share) return await navigator.share({ title: text, url });
-    } catch {
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-    } catch {
-      prompt(t("คัดลอกลิงก์นี้"), url);
-    }
+  const share = () => {
+    if (!s) return;
+    const person = (id: string) => ({ name: name(id), photo: byId.get(id)?.photo });
+    const list = (title: string, xs: { id: string; n: number }[], unit: string) => ({
+      title,
+      items: xs.map((x) => ({ ...person(x.id), value: t(unit, { n: x.n }) })),
+    });
+    const has = s.sessions > 0;
+    img.share(
+      () =>
+        yearImage({
+          club: `${title} ${sub}`,
+          title: t("สรุปก๊วนปี {year}", { year: yearLabel(year) }),
+          stats: [
+            { label: t("วันที่เปิดก๊วน"), value: String(s.sessions) },
+            { label: t("เกมที่เล่น"), value: String(s.games) },
+            { label: t("คนที่มาเล่น"), value: String(s.players) },
+            { label: t("ลูกแบดที่ใช้"), value: String(s.shuttles) },
+          ],
+          lists: has
+            ? [
+                list(t("มาบ่อยที่สุด"), s.topVisitors, "{n} ครั้ง"),
+                list(t("เล่นมากที่สุด"), s.topGames, "{n} เกม"),
+                list(t("ชนะมากที่สุด"), s.topWinners, "ชนะ {n} เกม"),
+              ]
+            : [],
+          duo:
+            has && s.bestDuo
+              ? {
+                  title: t("คู่หูยอดเยี่ยม"),
+                  people: [person(s.bestDuo.ids[0]), person(s.bestDuo.ids[1])],
+                  value: t("ชนะ {w} จาก {g} เกม", { w: s.bestDuo.wins, g: s.bestDuo.games }),
+                }
+              : undefined,
+          lines: has
+            ? [
+                ...(s.busiestDay ? [t("วันที่คนมามากที่สุด: {day} ({n} คน)", { day: dayLabel(s.busiestDay.date), n: s.busiestDay.players })] : []),
+                ...(s.longestGame ? [t("เกมที่ยาวที่สุด: {n} นาที ({day})", { n: s.longestGame.minutes, day: dayLabel(s.longestGame.date) })] : []),
+                t("มาเล่นรวมทั้งปี {n} ครั้ง", { n: s.visits }),
+              ]
+            : [],
+          link: `${location.host}/?summary=${year}`,
+        }),
+      `summary-${year}.png`,
+    );
   };
 
   const stat = (label: string, value: number | string) => (
@@ -127,10 +160,12 @@ export function YearSummaryView({ year: initial, onClose }: { year?: string; onC
 
       <div className="grid grid-cols-2 gap-2">
         {onClose ? <Button onClick={onClose}>{t("ปิด")}</Button> : <Button onClick={() => (location.href = "/")}>{t("เปิดแอพ")}</Button>}
-        <Button variant="accent" onClick={share}>
-          {copied ? t("คัดลอกลิงก์แล้ว") : t("แชร์")}
+        <Button variant="accent" disabled={!s || img.busy} onClick={share}>
+          {img.busy ? t("กำลังสร้างรูป...") : t("แชร์เป็นรูป")}
         </Button>
       </div>
+      {img.failed && <p className="text-center text-xs text-red-600">{t("สร้างรูปไม่สำเร็จ ลองใหม่อีกครั้ง")}</p>}
+      {img.overlay}
     </div>
   );
 }

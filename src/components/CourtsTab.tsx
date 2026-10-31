@@ -1,6 +1,5 @@
 "use client";
 
-import { ClubCorner } from "./ClubCorner";
 import { PairRequests } from "./Pairs";
 import { useEffect, useState } from "react";
 import { presence, waitingQueue } from "@/lib/matchmaking";
@@ -150,7 +149,6 @@ export function CourtsTab() {
     return (
       <div className="space-y-4">
         <PlayerCourts />
-        <ClubCorner />
       </div>
     );
 
@@ -275,7 +273,6 @@ export function CourtsTab() {
         </>
       )}
       {home > 0 && <p className="px-1 text-xs text-zinc-500">{t("จ่ายเงินแล้วกลับบ้าน {n} คน", { n: home })}</p>}
-      <ClubCorner />
     </div>
   );
 }
