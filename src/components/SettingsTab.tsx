@@ -5,6 +5,7 @@ import { OpenOutside } from "./OpenOutside";
 import { BoardCard } from "./Board";
 import { ClearData } from "./ClearData";
 import { PackageAdmin } from "./Packages";
+import { FestivalPicker } from "./FestivalPicker";
 import { PollAdmin } from "./Polls";
 import { useState, type ReactNode } from "react";
 import { isValidPromptPayId } from "@/lib/promptpay";
@@ -73,6 +74,9 @@ export function SettingsTab() {
           <PackageAdmin />
         </Section>
       )}
+      <Section id="festival" icon="🎉" title={t("ธีมเทศกาล")} hint={t("ฮาโลวีน คริสต์มาส ปีใหม่ สงกรานต์")}>
+        <FestivalPicker />
+      </Section>
       <Section id="prices" icon="💰" title={t("ราคาและสนาม")} hint={packagesReady ? t("ค่าลูก PromptPay จอทีวี") : t("ค่าสนาม ค่าลูก PromptPay จอทีวี")}>
           <Card>
             <form
@@ -82,7 +86,7 @@ export function SettingsTab() {
                 if (!ppOk) return;
                 const old = state.settings;
                 // ค่ารายเดือนและค่าสนามรายวันมาจากแพ็กเกจ ไม่ทับด้วยค่าในฟอร์มนี้
-                const next = packagesReady ? { ...s, monthlyFee: old.monthlyFee, courtFee: old.courtFee } : s;
+                const next = { ...(packagesReady ? { ...s, monthlyFee: old.monthlyFee, courtFee: old.courtFee } : s), festival: old.festival };
                 const changed =
                   old.courtFee !== next.courtFee || old.firstShuttleFee !== next.firstShuttleFee || old.nextShuttleFee !== next.nextShuttleFee;
                 // ราคาใหม่ใช้ตั้งแต่วันนี้ เก็บราคาเดิมไว้กับวันก่อนๆ บิลเก่าจะได้ไม่เปลี่ยน

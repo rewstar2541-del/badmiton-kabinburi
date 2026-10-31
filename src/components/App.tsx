@@ -25,6 +25,7 @@ import { appName } from "@/lib/brand";
 import { Avatar, Icon } from "./ui";
 import { LANGS, t, useLang } from "@/lib/i18n";
 import { setTheme, useTheme } from "@/lib/theme";
+import { activeFestival, festivalInfo } from "@/lib/festival";
 
 type TabId = "event" | "home" | "today" | "checkin" | "courts" | "billing" | "players" | "settings" | "mybill" | "profile";
 type Tab = { id: TabId; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> };
@@ -185,6 +186,8 @@ function Header() {
   const { state, auth } = useStore();
   const [me] = useMe();
   const player = state.players.find((p) => p.id === me && !p.pending);
+  const { date } = useToday();
+  const festival = festivalInfo(activeFestival(state.settings.festival, date));
   return (
     <header className="mx-auto w-full max-w-3xl px-4 pt-[calc(env(safe-area-inset-top)+14px)] pb-3">
       <div className="flex items-center gap-3">
@@ -207,6 +210,7 @@ function Header() {
           <ThemeSwitch />
         </div>
       </div>
+      {festival && <div className="mt-2 truncate rounded-full bg-lime/30 px-3 py-1 text-center text-sm font-semibold">{t(festival.greeting)}</div>}
       {auth.canAdmin && (
         <div className="mt-3 flex items-center justify-end gap-2 text-sm text-zinc-600">
           {t("วันนี้ฉันเป็น")}
@@ -245,6 +249,12 @@ function Shell() {
   useEffect(() => {
     if (me && !me.guestOf && !me.pending) syncLinePhotoOnOpen(me.photo);
   }, [me]);
+  // ธีมเทศกาล: เปลี่ยนสีหลักทั้งแอพ
+  const festival = activeFestival(state.settings.festival, date);
+  useEffect(() => {
+    if (festival) document.documentElement.dataset.festival = festival;
+    else delete document.documentElement.dataset.festival;
+  }, [festival]);
   // จุดแดงที่ "ยอดของฉัน" เมื่อยังไม่จ่ายค่ารายเดือน
   const billDot = !auth.isAdmin && monthlyDue(state, state.players.find((p) => p.id === readSession()?.playerId), date);
 

@@ -12,10 +12,32 @@
   --color-foreground: var(--foreground);
   --color-ink: #0b1220;
   --color-ink-2: #16213a;
-  --color-lime: #c6f432;
-  --color-lime-dark: #9fcc12;
   --font-sans: var(--font-thai);
   --font-display: var(--font-display);
+}
+
+/* สีหลัก ไม่ inline เพื่อให้ธีมเทศกาลเปลี่ยนสีได้ทั้งแอพ */
+@theme {
+  --color-lime: #c6f432;
+  --color-lime-dark: #9fcc12;
+}
+
+/* ธีมเทศกาล (ตั้งที่ ตั้งค่า > ธีมเทศกาล) ตัวอักษรบนสีหลักยังเป็นสีเข้ม อ่านง่าย */
+html[data-festival="halloween"] {
+  --color-lime: #ffa53a;
+  --color-lime-dark: #e57a00;
+}
+html[data-festival="christmas"] {
+  --color-lime: #ff7a7a;
+  --color-lime-dark: #d93a3a;
+}
+html[data-festival="newyear"] {
+  --color-lime: #ffd84d;
+  --color-lime-dark: #d9a800;
+}
+html[data-festival="songkran"] {
+  --color-lime: #6fdcff;
+  --color-lime-dark: #1fa8d6;
 }
 
 body {
@@ -87,8 +109,8 @@ html.dark {
 .dark .text-orange-700, .dark .text-orange-950 { color: #fdba74; }
 .dark .text-rose-700, .dark .text-rose-900 { color: #fda4af; }
 .dark .text-violet-900, .dark .text-violet-950 { color: #c4b5fd; }
-.dark .bg-lime\/30 { background-color: rgba(198, 244, 50, 0.16); }
-.dark .bg-lime\/40, .dark .bg-lime\/25 { background-color: rgba(198, 244, 50, 0.2); }
+.dark .bg-lime\/30 { background-color: color-mix(in srgb, var(--color-lime) 16%, transparent); }
+.dark .bg-lime\/40, .dark .bg-lime\/25 { background-color: color-mix(in srgb, var(--color-lime) 20%, transparent); }
 .dark .text-violet-700 { color: #c4b5fd; }
 .dark .divide-zinc-100 > :not(:last-child) { border-color: #26324a; }
 .dark .ring-zinc-200 { --tw-ring-color: #34415b; }

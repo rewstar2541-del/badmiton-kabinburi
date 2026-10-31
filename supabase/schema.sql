@@ -264,6 +264,7 @@ create table if not exists public.settings (
   next_shuttle_fee integer default 25 not null,
   monthly_fee integer default 150 not null,
   promptpay_id text default ''::text not null,
+  festival text check (festival is null or festival in ('off', 'halloween', 'christmas', 'newyear', 'songkran')),
   constraint settings_pkey PRIMARY KEY (id)
 );
 

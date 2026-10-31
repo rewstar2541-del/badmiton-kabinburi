@@ -76,6 +76,7 @@ export interface Rows {
         bank_name?: string;
         bank_account?: string;
         bank_holder?: string;
+        festival?: string | null;
       }
     | null;
 }
@@ -171,6 +172,8 @@ export function rowsToState(r: Rows): State {
         bankName: s.bank_name ?? "",
         bankAccount: s.bank_account ?? "",
         bankHolder: s.bank_holder ?? "",
+        // ไม่มีคอลัมน์ = ยังไม่รัน SQL (undefined), ว่าง = อัตโนมัติ
+        ...(s.festival !== undefined ? { festival: (s.festival ?? "auto") as Settings["festival"] } : {}),
       }
     : DEFAULT_SETTINGS;
 
@@ -303,9 +306,9 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
     annualRules: async () => (isAdmin ? all(() => db.from("annual_rules").select("min_amount,end_month,years_ahead").order("min_amount")).catch(() => []) : []),
     annual: async () => (isAdmin ? all(() => db.from("annual_payments").select("id,player_id,paid_on,from_date,until_date,amount").order("paid_on").order("id")) : []),
     settings: async () => {
-      const r = await all(() =>
-        db.from("settings").select("court_count,court_fee,first_shuttle_fee,next_shuttle_fee,monthly_fee,promptpay_id,bank_name,bank_account,bank_holder").eq("id", 1),
-      );
+      const cols = "court_count,court_fee,first_shuttle_fee,next_shuttle_fee,monthly_fee,promptpay_id,bank_name,bank_account,bank_holder";
+      // คอลัมน์ธีมเทศกาลยังไม่มี (ยังไม่รัน SQL) ให้โหลดแบบเดิม
+      const r = await all(() => db.from("settings").select(`${cols},festival`).eq("id", 1)).catch(() => all(() => db.from("settings").select(cols).eq("id", 1)));
       return (r[0] as Rows["settings"]) ?? null;
     },
     announcements: () => all(() => db.from("announcements").select("date,message,title,fee,cap").gte("date", since).order("date")),
@@ -530,6 +533,7 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
           bank_name: s.bankName.trim(),
           bank_account: s.bankAccount.trim(),
           bank_holder: s.bankHolder.trim(),
+          ...(s.festival !== undefined ? { festival: s.festival === "auto" ? null : s.festival } : {}),
         }),
       );
     }
