@@ -464,7 +464,7 @@ export function AdminHome() {
               icon: Icon.Calendar,
               title: t("{when} มีก๊วน", { when: next.when }),
               sub: names(signupQueue(next.next).confirmed) || t("ยังไม่มีใครลงชื่อ"),
-              right: <CountBadge n={next.next.signups?.length ?? 0} tone="bg-sky-50 text-sky-700" />,
+              right: <CountBadge n={signupQueue(next.next).confirmed.length} tone="bg-sky-50 text-sky-700" />,
               onClick: () => open("next"),
             },
           ]}
