@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { billFor } from "@/lib/billing";
 import { locale, t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
 import { annualStatus, monthOf, type Player } from "@/lib/types";
@@ -52,8 +53,8 @@ function statusOf(p: Player, month: string, today: string, paid: Record<string, 
 
 /** คิดเงิน > สมาชิก: รายเดือนและรายปีรวมในหน้าเดียว รายชื่อเดียว ปุ่มรับเงินเดียว */
 export function MembersView() {
-  const { state } = useStore();
-  const { date } = useToday();
+  const { state, dispatch } = useStore();
+  const { date, day } = useToday();
   const [month, setMonth] = useState(monthOf(date));
   const [q, setQ] = useState("");
   const [picked, setPicked] = useState<Player | null>(null);
@@ -130,16 +131,36 @@ export function MembersView() {
       {picked && !pay && (
         <Sheet onClose={() => setPicked(null)} title={<h3 className="font-display text-lg font-semibold">{t("รับเงินจาก {name}", { name: picked.name })}</h3>}>
           <div className="grid gap-2">
+            {/* ค่าเล่นรายวันที่ค้าง (คนส่วนใหญ่โอนค่านี้ ไม่ใช่ค่ารายเดือน) แยกให้ชัด */}
+            {(() => {
+              const owed = billFor(state.days, day, picked, state.settings, state.monthly, state.players).total;
+              return (
+                <button
+                  className="rounded-3xl bg-sky-50 p-4 text-left active:scale-[0.98] disabled:opacity-60"
+                  disabled={owed <= 0}
+                  onClick={() => {
+                    if (!confirm(t("ได้รับค่าเล่นที่ค้างของ {name} {amount}?", { name: picked.name, amount: baht(owed) }))) return;
+                    dispatch({ type: "markPaid", date, playerId: picked.id });
+                    setPicked(null);
+                  }}
+                >
+                  <span className="block font-display font-semibold">{t("ค่าเล่นรายวัน (ค่าสนาม ค่าลูก ค่าน้ำ)")}</span>
+                  <span className="block text-sm text-zinc-500">{owed > 0 ? t("ค้าง {amount}", { amount: baht(owed) }) : t("ไม่มียอดค้าง")}</span>
+                </button>
+              );
+            })()}
             <button
-              className="rounded-3xl bg-zinc-100 p-4 text-left active:scale-[0.98]"
+              className="rounded-3xl bg-zinc-100 p-4 text-left active:scale-[0.98] disabled:opacity-60"
+              disabled={!state.settings.monthlyFee && !paid[picked.id]}
               onClick={() => {
                 setPay({ kind: "month", player: picked });
               }}
             >
               <span className="block font-display font-semibold">{t("ค่าสมาชิกรายเดือน")}</span>
               <span className="block text-sm text-zinc-500">
-                {monthLabel(month)} · {baht(state.settings.monthlyFee)}
-                {paid[picked.id] ? ` · ${t("จ่ายแล้ว")}` : ""}
+                {state.settings.monthlyFee || paid[picked.id]
+                  ? `${monthLabel(month)} · ${baht(state.settings.monthlyFee)}${paid[picked.id] ? ` · ${t("จ่ายแล้ว")}` : ""}`
+                  : t("ยังไม่ได้ตั้งค่ารายเดือน (ตั้งที่ ตั้งค่า)")}
               </span>
             </button>
             <button
@@ -192,7 +213,7 @@ function MonthlyPaySheet({ player, month, onClose }: { player: Player; month: st
         </div>
       }
     >
-      <SlipReview playerId={player.id} month={month} />
+      <SlipReview playerId={player.id} month={month} unsettled />
       {at ? (
         <div className="space-y-3">
           <p className="rounded-2xl bg-lime/30 px-4 py-3 text-sm font-semibold">
