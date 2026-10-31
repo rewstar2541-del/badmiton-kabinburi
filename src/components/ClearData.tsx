@@ -51,7 +51,11 @@ export function ClearData() {
               setBusy(true);
               const err = await clearTourneyHistory();
               setBusy(false);
-              if (err) setError(t("ลบประวัติงานแข่งไม่สำเร็จ: {err}", { err }));
+              if (err) {
+                // ประเภทอื่นล้างไปแล้ว เหลือติ๊กไว้แค่งานแข่งให้กดลองใหม่
+                setKinds(["tourneys"]);
+                return setError(t("ลบประวัติงานแข่งไม่สำเร็จ: {err}", { err }));
+              }
             }
             setDone(t("ล้างข้อมูลที่เลือกแล้ว"));
             setOpen(false);
@@ -84,7 +88,7 @@ export function ClearData() {
                         {!k.dated && ` · ${t("ไม่ขึ้นกับวันที่")}`}
                       </span>
                     </span>
-                    <span className="shrink-0 text-xs font-semibold text-zinc-500 tabular-nums">{n === null ? "" : t("{n} รายการ", { n })}</span>
+                    <span className="shrink-0 text-xs font-semibold text-zinc-500 tabular-nums">{n === null ? (k.value === "tourneys" ? "…" : "") : t("{n} รายการ", { n })}</span>
                   </label>
                 </li>
               );
