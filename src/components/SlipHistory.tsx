@@ -69,11 +69,15 @@ export function SlipHistory() {
     return out;
   };
   // ไม่มียอดค้างแล้ว (เช่นจ่ายสดไปก่อนส่งสลิป) ไม่นับเป็นรอตรวจ
-  const waiting = all.filter((s) => !s.paid && (owedOf(s).length || !s.player)).length;
+  // คิดยอดค้างครั้งเดียวต่อสลิป (billFor วนทุกวัน เดือนที่สลิปเยอะจะหน่วงบนมือถือ)
+  const owedById = new Map(all.map((s) => [s.id, owedOf(s)]));
+  const waiting = all.filter((s) => !s.paid && (owedById.get(s.id)!.length || !s.player)).length;
   const receive = (s: (typeof all)[number], owed: Owed) => {
     if (owed.kind === "day") dispatch({ type: "markPaid", date: s.day.date, playerId: owed.payer.id });
     else dispatch({ type: "setMonthlyPaid", month: owed.month, playerId: owed.payer.id, paid: true });
     setConfirming(null);
+    // วันนั้นไม่มีสลิปรอตรวจแล้ว อย่าพับเองทันที ให้เห็นว่ากดสำเร็จ
+    setOpenDays((m) => ({ ...m, [s.day.date]: true }));
   };
 
   const show = async (id: string) => {
@@ -104,7 +108,7 @@ export function SlipHistory() {
     new Date(`${date}T00:00:00`).toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "short" });
 
   const row = (s: (typeof all)[number]) => {
-    const owed = owedOf(s);
+    const owed = owedById.get(s.id) ?? [];
     const payer = owed[0]?.payer;
     return (
     <li key={s.id} className="space-y-2 rounded-3xl bg-white px-4 py-3 shadow-[0_8px_24px_-14px_rgba(11,18,32,0.25)]">
@@ -164,7 +168,7 @@ export function SlipHistory() {
   };
 
   // แยกเป็นวันๆ (ใหม่สุดก่อน) วันที่ยังมีสลิปรอตรวจ และวันล่าสุดเปิดไว้ วันอื่นพับไว้ กดหัววันเพื่อเปิด/ปิด
-  const pending = (x: (typeof all)[number]) => !x.paid && (owedOf(x).length > 0 || !x.player);
+  const pending = (x: (typeof all)[number]) => !x.paid && ((owedById.get(x.id)?.length ?? 0) > 0 || !x.player);
   const days: [string, typeof all][] = [];
   for (const x of shown) {
     const last = days[days.length - 1];
@@ -204,20 +208,25 @@ export function SlipHistory() {
           return (
             <li key={date} className="space-y-2">
               <button
-                className="flex min-h-11 w-full items-center gap-2 rounded-2xl bg-zinc-100 px-4 py-2 text-left"
+                className="flex min-h-11 w-full items-center gap-2 rounded-2xl bg-white px-4 py-2 text-left shadow-sm"
                 aria-expanded={isOpen}
+                disabled={needle !== ""}
                 onClick={() => setOpenDays((m) => ({ ...m, [date]: !isOpen }))}
               >
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold">{dayLabel(date)}</span>
                   <span className="block text-sm text-zinc-600">
-                    {t("สลิป {n} รูป", { n: slips.length })} · {baht(slips.reduce((sum, x) => sum + x.amount, 0))}
+                    {t("สลิป {n} รูป", { n: slips.length })}
                   </span>
                 </span>
                 {left > 0 && (
                   <span className="shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">{t("รอตรวจ {n}", { n: left })}</span>
                 )}
-                <span className="shrink-0 text-zinc-500" aria-hidden>{isOpen ? "▾" : "▸"}</span>
+                {!needle && (
+                  <span className="shrink-0 text-zinc-400" aria-hidden>
+                    {isOpen ? "▲" : "▼"}
+                  </span>
+                )}
               </button>
               {isOpen && <ul className="space-y-2">{slips.map(row)}</ul>}
             </li>
