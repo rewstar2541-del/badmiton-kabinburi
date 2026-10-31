@@ -292,7 +292,7 @@ export function PlayerHome() {
               : announced
                 ? { big: t("ยังไม่ได้ลงชื่อ"), sub: t("ลงชื่อได้ด้านล่าง") }
                 : closed !== undefined
-                  ? { big: t("วันนี้งดเล่น"), sub: closed || t("ดูรายละเอียดด้านล่าง") }
+                  ? { big: t("วันนี้งดเล่น"), sub: closed || t("รอแอดมินประกาศ") }
                   : { big: t("วันนี้ไม่มีก๊วน"), sub: t("รอแอดมินประกาศ") };
   const chips = [...(ci ? [t("เช็คอินแล้ว ✓")] : []), ...(played ? [t("เล่นแล้ว {n} เกม", { n: played })] : [])];
   const here = !!ci && !ci.paidAt;

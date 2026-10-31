@@ -10,6 +10,7 @@ import { Auto } from "@/lib/autoTranslate";
 import { BirthdayBanner } from "./Birthday";
 import { FestivalBanner } from "./FestivalDecor";
 import { NoticeBanners, activeNotices } from "./Notices";
+import { dayLabel } from "./Tourney";
 import { Icon, Sheet } from "./ui";
 
 type Item = { key: string; emoji: string; title: string; sub?: string; tone: string; onClick: () => void; auto?: boolean };
@@ -21,6 +22,8 @@ export function NewsCarousel() {
   const [all, setAll] = useState(false);
   const [idx, setIdx] = useState(0);
   const box = useRef<HTMLDivElement>(null);
+  // ผู้ใช้เพิ่งแตะ/ปัด: หยุดเลื่อนเองสักพัก
+  const touched = useRef(0);
   const date = today();
   const fest = festivalInfo(activeFestival(state.settings.festival, date));
   const bdays = birthdays(state.players, date);
@@ -28,10 +31,10 @@ export function NewsCarousel() {
   const open = () => setAll(true);
   const items: Item[] = [
     ...(tr && !mode && !tr.divisions.every((d) => d.drawn)
-      ? [{ key: "tourney", emoji: "🏆", title: t("เปิดรับสมัครแข่ง {n}", { n: tr.name }), sub: t("แตะเพื่อสมัคร"), tone: "bg-amber-50 ring-amber-200 text-amber-950", onClick: () => setPeek(true) }]
+      ? [{ key: "tourney", emoji: "🏆", title: t("เปิดรับสมัครแข่ง {n}", { n: tr.name }), sub: t("ปิดรับ {d} · แตะเพื่อสมัคร", { d: dayLabel(tr.closeDate) }), tone: "bg-amber-50 ring-amber-200 text-amber-950", onClick: () => setPeek(true) }]
       : []),
     ...notices.map((n) => ({ key: n.id, emoji: "📢", title: n.title, sub: n.body, tone: "bg-sky-50 ring-sky-200 text-sky-950", onClick: open, auto: true })),
-    ...(bdays.length ? [{ key: "bday", emoji: "🎂", title: t("สุขสันต์วันเกิด {name}", { name: bdays.map((p) => p.name).join(", ") }), sub: t("ตีสนุก แข็งแรง ชนะทุกเกม"), tone: "bg-pink-50 ring-pink-200 text-ink", onClick: open }] : []),
+    ...(bdays.length ? [{ key: "bday", emoji: "🎂", title: t("สุขสันต์วันเกิด {name}", { name: bdays.map((p) => p.name).join(", ") }), sub: t("ตีสนุก แข็งแรง ชนะทุกเกม"), tone: "bg-violet-50 ring-zinc-200 text-ink", onClick: open }] : []),
     ...(fest ? [{ key: "fest", emoji: fest.emoji, title: t(fest.greeting), sub: t(fest.wish), tone: "bg-white ring-zinc-200 text-ink", onClick: open }] : []),
   ];
   const n = items.length;
@@ -42,7 +45,7 @@ export function NewsCarousel() {
     if (n < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const id = setInterval(() => {
       const el = box.current;
-      if (!el) return;
+      if (!el || Date.now() - touched.current < 10000) return;
       const next = (Math.round(el.scrollLeft / el.clientWidth) + 1) % n;
       el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
     }, 5000);
@@ -55,6 +58,8 @@ export function NewsCarousel() {
       <div
         ref={box}
         className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        onPointerDown={() => (touched.current = Date.now())}
+        onTouchStart={() => (touched.current = Date.now())}
         onScroll={(e) => setIdx(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
       >
         {items.map((it) => (
