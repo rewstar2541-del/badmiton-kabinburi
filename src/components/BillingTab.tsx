@@ -7,6 +7,7 @@ import { useStore, useToday } from "@/lib/store";
 import { type Drink, type Player } from "@/lib/types";
 import { MembersView } from "./Members";
 import { PayQr } from "./PayQr";
+import { SlipHistory } from "./SlipHistory";
 import { SlipReview } from "./Slips";
 import { Avatar, Button, Card, Icon, SectionTitle, Sheet, baht, inputClass } from "./ui";
 import { Auto } from "@/lib/autoTranslate";
@@ -316,27 +317,28 @@ function DailyView() {
 }
 
 export function BillingTab() {
-  const [view, setView] = useState<"daily" | "members">("daily");
+  const [view, setView] = useState<"daily" | "members" | "slips">("daily");
   return (
     <div className="space-y-4">
       <SectionTitle>{t("คิดเงิน")}</SectionTitle>
-      <div className="grid grid-cols-2 gap-1 rounded-2xl bg-white p-1 shadow-sm">
+      <div className="grid grid-cols-3 gap-1 rounded-2xl bg-white p-1 shadow-sm">
         {(
           [
             ["daily", "วันนี้"],
             ["members", "สมาชิก"],
+            ["slips", "ประวัติโอน"],
           ] as const
         ).map(([id, label]) => (
           <button
             key={id}
             onClick={() => setView(id)}
-            className={`rounded-xl py-2 text-sm font-semibold transition ${view === id ? "bg-ink text-white" : "text-zinc-500"}`}
+            className={`min-h-11 rounded-xl text-sm font-semibold transition ${view === id ? "bg-ink text-white" : "text-zinc-500"}`}
           >
             {t(label)}
           </button>
         ))}
       </div>
-      {view === "daily" ? <DailyView /> : <MembersView />}
+      {view === "daily" ? <DailyView /> : view === "members" ? <MembersView /> : <SlipHistory />}
     </div>
   );
 }
