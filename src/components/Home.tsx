@@ -1,5 +1,7 @@
 "use client";
 
+import { Auto } from "@/lib/autoTranslate";
+
 import { NewsCarousel } from "./NewsCarousel";
 import { activeFestival, festivalInfo } from "@/lib/festival";
 
@@ -387,7 +389,8 @@ export function AdminHome() {
   const closed = state.closed[date] !== undefined;
   const fest = festivalInfo(activeFestival(state.settings.festival, date));
   const [boardSeen, markBoard] = useSeen("board", () => String(Date.now()));
-  const newPosts = (state.board ?? []).filter((b) => b.at > Number(boardSeen)).length;
+  const [me] = useMe();
+  const newPosts = (state.board ?? []).filter((b) => b.at > Number(boardSeen) && b.playerId !== me).length;
 
   const todo: Row[] = [
     ...(stale.length
@@ -431,9 +434,13 @@ export function AdminHome() {
         {announced ? (
           <>
             <button className="block w-full rounded-2xl bg-white/10 px-3 py-2 text-left text-sm" onClick={() => open("announce")}>
-              <span className="font-semibold text-lime">📣 {day.announcementTitle || t("วันนี้มีจัดก๊วน")}</span>
-              {!!q.cap && ` · ${t("รับ {cap} คน · ลงชื่อแล้ว {n}", { cap: q.cap, n: q.confirmed.length })}`}
-              {day.announcement && <span className="mt-0.5 line-clamp-2 block whitespace-pre-line text-white/80">{day.announcement}</span>}
+              <span className="font-semibold text-lime">📣 {day.announcementTitle ? <Auto text={day.announcementTitle} /> : t("วันนี้มีจัดก๊วน")}</span>
+              {!!q.cap && ` · ${t("รับ {cap} คน", { cap: q.cap })}`}
+              {day.announcement && (
+                <span className="mt-0.5 line-clamp-2 block whitespace-pre-line text-white/80">
+                  <Auto text={day.announcement} />
+                </span>
+              )}
             </button>
             <Button variant="accent" className="flex w-full items-center justify-center gap-2" onClick={() => goToTab("checkin")}>
               <Icon.CheckIn width={18} height={18} /> {t("ไปหน้าเช็คอิน")}
