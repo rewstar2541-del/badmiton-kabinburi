@@ -77,7 +77,7 @@ export function CourtSplit({ onClose }: { onClose: () => void }) {
     onClose();
   };
   const hourSelect = (value: number, options: number[], onChange: (h: number) => void, label: string) => (
-    <select aria-label={label} className="min-h-10 rounded-xl bg-zinc-100 px-2 text-sm" value={value} onChange={(e) => onChange(Number(e.target.value))}>
+    <select aria-label={label} className="min-h-10 rounded-xl bg-zinc-100 px-2 text-base" value={value} onChange={(e) => onChange(Number(e.target.value))}>
       {options.map((h) => (
         <option key={h} value={h}>
           {hh(h)}

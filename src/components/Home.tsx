@@ -1,5 +1,8 @@
 "use client";
 
+import { NewsCarousel } from "./NewsCarousel";
+import { activeFestival, festivalInfo } from "@/lib/festival";
+
 import { useState, type ComponentType, type ReactNode, type SVGProps } from "react";
 import { presence, waitingQueue } from "@/lib/matchmaking";
 import { signupQueue } from "@/lib/social";
@@ -242,6 +245,7 @@ export function PlayerHome() {
   const pos = queue.findIndex((e) => e.player.id === player.id) + 1;
   const court = day.games.find((g) => !g.endedAt && g.playerIds.includes(player.id))?.court;
   const closed = state.closed[date];
+  const fest = festivalInfo(activeFestival(state.settings.festival, date));
 
   const hero: { big: string; sub: string } =
     status === "playing"
@@ -264,8 +268,29 @@ export function PlayerHome() {
 
   return (
     <div className="space-y-5">
-      <Hero compact label={t("วันนี้ของฉัน · {date}", { date: shortDate() })} big={hero.big} sub={hero.sub} chips={chips} icon={Icon.Shuttle} />
-      <TodayTab home />
+      <TodayTab
+        home
+        top={
+          <>
+            <div className="text-sm text-white/70">
+              {fest && <span aria-hidden>{fest.emoji} </span>}
+              {t("วันนี้ของฉัน · {date}", { date: shortDate() })}
+            </div>
+            <div className="font-display text-3xl leading-tight font-semibold">{hero.big}</div>
+            <div className="text-[15px] text-white/80">{hero.sub}</div>
+            {chips.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {chips.map((c) => (
+                  <span key={c} className="rounded-full bg-white/10 px-2.5 py-1 text-sm font-semibold text-lime">
+                    {c}
+                  </span>
+                ))}
+              </div>
+            )}
+          </>
+        }
+        news={<NewsCarousel />}
+      />
       <Shortcuts
         items={[
           { icon: Icon.Pause, label: t("ขอพัก"), onClick: () => open("rest"), disabled: here ? undefined : t("เช็คอินที่สนามก่อน ถึงจะขอพักได้") },
