@@ -20,7 +20,8 @@ export function CheckInTab() {
 
   const waiting = state.players.filter((p) => p.pending).length;
   const checked = new Set(day.checkIns.map((c) => c.playerId));
-  const signed = new Set(day.signups?.map((s) => s.playerId));
+  // ชื่อลงค้างในวันที่ไม่มีประกาศ ไม่นับว่าลงชื่อ (มีการ์ดเตือนให้ล้างด้านบน)
+  const signed = new Set(day.announcement === undefined ? [] : day.signups?.map((s) => s.playerId));
   // ยังไม่เช็คอินขึ้นก่อน ในนั้นคนที่ลงชื่อไว้ขึ้นก่อน
   const rank = (id: string) => (checked.has(id) ? 2 : signed.has(id) ? 0 : 1);
   // แขกที่ไม่ได้มาวันนี้ และคนที่ยังรออนุมัติ ไม่ต้องแสดง
@@ -161,6 +162,26 @@ export function SignupList({ bare }: { bare?: boolean }) {
   const list = [...q.confirmed, ...q.waiting].map((playerId) => ({ playerId }));
   if (!list.length && !bare) return null;
   const arrived = list.filter((s) => checked.has(s.playerId)).length;
+  // ลงชื่อค้างจากประกาศที่ถูกยกเลิก (แอพเวอร์ชันเก่าไม่ได้ล้างให้) ไม่ใช่วันจัดก๊วน ให้แอดมินล้างทิ้ง
+  if (list.length && day.announcement === undefined) {
+    const stale = (
+      <>
+        <h3 className="font-display font-semibold text-amber-900">{t("มีชื่อลงไว้ {n} คน แต่วันนี้ไม่ได้จัดก๊วน", { n: list.length })}</h3>
+        <p className="text-sm text-amber-900">
+          {list.map((s) => byId.get(s.playerId)?.name ?? "?").join(", ")} · {t("เป็นชื่อค้างจากประกาศที่ยกเลิกไปแล้ว")}
+        </p>
+        <Button
+          className="w-full !text-red-600"
+          onClick={() => {
+            if (confirm(t("ล้างรายชื่อที่ค้างของวันนี้?"))) dispatch({ type: "clearData", kinds: ["signups"], from: date, to: date });
+          }}
+        >
+          {t("ล้างรายชื่อที่ค้าง")}
+        </Button>
+      </>
+    );
+    return bare ? <div className="space-y-3">{stale}</div> : <Card className="space-y-3 !bg-amber-50">{stale}</Card>;
+  }
   const body = (
     <>
       <div className="flex items-baseline justify-between gap-2">

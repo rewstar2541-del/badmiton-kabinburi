@@ -1064,6 +1064,19 @@ begin
 end $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.clear_signups_on_cancel()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  delete from pair_requests where date = old.date;
+  delete from signups where date = old.date;
+  return old;
+end $function$
+;
+
 CREATE OR REPLACE FUNCTION public.sign_up_day(p_player text, p_pin text, p_date date, p_on boolean)
  RETURNS text
  LANGUAGE plpgsql
@@ -1340,6 +1353,7 @@ alter table public.translations enable row level security;
 -- Triggers (pg_get_triggerdef, verbatim)
 -- ============================================================
 CREATE TRIGGER admins_guard_delete BEFORE DELETE ON public.admins FOR EACH ROW EXECUTE FUNCTION admins_guard_delete();
+CREATE TRIGGER announce_cancel_clear AFTER DELETE ON public.announcements FOR EACH ROW EXECUTE FUNCTION clear_signups_on_cancel();
 CREATE TRIGGER line_announce AFTER INSERT ON public.announcements FOR EACH ROW EXECUTE FUNCTION line_on_announce();
 CREATE TRIGGER checkins_cap_guard BEFORE INSERT ON public.checkins FOR EACH ROW EXECUTE FUNCTION signup_cap_guard();
 CREATE TRIGGER line_game AFTER INSERT ON public.games FOR EACH ROW EXECUTE FUNCTION line_on_game();
