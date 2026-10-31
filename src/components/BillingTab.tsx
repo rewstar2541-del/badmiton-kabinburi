@@ -232,7 +232,11 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
             <Button variant="accent" className="w-full" onClick={() => dispatch({ type: "markPaid", date, playerId: player.id })}>
               {t("บันทึกว่าจ่ายแล้ว {amount}", { amount: baht(bill.total) })}
             </Button>
-            <p className="text-center text-xs text-zinc-500">{t("ใช้เมื่อผู้เล่นจ่ายเงินสดกับแอดมิน")}</p>
+            <p className="text-center text-xs text-zinc-500">
+              {day.slips?.some((x) => x.playerId === player.id)
+                ? t("ดูสลิปแล้วยอดตรง กดปุ่มนี้เพื่อยืนยันรับเงิน")
+                : t("ใช้เมื่อผู้เล่นจ่ายเงินสดกับแอดมิน")}
+            </p>
           </div>
         )
       )}

@@ -1,15 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { billFor } from "@/lib/billing";
 import { locale, t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
 import { monthOf } from "@/lib/types";
 import { monthLabel, shiftMonth } from "./Members";
-import { Avatar, Card, SearchInput, baht } from "./ui";
+import { Avatar, Button, Card, SearchInput, baht } from "./ui";
 
 /** คิดเงิน > ประวัติโอน: สลิปทุกใบที่ผู้เล่นส่งมาในเดือนที่เลือก ใหม่สุดก่อน (แอดมิน) */
 export function SlipHistory() {
-  const { state, slipImage } = useStore();
+  const { state, slipImage, dispatch } = useStore();
   const { date } = useToday();
   const [month, setMonth] = useState(monthOf(date));
   const [q, setQ] = useState("");
@@ -17,6 +18,8 @@ export function SlipHistory() {
   const [open, setOpen] = useState<{ id: string; img: string | null } | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<{ id: string; text: string } | null>(null);
+  // สลิปที่กดยืนยันรับเงินไว้ รอกดยืนยันซ้ำ (กันกดพลาด)
+  const [confirming, setConfirming] = useState<string | null>(null);
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const isCurrent = month >= monthOf(date);
 
@@ -29,6 +32,7 @@ export function SlipHistory() {
     .flatMap((d) =>
       (d.slips ?? []).map((s) => ({
         ...s,
+        day: d,
         player: byId.get(s.playerId),
         paid: Boolean(
           d.checkIns.find((c) => c.playerId === s.playerId)?.paidAt ||
@@ -41,7 +45,23 @@ export function SlipHistory() {
     .sort((a, b) => b.at - a.at);
   const needle = q.trim().toLowerCase();
   const shown = needle ? all.filter((s) => (s.player?.name ?? "").toLowerCase().includes(needle)) : all;
-  const waiting = all.filter((s) => !s.paid).length;
+
+  // ยังไม่ปิดยอด: ดูว่าค้างอะไร ค้างรายวัน (รวมวันก่อนๆ) ปิดยอดถึงวันที่ส่งสลิป ไม่งั้นค้างค่ารายเดือน
+  const owedOf = (s: (typeof all)[number]) => {
+    const p = s.player;
+    if (s.paid || !p || p.guestOf) return null;
+    const total = billFor(state.days, s.day, p, state.settings, state.monthly, state.players).total;
+    if (total > 0) return { kind: "day" as const, amount: total };
+    if (p.plan === "monthly" && !state.monthly[month]?.[p.id]) return { kind: "month" as const, amount: state.settings.monthlyFee };
+    return null;
+  };
+  // ไม่มียอดค้างแล้ว (เช่นจ่ายสดไปก่อนส่งสลิป) ไม่นับเป็นรอตรวจ
+  const waiting = all.filter((s) => !s.paid && (owedOf(s) || s.player?.guestOf)).length;
+  const receive = (s: (typeof all)[number], owed: NonNullable<ReturnType<typeof owedOf>>) => {
+    if (owed.kind === "day") dispatch({ type: "markPaid", date: s.day.date, playerId: s.playerId });
+    else dispatch({ type: "setMonthlyPaid", month, playerId: s.playerId, paid: true });
+    setConfirming(null);
+  };
 
   const show = async (id: string) => {
     setError(null);
@@ -91,11 +111,13 @@ export function SlipHistory() {
         </button>
       </div>
 
-      <p className="text-sm text-zinc-500">{t("หน้านี้ไว้ดูย้อนหลัง กดรับเงินหรือลบสลิปที่หน้าวันนี้หรือสมาชิก")}</p>
+      <p className="text-sm text-zinc-500">{t("ดูสลิปแล้วยอดตรง กดยืนยันรับเงินที่สลิปนั้นได้เลย")}</p>
       {all.length > 0 && <SearchInput value={q} onChange={setQ} />}
 
       <ul className="space-y-2">
-        {shown.map((s) => (
+        {shown.map((s) => {
+          const owed = owedOf(s);
+          return (
           <li key={s.id} className="space-y-2 rounded-3xl bg-white px-4 py-3 shadow-[0_8px_24px_-14px_rgba(11,18,32,0.25)]">
             <div className="flex items-center gap-3">
               <Avatar name={s.player?.name ?? "?"} photo={s.player?.photo} size={40} />
@@ -106,13 +128,40 @@ export function SlipHistory() {
               </span>
               {s.paid ? (
                 <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{t("จ่ายแล้ว")}</span>
+              ) : !owed && !s.player?.guestOf ? (
+                <span className="shrink-0 rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-600">{t("ไม่มียอดค้าง")}</span>
               ) : (
                 <span className="shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">{t("รอตรวจ")}</span>
               )}
             </div>
-            <button className="min-h-11 w-full rounded-2xl bg-sky-50 text-sm font-semibold text-sky-700" disabled={loading === s.id} onClick={() => show(s.id)}>
-              {loading === s.id ? t("กำลังโหลด...") : open?.id === s.id ? t("ซ่อนสลิป") : t("ดูสลิป")}
-            </button>
+            <div className="flex gap-2">
+              <button className="min-h-11 flex-1 rounded-2xl bg-sky-50 text-sm font-semibold text-sky-700" disabled={loading === s.id} onClick={() => show(s.id)}>
+                {loading === s.id ? t("กำลังโหลด...") : open?.id === s.id ? t("ซ่อนสลิป") : t("ดูสลิป")}
+              </button>
+              {owed && confirming !== s.id && (
+                <button className="min-h-11 flex-1 rounded-2xl bg-lime px-2 text-sm font-semibold text-ink" onClick={() => setConfirming(s.id)}>
+                  {t("ยืนยันรับเงิน")}
+                </button>
+              )}
+            </div>
+            {owed && confirming === s.id && (
+              <div className="space-y-2 rounded-2xl bg-lime/20 p-3">
+                <p className="text-sm">
+                  {owed.kind === "day"
+                    ? t("ยอดค้างของ {name} {amount} (สลิป {slip})", { name: s.player!.name, amount: baht(owed.amount), slip: baht(s.amount) })
+                    : t("ค่ารายเดือน {month} ของ {name} {amount}", { month: monthLabel(month), name: s.player!.name, amount: baht(owed.amount) })}
+                </p>
+                {owed.kind === "day" && owed.amount !== s.amount && (
+                  <p className="text-sm font-semibold text-amber-800">{t("ยอดไม่ตรงกับสลิป ดูสลิปให้แน่ใจก่อน")}</p>
+                )}
+                <div className="flex gap-2">
+                  <Button variant="accent" className="flex-1" onClick={() => receive(s, owed)}>
+                    {t("ได้รับเงินแล้ว {amount}", { amount: baht(owed.amount) })}
+                  </Button>
+                  <Button onClick={() => setConfirming(null)}>{t("ยกเลิก")}</Button>
+                </div>
+              </div>
+            )}
             {error?.id === s.id && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error.text}</p>}
             {open?.id === s.id &&
               (open.img ? (
@@ -122,7 +171,8 @@ export function SlipHistory() {
                 <p className="text-sm text-zinc-500">{t("ไม่พบรูป")}</p>
               ))}
           </li>
-        ))}
+          );
+        })}
       </ul>
       {shown.length === 0 && (
         <Card className="py-10 text-center text-sm text-zinc-500">{all.length ? t("ไม่พบชื่อที่ค้นหา") : t("เดือนนี้ยังไม่มีใครส่งสลิป")}</Card>

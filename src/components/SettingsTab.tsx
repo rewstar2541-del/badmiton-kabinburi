@@ -5,8 +5,7 @@ import { OpenOutside } from "./OpenOutside";
 import { BoardCard } from "./Board";
 import { ClearData } from "./ClearData";
 import { PollAdmin } from "./Polls";
-import { useEffect, useState, type ReactNode } from "react";
-import { clearTourneyHistory, pastTourneyCount } from "@/lib/tourneyStore";
+import { useState, type ReactNode } from "react";
 import { isValidPromptPayId } from "@/lib/promptpay";
 import { useStore } from "@/lib/store";
 import type { Settings } from "@/lib/types";
@@ -191,7 +190,6 @@ export function SettingsTab() {
             {inLine && <OpenOutside menu={t("ตั้งค่า")} />}
           </Card>
         <ClearData />
-        <ClearTourneys />
         <ClearHistory />
       </Section>
     </div>
@@ -255,53 +253,6 @@ function Section({
 }
 
 const CONFIRM_WORD = "ล้างข้อมูล";
-
-/** ลบประวัติงานแข่งที่จบแล้ว (งานที่กำลังเปิดอยู่ไม่ลบ) */
-function ClearTourneys() {
-  const [n, setN] = useState<number | null>(null);
-  const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
-  useEffect(() => {
-    void pastTourneyCount().then(setN);
-  }, []);
-  return (
-    <Card className="space-y-3 border border-red-200">
-      <h2 className="font-display font-semibold text-red-600">{t("ลบประวัติงานแข่ง")}</h2>
-      <p className="text-sm text-zinc-500">{t("ลบงานแข่งที่จบแล้ว ทีม ผลแข่ง และสลิป งานที่เปิดอยู่ไม่ลบ")}</p>
-      <p className="text-sm font-semibold">{t("งานที่จบแล้ว {n} งาน", { n: n ?? "…" })}</p>
-      {msg ? (
-        <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{msg}</p>
-      ) : !open ? (
-        <Button className="w-full !text-red-600" disabled={!n} onClick={() => setOpen(true)}>
-          {t("ลบประวัติงานแข่ง")}
-        </Button>
-      ) : (
-        <div className="space-y-2">
-          <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{t("ลบแล้วกู้ไม่ได้")}</p>
-          <div className="flex gap-2">
-            <Button
-              variant="primary"
-              className="flex-1 !bg-red-600 !text-white"
-              disabled={busy}
-              onClick={async () => {
-                setBusy(true);
-                const err = await clearTourneyHistory();
-                setBusy(false);
-                if (err) return alert(err);
-                setN(0);
-                setMsg(t("ลบประวัติงานแข่งแล้ว"));
-              }}
-            >
-              {t("ยืนยันลบ")}
-            </Button>
-            <Button onClick={() => setOpen(false)}>{t("ยกเลิก")}</Button>
-          </div>
-        </div>
-      )}
-    </Card>
-  );
-}
 
 /** ล้างประวัติทั้งหมด ใช้ตอนทดลองใช้เสร็จ ก่อนเริ่มใช้จริง */
 function ClearHistory() {
