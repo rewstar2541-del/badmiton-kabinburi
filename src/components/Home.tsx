@@ -390,6 +390,7 @@ export function AdminHome() {
   const announced = day.announcement !== undefined;
   const closed = state.closed[date] !== undefined;
   const next = nextSessionOf(state.days, state.closed, date);
+  const nextIds = next ? signupQueue(next.next).confirmed : [];
   const fest = festivalInfo(activeFestival(state.settings.festival, date, birthdays(state.players, date).length > 0));
   const [boardSeen, markBoard] = useSeen("board", () => String(Date.now()));
   const [me] = useMe();
@@ -456,20 +457,20 @@ export function AdminHome() {
             <Icon.Megaphone width={18} height={18} /> {t("ประกาศจัดก๊วนวันนี้")}
           </Button>
         )}
+        {next && (
+          <button className="flex w-full items-center gap-2 border-t border-white/10 pt-3 text-left text-sm" onClick={() => open("next")}>
+            <Icon.Calendar width={18} height={18} className="shrink-0 text-lime" />
+            <span className="min-w-0 flex-1 truncate">
+              <span className="font-semibold">{t("{when} มีก๊วน", { when: next.when })}</span>
+              <span className="text-white/70">
+                {" · "}
+                {nextIds.length ? `${t("ลงชื่อ {n} คน", { n: nextIds.length })} · ${names(nextIds)}` : t("ยังไม่มีใครลงชื่อ")}
+              </span>
+            </span>
+            <Icon.ChevronRight width={18} height={18} className="shrink-0 text-white/50" />
+          </button>
+        )}
       </HomeCard>
-      {next && (
-        <Rows
-          items={[
-            {
-              icon: Icon.Calendar,
-              title: t("{when} มีก๊วน", { when: next.when }),
-              sub: names(signupQueue(next.next).confirmed) || t("ยังไม่มีใครลงชื่อ"),
-              right: <CountBadge n={signupQueue(next.next).confirmed.length} tone="bg-sky-50 text-sky-700" />,
-              onClick: () => open("next"),
-            },
-          ]}
-        />
-      )}
       <NewsCarousel />
       <Shortcuts
         items={[
