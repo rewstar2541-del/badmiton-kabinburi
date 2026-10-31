@@ -1,10 +1,11 @@
 import type { State } from "./state";
 
 /** ประเภทข้อมูลที่ล้างแยกได้ (ไม่แตะรายชื่อผู้เล่น แอดมิน และตั้งค่า) */
-export type ClearKind = "games" | "bills" | "signups" | "monthly" | "expenses" | "polls" | "board" | "photos" | "closed";
+export type ClearKind = "games" | "tourneys" | "bills" | "signups" | "monthly" | "expenses" | "polls" | "board" | "photos" | "closed";
 
 export const CLEAR_KINDS: { value: ClearKind; label: string; hint: string; dated: boolean }[] = [
-  { value: "games", label: "เกมและผลแพ้ชนะ", hint: "ใช้คิดค่าลูก อันดับ สถิติคู่หู", dated: true },
+  { value: "games", label: "ประวัติเกมและผลแพ้ชนะ", hint: "ใช้คิดค่าลูก อันดับ สถิติคู่หู", dated: true },
+  { value: "tourneys", label: "ประวัติงานแข่ง", hint: "งานแข่งที่จบแล้ว ทีม ผลแข่ง สลิปสมัคร งานที่เปิดอยู่ไม่ลบ", dated: false },
   { value: "bills", label: "เช็คอินและบิลรายวัน", hint: "เช็คอิน ค่าน้ำ การจ่ายเงิน สลิป ราคาที่ล็อกไว้", dated: true },
   { value: "signups", label: "ประกาศและการลงชื่อ", hint: "ประกาศ คนลงชื่อ คำขอจับคู่", dated: true },
   { value: "monthly", label: "ค่าสมาชิกรายเดือน", hint: "ใครจ่ายเดือนไหน (ลบทั้งเดือน)", dated: true },
@@ -42,11 +43,12 @@ export function clearCount(state: State, kind: ClearKind, from: string, to: stri
     case "closed":
       return Object.keys(state.closed).filter((d) => inRange(d, from, to)).length;
     case "photos":
+    case "tourneys":
       return null;
   }
 }
 
-/** ล้างในเครื่อง (state) ตามประเภทและช่วงวันที่ */
+/** ล้างในเครื่อง (state) ตามประเภทและช่วงวันที่ (งานแข่งเก็บแยก ล้างด้วย clearTourneyHistory) */
 export function clearState(state: State, kinds: ClearKind[], from: string, to: string): State {
   const k = new Set(kinds);
   const out = (date: string) => !inRange(date, from, to);
