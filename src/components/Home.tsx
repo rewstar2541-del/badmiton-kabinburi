@@ -458,15 +458,11 @@ export function AdminHome() {
           </Button>
         )}
         {next && (
-          <button className="flex w-full items-center gap-2 border-t border-white/10 pt-3 text-left text-sm" onClick={() => open("next")}>
+          <button className="-mb-2 flex min-h-11 w-full items-center gap-2 border-t border-white/10 py-2.5 text-left text-sm" onClick={() => open("next")}>
             <Icon.Calendar width={18} height={18} className="shrink-0 text-lime" />
-            <span className="min-w-0 flex-1 truncate">
-              <span className="font-semibold">{t("{when} มีก๊วน", { when: next.when })}</span>
-              <span className="text-white/70">
-                {" · "}
-                {nextIds.length ? `${t("ลงชื่อ {n} คน", { n: nextIds.length })} · ${names(nextIds)}` : t("ยังไม่มีใครลงชื่อ")}
-              </span>
-            </span>
+            <span className="shrink-0 font-semibold">{t("{when} มีก๊วน", { when: next.when })}</span>
+            <span className="min-w-0 flex-1 truncate text-white/70">{nextIds.length ? names(nextIds) : t("ยังไม่มีใครลงชื่อ")}</span>
+            {!!nextIds.length && <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold text-lime">{nextIds.length}</span>}
             <Icon.ChevronRight width={18} height={18} className="shrink-0 text-white/50" />
           </button>
         )}
