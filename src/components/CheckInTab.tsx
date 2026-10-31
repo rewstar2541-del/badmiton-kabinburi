@@ -1,5 +1,7 @@
 "use client";
 
+import type { Day } from "@/lib/types";
+
 import { signupQueue } from "@/lib/social";
 import { useState } from "react";
 import { useStore, useToday } from "@/lib/store";
@@ -152,6 +154,39 @@ function PlayerTile({ p, on, signed, visits }: { p: Player; on: boolean; signed:
 }
 
 /** รายชื่อคนที่ลงชื่อว่าจะมาวันนี้ (แอดมินเท่านั้น) แตะชื่อที่ยังไม่มาเพื่อเช็คอินให้ */
+/** รายชื่อคนลงชื่อของวันล่วงหน้า (ดูอย่างเดียว) */
+export function FutureSignups({ day }: { day: Day }) {
+  const { state } = useStore();
+  const byId = new Map(state.players.map((p) => [p.id, p]));
+  const q = signupQueue(day);
+  const list = [...q.confirmed, ...q.waiting];
+  return (
+    <div className="space-y-3">
+      <h3 className="font-display font-semibold">
+        {q.cap ? t("ลงชื่อแล้ว {n}/{cap} คน", { n: q.confirmed.length, cap: q.cap }) : t("ลงชื่อว่าจะมา {n} คน", { n: list.length })}
+        {q.waiting.length > 0 && <span className="ml-1 text-sm font-medium text-amber-700">· {t("สำรอง {n} คน", { n: q.waiting.length })}</span>}
+      </h3>
+      {list.length === 0 ? (
+        <p className="text-sm text-zinc-500">{t("ยังไม่มีใครลงชื่อ")}</p>
+      ) : (
+        <ul className="flex flex-wrap gap-1.5">
+          {list.map((id) => {
+            const p = byId.get(id);
+            const w = q.waiting.indexOf(id);
+            return (
+              <li key={id} className={`flex items-center gap-1.5 rounded-full py-1 pr-3 pl-1 text-sm font-medium ${w >= 0 ? "bg-amber-50 text-amber-900" : "bg-sky-50 text-sky-800"}`}>
+                <Avatar name={p?.name ?? "?"} photo={p?.photo} size={22} />
+                {p?.name ?? "?"}
+                {w >= 0 && <span className="text-[11px] font-semibold">{t("สำรอง {n}", { n: w + 1 })}</span>}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function SignupList({ bare }: { bare?: boolean }) {
   const { state, dispatch } = useStore();
   const { date, day } = useToday();

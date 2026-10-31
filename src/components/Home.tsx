@@ -15,7 +15,7 @@ import { LANGS, locale, setLang, t, useLang } from "@/lib/i18n";
 import { AnnounceCard } from "./AnnounceCard";
 import { BoardCard } from "./Board";
 import { ClubCalendar } from "./Calendar";
-import { SignupList } from "./CheckInTab";
+import { FutureSignups, SignupList } from "./CheckInTab";
 import { ClubCorner } from "./ClubCorner";
 import { EventPhotos } from "./EventPhotos";
 import { BringGuest } from "./Guests";
@@ -25,7 +25,7 @@ import { PairCard } from "./Pairs";
 import { useMe, savedPin } from "./PickMe";
 import { PollAdmin } from "./Polls";
 import { RestButton } from "./RestButton";
-import { HomeCard, TodayTab } from "./TodayTab";
+import { HomeCard, TodayTab, nextSessionOf } from "./TodayTab";
 import { Button, Card, Icon, SectionTitle, Sheet } from "./ui";
 
 type IconC = ComponentType<SVGProps<SVGSVGElement>>;
@@ -370,7 +370,7 @@ export function PlayerHome() {
 export function AdminHome() {
   const { state } = useStore();
   const { day, date } = useToday();
-  const { open, sheet } = useSheets<"signups" | "announce" | "calendar" | "poll" | "board" | "photos" | "rank">();
+  const { open, sheet } = useSheets<"signups" | "next" | "announce" | "calendar" | "poll" | "board" | "photos" | "rank">();
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const names = (ids: string[]) =>
     ids
@@ -389,6 +389,7 @@ export function AdminHome() {
   const waiting = waitingQueue(day, state.players).length;
   const announced = day.announcement !== undefined;
   const closed = state.closed[date] !== undefined;
+  const next = nextSessionOf(state.days, state.closed, date);
   const fest = festivalInfo(activeFestival(state.settings.festival, date, birthdays(state.players, date).length > 0));
   const [boardSeen, markBoard] = useSeen("board", () => String(Date.now()));
   const [me] = useMe();
@@ -456,6 +457,19 @@ export function AdminHome() {
           </Button>
         )}
       </HomeCard>
+      {next && (
+        <Rows
+          items={[
+            {
+              icon: Icon.Calendar,
+              title: t("{when} มีก๊วน", { when: next.when }),
+              sub: names(signupQueue(next.next).confirmed) || t("ยังไม่มีใครลงชื่อ"),
+              right: <CountBadge n={next.next.signups?.length ?? 0} tone="bg-sky-50 text-sky-700" />,
+              onClick: () => open("next"),
+            },
+          ]}
+        />
+      )}
       <NewsCarousel />
       <Shortcuts
         items={[
@@ -486,6 +500,7 @@ export function AdminHome() {
         ]}
       />
       {sheet("signups", t("คนที่ลงชื่อวันนี้"), <SignupList bare />)}
+      {next && sheet("next", t("คนที่ลงชื่อ{when}", { when: next.when }), <FutureSignups day={next.next} />)}
       {sheet(
         "announce",
         t("ประกาศ"),

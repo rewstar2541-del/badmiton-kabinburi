@@ -1257,6 +1257,7 @@ export const en: Record<string, string> = {
   "{when} มีก๊วน": "Session {when}",
   "ลงชื่อล่วงหน้า{when}": "Sign up for {when}",
   "ยกเลิกลงชื่อ{when}? ก๊วนเต็มแล้ว ถ้าลงใหม่จะต่อคิวสำรอง": "Cancel sign-up for {when}? It is full, so signing up again puts you on the waitlist",
+  "คนที่ลงชื่อ{when}": "Signed up for {when}",
   "แก้ยอดเอง {amount}": "Set manually {amount}",
   "วันนี้ไม่ใช่สนามเช่า": "Today isn't a rented-court day",
   "เวลาไม่ถูกต้อง": "Invalid time",
