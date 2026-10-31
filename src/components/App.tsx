@@ -211,13 +211,13 @@ function Header() {
           <ThemeSwitch />
         </div>
       </div>
-      {festival && <FestivalBanner f={festival} />}
       {auth.canAdmin && (
         <div className="mt-3 flex items-center justify-end gap-2 text-sm text-zinc-600">
           {t("วันนี้ฉันเป็น")}
           <ModeSwitch />
         </div>
       )}
+      {festival && <FestivalBanner f={festival} />}
     </header>
   );
 }
