@@ -152,12 +152,22 @@ export function CourtsTab() {
       </div>
     );
 
+  // ยังไม่ได้จัดก๊วน (ไม่มีประกาศ ไม่มีคนเช็คอิน ไม่มีเกม) ไม่ต้องขึ้นสนาม ปุ่มจบก๊วน และคิว
+  const started = day.checkIns.length > 0 || active.size > 0;
+  if (!started && day.announcement === undefined)
+    return (
+      <div className="space-y-4">
+        <SectionTitle>{t("สนาม")}</SectionTitle>
+        <NoSession admin />
+      </div>
+    );
+
 
   return (
     <div className="space-y-4">
       <PairRequests />
       <SectionTitle right={t("ว่าง {n} สนาม", { n: courts.length - active.size })}>{t("สนาม")}</SectionTitle>
-      <Button
+      {started && <Button
         className="w-full !rounded-3xl !bg-red-600 !py-4 !text-base !text-white shadow-[0_10px_24px_-10px_rgba(220,38,38,0.7)] active:scale-[0.98]"
         onClick={() => {
           const running = [...active.values()];
@@ -170,7 +180,7 @@ export function CourtsTab() {
         }}
       >
         🏁 {t("จบก๊วน")}
-      </Button>
+      </Button>}
       <div className="grid gap-3 sm:grid-cols-2">
         {courts.map((c) => {
           const g = active.get(c);
@@ -277,6 +287,31 @@ export function CourtsTab() {
   );
 }
 
+/** หน้าสนามตอนยังไม่ได้จัดก๊วน */
+function NoSession({ admin = false }: { admin?: boolean }) {
+  return (
+    <Card className="space-y-4 py-8 text-center">
+      <div className="mx-auto grid size-14 place-items-center rounded-full bg-zinc-100 text-zinc-400">
+        <Icon.Court width={28} height={28} />
+      </div>
+      <div>
+        <div className="font-display text-lg font-semibold">{t("วันนี้ยังไม่ได้จัดก๊วน")}</div>
+        <p className="mt-1 text-sm text-zinc-500">
+          {admin ? t("ประกาศก๊วนหรือเช็คอินคนก่อน สนามและคิวจะขึ้นเอง") : t("รอแอดมินประกาศ สนามและคิวจะขึ้นตอนเริ่มก๊วน")}
+        </p>
+      </div>
+      {admin && (
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="primary" onClick={() => goToTab("home")}>
+            {t("ประกาศก๊วน")}
+          </Button>
+          <Button onClick={() => goToTab("checkin")}>{t("เช็คอิน")}</Button>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 /** หน้าสนามของผู้เล่น: สนามและคิวของตัวเองด้านบน แล้วทุกสนามและคิวแบบเดียวกับแอดมิน (ดูอย่างเดียว เหมือนจอทีวี) */
 function PlayerCourts() {
   const { state } = useStore();
@@ -294,6 +329,13 @@ function PlayerCourts() {
   const myGame = day.games.find((g) => !g.endedAt && g.playerIds.includes(player.id));
   const myPos = queue.findIndex((e) => e.player.id === player.id);
   const status = presence(day, player.id);
+  if (day.announcement === undefined && day.checkIns.length === 0 && active.size === 0)
+    return (
+      <>
+        <SectionTitle>{t("สนาม")}</SectionTitle>
+        <NoSession />
+      </>
+    );
 
   return (
     <div className="space-y-4">

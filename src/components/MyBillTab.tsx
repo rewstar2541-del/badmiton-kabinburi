@@ -1,6 +1,7 @@
 "use client";
 
-import { billFor, shuttleFormula } from "@/lib/billing";
+import { billFor, owedDays, shuttleFormula } from "@/lib/billing";
+import { shortDate } from "./Owed";
 import { useStore, useToday } from "@/lib/store";
 import { isMonthlyPaid } from "@/lib/types";
 import { PayQr } from "./PayQr";
@@ -30,6 +31,8 @@ export function MyBillTab() {
   const bill = billFor(state.days, day, player, state.settings, state.monthly, state.players);
   const s = state.settings;
   const monthly = isMonthlyPaid(state.monthly, date, player.id);
+  // ยอดค้างแยกตามวัน (วันนี้ไม่ได้มา ก็ยังเห็นว่าค้างวันไหนบ้าง)
+  const prev = bill.carriedOver > 0 ? owedDays(state.days, date, player, s, state.monthly) : [];
 
   return (
     <div className="space-y-4">
@@ -42,11 +45,11 @@ export function MyBillTab() {
       ) : (
         <>
           <div className="rounded-3xl bg-ink p-5 text-white">
-            <div className="text-xs text-white/60">{t("ยอดที่ต้องจ่าย")}</div>
+            <div className="text-xs text-white/60">{checkedIn ? t("ยอดที่ต้องจ่าย") : t("ยอดค้างจ่ายจากวันก่อน")}</div>
             <div className="font-display text-4xl font-semibold">{baht(bill.total)}</div>
             <div className="mt-4 space-y-1.5 text-sm">
               {[
-                [
+                ...(checkedIn ? [[
                   (bill.annualMember ? t("ค่าสนาม (สมาชิกรายปี)") : monthly ? t("ค่าสนาม (จ่ายรายเดือนแล้ว)") : t("ค่าสนาม")) + (bill.courtAdjusted ? ` (${t("แอดมินแก้ยอด")})` : ""),
                   bill.courtFee,
                 ],
@@ -55,9 +58,9 @@ export function MyBillTab() {
                     shuttleFormula(bill) +
                     (bill.shuttleAdjusted ? ` (${t("แอดมินแก้ยอด")})` : ""),
                   bill.shuttleFee,
-                ],
-                ...(day.rent ? [] : [[t("ค่าน้ำ"), bill.drinkFee] as const]),
-                ...(bill.carriedOver > 0 ? [[t("ค้างจ่ายครั้งก่อน"), bill.carriedOver] as const] : []),
+                ] as const,
+                ...(day.rent ? [] : [[t("ค่าน้ำ"), bill.drinkFee] as const])] : []),
+                ...prev.map((d) => [t("ค้าง {date}", { date: shortDate(d.date) }), d.amount] as const),
                 ...bill.guests.map((g) => [t("แขก: {name}", { name: g.name }), g.amount] as const),
               ].map(([label, v]) => (
                 <div key={label} className="flex justify-between text-white/80">
