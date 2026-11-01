@@ -4,7 +4,7 @@ import { PairRequests } from "./Pairs";
 import { useEffect, useMemo, useState } from "react";
 import { courtPlan, courtQueue, plannedCourt, queueByCourt, presence, queueBlockers, queuedSpot, waitingQueue, type CourtNext } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
-import type { Game, Player, QueuedGame, Team } from "@/lib/types";
+import { courtList, courtsOfDay, type Game, type Player, type QueuedGame, type Team } from "@/lib/types";
 import { MatchBuilder } from "./MatchBuilder";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle } from "./ui";
 import { t } from "@/lib/i18n";
@@ -63,7 +63,7 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
   const { day } = useToday();
   const end = (winner?: Team, draw?: boolean) => {
     // สนามนี้ได้คู่แรกของคิวรวม (คนรอนานสุดไม่ถูกแซง) ถ้าแอดมินจัดคิวสนามนี้ไว้เองใช้คู่นั้น
-    const next = courtPlan(day, state.players, state.settings.courtCount, game.court).get(game.court);
+    const next = courtPlan(day, state.players, courtList(state.settings), game.court).get(game.court);
     dispatch({ type: "endGame", date, gameId: game.id, winner, draw });
     if (!next) return;
     // ลงต่อทันที ถ้าคนในคู่ยังอยู่ครบ ไม่งั้นแจ้งให้แอดมินแก้คิว
@@ -273,9 +273,9 @@ export function CourtsTab() {
   const now = useNow();
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const queue = waitingQueue(day, state.players);
-  const courts = Array.from({ length: state.settings.courtCount }, (_, i) => i + 1);
+  const courts = courtsOfDay(state.settings, day);
   // คำนวณใหม่เฉพาะตอนข้อมูลเปลี่ยน (นาฬิกาเดินทุก 15 วินาทีไม่ต้องคำนวณ)
-  const plan = useMemo(() => courtPlan(day, state.players, state.settings.courtCount), [day, state.players, state.settings.courtCount]);
+  const plan = useMemo(() => courtPlan(day, state.players, courtList(state.settings)), [day, state.players, state.settings]);
   const courtOf = new Map([...plan.values()].filter((n) => !n.queuedId).flatMap((n) => n.playerIds.map((id) => [id, n.court] as const)));
   // คนในคิวรวมที่ระบบจัดให้สนามอื่นแล้ว (แนะนำใหม่จะไม่ดึงมา)
   const reservedFor = (court: number) => [...plan.values()].filter((n) => n.court !== court && !n.queuedId).flatMap((n) => n.playerIds);
@@ -457,10 +457,10 @@ function PlayerCourts() {
 
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const queue = waitingQueue(day, state.players);
-  const courts = Array.from({ length: state.settings.courtCount }, (_, i) => i + 1);
+  const courts = courtsOfDay(state.settings, day);
   const active = new Map(day.games.filter((g) => !g.endedAt).map((g) => [g.court, g]));
   const myGame = day.games.find((g) => !g.endedAt && g.playerIds.includes(player.id));
-  const plan = courtPlan(day, state.players, state.settings.courtCount);
+  const plan = courtPlan(day, state.players, courtList(state.settings));
   const courtOf = new Map([...plan.values()].filter((n) => !n.queuedId).flatMap((n) => n.playerIds.map((id) => [id, n.court] as const)));
   // อยู่คิวสนามไหน: คู่ที่แอดมินจัดไว้ก่อน ไม่งั้นดูจากที่ระบบจัดอัตโนมัติ
   const planned = plannedCourt(plan, player.id);

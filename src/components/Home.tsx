@@ -25,7 +25,7 @@ import { EventPhotos } from "./EventPhotos";
 import { BringGuest } from "./Guests";
 import { goToTab } from "./Membership";
 import { SlipHistory, slipStatus } from "./SlipHistory";
-import { monthOf } from "@/lib/types";
+import { courtList, monthOf } from "@/lib/types";
 import { shiftMonth } from "./Members";
 import { NoticeBanners, NoticeComposer } from "./Notices";
 import { PairCard } from "./Pairs";
@@ -284,7 +284,7 @@ export function PlayerHome() {
   const played = day.games.filter((g) => g.endedAt && g.playerIds.includes(player.id)).length;
   const queue = waitingQueue(day, state.players);
   const pos = queue.findIndex((e) => e.player.id === player.id) + 1;
-  const planned = plannedCourt(courtPlan(day, state.players, state.settings.courtCount), player.id);
+  const planned = plannedCourt(courtPlan(day, state.players, courtList(state.settings)), player.id);
   const spot = queuedSpot(day, player.id) ?? (planned ? { court: planned.court, pos: 0 } : null);
   const court = day.games.find((g) => !g.endedAt && g.playerIds.includes(player.id))?.court;
   const closed = state.closed[date];

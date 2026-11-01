@@ -8,7 +8,7 @@ import { appName } from "@/lib/brand";
 import { locale, t, useLang } from "@/lib/i18n";
 import { courtPlan, courtQueue, presence, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
-import type { Player } from "@/lib/types";
+import { courtList, courtsOfDay, type Player } from "@/lib/types";
 import { Avatar, Icon, LevelBadge } from "./ui";
 import { Auto } from "@/lib/autoTranslate";
 
@@ -60,9 +60,9 @@ export function TvView() {
   useLang();
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const queue = waitingQueue(day, state.players);
-  const plan = courtPlan(day, state.players, state.settings.courtCount);
+  const plan = courtPlan(day, state.players, courtList(state.settings));
   const games = new Map(day.games.filter((g) => !g.endedAt).map((g) => [g.court, g]));
-  const courts = Array.from({ length: state.settings.courtCount }, (_, i) => i + 1);
+  const courts = courtsOfDay(state.settings, day);
   const resting = day.checkIns.filter((c) => presence(day, c.playerId) === "resting").length;
   const canSpeak = typeof window !== "undefined" && "speechSynthesis" in window;
   const [voiceOn, setVoiceOn] = useState(() => {

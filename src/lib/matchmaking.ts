@@ -195,9 +195,11 @@ export interface CourtNext {
  * first: สนามที่กำลังจะจบเกม ให้ได้คู่แรก (คนที่รอนานสุดได้ลงก่อน ไม่ถูกแซง)
  * สนามที่แอดมินจัดคิวไว้เองใช้คู่นั้น ไม่เอาคนจากคิวรวม
  */
-export function courtPlan(day: Day, players: Player[], courtCount: number, first?: number): Map<number, CourtNext> {
+export function courtPlan(day: Day, players: Player[], courts: number | number[], first?: number): Map<number, CourtNext> {
   const started = new Map(day.games.filter((g) => !g.endedAt).map((g) => [g.court, g.startedAt]));
-  const order = Array.from({ length: courtCount }, (_, i) => i + 1).sort(
+  // courts = จำนวนสนาม (1..n) หรือเบอร์สนามที่ตั้งไว้ + สนามที่แอดมินจัดคิวค้างไว้ (เผื่อเปลี่ยนเบอร์ระหว่างวัน)
+  const list = typeof courts === "number" ? Array.from({ length: courts }, (_, i) => i + 1) : courts;
+  const order = [...new Set([...list, ...(day.queued ?? []).map((q) => q.court)])].sort(
     (a, b) => Number(b === first) - Number(a === first) || (started.get(a) ?? -Infinity) - (started.get(b) ?? -Infinity) || a - b,
   );
   const plan = new Map<number, CourtNext>();
