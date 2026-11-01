@@ -1,5 +1,5 @@
 import { activePairs } from "./social";
-import { strength, type Day, type Player } from "./types";
+import { strength, type Day, type Player, type QueuedGame } from "./types";
 
 export interface QueueEntry {
   player: Player;
@@ -18,13 +18,37 @@ export function presence(day: Day, playerId: string): "playing" | "resting" | "h
   return "waiting";
 }
 
+/** คิวรอลงของสนามนี้ เรียงตามที่จัดไว้ก่อน */
+export function courtQueue(day: Day, court: number): QueuedGame[] {
+  return (day.queued ?? []).filter((q) => q.court === court).sort((a, b) => a.at - b.at);
+}
+
+/** ผู้เล่นคนนี้ถูกจัดคิวรอสนามไหน ลำดับที่เท่าไร (1 = ลงต่อจากเกมที่เล่นอยู่) */
+export function queuedSpot(day: Day, playerId: string): { court: number; pos: number; game: QueuedGame } | null {
+  for (const q of day.queued ?? [])
+    if (q.playerIds.includes(playerId)) return { court: q.court, pos: courtQueue(day, q.court).indexOf(q) + 1, game: q };
+  return null;
+}
+
+/**
+ * คนในคู่ที่จัดไว้ที่ยังลงไม่ได้ตอนนี้ (ยังไม่เช็คอิน จ่ายแล้ว ขอพัก หรืออยู่บนสนามอื่น)
+ * endingGameId: เกมที่กำลังจะจบ ไม่นับว่าคนในเกมนั้นยังอยู่บนสนาม
+ */
+export function queueBlockers(day: Day, q: QueuedGame, endingGameId?: string): string[] {
+  const onCourt = new Set(day.games.filter((g) => !g.endedAt && g.id !== endingGameId).flatMap((g) => g.playerIds));
+  return q.playerIds.filter((id) => {
+    const ci = day.checkIns.find((c) => c.playerId === id);
+    return !ci || ci.paidAt || ci.resting || onCourt.has(id);
+  });
+}
+
 /**
  * ผู้เล่นที่เช็คอินแล้วและรอลงสนาม เรียงตามสิทธิ์ลงก่อน
- * ไม่รวมคนที่อยู่บนสนาม คนขอพัก และคนที่จ่ายเงินแล้ว (ถือว่ากลับบ้าน)
+ * ไม่รวมคนที่อยู่บนสนาม คนที่จัดคิวสนามไว้แล้ว คนขอพัก และคนที่จ่ายเงินแล้ว (ถือว่ากลับบ้าน)
  */
 export function waitingQueue(day: Day, players: Player[]): QueueEntry[] {
   const byId = new Map(players.map((p) => [p.id, p]));
-  const onCourt = new Set(day.games.filter((g) => !g.endedAt).flatMap((g) => g.playerIds));
+  const onCourt = new Set([...day.games.filter((g) => !g.endedAt).flatMap((g) => g.playerIds), ...(day.queued ?? []).flatMap((q) => q.playerIds)]);
 
   const entries: QueueEntry[] = [];
   for (const ci of day.checkIns) {
@@ -45,7 +69,8 @@ function partnerCounts(day: Day): Map<string, number> {
     const k = x < y ? `${x}|${y}` : `${y}|${x}`;
     m.set(k, (m.get(k) ?? 0) + 1);
   };
-  for (const g of day.games) {
+  // คู่ที่จัดคิวรอไว้ก็นับ จะได้ไม่จับคู่เดิมซ้ำในคิวถัดๆ ไป
+  for (const g of [...day.games, ...(day.queued ?? [])]) {
     add(g.playerIds[0], g.playerIds[1]);
     add(g.playerIds[2], g.playerIds[3]);
   }

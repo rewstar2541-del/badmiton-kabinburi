@@ -2,9 +2,9 @@
 
 import { PairRequests } from "./Pairs";
 import { useEffect, useState } from "react";
-import { presence, waitingQueue } from "@/lib/matchmaking";
+import { courtQueue, presence, queueBlockers, queuedSpot, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
-import type { Game, Player, Team } from "@/lib/types";
+import type { Game, Player, QueuedGame, Team } from "@/lib/types";
 import { MatchBuilder } from "./MatchBuilder";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle } from "./ui";
 import { t } from "@/lib/i18n";
@@ -58,7 +58,14 @@ function CourtSide({ ids, byId, team }: { ids: string[]; byId: Map<string, Playe
 
 function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, Player>; date: string; now: number }) {
   const { dispatch, auth } = useStore();
-  const end = (winner?: Team, draw?: boolean) => dispatch({ type: "endGame", date, gameId: game.id, winner, draw });
+  const { day } = useToday();
+  const end = (winner?: Team, draw?: boolean) => {
+    dispatch({ type: "endGame", date, gameId: game.id, winner, draw });
+    // คู่แรกในคิวของสนามนี้ลงต่อทันที (ถ้าคนในคู่ยังอยู่ครบ ไม่งั้นรอแอดมินแก้คิว)
+    const next = courtQueue(day, game.court)[0];
+    if (next && queueBlockers(day, next, game.id).length === 0)
+      dispatch({ type: "startGame", date, court: game.court, playerIds: next.playerIds, queuedId: next.id });
+  };
   const setShuttles = (n: number) => dispatch({ type: "setShuttles", date, gameId: game.id, shuttles: n });
 
   return (
@@ -132,10 +139,89 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
   );
 }
 
+/** ชื่อ 4 คนของคู่ที่จัดไว้ ทีม A vs ทีม B (คนที่ลงไม่ได้ขีดฆ่า) */
+function QueuedTeams({ q, byId, blocked }: { q: QueuedGame; byId: Map<string, Player>; blocked: Set<string> }) {
+  const name = (id: string) => (
+    <span key={id} className={`truncate ${blocked.has(id) ? "text-red-500 line-through" : ""}`}>
+      {byId.get(id)?.name ?? "?"}
+    </span>
+  );
+  return (
+    <span className="flex min-w-0 flex-1 items-center gap-1.5 text-sm font-medium">
+      <span className="flex min-w-0 flex-1 basis-0 flex-col leading-tight">{q.playerIds.slice(0, 2).map(name)}</span>
+      <span className="shrink-0 text-[10px] font-bold text-zinc-400">VS</span>
+      <span className="flex min-w-0 flex-1 basis-0 flex-col leading-tight">{q.playerIds.slice(2).map(name)}</span>
+    </span>
+  );
+}
+
+/**
+ * คิวรอลงของสนามหนึ่ง: แอดมินจัดคู่ถัดไปไว้ล่วงหน้าได้หลายคู่ เกมจบแล้วคู่แรกลงต่อทันที
+ * สนามว่าง (เช่นยกเลิกเกม หรือคนในคู่ไม่อยู่ตอนจบเกม) กด "ลงสนาม" เองได้
+ */
+function CourtQueue({ court, free, waiting, onAdd, byId }: { court: number; free: boolean; waiting: number; onAdd: () => void; byId: Map<string, Player> }) {
+  const { dispatch, auth } = useStore();
+  const { date, day } = useToday();
+  const list = courtQueue(day, court);
+  const canAdd = waiting >= 4;
+  if (list.length === 0 && !(auth.isAdmin && canAdd && !free)) return null;
+  return (
+    <div className="mt-3 space-y-1.5 border-t border-zinc-100 pt-3">
+      {list.length > 0 && (
+        <div className="text-xs font-semibold text-zinc-500">{t("คิวรอลงสนามนี้ {n} คู่", { n: list.length })}</div>
+      )}
+      <ol className="space-y-1.5">
+        {list.map((q, i) => {
+          const blocked = new Set(queueBlockers(day, q));
+          const ready = blocked.size === 0;
+          return (
+            <li key={q.id} className={`flex items-center gap-2 rounded-2xl px-2 py-1.5 ${i === 0 ? "bg-lime/25" : "bg-zinc-50"}`}>
+              <span className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${i === 0 ? "bg-lime text-ink" : "bg-zinc-200 text-zinc-600"}`}>
+                {i + 1}
+              </span>
+              <QueuedTeams q={q} byId={byId} blocked={blocked} />
+              {auth.isAdmin && free && i === 0 && (
+                <button
+                  disabled={!ready}
+                  onClick={() => dispatch({ type: "startGame", date, court, playerIds: q.playerIds, queuedId: q.id })}
+                  className="shrink-0 rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white active:scale-95 disabled:opacity-40"
+                >
+                  {t("ลงสนาม")}
+                </button>
+              )}
+              {auth.isAdmin && (
+                <button
+                  onClick={() => dispatch({ type: "unqueueGame", date, id: q.id })}
+                  aria-label={t("เอาออกจากคิว")}
+                  className="grid size-8 shrink-0 place-items-center rounded-full text-zinc-400 active:bg-zinc-200"
+                >
+                  <Icon.X width={16} height={16} />
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+      {auth.isAdmin && list.some((q) => queueBlockers(day, q).length > 0) && (
+        <p className="text-[11px] text-red-500">{t("ชื่อขีดฆ่า = พัก กลับบ้าน หรือยังเล่นสนามอื่น เอาคู่นั้นออกแล้วจัดใหม่")}</p>
+      )}
+      {/* สนามว่างที่ยังไม่มีคิว ใช้ปุ่มจัดคู่ลงสนามด้านบนแทน คนรอไม่ครบ 4 ก็ไม่ต้องโชว์ */}
+      {auth.isAdmin && canAdd && (!free || list.length > 0) && (
+        <button
+          onClick={onAdd}
+          className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-zinc-300 py-2 text-sm font-semibold text-zinc-600 active:bg-zinc-50"
+        >
+          <Icon.Plus width={16} height={16} /> {t("จัดคิวรอลงสนามนี้")}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function CourtsTab() {
   const { state, auth, dispatch } = useStore();
   const { date, day } = useToday();
-  const [building, setBuilding] = useState<number | null>(null);
+  const [building, setBuilding] = useState<{ court: number; queue: boolean } | null>(null);
   const now = useNow();
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const queue = waitingQueue(day, state.players);
@@ -164,6 +250,7 @@ export function CourtsTab() {
           const msg = running.length ? t("จบก๊วน? จะจบเกมที่กำลังเล่นอยู่ {n} เกม (ไม่บันทึกผล) ล้างคิว แล้วไปหน้าคิดเงิน", { n: running.length }) : t("จบก๊วน? ล้างคิว แล้วไปหน้าคิดเงิน");
           if (!confirm(msg)) return;
           running.forEach((g) => dispatch({ type: "endGame", date, gameId: g.id }));
+          (day.queued ?? []).forEach((q) => dispatch({ type: "unqueueGame", date, id: q.id }));
           // ล้างคิว: คนที่ยังรอหรือเพิ่งลงจากสนามเป็นพักทั้งหมด (ยังไม่จ่าย ยังเห็นในหน้าคิดเงิน)
           day.checkIns.filter((c) => !c.paidAt && !c.resting).forEach((c) => dispatch({ type: "setResting", date, playerId: c.playerId, resting: true }));
           goToTab("billing");
@@ -193,10 +280,10 @@ export function CourtsTab() {
                 <div className="court-surface flex h-24 items-center justify-center rounded-2xl text-sm font-semibold text-white/80">
                   {t("ว่าง")}
                 </div>
-              ) : (
+              ) : courtQueue(day, c).length > 0 ? null : (
                 <button
                   disabled={queue.length < 4}
-                  onClick={() => setBuilding(c)}
+                  onClick={() => setBuilding({ court: c, queue: false })}
                   className="court-surface flex h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl text-white transition active:scale-[0.99] disabled:opacity-40 disabled:grayscale"
                 >
                   <span className="grid size-10 place-items-center rounded-full bg-lime text-ink shadow-lg">
@@ -207,12 +294,13 @@ export function CourtsTab() {
                   </span>
                 </button>
               )}
+              <CourtQueue court={c} free={!g} waiting={queue.length} onAdd={() => setBuilding({ court: c, queue: true })} byId={byId} />
             </Card>
           );
         })}
       </div>
 
-      {building !== null && <MatchBuilder court={building} onClose={() => setBuilding(null)} />}
+      {building !== null && <MatchBuilder court={building.court} queue={building.queue} onClose={() => setBuilding(null)} />}
 
       <SectionTitle right={t("{n} คน", { n: queue.length })}>{t("คิวรอลงสนาม")}</SectionTitle>
       <Card className="p-2">
@@ -293,6 +381,7 @@ function PlayerCourts() {
   const active = new Map(day.games.filter((g) => !g.endedAt).map((g) => [g.court, g]));
   const myGame = day.games.find((g) => !g.endedAt && g.playerIds.includes(player.id));
   const myPos = queue.findIndex((e) => e.player.id === player.id);
+  const mySpot = queuedSpot(day, player.id);
   const status = presence(day, player.id);
 
   return (
@@ -314,7 +403,14 @@ function PlayerCourts() {
         </Card>
       ) : (
         <Card className="py-6 text-center">
-          {status === "waiting" && myPos >= 0 ? (
+          {status === "waiting" && mySpot ? (
+            <>
+              <div className="font-display text-4xl font-semibold">{t("สนาม {n}", { n: mySpot.court })}</div>
+              <div className="text-sm text-zinc-500">
+                {mySpot.pos === 1 ? t("คุณได้ลงต่อจากเกมที่เล่นอยู่ เตรียมตัวได้เลย") : t("คิวรอลงสนามนี้ คู่ที่ {n}", { n: mySpot.pos })}
+              </div>
+            </>
+          ) : status === "waiting" && myPos >= 0 ? (
             <>
               <div className="font-display text-4xl font-semibold">{myPos + 1}</div>
               <div className="text-sm text-zinc-500">
@@ -358,6 +454,7 @@ function PlayerCourts() {
                   {t("ว่าง")}
                 </div>
               )}
+              <CourtQueue court={c} free={!g} waiting={0} onAdd={() => {}} byId={byId} />
             </Card>
           );
         })}

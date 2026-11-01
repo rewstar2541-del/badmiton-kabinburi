@@ -12,8 +12,9 @@ type Slots = (string | null)[];
 /**
  * จัดคู่ลงสนาม: เริ่มจากคู่ที่ระบบแนะนำ แอดมินแตะช่องแล้วแตะชื่อเพื่อเปลี่ยนคนได้
  * แตะชื่อที่อยู่ในอีกช่องจะสลับกัน แตะช่องที่เลือกอยู่ซ้ำเพื่อเอาคนออก
+ * queue: จัดคู่รอลงสนามนี้ต่อจากเกมที่เล่นอยู่ (ยังไม่เริ่มเกม)
  */
-export function MatchBuilder({ court, onClose }: { court: number; onClose: () => void }) {
+export function MatchBuilder({ court, onClose, queue: toQueue = false }: { court: number; onClose: () => void; queue?: boolean }) {
   const { state, dispatch } = useStore();
   const { date, day } = useToday();
   const queue = waitingQueue(day, state.players);
@@ -22,8 +23,8 @@ export function MatchBuilder({ court, onClose }: { court: number; onClose: () =>
   const [picked, setSlots] = useState<Slots>(suggest);
   const [selected, setSelected] = useState<number | null>(null);
   // แอดมินอีกเครื่องอาจส่งคนในช่องลงสนามอื่นไปแล้ว หรือใช้สนามนี้ไปแล้ว: เอาคนนั้นออกจากช่องเสมอ
-  const onCourt = new Set(day.games.filter((g) => !g.endedAt).flatMap((g) => g.playerIds));
-  const courtTaken = day.games.some((g) => !g.endedAt && g.court === court);
+  const onCourt = new Set([...day.games.filter((g) => !g.endedAt).flatMap((g) => g.playerIds), ...(day.queued ?? []).flatMap((q) => q.playerIds)]);
+  const courtTaken = !toQueue && day.games.some((g) => !g.endedAt && g.court === court);
   const slots = picked.map((id) => (id && onCourt.has(id) ? null : id));
 
   const tapSlot = (i: number) => {
@@ -80,7 +81,7 @@ export function MatchBuilder({ court, onClose }: { court: number; onClose: () =>
   };
 
   return (
-    <Sheet onClose={onClose} title={<h3 className="font-display text-lg font-semibold">{t("จัดคู่ สนาม {n}", { n: court })}</h3>}>
+    <Sheet onClose={onClose} title={<h3 className="font-display text-lg font-semibold">{toQueue ? t("จัดคิวรอลง สนาม {n}", { n: court }) : t("จัดคู่ สนาม {n}", { n: court })}</h3>}>
       <div className="court-surface flex gap-1 rounded-2xl px-2 py-3">
         {(["A", "B"] as const).map((team, ti) => (
           <div key={team} className="flex min-w-0 flex-1 basis-0 flex-col items-center gap-2">
@@ -139,11 +140,11 @@ export function MatchBuilder({ court, onClose }: { court: number; onClose: () =>
           disabled={!full || courtTaken}
           onClick={() => {
             if (!full || courtTaken) return;
-            dispatch({ type: "startGame", date, court, playerIds: slots as Game["playerIds"] });
+            dispatch({ type: toQueue ? "queueGame" : "startGame", date, court, playerIds: slots as Game["playerIds"] });
             onClose();
           }}
         >
-          {courtTaken ? t("สนามนี้มีเกมอยู่แล้ว") : full ? t("เริ่มเกม") : t("ต้องมีครบ 4 คน")}
+          {courtTaken ? t("สนามนี้มีเกมอยู่แล้ว") : !full ? t("ต้องมีครบ 4 คน") : toQueue ? t("เข้าคิวสนาม {n}", { n: court }) : t("เริ่มเกม")}
         </Button>
       </div>
     </Sheet>

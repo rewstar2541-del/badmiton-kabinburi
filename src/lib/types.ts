@@ -172,6 +172,15 @@ export interface Game {
   draw?: boolean;
 }
 
+/** คู่ที่แอดมินจัดไว้รอลงสนามนั้น (เกมในสนามจบ คู่แรกลงต่อทันที) */
+export interface QueuedGame {
+  id: string;
+  court: number;
+  /** ลำดับเดียวกับ Game.playerIds */
+  playerIds: [string, string, string, string];
+  at: number;
+}
+
 export interface CheckIn {
   playerId: string;
   at: number;
@@ -229,6 +238,8 @@ export interface Day {
   rent?: DayRent;
   /** คนที่ลงชื่อว่าจะมา */
   signups?: SignUp[];
+  /** คิวรอลงแยกแต่ละสนาม เรียงตามเวลาที่จัด */
+  queued?: QueuedGame[];
   /** คำขอจับคู่เกมถัดไปของวันนั้น */
   pairs?: PairRequest[];
   /** สลิปโอนเงินที่ผู้เล่นส่งมา (รูปโหลดแยกเฉพาะแอดมิน) */
