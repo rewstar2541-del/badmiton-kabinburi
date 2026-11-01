@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { t } from "@/lib/i18n";
-import { rentShares, rentSpan } from "@/lib/courtSplit";
+import { courtsAt, normalizeCourts, rentAt, rentShares, rentSpan, rentTotal } from "@/lib/courtSplit";
 import { dayAmount } from "@/lib/billing";
 import { useStore, useToday } from "@/lib/store";
 import type { Day, DayRent, Player } from "@/lib/types";
@@ -28,16 +28,16 @@ function HourSelect({ value, from, to, onChange, label, disabled }: { value: num
 function HourTable({ rent, day }: { rent: DayRent; day: Day }) {
   const counted = day.checkIns.filter((c) => c.courtFee === undefined).map((c) => rentSpan(rent, c.at, c.hours));
   return (
-    <div className="grid grid-cols-3 gap-x-2 gap-y-1 rounded-2xl bg-zinc-50 p-3 text-sm">
+    <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1 rounded-2xl bg-zinc-50 p-3 text-sm">
       <span className="text-zinc-500">{t("ชั่วโมง")}</span>
       <span className="text-right text-zinc-500">{t("คน")}</span>
       <span className="text-right text-zinc-500">{t("คนละ")}</span>
       {range(rent.start, rent.end - 1).map((h) => {
         const n = counted.filter((s) => s.from <= h && h < s.to).length;
         return [
-          <span key={`h${h}`}>{`${hh(h)}-${hh(h + 1)}`}</span>,
+          <span key={`h${h}`} className="whitespace-nowrap">{`${hh(h)}-${hh(h + 1)}`}{rent.courts && <span className="text-zinc-500">{` · ${t("{n} คอร์ท", { n: courtsAt(rent, h) })}`}</span>}</span>,
           <span key={`n${h}`} className="text-right">{n}</span>,
-          <span key={`s${h}`} className="text-right font-semibold">{n ? baht(Math.round(rent.perHour / n)) : "–"}</span>,
+          <span key={`s${h}`} className="text-right font-semibold">{n ? baht(Math.round(rentAt(rent, h) / n)) : "–"}</span>,
         ];
       })}
     </div>
@@ -64,11 +64,9 @@ export function MyRentHours({ player, day, rent }: { player: Player; day: Day; r
   };
   return (
     <Card className="space-y-3">
-      <div className="flex items-center gap-2">
-        <h2 className="min-w-0 flex-1 font-display font-semibold">{t("สนามเช่า")}</h2>
-        <span className="shrink-0 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">
-          {t("{from}-{to} ชม.ละ {amount}", { from: hh(rent.start), to: hh(rent.end), amount: baht(rent.perHour) })}
-        </span>
+      <div>
+        <h2 className="font-display font-semibold">{t("สนามเช่า")}</h2>
+        <span className="mt-1 inline-block rounded-2xl bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">{rentLabel(rent)}</span>
       </div>
       <p className="text-sm text-zinc-500">{t("แต่ละชั่วโมงหารค่าเช่าให้คนที่อยู่ ยอดจะลดลงถ้ามีคนมาเพิ่ม จ่ายตอนกลับจะได้ยอดจริง")}</p>
       <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -92,59 +90,42 @@ export function MyRentHours({ player, day, rent }: { player: Player; day: Day; r
   );
 }
 
-/** แอดมิน: แก้เวลาเช่าและค่าเช่าต่อชั่วโมงของวันนี้ได้จากหน้านี้เลย (เก็บที่ประกาศของวัน) */
-function RentEdit({ rent, day }: { rent: DayRent; day: Day }) {
-  const { dispatch } = useStore();
-  const [open, setOpen] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [start, setStart] = useState(rent.start);
-  const [end, setEnd] = useState(rent.end);
-  const [perHour, setPerHour] = useState(String(rent.perHour));
-  const ok = Number(perHour) > 0 && end > start;
-  const paid = day.checkIns.filter((c) => c.paidAt).length;
-  const save = () => {
-    if (paid && !confirm(t("มีคนจ่ายแล้ว {n} คน ยอดของคนที่จ่ายแล้วจะเปลี่ยนด้วย บันทึกไหม?", { n: paid }))) return;
-    dispatch({ type: "setAnnouncement", date: day.date, message: day.announcement ?? "", rent: { start, end, perHour: Number(perHour) } });
-    // ขยาย/ย่อเวลาเลิก: คนที่ตั้งไว้ว่าอยู่ถึงเลิกเดิม ให้อยู่ถึงเลิกใหม่ด้วย
-    if (end !== rent.end)
-      for (const c of day.checkIns)
-        if (!c.paidAt && c.hours && c.hours.to >= rent.end) dispatch({ type: "setHours", date: day.date, playerId: c.playerId, hours: { from: Math.min(c.hours.from, end - 1), to: end } });
-    setSaved(true);
-    setOpen(false);
+export type RentDraft = { start: number; end: number; perHour: string; courts: number[]; legacy?: boolean };
+
+export const rentDraft = (r?: DayRent): RentDraft =>
+  r ? { start: r.start, end: r.end, perHour: String(r.perHour), courts: range(r.start, r.end - 1).map((h) => courtsAt(r, h)), legacy: !r.courts } : { start: 19, end: 22, perHour: "", courts: [1, 1, 1] };
+
+/** ค่าสนามเช่าครั้งล่าสุด ใช้เป็นค่าเริ่มต้นตอนตั้งสนามเช่าวันใหม่ */
+export const lastRent = (days: Day[]): DayRent | undefined => [...days].filter((d) => d.rent).sort((a, b) => b.date.localeCompare(a.date))[0]?.rent;
+
+export const rentDraftOk = (d: RentDraft) => Number(d.perHour) > 0 && d.end > d.start;
+
+export const rentFromDraft = (d: RentDraft): DayRent => {
+  const courts = normalizeCourts(d.start, d.end, d.courts);
+  return { start: d.start, end: d.end, perHour: Number(d.perHour), ...(courts ? { courts } : {}) };
+};
+
+/** ฟอร์มสนามเช่า: เวลาเริ่ม-เลิก ราคาต่อคอร์ท และจำนวนคอร์ทแต่ละชั่วโมง (ใช้ทั้งตอนประกาศและหน้าคิดเงิน) */
+export function RentFields({ value, onChange }: { value: RentDraft; onChange: (d: RentDraft) => void }) {
+  // เปลี่ยนเวลาเริ่ม/เลิก: จำนวนคอร์ทของชั่วโมงเดิมยังอยู่ ชั่วโมงใหม่ใช้ค่าของชั่วโมงที่ใกล้ที่สุด
+  const reshape = (start: number, end: number) => {
+    const at = (h: number) => value.courts[Math.min(Math.max(h - value.start, 0), value.courts.length - 1)] ?? 1;
+    onChange({ ...value, start, end, courts: range(start, end - 1).map(at) });
   };
-  if (!open)
-    return (
-      <div className="flex items-center gap-2 rounded-2xl bg-zinc-50 p-3 text-sm">
-        <span className="min-w-0 flex-1">
-          {saved && <span className="block text-xs font-semibold text-emerald-700">{t("บันทึกแล้ว")}</span>}
-          {t("{from}-{to} ชม.ละ {amount}", { from: hh(rent.start), to: hh(rent.end), amount: baht(rent.perHour) })}
-        </span>
-        <Button
-          className="shrink-0"
-          onClick={() => {
-            setStart(rent.start);
-            setEnd(rent.end);
-            setPerHour(String(rent.perHour));
-            setSaved(false);
-            setOpen(true);
-          }}
-        >
-          {t("แก้เวลา/ค่าเช่า")}
-        </Button>
-      </div>
-    );
+  const setCourts = (i: number, n: number) => onChange({ ...value, courts: value.courts.map((c, j) => (j === i ? Math.min(Math.max(n, 1), 20) : c)) });
+  const price = Number(value.perHour) || 0;
+  const total = value.courts.reduce((sum, c) => sum + c * price, 0);
   return (
-    <div className="space-y-2 rounded-2xl bg-zinc-50 p-3">
+    <>
       <div className="grid grid-cols-2 gap-2">
         <label className="block text-sm font-medium">
           {t("เริ่มเช่า")}
           <select
             className={`${inputClass} mt-1`}
-            value={start}
+            value={value.start}
             onChange={(e) => {
               const h = Number(e.target.value);
-              setStart(h);
-              setEnd((x) => Math.max(x, h + 1));
+              reshape(h, Math.max(value.end, h + 1));
             }}
           >
             {range(6, 23).map((h) => (
@@ -156,8 +137,8 @@ function RentEdit({ rent, day }: { rent: DayRent; day: Day }) {
         </label>
         <label className="block text-sm font-medium">
           {t("เลิก")}
-          <select className={`${inputClass} mt-1`} value={end} onChange={(e) => setEnd(Number(e.target.value))}>
-            {range(start + 1, 24).map((h) => (
+          <select className={`${inputClass} mt-1`} value={value.end} onChange={(e) => reshape(value.start, Number(e.target.value))}>
+            {range(value.start + 1, 24).map((h) => (
               <option key={h} value={h}>
                 {hh(h)}
               </option>
@@ -166,20 +147,104 @@ function RentEdit({ rent, day }: { rent: DayRent; day: Day }) {
         </label>
       </div>
       <label className="block text-sm font-medium">
-        {t("ค่าเช่าสนามรวม ต่อชั่วโมง (ทุกคอร์ทรวมกัน)")}
-        <input className={`${inputClass} mt-1`} inputMode="numeric" value={perHour} onChange={(e) => setPerHour(e.target.value.replace(/\D/g, ""))} />
+        {t("ค่าเช่าต่อคอร์ท ต่อชั่วโมง")}
+        <input className={`${inputClass} mt-1`} inputMode="numeric" value={value.perHour} onChange={(e) => onChange({ ...value, perHour: e.target.value.replace(/\D/g, ""), legacy: false })} />
       </label>
-      <p className="text-xs text-zinc-500">{t("เพิ่ม/ลดคอร์ท ให้แก้ค่าเช่ารวมต่อชั่วโมง เช่น 2 คอร์ท คอร์ทละ 200 ใส่ 400")}</p>
+      <div className="space-y-1">
+        <div className="text-sm font-medium">{t("จำนวนคอร์ทแต่ละชั่วโมง")}</div>
+        {value.legacy && value.courts.some((c) => c > 1) && (
+          <p className="text-xs font-semibold text-amber-800">{t("ราคาเดิมเป็นค่าเช่ารวมทุกคอร์ท ถ้าเพิ่มคอร์ท ให้แก้เป็นราคาต่อ 1 คอร์ทด้วย")}</p>
+        )}
+        {value.courts.map((c, i) => (
+          <div key={value.start + i} className="flex items-center gap-1 text-sm">
+            <span className="w-[5rem] shrink-0 whitespace-nowrap text-[13px]">{`${hh(value.start + i)}-${hh(value.start + i + 1)}`}</span>
+            <button type="button" aria-label={t("ลดคอร์ท")} disabled={c <= 1} className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-lg font-bold ring-1 ring-zinc-200 disabled:opacity-40" onClick={() => setCourts(i, c - 1)}>
+              −
+            </button>
+            <span className="min-w-8 shrink-0 text-center text-base font-semibold">{c}</span>
+            <button type="button" aria-label={t("เพิ่มคอร์ท")} className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-lg font-bold ring-1 ring-zinc-200" onClick={() => setCourts(i, c + 1)}>
+              +
+            </button>
+            <span className="flex-1 whitespace-nowrap text-right text-xs text-zinc-500">{price ? (c * price).toLocaleString() : ""}</span>
+          </div>
+        ))}
+      </div>
+      {!!price && <div className="text-right text-sm font-semibold">{t("ค่าเช่ารวม {amount}", { amount: baht(total) })}</div>}
+    </>
+  );
+}
+
+/** สรุปสนามเช่าบรรทัดเดียว เช่น 19:00-22:00 · 4-5 คอร์ท · คอร์ทละ 200 */
+export function rentLabel(rent: DayRent): string {
+  const cs = range(rent.start, rent.end - 1).map((h) => courtsAt(rent, h));
+  const lo = Math.min(...cs);
+  const hi = Math.max(...cs);
+  if (!rent.courts) return t("{from}-{to} ชม.ละ {amount}", { from: hh(rent.start), to: hh(rent.end), amount: baht(rent.perHour) });
+  return t("{from}-{to} · {courts} คอร์ท · คอร์ทละ {amount}/ชม.", { from: hh(rent.start), to: hh(rent.end), courts: lo === hi ? String(lo) : `${lo}-${hi}`, amount: baht(rent.perHour) });
+}
+
+/** แอดมิน: แก้เวลาเช่า จำนวนคอร์ท และค่าเช่าของวันนี้ได้จากหน้านี้เลย (เก็บที่ประกาศของวัน) */
+function RentEdit({ rent, day }: { rent?: DayRent; day: Day }) {
+  const { dispatch, state } = useStore();
+  const [open, setOpen] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [draft, setDraft] = useState(() => rentDraft(rent ?? lastRent(state.days)));
+  const paid = day.checkIns.filter((c) => c.paidAt).length;
+  const save = () => {
+    if (paid && !confirm(t("มีคนจ่ายแล้ว {n} คน ยอดของคนที่จ่ายแล้วจะเปลี่ยนด้วย บันทึกไหม?", { n: paid }))) return;
+    const next = rentFromDraft(draft);
+    dispatch({ type: "setAnnouncement", date: day.date, message: day.announcement ?? "", rent: next });
+    // ขยาย/ย่อเวลาเลิก: คนที่ตั้งไว้ว่าอยู่ถึงเลิกเดิม ให้อยู่ถึงเลิกใหม่ด้วย
+    if (rent && next.end !== rent.end)
+      for (const c of day.checkIns)
+        if (!c.paidAt && c.hours && c.hours.to >= rent.end) dispatch({ type: "setHours", date: day.date, playerId: c.playerId, hours: { from: Math.min(c.hours.from, next.end - 1), to: next.end } });
+    setSaved(true);
+    setOpen(false);
+  };
+  if (!open)
+    return (
+      <div className="flex items-center gap-2 rounded-2xl bg-zinc-50 p-3 text-sm">
+        <span className="min-w-0 flex-1">
+          {saved && <span className="block text-xs font-semibold text-emerald-700">{t("บันทึกแล้ว")}</span>}
+          {rent ? rentLabel(rent) : t("วันนี้ยังไม่ได้ตั้งเป็นสนามเช่า")}
+        </span>
+        <Button
+          className="shrink-0"
+          onClick={() => {
+            setDraft(rentDraft(rent ?? lastRent(state.days)));
+            setSaved(false);
+            setOpen(true);
+          }}
+        >
+          {rent ? t("แก้เวลา/ค่าเช่า") : t("ตั้งสนามเช่า")}
+        </Button>
+      </div>
+    );
+  return (
+    <div className="space-y-2 rounded-2xl bg-zinc-50 p-3">
+      <RentFields value={draft} onChange={setDraft} />
       {!!paid && <p className="text-xs font-semibold text-amber-800">{t("มีคนจ่ายแล้ว {n} คน ถ้าแก้ ยอดของคนที่จ่ายแล้วจะเปลี่ยนด้วย ต้องเก็บเพิ่มหรือคืนส่วนต่างเอง", { n: paid })}</p>}
       <div className="flex gap-2">
         <Button className="flex-1" onClick={() => setOpen(false)}>
           {t("ยกเลิก")}
         </Button>
-        <Button variant="primary" className="flex-1" disabled={!ok} onClick={save}>
+        <Button variant="primary" className="flex-1" disabled={!rentDraftOk(draft)} onClick={save}>
           {t("บันทึก")}
         </Button>
       </div>
     </div>
+  );
+}
+
+/** ตั้งค่า > ราคาและสนาม: สนามเช่าของวันนี้ (ต้องประกาศจัดก๊วนก่อน) */
+export function RentTodayCard() {
+  const { day } = useToday();
+  return (
+    <Card className="space-y-2">
+      <h2 className="font-display font-semibold">{t("สนามเช่าวันนี้")}</h2>
+      <p className="text-xs text-zinc-500">{t("ตั้งเวลา ราคาต่อคอร์ท และจำนวนคอร์ทแต่ละชั่วโมง แต่ละชั่วโมงหารให้คนที่อยู่ วันใหม่จะดึงค่าครั้งล่าสุดมาให้")}</p>
+      {day.announcement !== undefined ? <RentEdit rent={day.rent} day={day} /> : <p className="rounded-2xl bg-zinc-50 p-3 text-sm">{t("วันนี้ยังไม่ได้ประกาศจัดก๊วน ประกาศก่อนแล้วตั้งสนามเช่าได้")}</p>}
+    </Card>
   );
 }
 
@@ -199,7 +264,7 @@ export function RentHoursSheet({ rent, onClose }: { rent: DayRent; onClose: () =
     <Sheet title={t("สนามเช่า: เวลามา-กลับ")} onClose={onClose}>
       <RentEdit rent={rent} day={day} />
       <div className="rounded-2xl bg-zinc-50 p-3 text-sm">
-        {t("ค่าเช่ารวม {rent} · หารได้ {got}", { rent: baht(rent.perHour * (rent.end - rent.start)), got: baht(collected) })}
+        {t("ค่าเช่ารวม {rent} · หารได้ {got}", { rent: baht(rentTotal(rent)), got: baht(collected) })}
       </div>
       <HourTable rent={rent} day={day} />
       {day.checkIns.some((c) => c.courtFee !== undefined && !c.paidAt) && (

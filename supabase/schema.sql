@@ -1847,6 +1847,7 @@ grant execute on function public.remove_my_drink(text, text, text) to anon, auth
 alter table public.announcements add column if not exists rent_start smallint check (rent_start between 0 and 23);
 alter table public.announcements add column if not exists rent_end smallint check (rent_end between 1 and 24);
 alter table public.announcements add column if not exists rent_per_hour integer check (rent_per_hour >= 0);
+alter table public.announcements add column if not exists rent_courts smallint[];
 alter table public.checkins add column if not exists from_hour smallint check (from_hour between 0 and 23);
 alter table public.checkins add column if not exists to_hour smallint check (to_hour between 1 and 24);
 
