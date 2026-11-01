@@ -1,7 +1,6 @@
 "use client";
 
 import { FESTIVAL_FRAMES, frameOf, type Frame } from "@/lib/frames";
-import { t } from "@/lib/i18n";
 import { LEVELS, type Level, type Player } from "@/lib/types";
 import { Avatar } from "./ui";
 
@@ -20,10 +19,10 @@ const LEVEL_LOOK: Record<Level, Omit<Look, "label">> = {
   5: { colors: ["#c084fc", "#22d3ee", "#f472b6", "#fde047"], glow: 30, icon: "👑", orbit: true, dots: true },
 };
 
-function lookOf(f: Frame): Look {
+function lookOf(f: Frame, small = false): Look {
   if (f.kind === "level") return { ...LEVEL_LOOK[f.level], label: LEVELS.find((l) => l.value === f.level)!.code };
   const x = FESTIVAL_FRAMES.find((y) => y.id === f.id)!;
-  return { colors: [x.colors[0], x.colors[1]], glow: 22, icon: x.emoji, orbit: true, dots: true, label: t(x.name) };
+  return { colors: [x.colors[0], x.colors[1]], glow: 22, icon: x.emoji, orbit: true, dots: true, label: small ? x.short : x.label };
 }
 
 const ringBg = (c: string[]) => `conic-gradient(from 210deg, ${[...c, c[0]].join(", ")})`;
@@ -37,7 +36,7 @@ type FramePlayer = Pick<Player, "name" | "photo" | "level" | "frame" | "frames" 
 export function FramedAvatar({ player, size = 40, compact, ring: plainRing, frame: forced }: { player: FramePlayer; size?: number; compact?: boolean; ring?: boolean; frame?: Frame | null }) {
   const frame = forced === undefined ? frameOf(player) : forced;
   if (!frame) return <Avatar name={player.name} photo={player.photo} size={size} ring={plainRing} />;
-  const look = lookOf(frame);
+  const look = lookOf(frame, size < 64);
   const glowColor = `${look.colors[1]}aa`;
   const tiny = size < 28;
   const ring = tiny ? 1.5 : Math.max(2, Math.round(size * (compact ? 0.06 : 0.045)));
