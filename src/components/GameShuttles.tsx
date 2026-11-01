@@ -25,13 +25,16 @@ function useLockPaid(game: Game, day: Day) {
 
 function Team({ ids, byId, won, me }: { ids: string[]; byId: Map<string, Player>; won: boolean; me?: string }) {
   return (
-    <div className={`truncate ${won ? "font-semibold text-ink" : "text-zinc-600"}`}>
-      {ids.map((id, i) => (
-        <span key={id}>
-          {i > 0 && <span className="text-zinc-300"> · </span>}
-          <span className={id === me ? "underline decoration-lime decoration-2 underline-offset-4" : ""}>{byId.get(id)?.name ?? "?"}</span>
-        </span>
-      ))}
+    <div className="flex min-w-0 items-center gap-1.5 text-zinc-700">
+      <span className="truncate">
+        {ids.map((id, i) => (
+          <span key={id}>
+            {i > 0 && <span className="text-zinc-300"> · </span>}
+            <span className={id === me ? "underline decoration-lime decoration-2 underline-offset-4" : ""}>{byId.get(id)?.name ?? "?"}</span>
+          </span>
+        ))}
+      </span>
+      {won && <span className="shrink-0 rounded-full bg-lime px-1.5 text-[10px] font-bold uppercase leading-4 text-ink">win</span>}
     </div>
   );
 }
@@ -115,7 +118,6 @@ export function FinishedGames({ byId }: { byId: Map<string, Player> }) {
       <SectionTitle right={t("{n} เกม · {m} ลูก", { n: done.length, m: total })}>{t("เกมที่จบแล้ววันนี้")}</SectionTitle>
       {open ? (
         <Card className="p-0 overflow-hidden">
-          <p className="px-3 pt-2 pb-1 text-xs text-zinc-500">{t("กดที่เกมเพื่อแก้จำนวนลูกหรือลบเกม ชื่อตัวหนา = ทีมที่ชนะ")}</p>
           <ul className="divide-y divide-zinc-100">
             {done.map((g) => (
               <GameShuttleRow key={g.id} game={g} byId={byId} day={day} />

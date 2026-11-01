@@ -1427,9 +1427,9 @@ export const en: Record<string, string> = {
   "ลบเกมนี้ (สนาม {n} · {time})? ใช้เมื่อเกมนี้ไม่ได้เล่นจริง ลูกและผลแพ้ชนะของเกมนี้จะหายไป": "Delete this game (court {n} · {time})? Use this only if the game didn't really happen. Its shuttles and result will be removed.",
   "ยอดเงินไม่เปลี่ยน (จ่ายแล้วหรือแอดมินแก้ยอดไว้): {names}": "Amount won't change (already paid or set by admin): {names}",
   "ลบเกมนี้ (ไม่ได้เล่นจริง)": "Delete game (didn't happen)",
-  "กดที่เกมเพื่อแก้จำนวนลูกหรือลบเกม ชื่อตัวหนา = ทีมที่ชนะ": "Tap a game to edit shuttles or delete it. Bold names = winning team.",
   "ดู / แก้ / ลบเกม": "View / edit / delete games",
   "เกมของคนนี้วันนี้ (กดเพื่อแก้)": "This player's games today (tap to edit)",
   "เกมของฉันวันนี้": "My games today",
   "จำนวนลูกไม่ตรง หรือมีเกมที่ไม่ได้เล่น แจ้งแอดมินให้แก้ได้": "Shuttle count wrong, or a game you didn't play? Ask an admin to fix it.",
+  "ตรวจแล้ว {n} รูป": "Checked ({n})",
 };

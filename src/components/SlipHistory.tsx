@@ -86,6 +86,10 @@ export function SlipHistory({ initialMonth }: { initialMonth?: string } = {}) {
   const [confirming, setConfirming] = useState<string | null>(null);
   // วันที่แอดมินกดเปิด/พับเอง (ไม่มี = ใช้ค่าเริ่มต้น)
   const [openDays, setOpenDays] = useState<Record<string, boolean>>({});
+  // วันที่เปิดดูสลิปที่ตรวจแล้ว (ปกติพับไว้ รอตรวจขึ้นก่อน)
+  const [openDone, setOpenDone] = useState<Record<string, boolean>>({});
+  // สลิปที่เพิ่งกดรับเงิน ค้างไว้ที่เดิมก่อน ให้เห็นว่ากดสำเร็จ (ไม่หายไปอยู่ในกองที่พับ)
+  const [justDone, setJustDone] = useState<string[]>([]);
   const isCurrent = month >= monthOf(date);
 
   const { all, owedById, waiting } = slipStatus(state, month);
@@ -97,6 +101,7 @@ export function SlipHistory({ initialMonth }: { initialMonth?: string } = {}) {
     else if (owed.kind === "month") dispatch({ type: "setMonthlyPaid", month: owed.month, playerId: owed.payer.id, paid: true });
     else applyPackage(dispatch, owed.payer, owed.pkg, s.day.date, date);
     setConfirming(null);
+    setJustDone((l) => [...l, s.id]);
     // วันนั้นไม่มีสลิปรอตรวจแล้ว อย่าพับเองทันที ให้เห็นว่ากดสำเร็จ
     setOpenDays((m) => ({ ...m, [s.day.date]: true }));
   };
@@ -122,6 +127,8 @@ export function SlipHistory({ initialMonth }: { initialMonth?: string } = {}) {
     setOpen(null);
     setError(null);
     setOpenDays({});
+    setOpenDone({});
+    setJustDone([]);
   };
 
   const when = (at: number) => new Date(at).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
@@ -256,7 +263,28 @@ export function SlipHistory({ initialMonth }: { initialMonth?: string } = {}) {
                   </span>
                 )}
               </button>
-              {isOpen && <ul className="space-y-2">{slips.map(row)}</ul>}
+              {isOpen && (() => {
+                // รอตรวจขึ้นก่อน ที่ตรวจแล้วพับไว้ด้านล่าง (ค้นหาชื่ออยู่ แสดงทั้งหมด)
+                const top = needle ? slips : slips.filter((x) => pending(x) || justDone.includes(x.id));
+                const done = needle ? [] : slips.filter((x) => !top.includes(x));
+                const doneOpen = openDone[date] ?? false;
+                return (
+                  <>
+                    {top.length > 0 && <ul className="space-y-2">{top.map(row)}</ul>}
+                    {done.length > 0 && (
+                      <button
+                        className="flex min-h-11 w-full items-center justify-between rounded-2xl border border-dashed border-zinc-300 px-4 text-sm font-medium text-zinc-600"
+                        aria-expanded={doneOpen}
+                        onClick={() => setOpenDone((m) => ({ ...m, [date]: !doneOpen }))}
+                      >
+                        <span>{t("ตรวจแล้ว {n} รูป", { n: done.length })}</span>
+                        <span className="text-zinc-400" aria-hidden>{doneOpen ? "▲" : "▼"}</span>
+                      </button>
+                    )}
+                    {doneOpen && done.length > 0 && <ul className="space-y-2">{done.map(row)}</ul>}
+                  </>
+                );
+              })()}
             </li>
           );
         })}
