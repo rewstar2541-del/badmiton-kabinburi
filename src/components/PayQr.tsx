@@ -64,7 +64,7 @@ export function PayQr({ promptPayId, amount }: { promptPayId: string; amount: nu
   if (!valid)
     return (
       <div className="w-full space-y-2">
-        {(!ppOff || !bankShown) && <p className="text-sm text-amber-700">{bankShown ? t("ยังไม่ได้ตั้ง PromptPay (ไปที่ ตั้งค่า)") : t("ยังไม่ได้ตั้งช่องทางรับเงิน (ไปที่ ตั้งค่า)")}</p>}
+        {(!ppOff || !bankShown) && <p className="text-sm text-amber-700">{bankShown ? t("ยังไม่ได้ตั้ง PromptPay (ไปที่ ตั้งค่า)") : t("ยังไม่มีช่องทางโอน จ่ายสดหรือถามแอดมิน")}</p>}
         <BankInfo only />
       </div>
     );

@@ -104,7 +104,7 @@ export function SettingsTab() {
               className="space-y-3"
               onSubmit={(e) => {
                 e.preventDefault();
-                if (!ppOk) return;
+                if (!ppOk && s.promptPayOn !== false) return;
                 const old = state.settings;
                 // ค่ารายเดือนและค่าสนามรายวันมาจากแพ็กเกจ ไม่ทับด้วยค่าในฟอร์มนี้
                 const next = { ...(packagesReady ? { ...s, monthlyFee: old.monthlyFee, courtFee: old.courtFee } : s), festival: old.festival, courtCount: old.courtCount };
@@ -256,7 +256,7 @@ export function SettingsTab() {
 /** ช่องทางรับเงินหนึ่งทาง มีสวิตช์เปิด/ปิด (ปิดแล้วเลขเดิมยังเก็บไว้) */
 function PayChannel({ icon, title, on, canToggle, onToggle, children }: { icon: string; title: string; on: boolean; canToggle: boolean; onToggle: (v: boolean) => void; children: ReactNode }) {
   return (
-    <div className={`space-y-2 rounded-2xl p-3 ring-1 ${on ? "bg-emerald-50/60 ring-emerald-300" : "bg-zinc-50 ring-zinc-200"}`}>
+    <div className={`space-y-2 rounded-2xl p-3 ring-1 ${on ? "bg-emerald-50 ring-emerald-300" : "bg-zinc-50 ring-zinc-200"}`}>
       <div className="flex min-h-11 items-center gap-2">
         <span aria-hidden>{icon}</span>
         <span className={`min-w-0 flex-1 font-semibold ${on ? "" : "text-zinc-500"}`}>{title}</span>
