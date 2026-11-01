@@ -1281,7 +1281,6 @@ export const en: Record<string, string> = {
   "เข้าเกณฑ์เลื่อนเป็น {level} แล้ว": "Qualified for {level}",
   "ทางไปขั้น {level}": "Road to {level}",
   "ชนะ {w}/{n} เกม": "{w}/{n} wins",
-  "เกณฑ์: ชนะ {w} เกมขึ้นไป และชนะ {r}% ขึ้นไปในเดือนเดียวกัน แอดมินยืนยันตอนสิ้นเดือน": "Rule: at least {w} wins and a {r}% win rate in the same month. An admin confirms at month end",
   "3 อันดับแรก": "Top 3",
   "3 อันดับแรก · แต้มที่ได้เดือนนี้": "Top 3 · points gained this month",
   "เดือนนี้ไม่มีใครเข้าเกณฑ์เลื่อนขั้น": "Nobody qualified for promotion this month",
@@ -1290,4 +1289,7 @@ export const en: Record<string, string> = {
   "เลื่อน {name} จาก {a} เป็น {b}?": "Promote {name} from {a} to {b}?",
   "เลื่อนขั้น": "Promote",
   "เลื่อนเป็น {level} แล้ว": "Promoted to {level}",
+  "3 อันดับแรก · แต้มที่ได้ในเดือนนั้น": "Top 3 · points gained that month",
+  "% ชนะ {r}/{n}": "Win % {r}/{n}",
+  "เกณฑ์: ชนะ {w} เกมขึ้นไป และชนะ {r}% ขึ้นไปในเดือนเดียวกัน นับเฉพาะเกมที่บันทึกผล แอดมินยืนยันต้นเดือนถัดไป": "Rule: at least {w} wins and a {r}% win rate in the same month, counting only games with a recorded result. An admin confirms early next month",
 };

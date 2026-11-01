@@ -7,7 +7,7 @@ import { Auto } from "@/lib/autoTranslate";
 import { NewsCarousel } from "./NewsCarousel";
 import { activeFestival, festivalInfo } from "@/lib/festival";
 
-import { useState, type ComponentType, type ReactNode, type SVGProps } from "react";
+import { useMemo, useState, type ComponentType, type ReactNode, type SVGProps } from "react";
 import { presence, waitingQueue } from "@/lib/matchmaking";
 import { signupQueue } from "@/lib/social";
 import { useStore, useToday } from "@/lib/store";
@@ -403,7 +403,8 @@ export function AdminHome() {
   // 7 วันแรกของเดือน เตือนแอดมินให้ยืนยันคนที่เข้าเกณฑ์เลื่อนขั้นของเดือนก่อน
   const lastMonth = shiftMonth(date.slice(0, 7), -1);
   const [promoted] = usePromoted(lastMonth);
-  const toPromote = Number(date.slice(8)) <= 7 ? promotionCandidates(state, lastMonth).filter((c) => !promoted.includes(c.id)) : [];
+  const candidates = useMemo(() => promotionCandidates(state, lastMonth), [state, lastMonth]);
+  const toPromote = Number(date.slice(8)) <= 7 ? candidates.filter((c) => !promoted.includes(c.id)) : [];
 
   const todo: Row[] = [
     ...(toPromote.length

@@ -60,6 +60,7 @@ export function AttendeeList({ day }: { day: Day }) {
     { title: t("ลงชื่อแล้ว ยังไม่มา"), ids: a.coming, tone: "bg-sky-50 text-sky-900" },
     { title: t("สำรอง"), ids: a.waiting, tone: "bg-amber-50 text-amber-900" },
   ].filter((g) => g.ids.length);
+  if (!groups.length) return <p className="text-sm text-zinc-500">{t("ยังไม่มีใครลงชื่อ")}</p>;
   return (
     <div className="space-y-4">
       {groups.map((g) => (

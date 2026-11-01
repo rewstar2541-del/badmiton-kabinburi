@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { monthRanking, type RankRow } from "@/lib/club";
-import { monthRecord, nextLevel, promotionCandidates, winRate } from "@/lib/promotion";
+import { monthRecord, nextLevel, promotionCandidates } from "@/lib/promotion";
 import type { Player } from "@/lib/types";
 import { PromotionProgress } from "./MembersDirectory";
 import { locale, t } from "@/lib/i18n";
@@ -13,14 +13,15 @@ import { rankingImage } from "@/lib/shareImage";
 import { useMe } from "./PickMe";
 import { useShareImage } from "./ShareImage";
 import { Avatar, Button, Card, Icon, LevelBadge, levelCode } from "./ui";
+import { LEVELS, type Level } from "@/lib/types";
 
 /**
  * ประวัติเกมย้อนหลังสำหรับอันดับ/สรุปรายปี
  * แอดมินและโหมดทดลองมีครบอยู่แล้วใน state ผู้เล่นทั่วไปโหลดเพิ่มครั้งเดียว แล้วใช้เกมวันนี้จาก state ที่อัปเดตสด
  */
-export function useHistory(from: string): { data: Pick<State, "days" | "players"> | null; failed: boolean } {
+export function useHistory(from: string, skip = false): { data: Pick<State, "days" | "players"> | null; failed: boolean } {
   const { state, history, auth } = useStore();
-  const full = auth.isAdmin || !auth.online;
+  const full = auth.isAdmin || !auth.online || skip;
   const [loaded, setLoaded] = useState<{ from: string; s: State } | null>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -113,7 +114,10 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
               {t("คุณอยู่อันดับ {n} จาก {m} คน", { n: mine + 1, m: rows.length })}
             </p>
           )}
-          <Podium rows={rows.slice(0, 3)} byId={byId} />
+          {month === now && meP && myNext !== null && !meP.guestOf && !meP.pending && (
+            <PromotionProgress rec={myRec ?? { games: 0, decided: 0, wins: 0 }} next={myNext} />
+          )}
+          <Podium rows={rows.slice(0, 3)} byId={byId} current={month === now} />
           <ol className="divide-y divide-zinc-100">
             {shown.map((r, i) => {
               const p = byId.get(r.id);
@@ -143,10 +147,7 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
           {img.overlay}
         </>
       )}
-      {data && month === now && meP && myNext !== null && !meP.guestOf && (
-        <PromotionProgress wins={myRec?.wins ?? 0} rate={myRec ? winRate(myRec) : 0} next={myNext} />
-      )}
-      {data && month < now && <PromotionList month={month} data={data} admin={auth.isAdmin || !auth.online} />}
+      {data && month === shift(now, -1) && <PromotionList month={month} data={data} admin={auth.isAdmin || !auth.online} />}
       <p className="text-xs text-zinc-500">
         {t("แต้มขึ้นลงตามผลแพ้ชนะ ชนะทีมเก่งกว่าได้แต้มมากกว่า")}
       </p>
@@ -163,26 +164,26 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
 export const yearLabel = (y: string) => new Date(`${y}-06-01T00:00:00`).toLocaleDateString(locale(), { year: "numeric" });
 
 /** กราฟแท่ง 3 อันดับแรก (แท่งกลางคืออันดับ 1) สูงตามแต้มที่ได้เดือนนี้ */
-function Podium({ rows, byId }: { rows: RankRow[]; byId: Map<string, Player> }) {
+function Podium({ rows, byId, current }: { rows: RankRow[]; byId: Map<string, Player>; current: boolean }) {
   if (rows.length === 0) return null;
   const top = Math.max(1, ...rows.map((r) => Math.max(0, r.delta)));
-  // แท่งต่ำสุด 30% ให้ยังเห็นชื่อและอันดับ แม้แต้มติดลบหรือเป็นศูนย์
-  const height = (r: RankRow) => 30 + Math.round((Math.max(0, r.delta) / top) * 70);
+  // แท่งสูง 48-104px ตามแต้ม แท่งเตี้ยสุดยังใส่เหรียญกับแต้มได้ แม้แต้มติดลบหรือเป็นศูนย์
+  const height = (r: RankRow) => 48 + Math.round((Math.max(0, r.delta) / top) * 56);
   const order = [1, 0, 2].filter((i) => i < rows.length);
   const medal = ["🥇", "🥈", "🥉"];
   return (
     <figure className="rounded-2xl bg-zinc-50 px-2 pt-3 pb-2" aria-label={t("3 อันดับแรก")}>
-      <div className="flex h-44 items-end justify-center gap-3">
+      <div className="flex items-end justify-center gap-3">
         {order.map((i) => {
           const r = rows[i];
           const p = byId.get(r.id);
           return (
-            <div key={r.id} className="flex h-full w-1/4 min-w-0 flex-col items-center justify-end gap-1">
+            <div key={r.id} className="flex w-1/4 min-w-0 flex-col items-center justify-end gap-1">
               <Avatar name={p?.name ?? "?"} photo={p?.photo} size={i === 0 ? 40 : 32} ring />
               <span className="w-full truncate text-center text-xs font-semibold">{p?.name ?? "?"}</span>
               <div
-                className={`flex w-full flex-col items-center justify-start rounded-t-lg pt-1 ${i === 0 ? "bg-lime" : "bg-lime/50"}`}
-                style={{ height: `${height(r) * 0.6}%` }}
+                className={`flex w-full flex-col items-center justify-start rounded-t-lg pt-1 ${i === 0 ? "bg-lime" : "bg-lime/40"}`}
+                style={{ height: height(r) }}
               >
                 <span aria-hidden>{medal[i]}</span>
                 <span className="text-xs font-bold text-ink tabular-nums">
@@ -194,7 +195,7 @@ function Podium({ rows, byId }: { rows: RankRow[]; byId: Map<string, Player> }) 
           );
         })}
       </div>
-      <figcaption className="mt-1 text-center text-[11px] text-zinc-500">{t("3 อันดับแรก · แต้มที่ได้เดือนนี้")}</figcaption>
+      <figcaption className="mt-1 text-center text-xs text-zinc-500">{current ? t("3 อันดับแรก · แต้มที่ได้เดือนนี้") : t("3 อันดับแรก · แต้มที่ได้ในเดือนนั้น")}</figcaption>
     </figure>
   );
 }
@@ -238,7 +239,7 @@ export function usePromoted(month: string) {
 /** คนที่เข้าเกณฑ์เลื่อนขั้นของเดือนที่จบแล้ว แอดมินกดยืนยันทีละคน */
 export function PromotionList({ month, data: given, admin: isAdmin }: { month: string; data?: Pick<State, "days" | "players">; admin?: boolean }) {
   const { state, dispatch, auth } = useStore();
-  const own = useHistory(`${month}-01`);
+  const own = useHistory(`${month}-01`, !!given);
   const data = given ?? own.data;
   const admin = isAdmin ?? (auth.isAdmin || !auth.online);
   const [done, markDone] = usePromoted(month);
@@ -247,6 +248,7 @@ export function PromotionList({ month, data: given, admin: isAdmin }: { month: s
   // คนที่ยืนยันไปแล้ว ระดับปัจจุบันเปลี่ยนแล้ว ไม่ต้องเสนอขั้นถัดไปอีก
   const fresh = list.filter((c) => !done.includes(c.id));
   const doneIds = done.filter((id) => state.players.some((p) => p.id === id));
+  const label = (l: Level) => `${t(LEVELS.find((x) => x.value === l)?.label ?? "")} (${levelCode(l)})`;
   if (!fresh.length && !doneIds.length) return given ? null : <p className="text-sm text-zinc-500">{t("เดือนนี้ไม่มีใครเข้าเกณฑ์เลื่อนขั้น")}</p>;
   const byId = new Map(state.players.map((p) => [p.id, p]));
   return (
@@ -261,17 +263,16 @@ export function PromotionList({ month, data: given, admin: isAdmin }: { month: s
               <Avatar name={p.name} photo={p.photo} size={30} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold">{p.name}</span>
-                <span className="block text-xs text-zinc-600">{t("ชนะ {w}/{g} เกม · {r}%", { w: c.wins, g: c.decided, r: c.rate })}</span>
-              </span>
-              <span className="flex shrink-0 items-center gap-1 text-xs">
-                <LevelBadge level={c.from} /> → <LevelBadge level={c.to} />
+                <span className="flex flex-wrap items-center gap-1 text-xs text-zinc-600">
+                  <LevelBadge level={c.from} /> → <LevelBadge level={c.to} /> · {t("ชนะ {w}/{g} เกม · {r}%", { w: c.wins, g: c.decided, r: c.rate })}
+                </span>
               </span>
               {admin && (
                 <Button
                   variant="primary"
-                  className="!min-h-9 !px-3 !py-1 text-sm"
+                  className="min-h-11 shrink-0 !px-3"
                   onClick={() => {
-                    if (!confirm(t("เลื่อน {name} จาก {a} เป็น {b}?", { name: p.name, a: levelCode(c.from), b: levelCode(c.to) }))) return;
+                    if (!confirm(t("เลื่อน {name} จาก {a} เป็น {b}?", { name: p.name, a: label(c.from), b: label(c.to) }))) return;
                     dispatch({ type: "updatePlayer", player: { ...p, level: c.to, levelRequest: undefined } });
                     markDone(p.id);
                   }}
