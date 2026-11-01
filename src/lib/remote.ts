@@ -65,6 +65,8 @@ export interface Rows {
   packages?: null | { id: string; name: string; price: number; kind: Package["kind"]; until_date: string | null; sort: number }[];
   expenses?: { id: string; date: string; category: Expense["category"]; amount: number; note: string; shuttles?: number | null; created_at?: string }[];
   pairs?: { id: string; date: string; from_id: string; to_id: string; status: PairStatus; at: string }[];
+  /** คิวรอลงแยกสนาม (ไม่มี/ว่าง = ยังไม่รัน SQL court_queue.sql) */
+  queued?: { id: string; date: string; court: number; player_ids: string[]; at: string }[];
   polls?: { id: string; question: string; dates: string[]; created_at: string; chosen: string | null; closed: boolean }[];
   votes?: { poll_id: string; player_id: string; dates: string[] }[];
   notices?: { id: string; kind: Notice["kind"]; title: string; body: string | null; until: string | null; created_at: string }[];
@@ -146,6 +148,8 @@ export function rowsToState(r: Rows): State {
   for (const x of r.drinks) day(x.date).drinks.push({ id: x.id, playerId: x.player_id, amount: x.amount, note: x.note });
   for (const x of r.pairs ?? [])
     (day(x.date).pairs ??= []).push({ id: x.id, from: x.from_id, to: x.to_id, status: x.status, at: Date.parse(x.at) });
+  for (const x of r.queued ?? [])
+    (day(x.date).queued ??= []).push({ id: x.id, court: x.court, playerIds: x.player_ids as Game["playerIds"], at: Date.parse(x.at) });
   for (const a of r.announcements) {
     day(a.date).announcement = a.message;
     if (a.title) day(a.date).announcementTitle = a.title;
@@ -295,6 +299,7 @@ export const TABLE_OF: Record<string, TableKey> = {
   day_prices: "prices",
   expenses: "expenses",
   pair_requests: "pairs",
+  court_queue: "queued",
   polls: "polls",
   poll_votes: "votes",
   board_posts: "board",
@@ -352,6 +357,8 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
     packages: async () => all(() => db.from("packages").select("id,name,price,kind,until_date,sort").order("sort")).catch(() => null),
     closed: () => all(() => db.from("closed_days").select("date,reason").order("date")),
     expenses: async () => (isAdmin ? all(() => db.from("expenses").select("id,date,category,amount,note,shuttles,created_at").order("date").order("id")) : []),
+    // ตารางคิวสนามยังไม่ได้สร้าง (ยังไม่รัน SQL) ให้ข้ามไป
+    queued: () => all(() => db.from("court_queue").select("id,date,court,player_ids,at").gte("date", sinceDate(1)).order("at")).catch(() => []),
     pairs: () => all(() => db.from("pair_requests").select("id,date,from_id,to_id,status,at").gte("date", sinceDate(1)).order("at")),
     polls: () => all(() => db.from("polls").select("id,question,dates,created_at,chosen,closed").gte("created_at", sinceDate(120)).order("created_at")),
     votes: () => all(() => db.from("poll_votes").select("poll_id,player_id,dates").gte("at", sinceDate(120)).order("poll_id")),
@@ -443,11 +450,29 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
     case "undoCheckIn":
       return check(await db.from("checkins").delete().eq("date", a.date).eq("player_id", a.playerId));
     case "startGame":
-      return check(
+      check(
         await db
           .from("games")
           .insert({ id: a._id, date: a.date, court: a.court, player_ids: a.playerIds, started_at: iso(a._at), shuttles: 1 }),
       );
+      if (a.queuedId) check(await db.from("court_queue").delete().eq("id", a.queuedId));
+      return;
+    case "queueGame":
+    {
+      const res = await db.from("court_queue").insert({ id: a._id, date: a.date, court: a.court, player_ids: a.playerIds, at: iso(a._at) });
+      if (res.error?.message.includes("court_queue")) throw new Error("ต้องรัน SQL supabase/sql/court_queue.sql ก่อน");
+      return check(res);
+    }
+    case "unqueueGame":
+      return check(await db.from("court_queue").delete().eq("id", a.id));
+    case "editQueued":
+    {
+      // แอดมินอีกเครื่องอาจลงสนามหรือลบคู่นี้ไปแล้ว: ไม่มีแถวให้แก้ ต้องบอก ไม่ใช่หายเงียบ
+      const res = await db.from("court_queue").update({ player_ids: a.playerIds }).eq("id", a.id).select("id");
+      check(res);
+      if (!res.data?.length) throw new Error("คู่นี้ถูกลงสนามหรือเอาออกจากคิวไปแล้ว");
+      return;
+    }
     case "setShuttles":
       return check(await db.from("games").update({ shuttles: Math.max(0, a.shuttles) }).eq("id", a.gameId));
     case "endGame":
@@ -670,7 +695,11 @@ async function clearRemote(db: SupabaseClient, kinds: ClearKind[], from: string,
   const byDate = async (table: string) => check(await db.from(table).delete().gte("date", from).lte("date", to));
   const byTime = async (table: string, col: string) => check(await db.from(table).delete().gte(col, startOf(from)).lte(col, endOf(to)));
   // ลำดับ: ของที่อ้างอิงวันก่อน แล้วค่อยเช็คอิน
-  if (k.has("games")) await byDate("games");
+  if (k.has("games")) {
+    await byDate("games");
+    // คิวรอลงแยกสนาม (ยังไม่รัน SQL = ไม่มีตาราง ข้ามไป)
+    await byDate("court_queue").catch(() => {});
+  }
   if (k.has("signups")) {
     await byDate("pair_requests");
     await byDate("signups");

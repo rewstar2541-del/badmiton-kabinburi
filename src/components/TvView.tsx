@@ -6,7 +6,7 @@ import { BirthdayBanner } from "./Birthday";
 import { useEffect, useRef, useState } from "react";
 import { appName } from "@/lib/brand";
 import { locale, t, useLang } from "@/lib/i18n";
-import { presence, waitingQueue } from "@/lib/matchmaking";
+import { courtPlan, courtQueue, presence, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
 import type { Player } from "@/lib/types";
 import { Avatar, Icon, LevelBadge } from "./ui";
@@ -60,6 +60,7 @@ export function TvView() {
   useLang();
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const queue = waitingQueue(day, state.players);
+  const plan = courtPlan(day, state.players, state.settings.courtCount);
   const games = new Map(day.games.filter((g) => !g.endedAt).map((g) => [g.court, g]));
   const courts = Array.from({ length: state.settings.courtCount }, (_, i) => i + 1);
   const resting = day.checkIns.filter((c) => presence(day, c.playerId) === "resting").length;
@@ -183,6 +184,14 @@ export function TvView() {
                     {t("ว่าง")}
                   </div>
                 )}
+                {(plan.get(c)?.queuedId ? courtQueue(day, c) : plan.has(c) ? [{ id: "auto", ...plan.get(c)! }] : []).slice(0, 2).map((q, i) => (
+                  <div key={q.id} className={`mt-2 flex items-center gap-2 rounded-xl px-3 py-1.5 text-base ${i === 0 ? "bg-lime/20" : "bg-white/[0.04] text-white/70"}`}>
+                    <span className="shrink-0 text-sm font-semibold text-lime">{i === 0 ? t("ลงต่อ") : t("คู่ที่ {n}", { n: i + 1 })}</span>
+                    <span className="min-w-0 flex-1 truncate font-semibold">
+                      {namesOf(q.playerIds.slice(0, 2)).join(" · ")} <span className="text-white/50">vs</span> {namesOf(q.playerIds.slice(2)).join(" · ")}
+                    </span>
+                  </div>
+                ))}
               </div>
             );
           })}

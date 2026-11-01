@@ -12,18 +12,53 @@ type Slots = (string | null)[];
 /**
  * จัดคู่ลงสนาม: เริ่มจากคู่ที่ระบบแนะนำ แอดมินแตะช่องแล้วแตะชื่อเพื่อเปลี่ยนคนได้
  * แตะชื่อที่อยู่ในอีกช่องจะสลับกัน แตะช่องที่เลือกอยู่ซ้ำเพื่อเอาคนออก
+ * queue: จัดคู่รอลงสนามนี้ต่อจากเกมที่เล่นอยู่ (ยังไม่เริ่มเกม)
+ * initial: เริ่มจากคู่นี้ (แก้คู่ที่ระบบจัดให้อัตโนมัติ) editId: แก้คู่ที่จัดคิวไว้แล้ว (คงลำดับคิวเดิม)
+ * reserved: คนที่ระบบจัดให้สนามอื่นแล้ว ปุ่มแนะนำใหม่จะไม่ดึงมา (แตะเลือกเองได้)
  */
-export function MatchBuilder({ court, onClose }: { court: number; onClose: () => void }) {
+export function MatchBuilder({
+  court,
+  onClose,
+  queue: toQueue = false,
+  initial,
+  editId,
+  reserved = [],
+  courtOf,
+}: {
+  court: number;
+  onClose: () => void;
+  queue?: boolean;
+  initial?: string[];
+  editId?: string;
+  reserved?: string[];
+  /** ผู้เล่น -> สนามที่ระบบจัดให้รอ (แสดงในรายชื่อ จะได้รู้ว่ากำลังดึงคนจากสนามอื่น) */
+  courtOf?: Map<string, number>;
+}) {
   const { state, dispatch } = useStore();
-  const { date, day } = useToday();
+  const { date, day: today } = useToday();
+  // แก้คู่ในคิว: คนในคู่นั้นกลับมาเลือกได้
+  const day = editId ? { ...today, queued: (today.queued ?? []).filter((q) => q.id !== editId) } : today;
   const queue = waitingQueue(day, state.players);
   const byId = new Map(state.players.map((p) => [p.id, p]));
-  const suggest = (): Slots => nextMatch(day, state.players) ?? [0, 1, 2, 3].map((i) => queue[i]?.player.id ?? null);
-  const [picked, setSlots] = useState<Slots>(suggest);
+  const forSuggest = reserved.length
+    ? {
+        ...day,
+        queued: [
+          ...(day.queued ?? []),
+          ...Array.from({ length: Math.ceil(reserved.length / 4) }, (_, i) => ({ id: `reserved-${i}`, court: 0, playerIds: reserved.slice(i * 4, i * 4 + 4) as Game["playerIds"], at: Infinity })),
+        ],
+      }
+    : day;
+  // ชุดที่แนะนำไปแล้ว กดแนะนำใหม่จะได้คนชุดใหม่
+  const [shown, setShown] = useState<string[][]>(() => (initial ? [initial] : []));
+  const suggest = (seen: string[][] = []): Slots =>
+    // ครั้งแรกเลี่ยงคนที่ระบบจัดให้สนามอื่นแล้ว กดแนะนำใหม่ดึงจากคิวรวมทั้งหมด จะได้มีคนใหม่ให้หมุน
+    (seen.length ? null : nextMatch(forSuggest, state.players)) ?? nextMatch(day, state.players, 8, seen) ?? [0, 1, 2, 3].map((i) => queue[i]?.player.id ?? null);
+  const [picked, setSlots] = useState<Slots>(() => initial ?? suggest());
   const [selected, setSelected] = useState<number | null>(null);
   // แอดมินอีกเครื่องอาจส่งคนในช่องลงสนามอื่นไปแล้ว หรือใช้สนามนี้ไปแล้ว: เอาคนนั้นออกจากช่องเสมอ
-  const onCourt = new Set(day.games.filter((g) => !g.endedAt).flatMap((g) => g.playerIds));
-  const courtTaken = day.games.some((g) => !g.endedAt && g.court === court);
+  const onCourt = new Set([...day.games.filter((g) => !g.endedAt).flatMap((g) => g.playerIds), ...(day.queued ?? []).flatMap((q) => q.playerIds)]);
+  const courtTaken = !toQueue && day.games.some((g) => !g.endedAt && g.court === court);
   const slots = picked.map((id) => (id && onCourt.has(id) ? null : id));
 
   const tapSlot = (i: number) => {
@@ -80,7 +115,7 @@ export function MatchBuilder({ court, onClose }: { court: number; onClose: () =>
   };
 
   return (
-    <Sheet onClose={onClose} title={<h3 className="font-display text-lg font-semibold">{t("จัดคู่ สนาม {n}", { n: court })}</h3>}>
+    <Sheet onClose={onClose} title={<h3 className="font-display text-lg font-semibold">{toQueue ? t("จัดคิวรอลง สนาม {n}", { n: court }) : t("จัดคู่ สนาม {n}", { n: court })}</h3>}>
       <div className="court-surface flex gap-1 rounded-2xl px-2 py-3">
         {(["A", "B"] as const).map((team, ti) => (
           <div key={team} className="flex min-w-0 flex-1 basis-0 flex-col items-center gap-2">
@@ -116,7 +151,12 @@ export function MatchBuilder({ court, onClose }: { court: number; onClose: () =>
                 <span className="w-4 text-center text-[11px] text-zinc-400">{i + 1}</span>
                 <span className="min-w-0 flex-1 truncate font-medium">{e.player.name}</span>
                 <LevelBadge level={e.player.level} />
-                <span className="text-[10px] text-zinc-500">{t("{n} เกม", { n: e.gamesPlayed })}</span>
+                <span className="text-right text-[10px] leading-tight text-zinc-500">
+                  {t("{n} เกม", { n: e.gamesPlayed })}
+                  {courtOf?.get(e.player.id) && courtOf.get(e.player.id) !== court && (
+                    <span className="block font-semibold text-emerald-700">{t("รอสนาม {n}", { n: courtOf.get(e.player.id)! })}</span>
+                  )}
+                </span>
               </button>
             </li>
           );
@@ -126,7 +166,9 @@ export function MatchBuilder({ court, onClose }: { court: number; onClose: () =>
       <div className="flex gap-2">
         <Button
           onClick={() => {
-            setSlots(suggest());
+            const seen = [...shown, slots.filter((x): x is string => !!x)];
+            setShown(seen);
+            setSlots(suggest(seen));
             setSelected(null);
           }}
           className="flex items-center gap-1.5"
@@ -139,11 +181,13 @@ export function MatchBuilder({ court, onClose }: { court: number; onClose: () =>
           disabled={!full || courtTaken}
           onClick={() => {
             if (!full || courtTaken) return;
-            dispatch({ type: "startGame", date, court, playerIds: slots as Game["playerIds"] });
+            const playerIds = slots as Game["playerIds"];
+            if (editId) dispatch({ type: "editQueued", date, id: editId, playerIds });
+            else dispatch({ type: toQueue ? "queueGame" : "startGame", date, court, playerIds });
             onClose();
           }}
         >
-          {courtTaken ? t("สนามนี้มีเกมอยู่แล้ว") : full ? t("เริ่มเกม") : t("ต้องมีครบ 4 คน")}
+          {courtTaken ? t("สนามนี้มีเกมอยู่แล้ว") : !full ? t("ต้องมีครบ 4 คน") : toQueue ? t("เข้าคิวสนาม {n}", { n: court }) : t("เริ่มเกม")}
         </Button>
       </div>
     </Sheet>
