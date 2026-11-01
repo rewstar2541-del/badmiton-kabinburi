@@ -190,13 +190,19 @@ export interface CourtNext {
 }
 
 /**
- * แบ่งคิวรวมขึ้นรอแต่ละสนามอัตโนมัติ เรียงตามเลขสนาม (คิว 1-4 สนาม 1, 5-8 สนาม 2, ...)
+ * แบ่งคิวรวมขึ้นรอแต่ละสนามอัตโนมัติ: คิว 1-4 ไปสนามที่น่าจะว่างก่อนสุด, 5-8 สนามถัดไป, ...
+ * ลำดับสนาม = สนามว่างก่อน (เลขน้อยก่อน) แล้วสนามที่เริ่มเกมก่อน (น่าจะจบก่อน)
+ * first: สนามที่กำลังจะจบเกม ให้ได้คู่แรก (คนที่รอนานสุดได้ลงก่อน ไม่ถูกแซง)
  * สนามที่แอดมินจัดคิวไว้เองใช้คู่นั้น ไม่เอาคนจากคิวรวม
  */
-export function courtPlan(day: Day, players: Player[], courtCount: number): Map<number, CourtNext> {
+export function courtPlan(day: Day, players: Player[], courtCount: number, first?: number): Map<number, CourtNext> {
+  const started = new Map(day.games.filter((g) => !g.endedAt).map((g) => [g.court, g.startedAt]));
+  const order = Array.from({ length: courtCount }, (_, i) => i + 1).sort(
+    (a, b) => Number(b === first) - Number(a === first) || (started.get(a) ?? -Infinity) - (started.get(b) ?? -Infinity) || a - b,
+  );
   const plan = new Map<number, CourtNext>();
   let d = day;
-  for (let c = 1; c <= courtCount; c++) {
+  for (const c of order) {
     const own = courtQueue(day, c)[0];
     if (own) {
       plan.set(c, { court: c, playerIds: own.playerIds, queuedId: own.id });
@@ -218,13 +224,13 @@ export function plannedCourt(plan: Map<number, CourtNext>, playerId: string): Co
 }
 
 /**
- * เรียงคิวรวมตามสนามที่ระบบจัดให้ (คิว 1-4 = สนาม 1, 5-8 = สนาม 2 ...) คนที่ยังไม่ได้สนามต่อท้ายตามลำดับเดิม
+ * เรียงคิวรวมตามสนามที่ระบบจัดให้ (คิว 1-4 = สนามแรกที่จะว่าง, 5-8 = สนามถัดไป ...) คนที่ยังไม่ได้สนามต่อท้ายตามลำดับเดิม
  * ในแต่ละสนามเรียงตามทีม (ทีม A แล้วทีม B)
  */
 export function queueByCourt(queue: QueueEntry[], plan: Map<number, CourtNext>): QueueEntry[] {
   const rank = new Map<string, number>();
-  for (const n of [...plan.values()].filter((n) => !n.queuedId).sort((a, b) => a.court - b.court))
-    n.playerIds.forEach((id, i) => rank.set(id, n.court * 10 + i));
+  // ตามลำดับที่ระบบแจก (สนามที่น่าจะว่างก่อนอยู่บน)
+  [...plan.values()].filter((n) => !n.queuedId).forEach((n, k) => n.playerIds.forEach((id, i) => rank.set(id, k * 10 + i)));
   const base = new Map(queue.map((e, i) => [e.player.id, i]));
   return [...queue].sort((a, b) => (rank.get(a.player.id) ?? 1e6 + base.get(a.player.id)!) - (rank.get(b.player.id) ?? 1e6 + base.get(b.player.id)!));
 }

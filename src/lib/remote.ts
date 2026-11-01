@@ -466,7 +466,13 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
     case "unqueueGame":
       return check(await db.from("court_queue").delete().eq("id", a.id));
     case "editQueued":
-      return check(await db.from("court_queue").update({ player_ids: a.playerIds }).eq("id", a.id));
+    {
+      // แอดมินอีกเครื่องอาจลงสนามหรือลบคู่นี้ไปแล้ว: ไม่มีแถวให้แก้ ต้องบอก ไม่ใช่หายเงียบ
+      const res = await db.from("court_queue").update({ player_ids: a.playerIds }).eq("id", a.id).select("id");
+      check(res);
+      if (!res.data?.length) throw new Error("คู่นี้ถูกลงสนามหรือเอาออกจากคิวไปแล้ว");
+      return;
+    }
     case "setShuttles":
       return check(await db.from("games").update({ shuttles: Math.max(0, a.shuttles) }).eq("id", a.gameId));
     case "endGame":
@@ -689,7 +695,11 @@ async function clearRemote(db: SupabaseClient, kinds: ClearKind[], from: string,
   const byDate = async (table: string) => check(await db.from(table).delete().gte("date", from).lte("date", to));
   const byTime = async (table: string, col: string) => check(await db.from(table).delete().gte(col, startOf(from)).lte(col, endOf(to)));
   // ลำดับ: ของที่อ้างอิงวันก่อน แล้วค่อยเช็คอิน
-  if (k.has("games")) await byDate("games");
+  if (k.has("games")) {
+    await byDate("games");
+    // คิวรอลงแยกสนาม (ยังไม่รัน SQL = ไม่มีตาราง ข้ามไป)
+    await byDate("court_queue").catch(() => {});
+  }
   if (k.has("signups")) {
     await byDate("pair_requests");
     await byDate("signups");

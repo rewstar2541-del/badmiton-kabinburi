@@ -23,6 +23,7 @@ export function MatchBuilder({
   initial,
   editId,
   reserved = [],
+  courtOf,
 }: {
   court: number;
   onClose: () => void;
@@ -30,6 +31,8 @@ export function MatchBuilder({
   initial?: string[];
   editId?: string;
   reserved?: string[];
+  /** ผู้เล่น -> สนามที่ระบบจัดให้รอ (แสดงในรายชื่อ จะได้รู้ว่ากำลังดึงคนจากสนามอื่น) */
+  courtOf?: Map<string, number>;
 }) {
   const { state, dispatch } = useStore();
   const { date, day: today } = useToday();
@@ -148,7 +151,12 @@ export function MatchBuilder({
                 <span className="w-4 text-center text-[11px] text-zinc-400">{i + 1}</span>
                 <span className="min-w-0 flex-1 truncate font-medium">{e.player.name}</span>
                 <LevelBadge level={e.player.level} />
-                <span className="text-[10px] text-zinc-500">{t("{n} เกม", { n: e.gamesPlayed })}</span>
+                <span className="text-right text-[10px] leading-tight text-zinc-500">
+                  {t("{n} เกม", { n: e.gamesPlayed })}
+                  {courtOf?.get(e.player.id) && courtOf.get(e.player.id) !== court && (
+                    <span className="block font-semibold text-emerald-700">{t("รอสนาม {n}", { n: courtOf.get(e.player.id)! })}</span>
+                  )}
+                </span>
               </button>
             </li>
           );

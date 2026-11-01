@@ -285,7 +285,7 @@ export function PlayerHome() {
   const queue = waitingQueue(day, state.players);
   const pos = queue.findIndex((e) => e.player.id === player.id) + 1;
   const planned = plannedCourt(courtPlan(day, state.players, state.settings.courtCount), player.id);
-  const spot = queuedSpot(day, player.id) ?? (planned ? { court: planned.court, pos: 1 } : null);
+  const spot = queuedSpot(day, player.id) ?? (planned ? { court: planned.court, pos: 0 } : null);
   const court = day.games.find((g) => !g.endedAt && g.playerIds.includes(player.id))?.court;
   const closed = state.closed[date];
   const fest = festivalInfo(activeFestival(state.settings.festival, date, birthdays(state.players, date).length > 0));
@@ -294,7 +294,7 @@ export function PlayerHome() {
     status === "playing"
       ? { big: t("สนาม {n}", { n: court ?? "" }), sub: t("กำลังเล่นอยู่") }
       : status === "waiting" && spot
-        ? { big: t("สนาม {n}", { n: spot.court }), sub: spot.pos === 1 ? t("คุณได้ลงต่อจากเกมที่เล่นอยู่ เตรียมตัวได้เลย") : t("คิวรอลงสนามนี้ คู่ที่ {n}", { n: spot.pos }) }
+        ? { big: t("สนาม {n}", { n: spot.court }), sub: spot.pos === 0 ? t("ระบบจัดให้รอสนามนี้ อาจเปลี่ยนได้ถ้าคิวขยับ") : spot.pos === 1 ? t("คุณได้ลงต่อจากเกมที่เล่นอยู่ เตรียมตัวได้เลย") : t("คิวรอลงสนามนี้ คู่ที่ {n}", { n: spot.pos }) }
       : status === "waiting"
         ? { big: t("คิวที่ {n}", { n: pos }), sub: pos <= 4 ? t("ใกล้ถึงคิวแล้ว เตรียมตัวได้เลย") : t("รอคิวอยู่ {n} คน", { n: queue.length }) }
         : status === "resting"

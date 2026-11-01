@@ -111,10 +111,10 @@ function useNotes(meId: string | null) {
   const spot = locked
     ? { key: locked.game.id, court: locked.court, pos: locked.pos, at: locked.game.at }
     : planned
-      ? { key: `${planned.court}:${[...planned.playerIds].sort().join(",")}`, court: planned.court, pos: 1, at: movedAt }
+      ? { key: `${planned.court}:${[...planned.playerIds].sort().join(",")}`, court: planned.court, pos: 0, at: movedAt }
       : null;
   if (spot)
-    notes.push({ id: `queued:${spot.key}`, tone: "court", title: t("จัดคิวสนาม {n} ให้แล้ว", { n: spot.court }), sub: spot.pos === 1 ? t("คุณได้ลงต่อจากเกมที่เล่นอยู่ เตรียมตัวได้เลย") : t("คิวรอลงสนามนี้ คู่ที่ {n}", { n: spot.pos }), at: spot.at, onTap: () => goToTab("courts") });
+    notes.push({ id: `queued:${spot.key}`, tone: "court", title: t("จัดคิวสนาม {n} ให้แล้ว", { n: spot.court }), sub: spot.pos === 0 ? t("ระบบจัดให้รอสนามนี้ อาจเปลี่ยนได้ถ้าคิวขยับ") : spot.pos === 1 ? t("คุณได้ลงต่อจากเกมที่เล่นอยู่ เตรียมตัวได้เลย") : t("คิวรอลงสนามนี้ คู่ที่ {n}", { n: spot.pos }), at: spot.at, onTap: () => goToTab("courts") });
   else if (status === "waiting") {
     const pos = waitingQueue(day, state.players).findIndex((e) => e.player.id === player.id) + 1;
     const round = day.games.filter((g) => g.playerIds.includes(player.id)).length;

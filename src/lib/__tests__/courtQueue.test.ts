@@ -89,3 +89,15 @@ describe("แบ่งคิวรวมขึ้นรอแต่ละสน�
     expect(m.filter((id) => ["a", "b", "c", "d"].includes(id)).length).toBeLessThan(3);
   });
 });
+
+describe("สนามที่จบก่อนได้คนที่รอนานสุด", () => {
+  it("สนามว่างได้คิว 1-4 ก่อน และสนามที่กำลังจบได้คู่แรก", () => {
+    const g = (id: string, court: number, ids: string[], at: number) => ({ id, court, playerIds: ids as [string, string, string, string], startedAt: at, shuttles: 1 });
+    const many: Player[] = "abcdefghijklmnop".split("").map((id) => ({ id, name: id, level: 3 }));
+    const d: Day = { date, checkIns: many.map((p, i) => ({ playerId: p.id, at: i })), drinks: [], games: [g("g1", 1, ["m", "n", "o", "p"], 5)] };
+    const free = courtPlan(d, many, 2);
+    expect(free.get(2)!.playerIds).toContain("a");
+    const ending = courtPlan(d, many, 2, 1);
+    expect(ending.get(1)!.playerIds).toContain("a");
+  });
+});
