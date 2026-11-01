@@ -8,9 +8,9 @@ import { Avatar } from "./ui";
  * กรอบสไตล์ Neon Glow: วงแหวนไล่สีเรืองแสง ยิ่งระดับสูงยิ่งเด่น
  * colors = สีวงแหวน (ไล่รอบวง) · glow = ความแรงของแสง · icon = ไอคอนมุมบน · orbit/dots = ของตกแต่งระดับสูง
  */
-type Look = { colors: string[]; glow: number; icon?: string; orbit?: boolean; dots?: boolean; label: string };
+type Look = { colors: string[]; glow: number; icon?: string; orbit?: boolean; dots?: boolean; label: string; name: string };
 
-const LEVEL_LOOK: Record<Level, Omit<Look, "label">> = {
+const LEVEL_LOOK: Record<Level, Omit<Look, "label" | "name">> = {
   1: { colors: ["#7dd3fc", "#38bdf8"], glow: 6 },
   2: { colors: ["#5eead4", "#14b8a6"], glow: 10, icon: "✦" },
   6: { colors: ["#bef264", "#84cc16"], glow: 12, icon: "✦" },
@@ -20,9 +20,12 @@ const LEVEL_LOOK: Record<Level, Omit<Look, "label">> = {
 };
 
 function lookOf(f: Frame, small = false): Look {
-  if (f.kind === "level") return { ...LEVEL_LOOK[f.level], label: LEVELS.find((l) => l.value === f.level)!.code };
+  if (f.kind === "level") {
+    const code = LEVELS.find((l) => l.value === f.level)!.code;
+    return { ...LEVEL_LOOK[f.level], label: code, name: code };
+  }
   const x = FESTIVAL_FRAMES.find((y) => y.id === f.id)!;
-  return { colors: [x.colors[0], x.colors[1]], glow: 22, icon: x.emoji, orbit: true, dots: true, label: small ? x.short : x.label };
+  return { colors: [x.colors[0], x.colors[1]], glow: 22, icon: x.emoji, orbit: true, dots: true, label: small ? x.short : x.label, name: x.label };
 }
 
 const ringBg = (c: string[]) => `conic-gradient(from 210deg, ${[...c, c[0]].join(", ")})`;
@@ -36,7 +39,9 @@ type FramePlayer = Pick<Player, "name" | "photo" | "level" | "frame" | "frames" 
 export function FramedAvatar({ player, size = 40, compact, ring: plainRing, frame: forced }: { player: FramePlayer; size?: number; compact?: boolean; ring?: boolean; frame?: Frame | null }) {
   const frame = forced === undefined ? frameOf(player) : forced;
   if (!frame) return <Avatar name={player.name} photo={player.photo} size={size} ring={plainRing} />;
-  const look = lookOf(frame, size < 64);
+  // รูปเล็ก: ป้ายชื่อย่อ และไม่มีวงโคจร/จุดแสง (รายชื่อยาวๆ จะได้ไม่หน่วง)
+  const small = size < 96;
+  const look = { ...lookOf(frame, small), ...(size < 64 ? { orbit: false, dots: false } : {}) };
   const glowColor = `${look.colors[1]}aa`;
   const tiny = size < 28;
   const ring = tiny ? 1.5 : Math.max(2, Math.round(size * (compact ? 0.06 : 0.045)));
@@ -65,7 +70,7 @@ export function FramedAvatar({ player, size = 40, compact, ring: plainRing, fram
   const chip = Math.round(size * 0.3);
   const font = Math.max(11, Math.round(size * 0.13));
   return (
-    <span className="relative inline-block shrink-0" style={{ padding: pad, paddingBottom: pad + font * 0.6 }} role="img" aria-label={look.label}>
+    <span className="relative inline-block shrink-0" style={{ padding: pad, paddingBottom: pad + font * 0.6 }} role="img" aria-label={look.name}>
       {look.orbit && (
         <span className="absolute rounded-full border-[1.5px] border-dashed opacity-65" style={{ inset: pad - size * 0.075, bottom: pad + font * 0.6 - size * 0.075, borderColor: look.colors[0] }} />
       )}

@@ -124,13 +124,6 @@ export function ProfileTab() {
         "edit",
         t("แก้ไขข้อมูล"),
         <div className="space-y-4">
-          {!player.guestOf && (
-            <section className="space-y-2">
-              <h4 className="font-semibold">{t("กรอบรูปโปรไฟล์")} <span className="text-sm font-normal text-zinc-600">· {frameSub(player)}</span></h4>
-              <FramePicker player={player} />
-            </section>
-          )}
-          {!player.guestOf && <MyPromotion player={player} />}
           <BirthdayEdit player={player} />
           <PlayerForm
             self
@@ -152,6 +145,21 @@ export function ProfileTab() {
           />
           {busy && <p className="text-center text-sm text-zinc-600">{t("กำลังบันทึก...")}</p>}
           {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+          {!player.guestOf && (
+            <>
+              {/* กรอบรูปบันทึกทันทีที่แตะ แยกจากปุ่มบันทึกของฟอร์มข้างบน */}
+              <section className="space-y-2 border-t border-zinc-200 pt-4">
+                <h4 className="font-semibold">
+                  {t("กรอบรูปโปรไฟล์")} <span className="text-sm font-normal text-zinc-600">· {frameSub(player)}</span>
+                </h4>
+                <p className="text-sm font-medium text-emerald-700">{t("แตะแล้วเปลี่ยนทันที ไม่ต้องกดบันทึก")}</p>
+                <FramePicker player={player} />
+              </section>
+              <section className="border-t border-zinc-200 pt-4">
+                <MyPromotion player={player} />
+              </section>
+            </>
+          )}
         </div>,
         true,
       )}

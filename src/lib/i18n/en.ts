@@ -1332,4 +1332,5 @@ export const en: Record<string, string> = {
   "กรอบเทศกาล แจก/ขาย": "Festival frames · give/sell",
   "กรอบระดับมือเปลี่ยนตามระดับของเรา กรอบเทศกาลได้จากการมาเล่นช่วงเทศกาล หรือซื้อกับแอดมิน": "Your level frame follows your level. Festival frames come from playing during a festival, or buy one from the admin.",
   "ชื่อเล่น รูป กรอบรูป วันเกิด ระดับมือ เลื่อนขั้น": "Nickname, photo, frame, birthday, level, promotion",
+  "แตะแล้วเปลี่ยนทันที ไม่ต้องกดบันทึก": "Tap to change right away, no need to press Save",
 };
