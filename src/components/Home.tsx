@@ -18,6 +18,7 @@ import { ClubCalendar } from "./Calendar";
 import { FutureSignups, SignupList } from "./CheckInTab";
 import { ClubCorner } from "./ClubCorner";
 import { MembersDirectory } from "./MembersDirectory";
+import { FrameGrant } from "./Frames";
 import { PromotionList, usePromoted } from "./Ranking";
 import { FIRST_QUARTER, prevQuarter, promotionCandidates, quarterOf } from "@/lib/promotion";
 import { EventPhotos } from "./EventPhotos";
@@ -374,7 +375,7 @@ export function PlayerHome() {
 export function AdminHome() {
   const { state } = useStore();
   const { day, date } = useToday();
-  const { open, sheet } = useSheets<"signups" | "next" | "announce" | "calendar" | "poll" | "board" | "photos" | "rank" | "members" | "promote">();
+  const { open, sheet } = useSheets<"signups" | "next" | "announce" | "calendar" | "poll" | "board" | "photos" | "rank" | "members" | "promote" | "frames">();
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const names = (ids: string[]) =>
     ids
@@ -508,6 +509,7 @@ export function AdminHome() {
           { icon: Icon.Camera, label: t("รูปกิจกรรม"), onClick: () => open("photos") },
           { icon: Icon.Trophy, label: t("อันดับ"), onClick: () => open("rank") },
           { icon: Icon.Users, label: t("สมาชิก"), onClick: () => open("members") },
+          { icon: Icon.Heart, label: t("กรอบเทศกาล"), onClick: () => open("frames") },
         ]}
       />
       {sheet("signups", t("คนที่ลงชื่อวันนี้"), <SignupList bare />)}
@@ -527,6 +529,7 @@ export function AdminHome() {
       {sheet("rank", t("อันดับ"), <ClubCorner />)}
       {sheet("members", t("สมาชิก"), <MembersDirectory />)}
       {sheet("promote", t("เลื่อนขั้นประจำรอบ 3 เดือน"), <PromotionList quarter={lastQuarter} />)}
+      {sheet("frames", t("กรอบเทศกาล แจก/ขาย"), <FrameGrant />)}
     </div>
   );
 }

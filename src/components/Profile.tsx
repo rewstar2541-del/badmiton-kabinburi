@@ -5,7 +5,8 @@ import { billFor } from "@/lib/billing";
 import { LANGS, t, useLang } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
 import { setTheme, useTheme } from "@/lib/theme";
-import { isMonthlyPaid, monthOf } from "@/lib/types";
+import { isMonthlyPaid, monthOf, type Player } from "@/lib/types";
+import { frameName, frameOf } from "@/lib/frames";
 import { Auto } from "@/lib/autoTranslate";
 import { BirthdayEdit } from "./Birthday";
 import { Hero, LangChoices, Rows, guideHref, useSheets } from "./Home";
@@ -19,9 +20,18 @@ import { BadgesCard, MonthCard, PartnerPrefs } from "./MyExtras";
 import { PartnerStats } from "./PartnerStats";
 import { PendingNotice, PickMe, savedPin, useMe } from "./PickMe";
 import { PlayerForm } from "./PlayersTab";
-import { Avatar, Icon, LevelBadge, baht, levelCode } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
+import { FramePicker } from "./Frames";
+import { Icon, LevelBadge, baht, levelCode } from "./ui";
 
 /** โปรไฟล์ของผู้เล่น: ข้อมูลส่วนตัว สถิติ ภาษา และออกจากระบบ */
+/** คำอธิบายกรอบที่ใส่อยู่ */
+function frameSub(p: Player) {
+  const f = frameOf(p);
+  if (!f) return t("ยังไม่ใส่ · เลือกกรอบระดับมือหรือกรอบเทศกาล");
+  return f.kind === "level" ? t("กรอบระดับมือ {level}", { level: levelCode(f.level) }) : t("กรอบ{name}", { name: t(frameName(f.id)) });
+}
+
 export function ProfileTab() {
   const { state, updateProfile } = useStore();
   const { date, day } = useToday();
@@ -31,7 +41,7 @@ export function ProfileTab() {
   const [me, setMe] = useMe();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const { open, sheet } = useSheets<"edit" | "plan" | "month" | "badges" | "partners" | "prefs" | "lang">();
+  const { open, sheet } = useSheets<"edit" | "frame" | "plan" | "month" | "badges" | "partners" | "prefs" | "lang">();
   const player = state.players.find((p) => p.id === me);
 
   if (!player) return <PickMe onPick={setMe} hint={t("เข้าครั้งเดียว เครื่องจะจำไว้")} />;
@@ -45,7 +55,7 @@ export function ProfileTab() {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-4 px-1">
-        <Avatar name={player.name} photo={player.photo} size={68} />
+        <FramedAvatar player={player} size={68} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="truncate font-display text-2xl font-semibold">{player.name}</span>
@@ -83,6 +93,7 @@ export function ProfileTab() {
               open("edit");
             },
           },
+          ...(player.guestOf ? [] : [{ icon: Icon.Heart, title: t("กรอบรูปโปรไฟล์"), sub: frameSub(player), onClick: () => open("frame") }]),
           ...(lineLoginEnabled && !player.guestOf && photoFromLine(player.photo)
             ? [{ icon: Icon.Edit, title: t("อัพเดทรูปจาก LINE"), sub: t("เปลี่ยนรูปใน LINE แล้ว กดเพื่อดึงรูปใหม่"), onClick: () => startLineLogin() }]
             : []),
@@ -145,6 +156,7 @@ export function ProfileTab() {
           <PlanSwitch player={player} bare />
         </div>,
       )}
+      {sheet("frame", t("กรอบรูปโปรไฟล์"), <FramePicker player={player} />)}
       {sheet("month", t("สรุปเดือนนี้"), <MonthCard player={player} />)}
       {sheet("badges", t("เหรียญของฉัน"), <BadgesCard player={player} />)}
       {sheet("partners", t("สถิติกับคู่"), <PartnerStats player={player} />)}

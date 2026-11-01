@@ -28,6 +28,8 @@ export interface Rows {
     birthday?: string | null;
     annual_from?: string | null;
     annual_until?: string | null;
+    frame?: string | null;
+    frames?: string[] | null;
   }[];
   annualRules?: { min_amount: number; end_month: number; years_ahead: number }[];
   annual?: { id: string; player_id: string; paid_on: string; from_date: string; until_date: string; amount: number }[];
@@ -102,6 +104,8 @@ export function rowsToState(r: Rows): State {
     ...(p.level_request ? { levelRequest: p.level_request as Level } : {}),
     ...(p.birthday ? { birthday: p.birthday } : {}),
     ...(p.annual_until ? { annualUntil: p.annual_until, ...(p.annual_from ? { annualFrom: p.annual_from } : {}) } : {}),
+    ...(p.frame ? { frame: p.frame } : {}),
+    ...(p.frames?.length ? { frames: p.frames } : {}),
   }));
 
   const days = new Map<string, Day>();
@@ -293,6 +297,8 @@ export const TABLE_OF: Record<string, TableKey> = {
   notices: "notices",
 };
 
+const PLAYER_COLS = "id,name,photo,gender,level,prefer,avoid,guest_of,pending,plan,bio,level_request,birthday,annual_from,annual_until";
+
 export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iterable<TableKey>, prev?: Rows): Promise<Rows> {
   let since = isAdmin ? "2000-01-01" : sinceDate(PLAYER_HISTORY_DAYS);
   if (!isAdmin) {
@@ -301,7 +307,9 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
     if (data?.[0]?.date) since = data[0].date;
   }
   const fetchers: { [K in TableKey]: () => Promise<Rows[K]> } = {
-    players: () => all(() => db.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of,pending,plan,bio,level_request,birthday,annual_from,annual_until").order("id")),
+    // คอลัมน์กรอบรูปยังไม่มี (ยังไม่รัน SQL) ให้โหลดแบบเดิม
+    players: () =>
+      all(() => db.from("players").select(`${PLAYER_COLS},frame,frames`).order("id")).catch(() => all(() => db.from("players").select(PLAYER_COLS).order("id"))),
     // คอลัมน์สนามเช่ายังไม่มี (ยังไม่รัน SQL) ให้โหลดแบบเดิม
     checkins: () =>
       all(() => db.from("checkins").select("date,player_id,at,paid_at,resting,court_fee,shuttle_fee,from_hour,to_hour").gte("date", since).order("date").order("player_id")).catch(() =>
@@ -393,6 +401,7 @@ function playerRow(p: Omit<Player, "id"> & { id: string }) {
     birthday: p.birthday ?? null,
     annual_from: p.annualFrom ?? null,
     annual_until: p.annualUntil ?? null,
+    // กรอบรูปไม่ส่งที่นี่ (ผู้เล่นเลือกเองผ่าน set_my_frame แอดมินแจกผ่าน setFrames) จะได้ไม่ทับกรอบที่ผู้เล่นเพิ่งเลือก
   };
 }
 
@@ -406,6 +415,10 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       return;
     case "updatePlayer":
       return check(await db.from("players").update(playerRow(a.player)).eq("id", a.player.id));
+    case "setFrames":
+      // ถอดก่อน (constraint: กรอบที่ใส่ต้องอยู่ในรายการที่มี)
+      if (a.unwear) check(await db.from("players").update({ frame: null }).eq("id", a.playerId).eq("frame", a.unwear));
+      return check(await db.from("players").update({ frames: a.frames }).eq("id", a.playerId));
     case "addGuest":
       check(await db.from("players").insert({ id: a._id, name: a.name, level: a.level, guest_of: a.hostId }));
       return check(await db.from("checkins").insert({ date: a.date, player_id: a._id, at: iso(a._at) }));
@@ -669,6 +682,11 @@ async function clearRemote(db: SupabaseClient, kinds: ClearKind[], from: string,
 /** นำเข้าไฟล์สำรอง (เพิ่ม/ทับข้อมูลเดิม ไม่ลบของที่ไม่มีในไฟล์) */
 async function importState(db: SupabaseClient, s: State) {
   check(await db.from("players").upsert(s.players.map(playerRow)));
+  // กรอบรูป: ใส่รายการที่มีก่อน แล้วค่อยกรอบที่ใส่ (ตาม constraint)
+  for (const p of s.players.filter((x) => x.frames?.length || x.frame)) {
+    check(await db.from("players").update({ frames: p.frames ?? [] }).eq("id", p.id));
+    check(await db.from("players").update({ frame: p.frame ?? null }).eq("id", p.id));
+  }
   const days = s.days;
   const checkins = days.flatMap((d) =>
     d.checkIns.map((c) => ({ date: d.date, player_id: c.playerId, at: iso(c.at), paid_at: c.paidAt ? iso(c.paidAt) : null,
@@ -1093,6 +1111,7 @@ export type SocialRequest =
   | { kind: "cancelPair"; id: string }
   | { kind: "vote"; poll: string; dates: string[] }
   | { kind: "birthday"; bday: string | null }
+  | { kind: "frame"; frame: string | null }
   | { kind: "boardPost"; post: { kind: BoardKind; title: string; detail: string; price: number | null; photo: string } }
   | { kind: "boardClose"; id: string }
   | { kind: "boardRemove"; id: string };
@@ -1108,6 +1127,8 @@ export async function socialRpc(db: SupabaseClient, req: SocialRequest, playerId
           ? await db.rpc("cancel_pair", { ...base, p_id: req.id })
           : req.kind === "birthday"
             ? await db.rpc("set_my_birthday", { ...base, p_bday: req.bday })
+          : req.kind === "frame"
+            ? await db.rpc("set_my_frame", { ...base, p_frame: req.frame })
             : req.kind === "boardPost"
               ? await db.rpc("board_post", {
                   ...base,

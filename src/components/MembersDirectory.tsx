@@ -8,7 +8,8 @@ import { today, useStore } from "@/lib/store";
 import { LEVELS, type Level, type Player } from "@/lib/types";
 import { quarterLabel, useHistory } from "./Ranking";
 import { useMe } from "./PickMe";
-import { Avatar, LevelBadge, SearchInput, Sheet, levelCode, levelColor } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
+import { LevelBadge, SearchInput, Sheet, levelCode, levelColor } from "./ui";
 
 /** สีของแต่ละระดับ ใช้ชุดเดียวกับป้ายระดับทั้งแอพ */
 const barOf = (level: Level) => levelColor(level).split(" ")[0];
@@ -72,7 +73,7 @@ export function MembersDirectory() {
           {shown.map((p) => (
             <li key={p.id}>
               <button className="flex w-full items-center gap-3 py-2.5 text-left active:bg-zinc-50" onClick={() => setPicked(p)}>
-                <Avatar name={p.name} photo={p.photo} size={40} />
+                <FramedAvatar player={p} size={40} compact />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-semibold">{p.name}</span>
                   <span className="block text-xs text-zinc-500">{t(LEVELS.find((l) => l.value === p.level)?.label ?? "")}</span>
@@ -104,7 +105,7 @@ function MemberProfile({ player, month, history }: { player: Player; month: stri
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
-        <Avatar name={player.name} photo={player.photo} size={68} />
+        <FramedAvatar player={player} size={68} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="truncate font-display text-2xl font-semibold">{player.name}</span>

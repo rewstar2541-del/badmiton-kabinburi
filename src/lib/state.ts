@@ -39,6 +39,8 @@ export function monthlyAmount(state: State, month: string, playerId: string): nu
 export type Action =
   | { type: "addPlayer"; player: Omit<Player, "id">; _id: string }
   | { type: "updatePlayer"; player: Player }
+  /** แอดมินแจก/เอากรอบเทศกาลคืน (แก้เฉพาะกรอบ ไม่ทับข้อมูลอื่น) unwear = ถอดกรอบนี้ออกถ้ากำลังใส่ */
+  | { type: "setFrames"; playerId: string; frames: string[]; unwear?: string }
   | { type: "removePlayer"; playerId: string }
   /** เพิ่มแขก (ผู้เล่นที่มี guestOf) แล้วเช็คอินวันนั้นให้ในทีเดียว */
   | { type: "addGuest"; date: string; hostId: string; name: string; level: Level; _id: string; _at: number }
@@ -210,6 +212,16 @@ export function reducer(state: State, a: Action): State {
       return { ...state, players: [...state.players, { ...a.player, id: a._id }] };
     case "updatePlayer":
       return { ...state, players: state.players.map((p) => (p.id === a.player.id ? a.player : p)) };
+    case "setFrames":
+      return {
+        ...state,
+        players: state.players.map((p) => {
+          if (p.id !== a.playerId) return p;
+          const out: Player = { ...p, frames: a.frames };
+          if (a.unwear && out.frame === a.unwear) delete out.frame;
+          return out;
+        }),
+      };
     case "removePlayer":
       return { ...state, players: state.players.filter((p) => p.id !== a.playerId) };
     case "checkIn":

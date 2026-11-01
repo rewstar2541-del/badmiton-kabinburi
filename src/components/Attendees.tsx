@@ -5,6 +5,7 @@ import { t } from "@/lib/i18n";
 import { attendees } from "@/lib/promotion";
 import { useStore } from "@/lib/store";
 import type { Day } from "@/lib/types";
+import { FramedAvatar } from "./AvatarFrame";
 import { Avatar, Icon, LevelBadge, Sheet } from "./ui";
 
 /** แถวรูปคนที่มา/ลงชื่อวันนี้ แตะเพื่อดูรายชื่อทั้งหมดพร้อมระดับมือ */
@@ -73,7 +74,7 @@ export function AttendeeList({ day }: { day: Day }) {
               const p = byId.get(id);
               return (
                 <li key={id} className={`flex items-center gap-1.5 rounded-full py-1 pr-2 pl-1 text-sm font-medium ${g.tone}`}>
-                  <Avatar name={p?.name ?? "?"} photo={p?.photo} size={24} />
+                  {p ? <FramedAvatar player={p} size={24} compact /> : <Avatar name="?" size={24} />}
                   {p?.name ?? "?"}
                   {p && <LevelBadge level={p.level} />}
                 </li>
