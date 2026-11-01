@@ -4,6 +4,9 @@ import { LEVELS, type Day, type Level, type Player } from "./types";
 /** เกณฑ์เลื่อนขั้นรายไตรมาส (ทุก 3 เดือน): ชนะอย่างน้อย {wins} เกม และชนะ {rate}% ขึ้นไปของเกมที่บันทึกผล */
 export const PROMOTION_RULE = { wins: 30, rate: 60 };
 
+/** รอบแรกที่ใช้กติกาเลื่อนขั้นทุก 3 เดือน (รอบก่อนหน้าใช้กติการายเดือน ไม่เสนอซ้ำ) */
+export const FIRST_QUARTER = "2026-Q4";
+
 /** ไตรมาสของเดือน (YYYY-MM) เช่น 2026-11 -> 2026-Q4 */
 export function quarterOf(month: string): string {
   const [y, m] = month.split("-").map(Number);

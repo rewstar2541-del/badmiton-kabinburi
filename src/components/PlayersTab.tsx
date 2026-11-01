@@ -151,7 +151,7 @@ export function PlayerForm({
 
       <div className="space-y-1.5 text-sm font-medium">
         {t("เพศ")}
-        <Segmented options={GENDERS} value={gender} onChange={setGender} cols={4} />
+        <Segmented options={GENDERS} value={gender} onChange={setGender} cols={2} />
       </div>
 
       <div className="space-y-1.5 text-sm font-medium">

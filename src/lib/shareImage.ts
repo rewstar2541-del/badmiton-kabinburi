@@ -129,7 +129,7 @@ export async function rankingImage(o: { club: string; title: string; month: stri
   const HEAD = 250;
   const ROW = 92;
   const top = o.rows.slice(0, 3);
-  const PODIUM = top.length ? 470 : 0;
+  const PODIUM = top.length ? 520 : 0;
   const listY = HEAD + 16 + (PODIUM ? PODIUM + 24 : 0);
   const height = listY + 16 + o.rows.length * ROW + 32 + 80;
   const { c, g } = setup(height);
@@ -186,7 +186,7 @@ function podium(g: CanvasRenderingContext2D, f: ReturnType<typeof fonts>, imgs: 
   roundRect(g, PAD / 2, y0, W - PAD, h, 36, "#ffffff");
   const base = y0 + h - 70;
   const maxD = Math.max(1, ...top.map((r) => Math.max(0, r.delta)));
-  const barH = (r: RankImageRow) => 90 + Math.round((Math.max(0, r.delta) / maxD) * 150);
+  const barH = (r: RankImageRow) => 120 + Math.round((Math.max(0, r.delta) / maxD) * 130);
   const BW = 220;
   const GAP = 36;
   const order = [1, 0, 2].filter((i) => i < top.length);
@@ -202,15 +202,15 @@ function podium(g: CanvasRenderingContext2D, f: ReturnType<typeof fonts>, imgs: 
     g.roundRect(x, by, BW, bh, [16, 16, 0, 0]);
     g.fill();
     const size = i === 0 ? 96 : 80;
-    avatar(g, f, imgs, r, x + BW / 2 - size / 2, by - size - 56, size);
+    avatar(g, f, imgs, r, x + BW / 2 - size / 2, by - size - 70, size);
     g.textAlign = "center";
     g.fillStyle = INK;
     g.font = f.body(600, 28);
-    g.fillText(fit(g, r.name, BW), x + BW / 2, by - 28);
+    g.fillText(fit(g, r.name, BW), x + BW / 2, by - 32);
     g.font = f.display(700, 40);
-    g.fillText(String(i + 1), x + BW / 2, by + 36);
+    g.fillText(String(i + 1), x + BW / 2, by + 34);
     g.font = f.display(600, 34);
-    g.fillText(`${r.delta > 0 ? "+" : ""}${r.delta}`, x + BW / 2, by + 82);
+    g.fillText(`${r.delta > 0 ? "+" : ""}${r.delta}`, x + BW / 2, by + 78);
   });
   g.fillStyle = "#e4e4e7";
   g.fillRect(PAD, base, W - PAD * 2, 2);

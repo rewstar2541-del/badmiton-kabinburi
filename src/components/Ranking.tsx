@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { monthRanking, type RankRow } from "@/lib/club";
-import { nextLevel, periodRecord, prevQuarter, promotionCandidates, quarterMonths, quarterOf } from "@/lib/promotion";
+import { FIRST_QUARTER, nextLevel, periodRecord, prevQuarter, promotionCandidates, quarterMonths, quarterOf } from "@/lib/promotion";
 import type { Player } from "@/lib/types";
 import { PromotionProgress } from "./MembersDirectory";
 import { locale, t } from "@/lib/i18n";
@@ -70,7 +70,10 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
   const { auth } = useStore();
   const meP = byId.get(me ?? "");
   const quarter = quarterOf(now);
-  const myRec = data && meP ? periodRecord(data.days, quarterMonths(quarter)).get(meP.id) : undefined;
+  const myRec = useMemo(() => (data && meP ? periodRecord(data.days, quarterMonths(quarter)).get(meP.id) : undefined), [data, meP, quarter]);
+  // ต้นรอบใหม่ (เดือนแรกของไตรมาส) แสดงผลรอบที่แล้วในเดือนปัจจุบันด้วย ผู้เล่นจะได้รู้ว่าเข้าเกณฑ์แล้ว รอยืนยัน
+  const lastQ = prevQuarter(quarter);
+  const showPromotion = lastQ >= FIRST_QUARTER && (quarterOf(month) === lastQ || (month === now && Number(now.slice(5)) % 3 === 1));
   const myNext = meP ? nextLevel(meP.level) : null;
   const shown = all ? rows : rows.slice(0, 10);
   const img = useShareImage();
@@ -86,7 +89,7 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
             return { rank: i + 1, name: p?.name ?? "?", photo: p?.photo, record: t("ชนะ {w}/{g}", { w: r.wins, g: r.games }), delta: r.delta, me: r.id === me };
           }),
           note: t("แต้มขึ้นลงตามผลแพ้ชนะ ชนะทีมเก่งกว่าได้แต้มมากกว่า"),
-          podiumNote: t("3 อันดับแรก"),
+          podiumNote: month === now ? t("3 อันดับแรก · แต้มที่ได้เดือนนี้") : t("3 อันดับแรก · แต้มที่ได้ในเดือนนั้น"),
         }),
       `ranking-${month}.png`,
     );
@@ -156,7 +159,7 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
           {img.overlay}
         </>
       )}
-      {data && quarterOf(month) === prevQuarter(quarter) && <PromotionList quarter={prevQuarter(quarter)} data={data} admin={auth.isAdmin || !auth.online} />}
+      {data && showPromotion && <PromotionList quarter={lastQ} data={data} admin={auth.isAdmin || !auth.online} />}
       <p className="text-xs text-zinc-500">
         {t("แต้มขึ้นลงตามผลแพ้ชนะ ชนะทีมเก่งกว่าได้แต้มมากกว่า")}
       </p>
@@ -258,7 +261,7 @@ export function PromotionList({ quarter, data: given, admin: isAdmin }: { quarte
   const fresh = list.filter((c) => !done.includes(c.id));
   const doneIds = done.filter((id) => state.players.some((p) => p.id === id));
   const label = (l: Level) => `${t(LEVELS.find((x) => x.value === l)?.label ?? "")} (${levelCode(l)})`;
-  if (!fresh.length && !doneIds.length) return given ? null : <p className="text-sm text-zinc-500">{t("เดือนนี้ไม่มีใครเข้าเกณฑ์เลื่อนขั้น")}</p>;
+  if (!fresh.length && !doneIds.length) return given ? null : <p className="text-sm text-zinc-500">{t("รอบนี้ไม่มีใครเข้าเกณฑ์เลื่อนขั้น")}</p>;
   const byId = new Map(state.players.map((p) => [p.id, p]));
   return (
     <section className="space-y-2 rounded-2xl bg-lime/30 p-3">

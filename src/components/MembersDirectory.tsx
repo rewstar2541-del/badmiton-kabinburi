@@ -3,11 +3,10 @@
 import { useMemo, useState } from "react";
 import { Auto } from "@/lib/autoTranslate";
 import { t } from "@/lib/i18n";
-import { PROMOTION_RULE, clubMembers, levelCounts, monthRecord, nextLevel, periodRecord, quarterMonths, quarterOf, winRate, type MonthRecord } from "@/lib/promotion";
+import { PROMOTION_RULE, clubMembers, levelCounts, nextLevel, periodRecord, quarterMonths, quarterOf, winRate, type MonthRecord } from "@/lib/promotion";
 import { today, useStore } from "@/lib/store";
 import { LEVELS, type Level, type Player } from "@/lib/types";
 import { quarterLabel, useHistory } from "./Ranking";
-import { GENDER_LABEL } from "./PlayersTab";
 import { useMe } from "./PickMe";
 import { Avatar, LevelBadge, SearchInput, Sheet, levelCode, levelColor } from "./ui";
 
@@ -98,11 +97,10 @@ export function MembersDirectory() {
 function MemberProfile({ player, month, history }: { player: Player; month: string; history: ReturnType<typeof useHistory> }) {
   const { data, failed } = history;
   const [me] = useMe();
-  const rec = useMemo(() => (data ? monthRecord(data.days, month).get(player.id) : undefined), [data, month, player.id]);
   const quarter = quarterOf(month);
   const qRec = useMemo(() => (data ? periodRecord(data.days, quarterMonths(quarter)).get(player.id) : undefined), [data, quarter, player.id]);
   const next = nextLevel(player.level);
-  const r = rec ?? { games: 0, decided: 0, wins: 0 };
+  const r = qRec ?? { games: 0, decided: 0, wins: 0 };
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
@@ -113,14 +111,14 @@ function MemberProfile({ player, month, history }: { player: Player; month: stri
             <LevelBadge level={player.level} />
           </div>
           <div className="text-[15px] text-zinc-600">
-            {[t(LEVELS.find((l) => l.value === player.level)?.label ?? ""), player.gender && player.gender !== "other" ? t(GENDER_LABEL[player.gender]) : ""].filter(Boolean).join(" · ")}
+            {t(LEVELS.find((l) => l.value === player.level)?.label ?? "")}
           </div>
         </div>
       </div>
       <section className="space-y-1 rounded-2xl bg-zinc-50 px-3 py-2.5">
-        <h4 className="text-xs font-semibold text-zinc-500">{t("แนะนำตัว")}</h4>
+        <h4 className="text-sm font-semibold text-zinc-600">{t("แนะนำตัว")}</h4>
         {player.bio ? (
-          <p className="text-[15px] whitespace-pre-line text-zinc-800">
+          <p className="text-[15px] whitespace-pre-line text-zinc-700">
             <Auto text={player.bio} />
           </p>
         ) : (
@@ -135,7 +133,7 @@ function MemberProfile({ player, month, history }: { player: Player; month: stri
         <>
           <div className="grid grid-cols-3 gap-2 text-center">
             {[
-              { label: t("เกมเดือนนี้"), value: String(r.games) },
+              { label: t("เกมรอบนี้"), value: String(r.games) },
               { label: t("ชนะ"), value: String(r.wins) },
               { label: t("% ชนะ"), value: r.decided ? `${winRate(r)}%` : "–" },
             ].map((x) => (
@@ -145,7 +143,7 @@ function MemberProfile({ player, month, history }: { player: Player; month: stri
               </div>
             ))}
           </div>
-          {next !== null && !player.guestOf && <PromotionProgress rec={qRec ?? { games: 0, decided: 0, wins: 0 }} next={next} quarter={quarter} />}
+          {next !== null && !player.guestOf && <PromotionProgress rec={r} next={next} quarter={quarter} />}
         </>
       )}
     </div>
@@ -164,7 +162,7 @@ export function PromotionProgress({ rec, next, quarter }: { rec: MonthRecord; ne
     <div className={`space-y-1.5 rounded-2xl px-3 py-2.5 ${winsOk && rateOk ? "bg-lime/40" : "bg-zinc-50"}`}>
       <div className="text-sm font-semibold">
         {winsOk && rateOk ? t("เข้าเกณฑ์เลื่อนเป็น {level} แล้ว", { level: levelCode(next) }) : t("ทางไปขั้น {level}", { level: levelCode(next) })}
-        <span className="ml-1.5 text-xs font-normal text-zinc-500">{t("รอบ {period}", { period: quarterLabel(quarter) })}</span>
+        <span className="block text-sm font-normal whitespace-nowrap text-zinc-600">{t("รวม 3 เดือน · รอบ {period}", { period: quarterLabel(quarter) })}</span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-zinc-200">
         <div className="h-full rounded-full bg-emerald-600" style={{ width: `${pct}%` }} />
