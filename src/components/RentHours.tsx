@@ -10,32 +10,11 @@ import { savedPin } from "./PickMe";
 import { Avatar, Button, Card, Sheet, baht, inputClass } from "./ui";
 
 const hh = (h: number) => `${String(h).padStart(2, "0")}:00`;
-const range = (a: number, b: number) =>
-  Array.from({ length: Math.max(b - a + 1, 0) }, (_, i) => a + i);
+const range = (a: number, b: number) => Array.from({ length: Math.max(b - a + 1, 0) }, (_, i) => a + i);
 
-function HourSelect({
-  value,
-  from,
-  to,
-  onChange,
-  label,
-  disabled,
-}: {
-  value: number;
-  from: number;
-  to: number;
-  onChange: (h: number) => void;
-  label: string;
-  disabled?: boolean;
-}) {
+function HourSelect({ value, from, to, onChange, label, disabled }: { value: number; from: number; to: number; onChange: (h: number) => void; label: string; disabled?: boolean }) {
   return (
-    <select
-      aria-label={label}
-      disabled={disabled}
-      className="min-h-11 rounded-xl bg-zinc-100 px-2 text-base disabled:opacity-60"
-      value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
-    >
+    <select aria-label={label} disabled={disabled} className="min-h-11 rounded-xl bg-zinc-100 px-2 text-base disabled:opacity-60" value={value} onChange={(e) => onChange(Number(e.target.value))}>
       {range(from, to).map((h) => (
         <option key={h} value={h}>
           {hh(h)}
@@ -47,9 +26,7 @@ function HourSelect({
 
 /** คนที่อยู่แต่ละชั่วโมง และคนละเท่าไร */
 function HourTable({ rent, day }: { rent: DayRent; day: Day }) {
-  const counted = day.checkIns
-    .filter((c) => c.courtFee === undefined)
-    .map((c) => rentSpan(rent, c.at, c.hours));
+  const counted = day.checkIns.filter((c) => c.courtFee === undefined).map((c) => rentSpan(rent, c.at, c.hours));
   return (
     <div className="grid grid-cols-3 gap-x-2 gap-y-1 rounded-2xl bg-zinc-50 p-3 text-sm">
       <span className="text-zinc-500">{t("ชั่วโมง")}</span>
@@ -59,12 +36,8 @@ function HourTable({ rent, day }: { rent: DayRent; day: Day }) {
         const n = counted.filter((s) => s.from <= h && h < s.to).length;
         return [
           <span key={`h${h}`}>{`${hh(h)}-${hh(h + 1)}`}</span>,
-          <span key={`n${h}`} className="text-right">
-            {n}
-          </span>,
-          <span key={`s${h}`} className="text-right font-semibold">
-            {n ? baht(Math.round(rent.perHour / n)) : "–"}
-          </span>,
+          <span key={`n${h}`} className="text-right">{n}</span>,
+          <span key={`s${h}`} className="text-right font-semibold">{n ? baht(Math.round(rent.perHour / n)) : "–"}</span>,
         ];
       })}
     </div>
@@ -72,15 +45,7 @@ function HourTable({ rent, day }: { rent: DayRent; day: Day }) {
 }
 
 /** ผู้เล่น (ยอดของฉัน): วันสนามเช่า บอกเวลามา/กลับของตัวเอง */
-export function MyRentHours({
-  player,
-  day,
-  rent,
-}: {
-  player: Player;
-  day: Day;
-  rent: DayRent;
-}) {
+export function MyRentHours({ player, day, rent }: { player: Player; day: Day; rent: DayRent }) {
   const { setMyHours, state } = useStore();
   const { settings, monthly } = state;
   const ci = day.checkIns.find((c) => c.playerId === player.id);
@@ -95,61 +60,29 @@ export function MyRentHours({
     setBusy(true);
     const err = await setMyHours(player.id, savedPin.get(), span.from, span.to);
     setBusy(false);
-    setMsg(
-      err ? { ok: false, text: t(err) } : { ok: true, text: t("บันทึกแล้ว") },
-    );
+    setMsg(err ? { ok: false, text: t(err) } : { ok: true, text: t("บันทึกแล้ว") });
   };
   return (
     <Card className="space-y-3">
       <div className="flex items-center gap-2">
-        <h2 className="min-w-0 flex-1 font-display font-semibold">
-          {t("สนามเช่า")}
-        </h2>
+        <h2 className="min-w-0 flex-1 font-display font-semibold">{t("สนามเช่า")}</h2>
         <span className="shrink-0 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">
-          {t("{from}-{to} ชม.ละ {amount}", {
-            from: hh(rent.start),
-            to: hh(rent.end),
-            amount: baht(rent.perHour),
-          })}
+          {t("{from}-{to} ชม.ละ {amount}", { from: hh(rent.start), to: hh(rent.end), amount: baht(rent.perHour) })}
         </span>
       </div>
-      <p className="text-sm text-zinc-500">
-        {t(
-          "แต่ละชั่วโมงหารค่าเช่าให้คนที่อยู่ ยอดจะลดลงถ้ามีคนมาเพิ่ม จ่ายตอนกลับจะได้ยอดจริง",
-        )}
-      </p>
+      <p className="text-sm text-zinc-500">{t("แต่ละชั่วโมงหารค่าเช่าให้คนที่อยู่ ยอดจะลดลงถ้ามีคนมาเพิ่ม จ่ายตอนกลับจะได้ยอดจริง")}</p>
       <div className="flex flex-wrap items-center gap-2 text-sm">
         {t("ฉันอยู่")}
-        <HourSelect
-          label={t("มา")}
-          value={span.from}
-          from={rent.start}
-          to={rent.end - 1}
-          disabled={Boolean(ci.paidAt)}
-          onChange={(h) => setSpan({ from: h, to: Math.max(span.to, h + 1) })}
-        />
+        <HourSelect label={t("มา")} value={span.from} from={rent.start} to={rent.end - 1} disabled={Boolean(ci.paidAt)} onChange={(h) => setSpan({ from: h, to: Math.max(span.to, h + 1) })} />
         <span>–</span>
-        <HourSelect
-          label={t("เวลากลับ")}
-          value={span.to}
-          from={span.from + 1}
-          to={rent.end}
-          disabled={Boolean(ci.paidAt)}
-          onChange={(h) => setSpan({ ...span, to: h })}
-        />
+        <HourSelect label={t("เวลากลับ")} value={span.to} from={span.from + 1} to={rent.end} disabled={Boolean(ci.paidAt)} onChange={(h) => setSpan({ ...span, to: h })} />
         {changed && (
           <Button variant="primary" disabled={busy} onClick={() => void save()}>
             {t("บันทึก")}
           </Button>
         )}
       </div>
-      {msg && (
-        <p
-          className={`rounded-xl px-3 py-2 text-sm ${msg.ok ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}
-        >
-          {msg.text}
-        </p>
-      )}
+      {msg && <p className={`rounded-xl px-3 py-2 text-sm ${msg.ok ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>{msg.text}</p>}
       <HourTable rent={rent} day={day} />
       <div className="flex justify-between font-semibold">
         <span>{t("ค่าสนามของฉันตอนนี้")}</span>
@@ -163,20 +96,28 @@ export function MyRentHours({
 function RentEdit({ rent, day }: { rent: DayRent; day: Day }) {
   const { dispatch } = useStore();
   const [open, setOpen] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [start, setStart] = useState(rent.start);
   const [end, setEnd] = useState(rent.end);
   const [perHour, setPerHour] = useState(String(rent.perHour));
   const ok = Number(perHour) > 0 && end > start;
   const paid = day.checkIns.filter((c) => c.paidAt).length;
+  const save = () => {
+    if (paid && !confirm(t("มีคนจ่ายแล้ว {n} คน ยอดของคนที่จ่ายแล้วจะเปลี่ยนด้วย บันทึกไหม?", { n: paid }))) return;
+    dispatch({ type: "setAnnouncement", date: day.date, message: day.announcement ?? "", rent: { start, end, perHour: Number(perHour) } });
+    // ขยาย/ย่อเวลาเลิก: คนที่ตั้งไว้ว่าอยู่ถึงเลิกเดิม ให้อยู่ถึงเลิกใหม่ด้วย
+    if (end !== rent.end)
+      for (const c of day.checkIns)
+        if (!c.paidAt && c.hours && c.hours.to >= rent.end) dispatch({ type: "setHours", date: day.date, playerId: c.playerId, hours: { from: Math.min(c.hours.from, end - 1), to: end } });
+    setSaved(true);
+    setOpen(false);
+  };
   if (!open)
     return (
       <div className="flex items-center gap-2 rounded-2xl bg-zinc-50 p-3 text-sm">
         <span className="min-w-0 flex-1">
-          {t("{from}-{to} ชม.ละ {amount}", {
-            from: hh(rent.start),
-            to: hh(rent.end),
-            amount: baht(rent.perHour),
-          })}
+          {saved && <span className="block text-xs font-semibold text-emerald-700">{t("บันทึกแล้ว")}</span>}
+          {t("{from}-{to} ชม.ละ {amount}", { from: hh(rent.start), to: hh(rent.end), amount: baht(rent.perHour) })}
         </span>
         <Button
           className="shrink-0"
@@ -184,6 +125,7 @@ function RentEdit({ rent, day }: { rent: DayRent; day: Day }) {
             setStart(rent.start);
             setEnd(rent.end);
             setPerHour(String(rent.perHour));
+            setSaved(false);
             setOpen(true);
           }}
         >
@@ -214,11 +156,7 @@ function RentEdit({ rent, day }: { rent: DayRent; day: Day }) {
         </label>
         <label className="block text-sm font-medium">
           {t("เลิก")}
-          <select
-            className={`${inputClass} mt-1`}
-            value={end}
-            onChange={(e) => setEnd(Number(e.target.value))}
-          >
+          <select className={`${inputClass} mt-1`} value={end} onChange={(e) => setEnd(Number(e.target.value))}>
             {range(start + 1, 24).map((h) => (
               <option key={h} value={h}>
                 {hh(h)}
@@ -229,41 +167,15 @@ function RentEdit({ rent, day }: { rent: DayRent; day: Day }) {
       </div>
       <label className="block text-sm font-medium">
         {t("ค่าเช่าสนามรวม ต่อชั่วโมง (ทุกคอร์ทรวมกัน)")}
-        <input
-          className={`${inputClass} mt-1`}
-          inputMode="numeric"
-          value={perHour}
-          onChange={(e) => setPerHour(e.target.value.replace(/\D/g, ""))}
-        />
+        <input className={`${inputClass} mt-1`} inputMode="numeric" value={perHour} onChange={(e) => setPerHour(e.target.value.replace(/\D/g, ""))} />
       </label>
-      <p className="text-xs text-zinc-500">
-        {t(
-          "เพิ่ม/ลดคอร์ท ให้แก้ค่าเช่ารวมต่อชั่วโมง เช่น 2 คอร์ท คอร์ทละ 200 ใส่ 400",
-        )}
-      </p>
-      {!!paid && (
-        <p className="text-xs font-semibold text-amber-800">
-          {t("คนที่จ่ายแล้ว {n} คน ยอดไม่เปลี่ยน", { n: paid })}
-        </p>
-      )}
+      <p className="text-xs text-zinc-500">{t("เพิ่ม/ลดคอร์ท ให้แก้ค่าเช่ารวมต่อชั่วโมง เช่น 2 คอร์ท คอร์ทละ 200 ใส่ 400")}</p>
+      {!!paid && <p className="text-xs font-semibold text-amber-800">{t("มีคนจ่ายแล้ว {n} คน ถ้าแก้ ยอดของคนที่จ่ายแล้วจะเปลี่ยนด้วย ต้องเก็บเพิ่มหรือคืนส่วนต่างเอง", { n: paid })}</p>}
       <div className="flex gap-2">
         <Button className="flex-1" onClick={() => setOpen(false)}>
           {t("ยกเลิก")}
         </Button>
-        <Button
-          variant="primary"
-          className="flex-1"
-          disabled={!ok}
-          onClick={() => {
-            dispatch({
-              type: "setAnnouncement",
-              date: day.date,
-              message: day.announcement ?? "",
-              rent: { start, end, perHour: Number(perHour) },
-            });
-            setOpen(false);
-          }}
-        >
+        <Button variant="primary" className="flex-1" disabled={!ok} onClick={save}>
           {t("บันทึก")}
         </Button>
       </div>
@@ -272,13 +184,7 @@ function RentEdit({ rent, day }: { rent: DayRent; day: Day }) {
 }
 
 /** แอดมิน (คิดเงิน > วันนี้): วันสนามเช่า ดู/แก้เวลามา-กลับของแต่ละคน ยอดเปลี่ยนทันที */
-export function RentHoursSheet({
-  rent,
-  onClose,
-}: {
-  rent: DayRent;
-  onClose: () => void;
-}) {
+export function RentHoursSheet({ rent, onClose }: { rent: DayRent; onClose: () => void }) {
   const { state, dispatch } = useStore();
   const { day } = useToday();
   const byId = new Map(state.players.map((p) => [p.id, p]));
@@ -286,40 +192,23 @@ export function RentHoursSheet({
   // ยอดจริงของแต่ละคน (คนจ่ายแล้วยอดคงที่)
   const feeOf = (id: string) => {
     const p = byId.get(id);
-    return p
-      ? dayAmount(day, p, state.settings, state.monthly).courtFee
-      : (shares.get(id) ?? 0);
+    return p ? dayAmount(day, p, state.settings, state.monthly).courtFee : (shares.get(id) ?? 0);
   };
   const collected = day.checkIns.reduce((sum, c) => sum + feeOf(c.playerId), 0);
   return (
     <Sheet title={t("สนามเช่า: เวลามา-กลับ")} onClose={onClose}>
       <RentEdit rent={rent} day={day} />
       <div className="rounded-2xl bg-zinc-50 p-3 text-sm">
-        {t("ค่าเช่ารวม {rent} · หารได้ {got}", {
-          rent: baht(rent.perHour * (rent.end - rent.start)),
-          got: baht(collected),
-        })}
+        {t("ค่าเช่ารวม {rent} · หารได้ {got}", { rent: baht(rent.perHour * (rent.end - rent.start)), got: baht(collected) })}
       </div>
       <HourTable rent={rent} day={day} />
       {day.checkIns.some((c) => c.courtFee !== undefined && !c.paidAt) && (
         <Button
           className="w-full"
           onClick={() => {
-            if (
-              !confirm(
-                t("ล้างยอดที่แก้เองของทุกคนที่ยังไม่จ่าย แล้วหารค่าเช่าใหม่?"),
-              )
-            )
-              return;
+            if (!confirm(t("ล้างยอดที่แก้เองของทุกคนที่ยังไม่จ่าย แล้วหารค่าเช่าใหม่?"))) return;
             for (const c of day.checkIns)
-              if (c.courtFee !== undefined && !c.paidAt)
-                dispatch({
-                  type: "setBillFees",
-                  date: day.date,
-                  playerId: c.playerId,
-                  courtFee: null,
-                  shuttleFee: c.shuttleFee ?? null,
-                });
+              if (c.courtFee !== undefined && !c.paidAt) dispatch({ type: "setBillFees", date: day.date, playerId: c.playerId, courtFee: null, shuttleFee: c.shuttleFee ?? null });
           }}
         >
           {t("ให้ทุกคนหารค่าเช่า (ล้างยอดที่แก้เอง)")}
@@ -330,67 +219,30 @@ export function RentHoursSheet({
           const p = byId.get(c.playerId);
           if (!p) return null;
           const s = rentSpan(rent, c.at, c.hours);
-          const set = (v: { from: number; to: number }) =>
-            dispatch({
-              type: "setHours",
-              date: day.date,
-              playerId: c.playerId,
-              hours: v,
-            });
+          const set = (v: { from: number; to: number }) => dispatch({ type: "setHours", date: day.date, playerId: c.playerId, hours: v });
           return (
-            <li
-              key={c.playerId}
-              className="space-y-2 rounded-2xl bg-white p-3 ring-1 ring-zinc-100"
-            >
+            <li key={c.playerId} className="space-y-2 rounded-2xl bg-white p-3 ring-1 ring-zinc-100">
               <div className="flex items-center gap-2">
                 <Avatar name={p.name} photo={p.photo} size={32} />
-                <span className="min-w-0 flex-1 truncate font-semibold">
-                  {p.name}
-                </span>
+                <span className="min-w-0 flex-1 truncate font-semibold">{p.name}</span>
                 {c.courtFee !== undefined ? (
-                  <span className="shrink-0 rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-600">
-                    {t("แก้ยอดเอง {amount}", { amount: baht(c.courtFee) })}
-                  </span>
+                  <span className="shrink-0 rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-600">{t("แก้ยอดเอง {amount}", { amount: baht(c.courtFee) })}</span>
                 ) : (
-                  <span className="shrink-0 font-display text-lg font-semibold">
-                    {baht(feeOf(c.playerId))}
-                  </span>
+                  <span className="shrink-0 font-display text-lg font-semibold">{baht(feeOf(c.playerId))}</span>
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 {/* จ่ายแล้วล็อกเวลา ยอดที่จ่ายจะได้ไม่เปลี่ยน */}
-                <HourSelect
-                  label={t("มา")}
-                  disabled={Boolean(c.paidAt)}
-                  value={s.from}
-                  from={rent.start}
-                  to={rent.end - 1}
-                  onChange={(h) => set({ from: h, to: Math.max(s.to, h + 1) })}
-                />
+                <HourSelect label={t("มา")} disabled={Boolean(c.paidAt)} value={s.from} from={rent.start} to={rent.end - 1} onChange={(h) => set({ from: h, to: Math.max(s.to, h + 1) })} />
                 <span>–</span>
-                <HourSelect
-                  label={t("เวลากลับ")}
-                  disabled={Boolean(c.paidAt)}
-                  value={s.to}
-                  from={s.from + 1}
-                  to={rent.end}
-                  onChange={(h) => set({ ...s, to: h })}
-                />
-                {c.paidAt && (
-                  <span className="text-xs font-semibold text-emerald-700">
-                    {t("จ่ายแล้ว")}
-                  </span>
-                )}
+                <HourSelect label={t("เวลากลับ")} disabled={Boolean(c.paidAt)} value={s.to} from={s.from + 1} to={rent.end} onChange={(h) => set({ ...s, to: h })} />
+                {c.paidAt && <span className="text-xs font-semibold text-emerald-700">{t("จ่ายแล้ว")}</span>}
               </div>
             </li>
           );
         })}
       </ul>
-      <p className="text-xs text-zinc-500">
-        {t(
-          "ไม่ให้ใครหาร เช่นโค้ช ให้กดชื่อในหน้าคิดเงินแล้วแก้ค่าสนามเอง คนที่แก้ยอดเองไม่นับในการหาร คนอื่นหารค่าเช่าเต็ม",
-        )}
-      </p>
+      <p className="text-xs text-zinc-500">{t("ไม่ให้ใครหาร เช่นโค้ช ให้กดชื่อในหน้าคิดเงินแล้วแก้ค่าสนามเอง คนที่แก้ยอดเองไม่นับในการหาร คนอื่นหารค่าเช่าเต็ม")}</p>
       <Button className="w-full" onClick={onClose}>
         {t("ปิด")}
       </Button>
