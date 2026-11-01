@@ -15,6 +15,7 @@ import { PlanPanel, fmtDate } from "./Packages";
 const GENDERS: { value: Gender; label: string }[] = [
   { value: "male", label: "ชาย" },
   { value: "female", label: "หญิง" },
+  { value: "lgbtq", label: "LGBTQ+" },
   { value: "other", label: "ไม่ระบุ" },
 ];
 
@@ -150,7 +151,7 @@ export function PlayerForm({
 
       <div className="space-y-1.5 text-sm font-medium">
         {t("เพศ")}
-        <Segmented options={GENDERS} value={gender} onChange={setGender} cols={3} />
+        <Segmented options={GENDERS} value={gender} onChange={setGender} cols={4} />
       </div>
 
       <div className="space-y-1.5 text-sm font-medium">
@@ -343,7 +344,7 @@ export function PlayersTab() {
   );
 }
 
-const GENDER_LABEL: Record<Gender, string> = { male: "ชาย", female: "หญิง", other: "ไม่ระบุ" };
+export const GENDER_LABEL: Record<Gender, string> = { male: "ชาย", female: "หญิง", lgbtq: "LGBTQ+", other: "ไม่ระบุ" };
 
 /** คนที่สมัครเอง รอแอดมินอนุมัติ ปรับระดับมือได้ก่อนกดอนุมัติ */
 function PendingList({ players }: { players: Player[] }) {

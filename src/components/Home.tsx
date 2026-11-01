@@ -19,8 +19,7 @@ import { FutureSignups, SignupList } from "./CheckInTab";
 import { ClubCorner } from "./ClubCorner";
 import { MembersDirectory } from "./MembersDirectory";
 import { PromotionList, usePromoted } from "./Ranking";
-import { promotionCandidates } from "@/lib/promotion";
-import { shiftMonth } from "./Members";
+import { prevQuarter, promotionCandidates, quarterOf } from "@/lib/promotion";
 import { EventPhotos } from "./EventPhotos";
 import { BringGuest } from "./Guests";
 import { goToTab } from "./Membership";
@@ -400,11 +399,12 @@ export function AdminHome() {
   const [boardSeen, markBoard] = useSeen("board", () => String(Date.now()));
   const [me] = useMe();
   const newPosts = (state.board ?? []).filter((b) => b.at > Number(boardSeen) && b.playerId !== me).length;
-  // 7 วันแรกของเดือน เตือนแอดมินให้ยืนยันคนที่เข้าเกณฑ์เลื่อนขั้นของเดือนก่อน
-  const lastMonth = shiftMonth(date.slice(0, 7), -1);
-  const [promoted] = usePromoted(lastMonth);
-  const candidates = useMemo(() => promotionCandidates(state, lastMonth), [state, lastMonth]);
-  const toPromote = Number(date.slice(8)) <= 7 ? candidates.filter((c) => !promoted.includes(c.id)) : [];
+  // 7 วันแรกของรอบใหม่ (ม.ค. เม.ย. ก.ค. ต.ค.) เตือนแอดมินยืนยันคนที่เข้าเกณฑ์ของ 3 เดือนก่อน
+  const lastQuarter = prevQuarter(quarterOf(date.slice(0, 7)));
+  const [promoted] = usePromoted(lastQuarter);
+  const promoteWindow = Number(date.slice(5, 7)) % 3 === 1 && Number(date.slice(8)) <= 7;
+  const candidates = useMemo(() => (promoteWindow ? promotionCandidates(state, lastQuarter) : []), [promoteWindow, state, lastQuarter]);
+  const toPromote = candidates.filter((c) => !promoted.includes(c.id));
 
   const todo: Row[] = [
     ...(toPromote.length
@@ -526,7 +526,7 @@ export function AdminHome() {
       {sheet("photos", t("รูปกิจกรรม"), <EventPhotos bare />)}
       {sheet("rank", t("อันดับ"), <ClubCorner />)}
       {sheet("members", t("สมาชิก"), <MembersDirectory />)}
-      {sheet("promote", t("เลื่อนขั้นประจำเดือน"), <PromotionList month={lastMonth} />)}
+      {sheet("promote", t("เลื่อนขั้นประจำรอบ 3 เดือน"), <PromotionList quarter={lastQuarter} />)}
     </div>
   );
 }

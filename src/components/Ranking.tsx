@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { monthRanking, type RankRow } from "@/lib/club";
-import { monthRecord, nextLevel, promotionCandidates } from "@/lib/promotion";
+import { nextLevel, periodRecord, prevQuarter, promotionCandidates, quarterMonths, quarterOf } from "@/lib/promotion";
 import type { Player } from "@/lib/types";
 import { PromotionProgress } from "./MembersDirectory";
 import { locale, t } from "@/lib/i18n";
@@ -49,6 +49,13 @@ const shift = (month: string, n: number) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 };
 const monthLabel = (m: string) => new Date(m + "-01T00:00:00").toLocaleDateString(locale(), { month: "long", year: "numeric" });
+/** ชื่อไตรมาส เช่น ต.ค. - ธ.ค. 2569 */
+export const quarterLabel = (q: string) => {
+  const [a, , c] = quarterMonths(q);
+  const short = (m: string, year?: boolean) =>
+    new Date(m + "-01T00:00:00").toLocaleDateString(locale(), { month: "short", ...(year ? { year: "numeric" } : {}) });
+  return `${short(a)} - ${short(c, true)}`;
+};
 
 /** ตารางอันดับรายเดือน (ทุกคนเห็น) */
 export function RankingCard({ onYear }: { onYear?: () => void }) {
@@ -62,7 +69,8 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
   const mine = rows.findIndex((r) => r.id === me);
   const { auth } = useStore();
   const meP = byId.get(me ?? "");
-  const myRec = data && meP ? monthRecord(data.days, month).get(meP.id) : undefined;
+  const quarter = quarterOf(now);
+  const myRec = data && meP ? periodRecord(data.days, quarterMonths(quarter)).get(meP.id) : undefined;
   const myNext = meP ? nextLevel(meP.level) : null;
   const shown = all ? rows : rows.slice(0, 10);
   const img = useShareImage();
@@ -78,6 +86,7 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
             return { rank: i + 1, name: p?.name ?? "?", photo: p?.photo, record: t("ชนะ {w}/{g}", { w: r.wins, g: r.games }), delta: r.delta, me: r.id === me };
           }),
           note: t("แต้มขึ้นลงตามผลแพ้ชนะ ชนะทีมเก่งกว่าได้แต้มมากกว่า"),
+          podiumNote: t("3 อันดับแรก"),
         }),
       `ranking-${month}.png`,
     );
@@ -115,7 +124,7 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
             </p>
           )}
           {month === now && meP && myNext !== null && !meP.guestOf && !meP.pending && (
-            <PromotionProgress rec={myRec ?? { games: 0, decided: 0, wins: 0 }} next={myNext} />
+            <PromotionProgress rec={myRec ?? { games: 0, decided: 0, wins: 0 }} next={myNext} quarter={quarter} />
           )}
           <Podium rows={rows.slice(0, 3)} byId={byId} current={month === now} />
           <ol className="divide-y divide-zinc-100">
@@ -147,7 +156,7 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
           {img.overlay}
         </>
       )}
-      {data && month === shift(now, -1) && <PromotionList month={month} data={data} admin={auth.isAdmin || !auth.online} />}
+      {data && quarterOf(month) === prevQuarter(quarter) && <PromotionList quarter={prevQuarter(quarter)} data={data} admin={auth.isAdmin || !auth.online} />}
       <p className="text-xs text-zinc-500">
         {t("แต้มขึ้นลงตามผลแพ้ชนะ ชนะทีมเก่งกว่าได้แต้มมากกว่า")}
       </p>
@@ -201,8 +210,8 @@ function Podium({ rows, byId, current }: { rows: RankRow[]; byId: Map<string, Pl
 }
 
 /** จำในเครื่องว่าเดือนนี้ยืนยันเลื่อนขั้นใครไปแล้ว (กันเสนอซ้ำหลังระดับเปลี่ยน) */
-export function usePromoted(month: string) {
-  const key = `badminton-kabinburi:promoted:${month}`;
+export function usePromoted(period: string) {
+  const key = `badminton-kabinburi:promoted:${period}`;
   const read = () => {
     try {
       return JSON.parse(localStorage.getItem(key) ?? "[]") as string[];
@@ -237,13 +246,13 @@ export function usePromoted(month: string) {
 }
 
 /** คนที่เข้าเกณฑ์เลื่อนขั้นของเดือนที่จบแล้ว แอดมินกดยืนยันทีละคน */
-export function PromotionList({ month, data: given, admin: isAdmin }: { month: string; data?: Pick<State, "days" | "players">; admin?: boolean }) {
+export function PromotionList({ quarter, data: given, admin: isAdmin }: { quarter: string; data?: Pick<State, "days" | "players">; admin?: boolean }) {
   const { state, dispatch, auth } = useStore();
-  const own = useHistory(`${month}-01`, !!given);
+  const own = useHistory(`${quarterMonths(quarter)[0]}-01`, !!given);
   const data = given ?? own.data;
   const admin = isAdmin ?? (auth.isAdmin || !auth.online);
-  const [done, markDone] = usePromoted(month);
-  const list = useMemo(() => (data ? promotionCandidates({ players: data.players, days: data.days }, month) : []), [data, month]);
+  const [done, markDone] = usePromoted(quarter);
+  const list = useMemo(() => (data ? promotionCandidates({ players: data.players, days: data.days }, quarter) : []), [data, quarter]);
   if (!data) return <p className="text-sm text-zinc-500">{own.failed ? t("โหลดข้อมูลไม่สำเร็จ ลองใหม่อีกครั้ง") : t("กำลังโหลด...")}</p>;
   // คนที่ยืนยันไปแล้ว ระดับปัจจุบันเปลี่ยนแล้ว ไม่ต้องเสนอขั้นถัดไปอีก
   const fresh = list.filter((c) => !done.includes(c.id));
@@ -253,7 +262,7 @@ export function PromotionList({ month, data: given, admin: isAdmin }: { month: s
   const byId = new Map(state.players.map((p) => [p.id, p]));
   return (
     <section className="space-y-2 rounded-2xl bg-lime/30 p-3">
-      <h4 className="font-semibold">⬆ {t("เข้าเกณฑ์เลื่อนขั้น {month}", { month: monthLabel(month) })}</h4>
+      <h4 className="font-semibold">⬆ {t("เข้าเกณฑ์เลื่อนขั้น {month}", { month: quarterLabel(quarter) })}</h4>
       <ul className="space-y-1.5">
         {fresh.map((c) => {
           const p = byId.get(c.id);

@@ -122,21 +122,35 @@ const toBlob = (c: HTMLCanvasElement) =>
 export type RankImageRow = Person & { rank: number; record: string; delta: number; me?: boolean };
 
 /** รูปตารางอันดับรายเดือน */
-export async function rankingImage(o: { club: string; title: string; month: string; rows: RankImageRow[]; note: string }): Promise<Blob> {
+export async function rankingImage(o: { club: string; title: string; month: string; rows: RankImageRow[]; note: string; podiumNote?: string }): Promise<Blob> {
   await document.fonts?.ready;
   const f = fonts();
   const imgs = await photos(o.rows);
   const HEAD = 250;
   const ROW = 92;
-  const height = HEAD + 32 + o.rows.length * ROW + 32 + 80;
+  const top = o.rows.slice(0, 3);
+  const PODIUM = top.length ? 470 : 0;
+  const listY = HEAD + 16 + (PODIUM ? PODIUM + 24 : 0);
+  const height = listY + 16 + o.rows.length * ROW + 32 + 80;
   const { c, g } = setup(height);
   g.fillStyle = "#f4f4f5";
   g.fillRect(0, 0, W, height);
   header(g, f, o.club, o.title, o.month, HEAD);
-  roundRect(g, PAD / 2, HEAD + 16, W - PAD, o.rows.length * ROW + 32, 36, "#ffffff");
+  if (PODIUM) podium(g, f, imgs, top, HEAD + 16, PODIUM, o.podiumNote ?? "");
+  roundRect(g, PAD / 2, listY, W - PAD, o.rows.length * ROW + 32, 36, "#ffffff");
+
+  // วัดคอลัมน์แต้มจากตัวที่กว้างที่สุด แล้ววางผลแพ้ชนะไว้ซ้ายของคอลัมน์นั้น ไม่ให้ตัวเลขทับกัน
+  const deltaText = (d: number) => `${d > 0 ? "+" : ""}${d}`;
+  g.font = f.display(600, 36);
+  const deltaW = Math.max(0, ...o.rows.map((r) => g.measureText(deltaText(r.delta)).width));
+  g.font = f.body(400, 26);
+  const recordW = Math.max(0, ...o.rows.map((r) => g.measureText(r.record).width));
+  const recordRight = W - PAD - deltaW - 28;
+  const nameX = PAD + 150;
+  const nameMax = recordRight - recordW - 24 - nameX;
 
   o.rows.forEach((r, i) => {
-    const y = HEAD + 32 + i * ROW;
+    const y = listY + 16 + i * ROW;
     const mid = y + ROW / 2;
     if (r.me) roundRect(g, PAD / 2 + 12, y + 6, W - PAD - 24, ROW - 12, 24, "rgba(198,244,50,0.45)");
     else if (i > 0) {
@@ -152,20 +166,60 @@ export async function rankingImage(o: { club: string; title: string; month: stri
     g.textAlign = "right";
     g.font = f.display(600, 36);
     g.fillStyle = r.delta >= 0 ? "#047857" : "#dc2626";
-    g.fillText(`${r.delta > 0 ? "+" : ""}${r.delta}`, W - PAD, mid + 2);
+    g.fillText(deltaText(r.delta), W - PAD, mid + 2);
     g.font = f.body(400, 26);
     g.fillStyle = "#71717a";
-    g.fillText(r.record, W - PAD - 130, mid + 2);
-    const recordW = g.measureText(r.record).width;
+    g.fillText(r.record, recordRight, mid + 2);
 
     g.textAlign = "left";
     g.fillStyle = INK;
     g.font = f.body(r.me ? 700 : 500, 34);
-    g.fillText(fit(g, r.name, W - PAD * 2 - 150 - 130 - recordW - 24), PAD + 150, mid + 2);
+    g.fillText(fit(g, r.name, nameMax), nameX, mid + 2);
   });
 
   footer(g, f, o.note, height - 50);
   return toBlob(c);
+}
+
+/** กราฟแท่ง 3 อันดับแรก (อันดับ 1 อยู่กลาง) สูงตามแต้มที่ได้ */
+function podium(g: CanvasRenderingContext2D, f: ReturnType<typeof fonts>, imgs: Map<string, HTMLImageElement | null>, top: RankImageRow[], y0: number, h: number, note: string) {
+  roundRect(g, PAD / 2, y0, W - PAD, h, 36, "#ffffff");
+  const base = y0 + h - 70;
+  const maxD = Math.max(1, ...top.map((r) => Math.max(0, r.delta)));
+  const barH = (r: RankImageRow) => 90 + Math.round((Math.max(0, r.delta) / maxD) * 150);
+  const BW = 220;
+  const GAP = 36;
+  const order = [1, 0, 2].filter((i) => i < top.length);
+  const x0 = W / 2 - (BW * 3 + GAP * 2) / 2;
+  const slot = (i: number) => x0 + [1, 0, 2].indexOf(i) * (BW + GAP);
+  order.forEach((i) => {
+    const r = top[i];
+    const x = slot(i);
+    const bh = barH(r);
+    const by = base - bh;
+    g.fillStyle = i === 0 ? LIME : "rgba(198,244,50,0.5)";
+    g.beginPath();
+    g.roundRect(x, by, BW, bh, [16, 16, 0, 0]);
+    g.fill();
+    const size = i === 0 ? 96 : 80;
+    avatar(g, f, imgs, r, x + BW / 2 - size / 2, by - size - 56, size);
+    g.textAlign = "center";
+    g.fillStyle = INK;
+    g.font = f.body(600, 28);
+    g.fillText(fit(g, r.name, BW), x + BW / 2, by - 28);
+    g.font = f.display(700, 40);
+    g.fillText(String(i + 1), x + BW / 2, by + 36);
+    g.font = f.display(600, 34);
+    g.fillText(`${r.delta > 0 ? "+" : ""}${r.delta}`, x + BW / 2, by + 82);
+  });
+  g.fillStyle = "#e4e4e7";
+  g.fillRect(PAD, base, W - PAD * 2, 2);
+  if (note) {
+    g.fillStyle = "#71717a";
+    g.font = f.body(400, 24);
+    g.textAlign = "center";
+    g.fillText(fit(g, note, W - PAD * 2), W / 2, base + 36);
+  }
 }
 
 export type SummaryList = { title: string; items: (Person & { value: string })[] };

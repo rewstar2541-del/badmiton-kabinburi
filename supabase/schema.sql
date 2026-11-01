@@ -865,7 +865,7 @@ begin
     return jsonb_build_object('error', 'บัญชี LINE นี้ผูกกับผู้เล่นคนอื่นแล้ว');
   end if;
   if coalesce(trim(p_name), '') = '' then return jsonb_build_object('error', 'กรุณาใส่ชื่อเล่น'); end if;
-  if p_gender not in ('male', 'female', 'other') or p_level not between 1 and 6 then
+  if p_gender not in ('male', 'female', 'other', 'lgbtq') or p_level not between 1 and 6 then
     return jsonb_build_object('error', 'คำสั่งไม่ถูกต้อง');
   end if;
   if not photo_ok(p_photo) then return jsonb_build_object('error', 'รูปใหญ่เกินไป'); end if;
@@ -1241,7 +1241,7 @@ begin
   if err is not null then return err; end if;
   if nm = '' or length(nm) > 30 then return 'กรุณาใส่ชื่อเล่น (ไม่เกิน 30 ตัวอักษร)'; end if;
   if not photo_ok(p_photo) then return 'รูปไม่ถูกต้องหรือใหญ่เกินไป'; end if;
-  if p_gender is not null and p_gender not in ('male','female','other') then return 'คำสั่งไม่ถูกต้อง'; end if;
+  if p_gender is not null and p_gender not in ('male','female','other','lgbtq') then return 'คำสั่งไม่ถูกต้อง'; end if;
   if p_level is null or p_level not between 1 and 6 then return 'คำสั่งไม่ถูกต้อง'; end if;
   select level into cur from players where id = p_player and guest_of is null;
   if not found then return 'ไม่พบผู้เล่น'; end if;
@@ -1313,7 +1313,7 @@ alter table public.notices add constraint notices_title_check CHECK (((length(ti
 alter table public.pair_requests add constraint pair_requests_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'accepted'::text, 'declined'::text, 'cancelled'::text])));
 alter table public.players add constraint players_bio_check CHECK (((bio IS NULL) OR (length(bio) <= 200)));
 alter table public.players add constraint players_birthday_check CHECK (((birthday IS NULL) OR (birthday ~ '^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'::text)));
-alter table public.players add constraint players_gender_check CHECK ((gender = ANY (ARRAY['male'::text, 'female'::text, 'other'::text])));
+alter table public.players add constraint players_gender_check CHECK ((gender = ANY (ARRAY['male'::text, 'female'::text, 'other'::text, 'lgbtq'::text])));
 alter table public.players add constraint players_level_check CHECK (((level >= 1) AND (level <= 6)));
 alter table public.players add constraint players_level_request_check CHECK (((level_request >= 1) AND (level_request <= 6)));
 alter table public.players add constraint players_plan_check CHECK ((plan = ANY (ARRAY['daily'::text, 'monthly'::text])));
