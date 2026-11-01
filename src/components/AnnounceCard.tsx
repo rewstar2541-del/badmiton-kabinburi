@@ -6,7 +6,7 @@ import { useStore, useToday } from "@/lib/store";
 import { ClosedBanner } from "./Calendar";
 import { AnnouncementBanner, CapLine } from "./TodayTab";
 import { Button, Card, Icon, inputClass } from "./ui";
-import { RentFields, rentDraft, rentDraftOk, rentFromDraft } from "./RentHours";
+import { RentFields, lastRent, rentDraft, rentDraftOk, rentFromDraft } from "./RentHours";
 import { t } from "@/lib/i18n";
 
 const DEFAULT_TH = "ลงชื่อได้เลย ถึงสนามแล้วกดเช็คอิน";
@@ -75,7 +75,7 @@ export function EventForm({ date, dates, onDone, onCancel }: { date?: string; da
   const [cap, setCap] = useState(day?.announcementCap ? String(day.announcementCap) : "");
   // สนามเช่า: หารค่าเช่าตามชั่วโมงที่แต่ละคนอยู่
   const [rentOn, setRentOn] = useState(Boolean(day?.rent));
-  const [rent, setRent] = useState(() => rentDraft(day?.rent));
+  const [rent, setRent] = useState(() => rentDraft(day?.rent ?? lastRent(state.days)));
   const rentOk = !rentOn || rentDraftOk(rent);
   const custom = title !== null && !(PRESETS as readonly (string | null)[]).includes(title);
 

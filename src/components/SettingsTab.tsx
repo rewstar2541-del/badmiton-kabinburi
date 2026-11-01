@@ -14,6 +14,7 @@ import type { Settings } from "@/lib/types";
 import { datesToFreeze } from "@/lib/billing";
 import { normalizeBackup, today } from "@/lib/state";
 import { ClubCalendar } from "./Calendar";
+import { RentTodayCard } from "./RentHours";
 import { EventPhotos } from "./EventPhotos";
 import { LoginTab } from "./LoginTab";
 import { Button, Card, SectionTitle, inputClass } from "./ui";
@@ -77,7 +78,7 @@ export function SettingsTab() {
       <Section id="festival" icon="🎉" title={t("ธีมเทศกาล")} hint={t("ฮาโลวีน คริสต์มาส ปีใหม่ สงกรานต์")}>
         <FestivalPicker />
       </Section>
-      <Section id="prices" icon="💰" title={t("ราคาและสนาม")} hint={packagesReady ? t("ค่าลูก PromptPay จอทีวี") : t("ค่าสนาม ค่าลูก PromptPay จอทีวี")}>
+      <Section id="prices" icon="💰" title={t("ราคาและสนาม")} hint={packagesReady ? t("ค่าลูก สนามเช่า PromptPay จอทีวี") : t("ค่าสนาม ค่าลูก สนามเช่า PromptPay จอทีวี")}>
           <Card>
             <form
               className="space-y-3"
@@ -158,6 +159,7 @@ export function SettingsTab() {
               </Button>
             </form>
           </Card>
+          <RentTodayCard />
           <Card className="flex items-center gap-3">
             <div className="min-w-0 flex-1">
               <h2 className="font-display font-semibold">{t("จอสนาม")}</h2>

@@ -64,11 +64,9 @@ export function MyRentHours({ player, day, rent }: { player: Player; day: Day; r
   };
   return (
     <Card className="space-y-3">
-      <div className="flex items-center gap-2">
-        <h2 className="min-w-0 flex-1 font-display font-semibold">{t("สนามเช่า")}</h2>
-        <span className="shrink-0 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">
-          {rentLabel(rent)}
-        </span>
+      <div>
+        <h2 className="font-display font-semibold">{t("สนามเช่า")}</h2>
+        <span className="mt-1 inline-block rounded-2xl bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">{rentLabel(rent)}</span>
       </div>
       <p className="text-sm text-zinc-500">{t("แต่ละชั่วโมงหารค่าเช่าให้คนที่อยู่ ยอดจะลดลงถ้ามีคนมาเพิ่ม จ่ายตอนกลับจะได้ยอดจริง")}</p>
       <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -92,10 +90,13 @@ export function MyRentHours({ player, day, rent }: { player: Player; day: Day; r
   );
 }
 
-export type RentDraft = { start: number; end: number; perHour: string; courts: number[] };
+export type RentDraft = { start: number; end: number; perHour: string; courts: number[]; legacy?: boolean };
 
 export const rentDraft = (r?: DayRent): RentDraft =>
-  r ? { start: r.start, end: r.end, perHour: String(r.perHour), courts: range(r.start, r.end - 1).map((h) => courtsAt(r, h)) } : { start: 19, end: 22, perHour: "", courts: [1, 1, 1] };
+  r ? { start: r.start, end: r.end, perHour: String(r.perHour), courts: range(r.start, r.end - 1).map((h) => courtsAt(r, h)), legacy: !r.courts } : { start: 19, end: 22, perHour: "", courts: [1, 1, 1] };
+
+/** ค่าสนามเช่าครั้งล่าสุด ใช้เป็นค่าเริ่มต้นตอนตั้งสนามเช่าวันใหม่ */
+export const lastRent = (days: Day[]): DayRent | undefined => [...days].filter((d) => d.rent).sort((a, b) => b.date.localeCompare(a.date))[0]?.rent;
 
 export const rentDraftOk = (d: RentDraft) => Number(d.perHour) > 0 && d.end > d.start;
 
@@ -147,21 +148,24 @@ export function RentFields({ value, onChange }: { value: RentDraft; onChange: (d
       </div>
       <label className="block text-sm font-medium">
         {t("ค่าเช่าต่อคอร์ท ต่อชั่วโมง")}
-        <input className={`${inputClass} mt-1`} inputMode="numeric" value={value.perHour} onChange={(e) => onChange({ ...value, perHour: e.target.value.replace(/\D/g, "") })} />
+        <input className={`${inputClass} mt-1`} inputMode="numeric" value={value.perHour} onChange={(e) => onChange({ ...value, perHour: e.target.value.replace(/\D/g, ""), legacy: false })} />
       </label>
       <div className="space-y-1">
         <div className="text-sm font-medium">{t("จำนวนคอร์ทแต่ละชั่วโมง")}</div>
+        {value.legacy && value.courts.some((c) => c > 1) && (
+          <p className="text-xs font-semibold text-amber-800">{t("ราคาเดิมเป็นค่าเช่ารวมทุกคอร์ท ถ้าเพิ่มคอร์ท ให้แก้เป็นราคาต่อ 1 คอร์ทด้วย")}</p>
+        )}
         {value.courts.map((c, i) => (
-          <div key={value.start + i} className="flex items-center gap-1.5 text-sm">
-            <span className="w-[5.5rem] shrink-0 whitespace-nowrap">{`${hh(value.start + i)}-${hh(value.start + i + 1)}`}</span>
+          <div key={value.start + i} className="flex items-center gap-1 text-sm">
+            <span className="w-[5rem] shrink-0 whitespace-nowrap text-[13px]">{`${hh(value.start + i)}-${hh(value.start + i + 1)}`}</span>
             <button type="button" aria-label={t("ลดคอร์ท")} disabled={c <= 1} className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-lg font-bold ring-1 ring-zinc-200 disabled:opacity-40" onClick={() => setCourts(i, c - 1)}>
               −
             </button>
-            <span className="w-14 shrink-0 text-center font-semibold whitespace-nowrap">{t("{n} คอร์ท", { n: c })}</span>
+            <span className="min-w-8 shrink-0 text-center text-base font-semibold">{c}</span>
             <button type="button" aria-label={t("เพิ่มคอร์ท")} className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-lg font-bold ring-1 ring-zinc-200" onClick={() => setCourts(i, c + 1)}>
               +
             </button>
-            <span className="min-w-0 flex-1 whitespace-nowrap text-right text-zinc-500">{price ? baht(c * price) : ""}</span>
+            <span className="flex-1 whitespace-nowrap text-right text-xs text-zinc-500">{price ? (c * price).toLocaleString() : ""}</span>
           </div>
         ))}
       </div>
@@ -180,18 +184,18 @@ export function rentLabel(rent: DayRent): string {
 }
 
 /** แอดมิน: แก้เวลาเช่า จำนวนคอร์ท และค่าเช่าของวันนี้ได้จากหน้านี้เลย (เก็บที่ประกาศของวัน) */
-function RentEdit({ rent, day }: { rent: DayRent; day: Day }) {
-  const { dispatch } = useStore();
+function RentEdit({ rent, day }: { rent?: DayRent; day: Day }) {
+  const { dispatch, state } = useStore();
   const [open, setOpen] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [draft, setDraft] = useState(() => rentDraft(rent));
+  const [draft, setDraft] = useState(() => rentDraft(rent ?? lastRent(state.days)));
   const paid = day.checkIns.filter((c) => c.paidAt).length;
   const save = () => {
     if (paid && !confirm(t("มีคนจ่ายแล้ว {n} คน ยอดของคนที่จ่ายแล้วจะเปลี่ยนด้วย บันทึกไหม?", { n: paid }))) return;
     const next = rentFromDraft(draft);
     dispatch({ type: "setAnnouncement", date: day.date, message: day.announcement ?? "", rent: next });
     // ขยาย/ย่อเวลาเลิก: คนที่ตั้งไว้ว่าอยู่ถึงเลิกเดิม ให้อยู่ถึงเลิกใหม่ด้วย
-    if (next.end !== rent.end)
+    if (rent && next.end !== rent.end)
       for (const c of day.checkIns)
         if (!c.paidAt && c.hours && c.hours.to >= rent.end) dispatch({ type: "setHours", date: day.date, playerId: c.playerId, hours: { from: Math.min(c.hours.from, next.end - 1), to: next.end } });
     setSaved(true);
@@ -202,17 +206,17 @@ function RentEdit({ rent, day }: { rent: DayRent; day: Day }) {
       <div className="flex items-center gap-2 rounded-2xl bg-zinc-50 p-3 text-sm">
         <span className="min-w-0 flex-1">
           {saved && <span className="block text-xs font-semibold text-emerald-700">{t("บันทึกแล้ว")}</span>}
-          {rentLabel(rent)}
+          {rent ? rentLabel(rent) : t("วันนี้ยังไม่ได้ตั้งเป็นสนามเช่า")}
         </span>
         <Button
           className="shrink-0"
           onClick={() => {
-            setDraft(rentDraft(rent));
+            setDraft(rentDraft(rent ?? lastRent(state.days)));
             setSaved(false);
             setOpen(true);
           }}
         >
-          {t("แก้เวลา/ค่าเช่า")}
+          {rent ? t("แก้เวลา/ค่าเช่า") : t("ตั้งสนามเช่า")}
         </Button>
       </div>
     );
@@ -229,6 +233,18 @@ function RentEdit({ rent, day }: { rent: DayRent; day: Day }) {
         </Button>
       </div>
     </div>
+  );
+}
+
+/** ตั้งค่า > ราคาและสนาม: สนามเช่าของวันนี้ (ต้องประกาศจัดก๊วนก่อน) */
+export function RentTodayCard() {
+  const { day } = useToday();
+  return (
+    <Card className="space-y-2">
+      <h2 className="font-display font-semibold">{t("สนามเช่าวันนี้")}</h2>
+      <p className="text-xs text-zinc-500">{t("ตั้งเวลา ราคาต่อคอร์ท และจำนวนคอร์ทแต่ละชั่วโมง แต่ละชั่วโมงหารให้คนที่อยู่ วันใหม่จะดึงค่าครั้งล่าสุดมาให้")}</p>
+      {day.announcement !== undefined ? <RentEdit rent={day.rent} day={day} /> : <p className="rounded-2xl bg-zinc-50 p-3 text-sm">{t("วันนี้ยังไม่ได้ประกาศจัดก๊วน ประกาศก่อนแล้วตั้งสนามเช่าได้")}</p>}
+    </Card>
   );
 }
 
