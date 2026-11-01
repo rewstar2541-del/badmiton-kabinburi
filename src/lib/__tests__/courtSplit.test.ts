@@ -62,3 +62,20 @@ describe("สนามเช่า: จ่ายแล้วยอดไม่�
     expect(dayAmount(day as never, player("b") as never, DEFAULT_SETTINGS, {}).courtFee).toBe(600);
   });
 });
+
+describe("สนามเช่า: จำนวนคอร์ทไม่เท่ากันแต่ละชั่วโมง", () => {
+  it("19-20 4 คอร์ท 20-22 5 คอร์ท คอร์ทละ 200 หารตามชั่วโมงที่อยู่", async () => {
+    const { rentShares, rentTotal, normalizeCourts } = await import("../courtSplit");
+    const at = (h: number) => Date.parse(`2026-11-01T${String(h).padStart(2, "0")}:05:00+07:00`);
+    const rent = { start: 19, end: 22, perHour: 200, courts: [4, 5, 5] };
+    expect(rentTotal(rent)).toBe(2800);
+    const ids = Array.from({ length: 8 }, (_, i) => `p${i}`);
+    // 8 คนอยู่ตั้งแต่ 19:00 อีก 2 คนมา 20:00
+    const out = rentShares(rent, [...ids.map((id) => ({ playerId: id, at: at(19) })), { playerId: "x", at: at(20) }, { playerId: "y", at: at(20) }]);
+    expect(out.get("p0")).toBe(100 + 100 + 100);
+    expect(out.get("x")).toBe(200);
+    expect([...out.values()].reduce((a, b) => a + b, 0)).toBe(2800);
+    expect(normalizeCourts(19, 22, [1, 1, 1])).toBeUndefined();
+    expect(normalizeCourts(19, 23, [4, 5])).toEqual([4, 5, 5, 5]);
+  });
+});

@@ -58,7 +58,7 @@ export interface Rows {
   }[];
   drinks: { id: string; date: string; player_id: string; amount: number; note: string }[];
   monthly: { month: string; player_id: string; paid_at: string; amount?: number | null }[];
-  announcements: { date: string; message: string; title?: string | null; fee?: number | null; cap?: number | null; rent_start?: number | null; rent_end?: number | null; rent_per_hour?: number | null }[];
+  announcements: { date: string; message: string; title?: string | null; fee?: number | null; cap?: number | null; rent_start?: number | null; rent_end?: number | null; rent_per_hour?: number | null; rent_courts?: number[] | null }[];
   signups: { date: string; player_id: string; at: string }[];
   closed: { date: string; reason: string }[];
   slips: { id: string; date: string; player_id: string; amount: number; created_at: string; package_id?: string | null }[];
@@ -150,7 +150,7 @@ export function rowsToState(r: Rows): State {
     if (a.fee != null) day(a.date).announcementFee = a.fee;
     if (a.cap != null) day(a.date).announcementCap = a.cap;
     if (a.rent_start != null && a.rent_end != null && a.rent_per_hour != null)
-      day(a.date).rent = { start: a.rent_start, end: a.rent_end, perHour: Number(a.rent_per_hour) };
+      day(a.date).rent = { start: a.rent_start, end: a.rent_end, perHour: Number(a.rent_per_hour), ...(a.rent_courts?.length ? { courts: a.rent_courts.map(Number) } : {}) };
   }
   for (const s of r.signups) (day(s.date).signups ??= []).push({ playerId: s.player_id, at: ms(s.at) });
   for (const x of r.slips)
@@ -329,9 +329,10 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
       return (r[0] as Rows["settings"]) ?? null;
     },
     announcements: () =>
-      all(() => db.from("announcements").select("date,message,title,fee,cap,rent_start,rent_end,rent_per_hour").gte("date", since).order("date")).catch(() =>
-        all(() => db.from("announcements").select("date,message,title,fee,cap").gte("date", since).order("date")),
-      ),
+      // rent_courts มาหลังรัน SQL คอร์ทรายชั่วโมง ยังไม่รันให้โหลดแบบเดิม
+      all(() => db.from("announcements").select("date,message,title,fee,cap,rent_start,rent_end,rent_per_hour,rent_courts").gte("date", since).order("date"))
+        .catch(() => all(() => db.from("announcements").select("date,message,title,fee,cap,rent_start,rent_end,rent_per_hour").gte("date", since).order("date")))
+        .catch(() => all(() => db.from("announcements").select("date,message,title,fee,cap").gte("date", since).order("date"))),
     signups: () => all(() => db.from("signups").select("date,player_id,at").gte("date", since).order("date").order("player_id")),
     // package_id มาหลังรัน SQL แพ็กเกจ ยังไม่รันให้โหลดแบบเดิม
     slips: async () =>
@@ -580,16 +581,22 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
         check(await db.from("signups").delete().eq("date", a.date));
         return check(await db.from("announcements").delete().eq("date", a.date));
       }
-      return check(
-        await db.from("announcements").upsert({
-          date: a.date,
-          message: a.message,
-          ...(a.title === undefined ? {} : { title: a.title }),
-          ...(a.fee === undefined ? {} : { fee: a.fee }),
-          ...(a.cap === undefined ? {} : { cap: a.cap }),
-          ...(a.rent === undefined ? {} : { rent_start: a.rent?.start ?? null, rent_end: a.rent?.end ?? null, rent_per_hour: a.rent?.perHour ?? null }),
-        }),
-      );
+    {
+      const row = {
+        date: a.date,
+        message: a.message,
+        ...(a.title === undefined ? {} : { title: a.title }),
+        ...(a.fee === undefined ? {} : { fee: a.fee }),
+        ...(a.cap === undefined ? {} : { cap: a.cap }),
+        ...(a.rent === undefined ? {} : { rent_start: a.rent?.start ?? null, rent_end: a.rent?.end ?? null, rent_per_hour: a.rent?.perHour ?? null }),
+      };
+      if (a.rent === undefined) return check(await db.from("announcements").upsert(row));
+      const res = await db.from("announcements").upsert({ ...row, rent_courts: a.rent?.courts ?? null });
+      // ยังไม่รัน SQL คอร์ทรายชั่วโมง: ถ้าไม่ได้ตั้งคอร์ทแยก บันทึกแบบเดิมได้
+      if (res.error && !a.rent?.courts) return check(await db.from("announcements").upsert(row));
+      if (res.error && /rent_courts/.test(res.error.message)) throw new Error("ต้องรัน SQL คอร์ทรายชั่วโมงก่อน (rent_courts.sql)");
+      return check(res);
+    }
     case "signUp":
       return check(
         await db.from("signups").upsert({ date: a.date, player_id: a.playerId, at: iso(a._at) }, { ignoreDuplicates: true }),
