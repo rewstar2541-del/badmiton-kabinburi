@@ -3,7 +3,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { carriedOver, guestsOf } from "@/lib/billing";
 import { t } from "@/lib/i18n";
-import { presence, queuedSpot, waitingQueue } from "@/lib/matchmaking";
+import { courtPlan, plannedCourt, presence, queuedSpot, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
 import { goToTab } from "./Membership";
 import { savedPin, useMe } from "./PickMe";
@@ -104,9 +104,17 @@ function useNotes(meId: string | null) {
   const game = day.games.find((g) => !g.endedAt && g.playerIds.includes(player.id));
   if (status === "playing" && game)
     notes.push({ id: `court:${game.id}`, tone: "court", title: t("ถึงคิวแล้ว ลงสนาม {n}", { n: game.court }), sub: t("ไปที่สนามได้เลย"), at: game.startedAt, onTap: () => goToTab("courts") });
-  const spot = status === "waiting" ? queuedSpot(day, player.id) : null;
+  const locked = status === "waiting" ? queuedSpot(day, player.id) : null;
+  const planned = status === "waiting" && !locked ? plannedCourt(courtPlan(day, state.players, state.settings.courtCount), player.id) : null;
+  // เวลา = ตอนที่เกมล่าสุดจบ (คิวขยับ) หรือตอนเช็คอิน
+  const movedAt = Math.max(day.checkIns.find((c) => c.playerId === player.id)?.at ?? 0, ...day.games.map((g) => g.endedAt ?? 0));
+  const spot = locked
+    ? { key: locked.game.id, court: locked.court, pos: locked.pos, at: locked.game.at }
+    : planned
+      ? { key: `${planned.court}:${[...planned.playerIds].sort().join(",")}`, court: planned.court, pos: 1, at: movedAt }
+      : null;
   if (spot)
-    notes.push({ id: `queued:${spot.game.id}`, tone: "court", title: t("จัดคิวสนาม {n} ให้แล้ว", { n: spot.court }), sub: spot.pos === 1 ? t("คุณได้ลงต่อจากเกมที่เล่นอยู่ เตรียมตัวได้เลย") : t("คิวรอลงสนามนี้ คู่ที่ {n}", { n: spot.pos }), at: spot.game.at, onTap: () => goToTab("courts") });
+    notes.push({ id: `queued:${spot.key}`, tone: "court", title: t("จัดคิวสนาม {n} ให้แล้ว", { n: spot.court }), sub: spot.pos === 1 ? t("คุณได้ลงต่อจากเกมที่เล่นอยู่ เตรียมตัวได้เลย") : t("คิวรอลงสนามนี้ คู่ที่ {n}", { n: spot.pos }), at: spot.at, onTap: () => goToTab("courts") });
   else if (status === "waiting") {
     const pos = waitingQueue(day, state.players).findIndex((e) => e.player.id === player.id) + 1;
     const round = day.games.filter((g) => g.playerIds.includes(player.id)).length;

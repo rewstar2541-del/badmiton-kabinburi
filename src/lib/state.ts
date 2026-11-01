@@ -52,6 +52,8 @@ export type Action =
   /** จัดคู่รอลงสนามนี้ต่อจากเกมที่เล่นอยู่ */
   | { type: "queueGame"; date: string; court: number; playerIds: Game["playerIds"]; _id: string; _at: number }
   | { type: "unqueueGame"; date: string; id: string }
+  /** แอดมินแก้คนในคู่ที่จัดคิวไว้ (ลำดับคิวเดิม) */
+  | { type: "editQueued"; date: string; id: string; playerIds: Game["playerIds"] }
   | { type: "setShuttles"; date: string; gameId: string; shuttles: number }
   | { type: "endGame"; date: string; gameId: string; winner?: Team; draw?: boolean; _at: number }
   | { type: "cancelGame"; date: string; gameId: string }
@@ -254,6 +256,8 @@ export function reducer(state: State, a: Action): State {
       }));
     case "unqueueGame":
       return withDay(state, a.date, (d) => ({ ...d, queued: (d.queued ?? []).filter((q) => q.id !== a.id) }));
+    case "editQueued":
+      return withDay(state, a.date, (d) => ({ ...d, queued: (d.queued ?? []).map((q) => (q.id === a.id ? { ...q, playerIds: a.playerIds } : q)) }));
     case "setShuttles":
       return updateGame(state, a.date, a.gameId, (g) => ({ ...g, shuttles: Math.max(0, a.shuttles) }));
     case "endGame":

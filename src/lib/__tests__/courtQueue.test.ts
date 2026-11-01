@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { courtQueue, nextMatch, queueBlockers, queuedSpot, waitingQueue } from "../matchmaking";
+import { courtPlan, courtQueue, nextMatch, plannedCourt, queueBlockers, queuedSpot, waitingQueue } from "../matchmaking";
 import { reducer, type State, EMPTY_STATE } from "../state";
 import type { Day, Player } from "../types";
 
@@ -47,5 +47,45 @@ describe("คิวรอลงแยกสนาม", () => {
     s = reducer(s, { type: "queueGame", date, court: 2, playerIds: q1.playerIds, _id: "q10", _at: 7 });
     s = reducer(s, { type: "unqueueGame", date, id: "q10" });
     expect(s.days[0].queued).toEqual([]);
+  });
+});
+
+describe("แบ่งคิวรวมขึ้นรอแต่ละสนามอัตโนมัติ", () => {
+  it("คิว 1-4 รอสนาม 1 คิว 5-8 รอสนาม 2 คนไม่ซ้ำกัน", () => {
+    const d = day();
+    const plan = courtPlan(d, players, 3);
+    const c1 = plan.get(1)!.playerIds;
+    const c2 = plan.get(2)!.playerIds;
+    expect(c1).toContain("a");
+    expect(new Set([...c1, ...c2]).size).toBe(8);
+    // เหลือ 2 คน ไม่พอสนาม 3
+    expect(plan.has(3)).toBe(false);
+    expect(plannedCourt(plan, c2[0])?.court).toBe(2);
+  });
+
+  it("สนามที่แอดมินจัดคิวเองใช้คู่นั้น", () => {
+    const d = day({ queued: [{ id: "q1", court: 1, playerIds: ["g", "h", "i", "j"], at: 1 }] });
+    const plan = courtPlan(d, players, 2);
+    expect(plan.get(1)).toMatchObject({ queuedId: "q1" });
+    expect(plan.get(2)!.playerIds).toContain("a");
+  });
+
+  it("แนะนำใหม่ได้คนชุดใหม่ ไม่วนกลับชุดเดิม", () => {
+    const d = day();
+    const first = nextMatch(d, players)!;
+    const second = nextMatch(d, players, 8, [first])!;
+    const third = nextMatch(d, players, 8, [first, second])!;
+    const overlap = (x: string[], y: string[]) => x.filter((id) => y.includes(id)).length;
+    expect(overlap(first, second)).toBeLessThan(4);
+    expect(overlap(second, third)).toBeLessThan(4);
+    expect(new Set([...first, ...second, ...third]).size).toBeGreaterThan(6);
+  });
+
+  it("ไม่จัดคนที่เพิ่งเล่นด้วยกันมาเจอกันซ้ำถ้าเลี่ยงได้", () => {
+    const ended = (id: string, ids: string[], at: number) => ({ id, court: 1, playerIds: ids as [string, string, string, string], startedAt: at, endedAt: at + 1, shuttles: 1 });
+    // ทุกคนเล่นมาแล้ว 1 เกม เท่ากัน: a b c d เคยเจอกัน
+    const d = day({ games: [ended("g1", ["a", "b", "c", "d"], 100), ended("g2", ["e", "f", "g", "h"], 100), ended("g3", ["i", "j", "a", "e"], 50)] });
+    const m = nextMatch(d, players)!;
+    expect(m.filter((id) => ["a", "b", "c", "d"].includes(id)).length).toBeLessThan(3);
   });
 });

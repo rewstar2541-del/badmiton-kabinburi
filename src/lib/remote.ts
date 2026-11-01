@@ -465,6 +465,8 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
     }
     case "unqueueGame":
       return check(await db.from("court_queue").delete().eq("id", a.id));
+    case "editQueued":
+      return check(await db.from("court_queue").update({ player_ids: a.playerIds }).eq("id", a.id));
     case "setShuttles":
       return check(await db.from("games").update({ shuttles: Math.max(0, a.shuttles) }).eq("id", a.gameId));
     case "endGame":

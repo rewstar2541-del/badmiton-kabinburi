@@ -8,7 +8,7 @@ import { NewsCarousel } from "./NewsCarousel";
 import { activeFestival, festivalInfo } from "@/lib/festival";
 
 import { useMemo, useState, type ComponentType, type ReactNode, type SVGProps } from "react";
-import { presence, queuedSpot, waitingQueue } from "@/lib/matchmaking";
+import { courtPlan, plannedCourt, presence, queuedSpot, waitingQueue } from "@/lib/matchmaking";
 import { signupQueue } from "@/lib/social";
 import { useStore, useToday } from "@/lib/store";
 import { LANGS, locale, setLang, t, useLang } from "@/lib/i18n";
@@ -284,7 +284,8 @@ export function PlayerHome() {
   const played = day.games.filter((g) => g.endedAt && g.playerIds.includes(player.id)).length;
   const queue = waitingQueue(day, state.players);
   const pos = queue.findIndex((e) => e.player.id === player.id) + 1;
-  const spot = queuedSpot(day, player.id);
+  const planned = plannedCourt(courtPlan(day, state.players, state.settings.courtCount), player.id);
+  const spot = queuedSpot(day, player.id) ?? (planned ? { court: planned.court, pos: 1 } : null);
   const court = day.games.find((g) => !g.endedAt && g.playerIds.includes(player.id))?.court;
   const closed = state.closed[date];
   const fest = festivalInfo(activeFestival(state.settings.festival, date, birthdays(state.players, date).length > 0));
