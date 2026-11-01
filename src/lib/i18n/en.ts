@@ -1277,6 +1277,7 @@ export const en: Record<string, string> = {
   "ค่าลูก สนามเช่า PromptPay จอทีวี": "Shuttles, rented court, PromptPay, TV",
   "ค่าสนาม ค่าลูก สนามเช่า PromptPay จอทีวี": "Court fee, shuttles, rented court, PromptPay, TV",
   "ราคาเดิมเป็นค่าเช่ารวมทุกคอร์ท ถ้าเพิ่มคอร์ท ให้แก้เป็นราคาต่อ 1 คอร์ทด้วย": "The old price was the total for all courts. If you add courts, change it to the price for 1 court",
+  "สลิปรอตรวจ": "Slips to check",
   "แก้ยอดเอง {amount}": "Set manually {amount}",
   "วันนี้ไม่ใช่สนามเช่า": "Today isn't a rented-court day",
   "เวลาไม่ถูกต้อง": "Invalid time",

@@ -5,27 +5,19 @@ import { billFor } from "@/lib/billing";
 import { locale, t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
 import { annualStatus, monthOf, type Package, type Player } from "@/lib/types";
+import type { State } from "@/lib/state";
 import { monthLabel, shiftMonth } from "./Members";
 import { applyPackage, fmtDate, packageDone, packageUntil, slipPackage } from "./Packages";
 import { Avatar, Button, Card, SearchInput, baht } from "./ui";
 
-/** คิดเงิน > ประวัติโอน: สลิปทุกใบที่ผู้เล่นส่งมาในเดือนที่เลือก ใหม่สุดก่อน (แอดมิน) */
-export function SlipHistory() {
-  const { state, slipImage, dispatch } = useStore();
-  const { date } = useToday();
-  const [month, setMonth] = useState(monthOf(date));
-  const [q, setQ] = useState("");
-  // เปิดดูได้ทีละใบ ไม่เก็บรูปค้างไว้หลายใบ (มือถือเครื่องเล็กจะหน่วง)
-  const [open, setOpen] = useState<{ id: string; img: string | null } | null>(null);
-  const [loading, setLoading] = useState<string | null>(null);
-  const [error, setError] = useState<{ id: string; text: string } | null>(null);
-  // สลิปที่กดยืนยันรับเงินไว้ รอกดยืนยันซ้ำ (กันกดพลาด)
-  const [confirming, setConfirming] = useState<string | null>(null);
-  // วันที่แอดมินกดเปิด/พับเอง (ไม่มี = ใช้ค่าเริ่มต้น)
-  const [openDays, setOpenDays] = useState<Record<string, boolean>>({});
-  const byId = new Map(state.players.map((p) => [p.id, p]));
-  const isCurrent = month >= monthOf(date);
+type Owed =
+  | { kind: "day"; amount: number; payer: Player }
+  | { kind: "month"; month: string; amount: number; payer: Player }
+  | { kind: "package"; pkg: Package; until: string; amount: number; payer: Player };
 
+/** สลิปของเดือนหนึ่ง: ปิดยอดแล้วหรือยัง ยอดที่กดรับได้ และจำนวนที่รอตรวจ (ใช้ทั้งหน้าประวัติโอนและหน้าแรกแอดมิน) */
+export function slipStatus(state: State, month: string) {
+  const byId = new Map(state.players.map((p) => [p.id, p]));
   // ปิดยอดแล้ว = วันที่ส่งถูกกดจ่ายแล้ว หรือกดจ่ายวันไหนก็ได้หลังส่งสลิป (โอนยอดค้างวันที่ไม่ได้มา)
   // หรือจ่ายรายเดือนของเดือนที่ส่ง / เดือนก่อนสำหรับคนรายเดือน (โอนค่าเดือนที่แล้วช่วงต้นเดือน)
   const paidAfter = (playerId: string, at: number) =>
@@ -55,15 +47,8 @@ export function SlipHistory() {
       }),
     )
     .sort((a, b) => b.at - a.at);
-  const needle = q.trim().toLowerCase();
-  const shown = needle ? all.filter((s) => (s.player?.name ?? "").toLowerCase().includes(needle)) : all;
-
   // ยังไม่ปิดยอด: ทางเลือกที่แอดมินกดรับได้ คนรายเดือนที่ยังไม่จ่ายเดือนนั้นขึ้นค่ารายเดือนก่อน
   // (ต้นเดือนมีเดือนก่อนด้วยถ้ายังค้าง เพราะมักโอนค่าเดือนที่แล้ว) แล้วค่อยยอดรายวันที่ค้างถึงวันที่ส่งสลิป
-  type Owed =
-    | { kind: "day"; amount: number; payer: Player }
-    | { kind: "month"; month: string; amount: number; payer: Player }
-    | { kind: "package"; pkg: Package; until: string; amount: number; payer: Player };
   const owedOf = (s: (typeof all)[number]): Owed[] => {
     // แขกจ่ายรวมในบิลคนพามา ปิดยอดที่คนพามา (ปิดยอดแขกไปด้วย)
     const p = s.player?.guestOf ? byId.get(s.player.guestOf) : s.player;
@@ -84,6 +69,29 @@ export function SlipHistory() {
   // คิดยอดค้างครั้งเดียวต่อสลิป (billFor วนทุกวัน เดือนที่สลิปเยอะจะหน่วงบนมือถือ)
   const owedById = new Map(all.map((s) => [s.id, owedOf(s)]));
   const waiting = all.filter((s) => !s.paid && (owedById.get(s.id)!.length || !s.player)).length;
+  return { all, owedById, waiting };
+}
+
+/** คิดเงิน > ประวัติโอน: สลิปทุกใบที่ผู้เล่นส่งมาในเดือนที่เลือก ใหม่สุดก่อน (แอดมิน) */
+export function SlipHistory({ initialMonth }: { initialMonth?: string } = {}) {
+  const { state, slipImage, dispatch } = useStore();
+  const { date } = useToday();
+  const [month, setMonth] = useState(initialMonth ?? monthOf(date));
+  const [q, setQ] = useState("");
+  // เปิดดูได้ทีละใบ ไม่เก็บรูปค้างไว้หลายใบ (มือถือเครื่องเล็กจะหน่วง)
+  const [open, setOpen] = useState<{ id: string; img: string | null } | null>(null);
+  const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState<{ id: string; text: string } | null>(null);
+  // สลิปที่กดยืนยันรับเงินไว้ รอกดยืนยันซ้ำ (กันกดพลาด)
+  const [confirming, setConfirming] = useState<string | null>(null);
+  // วันที่แอดมินกดเปิด/พับเอง (ไม่มี = ใช้ค่าเริ่มต้น)
+  const [openDays, setOpenDays] = useState<Record<string, boolean>>({});
+  const isCurrent = month >= monthOf(date);
+
+  const { all, owedById, waiting } = slipStatus(state, month);
+  const needle = q.trim().toLowerCase();
+  const shown = needle ? all.filter((s) => (s.player?.name ?? "").toLowerCase().includes(needle)) : all;
+
   const receive = (s: (typeof all)[number], owed: Owed) => {
     if (owed.kind === "day") dispatch({ type: "markPaid", date: s.day.date, playerId: owed.payer.id });
     else if (owed.kind === "month") dispatch({ type: "setMonthlyPaid", month: owed.month, playerId: owed.payer.id, paid: true });

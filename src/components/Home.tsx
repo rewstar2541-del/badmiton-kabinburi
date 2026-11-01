@@ -24,6 +24,9 @@ import { FIRST_QUARTER, prevQuarter, promotionCandidates, quarterOf } from "@/li
 import { EventPhotos } from "./EventPhotos";
 import { BringGuest } from "./Guests";
 import { goToTab } from "./Membership";
+import { SlipHistory, slipStatus } from "./SlipHistory";
+import { monthOf } from "@/lib/types";
+import { shiftMonth } from "./Members";
 import { NoticeBanners, NoticeComposer } from "./Notices";
 import { PairCard } from "./Pairs";
 import { useMe, savedPin } from "./PickMe";
@@ -375,7 +378,7 @@ export function PlayerHome() {
 export function AdminHome() {
   const { state } = useStore();
   const { day, date } = useToday();
-  const { open, sheet } = useSheets<"signups" | "next" | "announce" | "calendar" | "poll" | "board" | "photos" | "rank" | "members" | "promote" | "frames">();
+  const { open, sheet } = useSheets<"signups" | "next" | "announce" | "calendar" | "poll" | "board" | "photos" | "rank" | "members" | "promote" | "frames" | "slips">();
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const names = (ids: string[]) =>
     ids
@@ -406,8 +409,26 @@ export function AdminHome() {
   const promoteWindow = Number(date.slice(5, 7)) % 3 === 1 && lastQuarter >= FIRST_QUARTER;
   const candidates = useMemo(() => (promoteWindow ? promotionCandidates(state, lastQuarter) : []), [promoteWindow, state, lastQuarter]);
   const toPromote = candidates.filter((c) => !promoted.includes(c.id));
+  // สลิปที่ผู้เล่นส่งมาแล้วยังไม่ได้กดรับเงิน (เดือนนี้ + เดือนก่อน เผื่อโอนช่วงต้นเดือน)
+  const month = monthOf(date);
+  // ไม่นับสลิปของคนที่ลบไปแล้ว (กดรับเงินไม่ได้ แถวจะค้างแดง)
+  const slips = useMemo(() => {
+    const byMonth = [month, shiftMonth(month, -1)].map((m) => {
+      const { all, owedById } = slipStatus(state, m);
+      return { m, ids: all.filter((s) => s.player && !s.paid && (owedById.get(s.id)?.length ?? 0) > 0).map((s) => s.playerId) };
+    });
+    const ids = byMonth.flatMap((x) => x.ids);
+    // เปิดหน้าตรวจที่เดือนที่มีสลิปรอ (เดือนนี้ก่อน)
+    return { n: ids.length, people: [...new Set(ids)], month: byMonth.find((x) => x.ids.length)?.m ?? month };
+  }, [state, month]);
+
+  // ส่งสลิปแล้วขึ้นที่แถวสลิปรอตรวจแทน ไม่ซ้ำสองแถว
+  const unpaidNoSlip = unpaid.filter((id) => !slips.people.includes(id));
 
   const todo: Row[] = [
+    ...(slips.n
+      ? [{ icon: Icon.Receipt, title: t("สลิปรอตรวจ"), sub: names(slips.people), right: <CountBadge n={slips.n} tone="bg-amber-50 text-amber-700" />, onClick: () => open("slips") }]
+      : []),
     ...(toPromote.length
       ? [{ icon: Icon.Trophy, title: t("เข้าเกณฑ์เลื่อนขั้น รอยืนยัน"), sub: names(toPromote.map((c) => c.id)), right: <CountBadge n={toPromote.length} tone="bg-lime/40 text-ink" />, onClick: () => open("promote") }]
       : []),
@@ -417,8 +438,8 @@ export function AdminHome() {
     ...(notArrived.length
       ? [{ icon: Icon.CheckIn, title: t("ลงชื่อแล้ว ยังไม่มา"), sub: names(notArrived), right: <CountBadge n={notArrived.length} tone="bg-amber-50 text-amber-700" />, onClick: () => goToTab("checkin") }]
       : []),
-    ...(unpaid.length
-      ? [{ icon: Icon.Receipt, title: t("เลิกเล่นแล้ว ยังไม่จ่าย"), sub: names(unpaid), right: <CountBadge n={unpaid.length} tone="bg-red-50 text-red-600" />, onClick: () => goToTab("billing") }]
+    ...(unpaidNoSlip.length
+      ? [{ icon: Icon.Receipt, title: t("เลิกเล่นแล้ว ยังไม่จ่าย"), sub: names(unpaidNoSlip), right: <CountBadge n={unpaidNoSlip.length} tone="bg-red-50 text-red-600" />, onClick: () => goToTab("billing") }]
       : []),
     ...(pending.length
       ? [{ icon: Icon.User, title: t("สมัครใหม่รออนุมัติ"), sub: names(pending.map((p) => p.id)), right: <CountBadge n={pending.length} tone="bg-sky-50 text-sky-700" />, onClick: () => goToTab("players") }]
@@ -481,6 +502,12 @@ export function AdminHome() {
           </button>
         )}
       </HomeCard>
+      {todo.length > 0 && (
+        <>
+          <SectionTitle right={t("{n} เรื่อง", { n: todo.length })}>{t("ต้องจัดการ")}</SectionTitle>
+          <Rows items={todo} />
+        </>
+      )}
       <NewsCarousel />
       <Shortcuts
         items={[
@@ -492,13 +519,13 @@ export function AdminHome() {
           { icon: Icon.Megaphone, label: t("ประกาศ"), onClick: () => open("announce") },
         ]}
       />
-      <SectionTitle right={todo.length ? t("{n} เรื่อง", { n: todo.length }) : undefined}>{t("ต้องจัดการ")}</SectionTitle>
-      {todo.length ? (
-        <Rows items={todo} />
-      ) : (
-        <Card className="flex items-center justify-center gap-2 py-6 font-semibold text-emerald-700">
-          <Icon.Check width={20} height={20} /> {t("เรียบร้อย ไม่มีงานค้าง")}
-        </Card>
+      {!todo.length && (
+        <>
+          <SectionTitle>{t("ต้องจัดการ")}</SectionTitle>
+          <Card className="flex items-center justify-center gap-2 py-6 font-semibold text-emerald-700">
+            <Icon.Check width={20} height={20} /> {t("เรียบร้อย ไม่มีงานค้าง")}
+          </Card>
+        </>
       )}
       <SectionTitle>{t("จัดการก๊วน")}</SectionTitle>
       <Tiles
@@ -523,6 +550,7 @@ export function AdminHome() {
         </div>,
       )}
       {sheet("calendar", t("ปฏิทินก๊วน"), <ClubCalendar bare />)}
+      {sheet("slips", t("ประวัติโอน"), <SlipHistory initialMonth={slips.month} />)}
       {sheet("poll", t("โหวตวันตี"), <PollAdmin />)}
       {sheet("board", t("ของหาย/ฝากขาย"), <BoardCard />)}
       {sheet("photos", t("รูปกิจกรรม"), <EventPhotos bare />)}
