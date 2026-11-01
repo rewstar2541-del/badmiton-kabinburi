@@ -19,7 +19,7 @@ export function strength(level: Level): number {
 
 export const DEFAULT_LEVEL: Level = 3;
 
-export type Gender = "male" | "female" | "other";
+export type Gender = "male" | "female" | "lgbtq" | "other";
 
 export type Plan = "daily" | "monthly";
 

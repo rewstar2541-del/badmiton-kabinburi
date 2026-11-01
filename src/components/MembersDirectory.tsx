@@ -3,10 +3,11 @@
 import { useMemo, useState } from "react";
 import { Auto } from "@/lib/autoTranslate";
 import { t } from "@/lib/i18n";
-import { PROMOTION_RULE, clubMembers, levelCounts, monthRecord, nextLevel, winRate, type MonthRecord } from "@/lib/promotion";
+import { PROMOTION_RULE, clubMembers, levelCounts, nextLevel, periodRecord, quarterMonths, quarterOf, winRate, type MonthRecord } from "@/lib/promotion";
 import { today, useStore } from "@/lib/store";
 import { LEVELS, type Level, type Player } from "@/lib/types";
-import { useHistory } from "./Ranking";
+import { quarterLabel, useHistory } from "./Ranking";
+import { useMe } from "./PickMe";
 import { Avatar, LevelBadge, SearchInput, Sheet, levelCode, levelColor } from "./ui";
 
 /** สีของแต่ละระดับ ใช้ชุดเดียวกับป้ายระดับทั้งแอพ */
@@ -19,7 +20,7 @@ export function MembersDirectory() {
   const [level, setLevel] = useState<Level | null>(null);
   const [picked, setPicked] = useState<Player | null>(null);
   const month = today().slice(0, 7);
-  const history = useHistory(`${month}-01`);
+  const history = useHistory(`${quarterMonths(quarterOf(month))[0]}-01`);
   const members = clubMembers(state.players);
   const counts = levelCounts(members);
   const shown = members
@@ -95,9 +96,11 @@ export function MembersDirectory() {
 /** โปรไฟล์ของสมาชิกคนอื่น: รูป ระดับมือ แนะนำตัว และผลแพ้ชนะเดือนนี้ */
 function MemberProfile({ player, month, history }: { player: Player; month: string; history: ReturnType<typeof useHistory> }) {
   const { data, failed } = history;
-  const rec = useMemo(() => (data ? monthRecord(data.days, month).get(player.id) : undefined), [data, month, player.id]);
+  const [me] = useMe();
+  const quarter = quarterOf(month);
+  const qRec = useMemo(() => (data ? periodRecord(data.days, quarterMonths(quarter)).get(player.id) : undefined), [data, quarter, player.id]);
   const next = nextLevel(player.level);
-  const r = rec ?? { games: 0, decided: 0, wins: 0 };
+  const r = qRec ?? { games: 0, decided: 0, wins: 0 };
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
@@ -107,21 +110,30 @@ function MemberProfile({ player, month, history }: { player: Player; month: stri
             <span className="truncate font-display text-2xl font-semibold">{player.name}</span>
             <LevelBadge level={player.level} />
           </div>
-          <div className="text-[15px] text-zinc-600">{t(LEVELS.find((l) => l.value === player.level)?.label ?? "")}</div>
+          <div className="text-[15px] text-zinc-600">
+            {t(LEVELS.find((l) => l.value === player.level)?.label ?? "")}
+          </div>
         </div>
       </div>
-      {player.bio && (
-        <p className="text-[15px] whitespace-pre-line text-zinc-700">
-          <Auto text={player.bio} />
-        </p>
-      )}
+      <section className="space-y-1 rounded-2xl bg-zinc-50 px-3 py-2.5">
+        <h4 className="text-sm font-semibold text-zinc-600">{t("แนะนำตัว")}</h4>
+        {player.bio ? (
+          <p className="text-[15px] whitespace-pre-line text-zinc-700">
+            <Auto text={player.bio} />
+          </p>
+        ) : (
+          <p className="text-sm text-zinc-500">
+            {player.id === me ? t("ยังไม่ได้เขียน ไปที่โปรไฟล์ > แก้ไขข้อมูล เพื่อแนะนำตัว") : t("ยังไม่ได้เขียนแนะนำตัว")}
+          </p>
+        )}
+      </section>
       {!data ? (
         <p className="text-sm text-zinc-500">{failed ? t("โหลดข้อมูลไม่สำเร็จ ลองใหม่อีกครั้ง") : t("กำลังโหลด...")}</p>
       ) : (
         <>
           <div className="grid grid-cols-3 gap-2 text-center">
             {[
-              { label: t("เกมเดือนนี้"), value: String(r.games) },
+              { label: t("เกมรอบนี้"), value: String(r.games) },
               { label: t("ชนะ"), value: String(r.wins) },
               { label: t("% ชนะ"), value: r.decided ? `${winRate(r)}%` : "–" },
             ].map((x) => (
@@ -131,7 +143,7 @@ function MemberProfile({ player, month, history }: { player: Player; month: stri
               </div>
             ))}
           </div>
-          {next !== null && !player.guestOf && <PromotionProgress rec={r} next={next} />}
+          {next !== null && !player.guestOf && <PromotionProgress rec={r} next={next} quarter={quarter} />}
         </>
       )}
     </div>
@@ -139,7 +151,7 @@ function MemberProfile({ player, month, history }: { player: Player; month: stri
 }
 
 /** ความคืบหน้าเลื่อนขั้นเดือนนี้: แยกสองเงื่อนไข จำนวนชนะ และ % ชนะ */
-export function PromotionProgress({ rec, next }: { rec: MonthRecord; next: Level }) {
+export function PromotionProgress({ rec, next, quarter }: { rec: MonthRecord; next: Level; quarter: string }) {
   const rule = PROMOTION_RULE;
   const rate = winRate(rec);
   const winsOk = rec.wins >= rule.wins;
@@ -150,6 +162,7 @@ export function PromotionProgress({ rec, next }: { rec: MonthRecord; next: Level
     <div className={`space-y-1.5 rounded-2xl px-3 py-2.5 ${winsOk && rateOk ? "bg-lime/40" : "bg-zinc-50"}`}>
       <div className="text-sm font-semibold">
         {winsOk && rateOk ? t("เข้าเกณฑ์เลื่อนเป็น {level} แล้ว", { level: levelCode(next) }) : t("ทางไปขั้น {level}", { level: levelCode(next) })}
+        <span className="block text-sm font-normal whitespace-nowrap text-zinc-600">{t("รวม 3 เดือน · รอบ {period}", { period: quarterLabel(quarter) })}</span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-zinc-200">
         <div className="h-full rounded-full bg-emerald-600" style={{ width: `${pct}%` }} />
@@ -163,7 +176,7 @@ export function PromotionProgress({ rec, next }: { rec: MonthRecord; next: Level
         </span>
       </div>
       <p className="text-xs text-zinc-500">
-        {t("เกณฑ์: ชนะ {w} เกมขึ้นไป และชนะ {r}% ขึ้นไปในเดือนเดียวกัน นับเฉพาะเกมที่บันทึกผล แอดมินยืนยันต้นเดือนถัดไป", { w: rule.wins, r: rule.rate })}
+        {t("เกณฑ์: ประเมินทุก 3 เดือน ชนะรวม {w} เกมขึ้นไป และชนะ {r}% ขึ้นไป นับเฉพาะเกมที่บันทึกผล แอดมินยืนยันต้นรอบถัดไป", { w: rule.wins, r: rule.rate })}
       </p>
     </div>
   );

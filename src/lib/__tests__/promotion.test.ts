@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { attendees, levelCounts, clubMembers, monthRecord, nextLevel, promotionCandidates, PROMOTION_RULE } from "../promotion";
+import { attendees, levelCounts, clubMembers, monthRecord, nextLevel, prevQuarter, promotionCandidates, quarterMonths, quarterOf, PROMOTION_RULE } from "../promotion";
 import type { Day, Game, Player } from "../types";
 
 const P = (id: string, level: Player["level"] = 1, extra: Partial<Player> = {}): Player => ({ id, name: id, level, ...extra }) as Player;
@@ -36,27 +36,39 @@ describe("monthRecord", () => {
   });
 });
 
+describe("quarters", () => {
+  it("maps months to quarters and back", () => {
+    expect(quarterOf("2026-11")).toBe("2026-Q4");
+    expect(quarterOf("2027-01")).toBe("2027-Q1");
+    expect(quarterMonths("2026-Q4")).toEqual(["2026-10", "2026-11", "2026-12"]);
+    expect(prevQuarter("2027-Q1")).toBe("2026-Q4");
+    expect(prevQuarter("2026-Q4")).toBe("2026-Q3");
+  });
+});
+
 describe("promotionCandidates", () => {
-  const wins = (k: number, lose: number) => [
+  const games = (k: number, lose: number) => [
     ...Array.from({ length: k }, () => G(["a", "x", "b", "y"], "A")),
     ...Array.from({ length: lose }, () => G(["a", "x", "b", "y"], "B")),
   ];
-  it("needs 15 wins and 60% win rate by default", () => {
-    expect(PROMOTION_RULE).toEqual({ wins: 15, rate: 60 });
+  it("needs 30 wins and 60% win rate over the 3 months of a quarter", () => {
+    expect(PROMOTION_RULE).toEqual({ wins: 30, rate: 60 });
     const players = [P("a", 1), P("x", 2), P("b", 1), P("y", 5)];
-    // a, x ชนะ 15 แพ้ 10 = 60% ผ่าน; b, y ชนะ 10 แพ้ 15 ไม่ผ่าน
-    const list = promotionCandidates({ players, days: [D("2026-11-05", wins(15, 10))] }, "2026-11");
+    // ชนะ 30 แพ้ 20 = 60% แบ่งไว้ 3 เดือน ผ่าน; อีกฝั่งชนะ 20 แพ้ 30 ไม่ผ่าน
+    const days = [D("2026-10-05", games(10, 7)), D("2026-11-05", games(10, 7)), D("2026-12-05", games(10, 6)), D("2027-01-02", games(5, 0))];
+    const list = promotionCandidates({ players, days }, "2026-Q4");
     expect(list.map((c) => [c.id, c.from, c.to, c.wins, c.rate])).toEqual([
-      ["a", 1, 2, 15, 60],
-      ["x", 2, 6, 15, 60],
+      ["a", 1, 2, 30, 60],
+      ["x", 2, 6, 30, 60],
     ]);
+    // เกมนอกไตรมาสไม่นับ
+    expect(promotionCandidates({ players, days: days.slice(0, 2) }, "2026-Q4")).toEqual([]);
   });
   it("skips low win rate, too few wins, top level, guests and pending players", () => {
     const players = [P("a", 1), P("x", 5), P("b", 1, { guestOf: "a" }), P("y", 1, { pending: true })];
-    expect(promotionCandidates({ players, days: [D("2026-11-05", wins(15, 11))] }, "2026-11").map((c) => c.id)).toEqual([]);
-    expect(promotionCandidates({ players, days: [D("2026-11-05", wins(14, 0))] }, "2026-11").map((c) => c.id)).toEqual([]);
-    const ok = [P("a", 1), P("x", 5), P("b", 1, { guestOf: "a" }), P("y", 1, { pending: true })];
-    expect(promotionCandidates({ players: ok, days: [D("2026-11-05", wins(20, 0))] }, "2026-11").map((c) => c.id)).toEqual(["a"]);
+    expect(promotionCandidates({ players, days: [D("2026-11-05", games(30, 21))] }, "2026-Q4").map((c) => c.id)).toEqual([]);
+    expect(promotionCandidates({ players, days: [D("2026-11-05", games(29, 0))] }, "2026-Q4").map((c) => c.id)).toEqual([]);
+    expect(promotionCandidates({ players, days: [D("2026-11-05", games(40, 0))] }, "2026-Q4").map((c) => c.id)).toEqual(["a"]);
   });
 });
 

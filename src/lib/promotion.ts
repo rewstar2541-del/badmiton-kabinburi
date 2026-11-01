@@ -1,8 +1,29 @@
 import { signupQueue } from "./social";
 import { LEVELS, type Day, type Level, type Player } from "./types";
 
-/** เกณฑ์เลื่อนขั้นรายเดือน: ชนะอย่างน้อย {wins} เกม และชนะ {rate}% ขึ้นไปของเกมที่บันทึกผล */
-export const PROMOTION_RULE = { wins: 15, rate: 60 };
+/** เกณฑ์เลื่อนขั้นรายไตรมาส (ทุก 3 เดือน): ชนะอย่างน้อย {wins} เกม และชนะ {rate}% ขึ้นไปของเกมที่บันทึกผล */
+export const PROMOTION_RULE = { wins: 30, rate: 60 };
+
+/** รอบแรกที่ใช้กติกาเลื่อนขั้นทุก 3 เดือน (รอบก่อนหน้าใช้กติการายเดือน ไม่เสนอซ้ำ) */
+export const FIRST_QUARTER = "2026-Q4";
+
+/** ไตรมาสของเดือน (YYYY-MM) เช่น 2026-11 -> 2026-Q4 */
+export function quarterOf(month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  return `${y}-Q${Math.ceil(m / 3)}`;
+}
+
+/** 3 เดือนของไตรมาส เช่น 2026-Q4 -> 2026-10, 2026-11, 2026-12 */
+export function quarterMonths(q: string): string[] {
+  const [y, n] = q.split("-Q").map(Number);
+  return [1, 2, 3].map((i) => `${y}-${String((n - 1) * 3 + i).padStart(2, "0")}`);
+}
+
+/** ไตรมาสก่อนหน้า */
+export function prevQuarter(q: string): string {
+  const [y, n] = q.split("-Q").map(Number);
+  return n === 1 ? `${y - 1}-Q4` : `${y}-Q${n - 1}`;
+}
 
 /** ระดับมือถัดไป (ตามลำดับ LEVELS) หรือ null ถ้าสูงสุดแล้ว */
 export function nextLevel(level: Level): Level | null {
@@ -20,9 +41,15 @@ export interface MonthRecord {
 
 /** สถิติแพ้ชนะของทุกคนในเดือน (YYYY-MM) */
 export function monthRecord(days: Day[], month: string): Map<string, MonthRecord> {
+  return periodRecord(days, [month]);
+}
+
+/** สถิติแพ้ชนะของทุกคน รวมหลายเดือน (เช่น ทั้งไตรมาส) */
+export function periodRecord(days: Day[], months: string[]): Map<string, MonthRecord> {
+  const set = new Set(months);
   const out = new Map<string, MonthRecord>();
   for (const d of days) {
-    if (d.date.slice(0, 7) !== month) continue;
+    if (!set.has(d.date.slice(0, 7))) continue;
     for (const g of d.games) {
       if (!g.endedAt) continue;
       g.playerIds.forEach((id, i) => {
@@ -53,9 +80,9 @@ export interface Candidate {
   rate: number;
 }
 
-/** คนที่เข้าเกณฑ์เลื่อนขั้นในเดือนนั้น (ไม่รวมแขก คนรออนุมัติ และคนที่ระดับสูงสุดแล้ว) เรียงตามจำนวนชนะ */
-export function promotionCandidates(state: { players: Player[]; days: Day[] }, month: string, rule = PROMOTION_RULE): Candidate[] {
-  const rec = monthRecord(state.days, month);
+/** คนที่เข้าเกณฑ์เลื่อนขั้นในไตรมาสนั้น (ไม่รวมแขก คนรออนุมัติ และคนที่ระดับสูงสุดแล้ว) เรียงตามจำนวนชนะ */
+export function promotionCandidates(state: { players: Player[]; days: Day[] }, quarter: string, rule = PROMOTION_RULE): Candidate[] {
+  const rec = periodRecord(state.days, quarterMonths(quarter));
   const out: Candidate[] = [];
   for (const p of clubMembers(state.players)) {
     const r = rec.get(p.id);
