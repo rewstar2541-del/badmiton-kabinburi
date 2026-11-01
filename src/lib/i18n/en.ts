@@ -1397,4 +1397,9 @@ export const en: Record<string, string> = {
   "เอาคู่นี้ออกจากคิว?": "Remove this match from the queue?",
   "สนาม {n} ยังเริ่มเกมต่อไม่ได้ มีคนในคู่ที่จัดไว้ไม่พร้อม (ชื่อขีดฆ่า) กดแก้หรือเอาคู่นั้นออก": "Court {n} can't start the next game: someone in the queued match isn't ready (crossed out). Edit or remove that match.",
   "ระบบจัดให้รอสนามนี้ อาจเปลี่ยนได้ถ้าคิวขยับ": "Auto-assigned to this court. May change as the queue moves.",
+  "จบก๊วนแล้ว": "Session ended",
+  "ยังไม่จ่ายเงิน {n} คน": "{n} not paid yet",
+  "ไปหน้าคิดเงิน": "Go to billing",
+  "ซ่อนรายชื่อ": "Hide names",
+  "ดูรายชื่อ / ให้กลับมาเล่นต่อ": "See names / bring back to play",
 };

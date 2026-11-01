@@ -282,6 +282,9 @@ export function CourtsTab() {
   const resting = day.checkIns.filter((c) => presence(day, c.playerId) === "resting").map((c) => byId.get(c.playerId)).filter((p) => p !== undefined);
   const home = day.checkIns.filter((c) => presence(day, c.playerId) === "home").length;
   const rest = (playerId: string, on: boolean) => dispatch({ type: "setResting", date, playerId, resting: on });
+  // จบก๊วนแล้ว: ไม่มีเกม ไม่มีคนรอ ไม่มีคิวสนาม เหลือแต่คนพักที่ยังไม่จ่าย
+  const ended = active.size === 0 && queue.length === 0 && !(day.queued ?? []).length && resting.length > 0;
+  const [showRest, setShowRest] = useState(false);
 
   if (!auth.isAdmin)
     return (
@@ -373,6 +376,8 @@ export function CourtsTab() {
         />
       )}
 
+      {!ended && (
+        <>
       <SectionTitle right={t("{n} คน", { n: queue.length })}>{t("คิวรอลงสนาม")}</SectionTitle>
       <Card className="p-2">
         <ol>
@@ -413,8 +418,23 @@ export function CourtsTab() {
           {queue.length === 0 && <li className="py-6 text-center text-sm text-zinc-500">{t("ไม่มีคนรอ")}</li>}
         </ol>
       </Card>
+        </>
+      )}
 
-      {resting.length > 0 && (
+      {/* หลังจบก๊วน: ทุกคนที่ยังไม่จ่ายถูกพักไว้ บอกว่าจบแล้วและพาไปคิดเงิน (ดูรายชื่อ/ให้กลับมาเล่นได้ถ้าเปิดต่อ) */}
+      {ended && (
+        <Card className="space-y-3 text-center">
+          <div className="font-display text-lg font-semibold">🏁 {t("จบก๊วนแล้ว")}</div>
+          <p className="text-sm text-zinc-600">{t("ยังไม่จ่ายเงิน {n} คน", { n: resting.length })}</p>
+          <Button variant="accent" className="w-full" onClick={() => goToTab("billing")}>
+            {t("ไปหน้าคิดเงิน")}
+          </Button>
+          <button className="min-h-11 text-sm font-semibold text-zinc-500 underline-offset-2 active:underline" onClick={() => setShowRest(!showRest)}>
+            {showRest ? t("ซ่อนรายชื่อ") : t("ดูรายชื่อ / ให้กลับมาเล่นต่อ")}
+          </button>
+        </Card>
+      )}
+      {resting.length > 0 && (!ended || showRest) && (
         <>
           <SectionTitle right={t("{n} คน", { n: resting.length })}>{t("พักอยู่")}</SectionTitle>
           <Card className="p-2">
