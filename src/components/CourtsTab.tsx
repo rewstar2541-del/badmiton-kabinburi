@@ -65,7 +65,8 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
     // สนามนี้ได้คู่แรกของคิวรวม (คนรอนานสุดไม่ถูกแซง) ถ้าแอดมินจัดคิวสนามนี้ไว้เองใช้คู่นั้น
     const next = courtPlan(day, state.players, courtList(state.settings), game.court).get(game.court);
     dispatch({ type: "endGame", date, gameId: game.id, winner, draw });
-    if (!next) return;
+    // สนามที่เอาออกจากเบอร์สนามแล้ว ไม่ลงต่อ
+    if (!next || !courtList(state.settings).includes(game.court)) return;
     // ลงต่อทันที ถ้าคนในคู่ยังอยู่ครบ ไม่งั้นแจ้งให้แอดมินแก้คิว
     if (queueBlockers(day, next, game.id).length === 0)
       dispatch({ type: "startGame", date, court: game.court, playerIds: next.playerIds, queuedId: next.queuedId });

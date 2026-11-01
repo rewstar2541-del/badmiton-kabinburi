@@ -592,8 +592,7 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
           ),
         );
       }
-      return check(
-        await db.from("settings").upsert({
+      const row = {
           id: 1,
           court_count: s.courtCount,
           court_fee: s.courtFee,
@@ -606,9 +605,11 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
           bank_holder: s.bankHolder.trim(),
           ...(s.festival !== undefined ? { festival: s.festival === "auto" ? null : s.festival } : {}),
           ...(s.promptPayOn !== undefined ? { promptpay_on: s.promptPayOn, bank_on: s.bankOn !== false } : {}),
-          ...(s.courtNumbers !== undefined ? { court_numbers: s.courtNumbers.length ? s.courtNumbers : null } : {}),
-        }),
-      );
+      };
+      if (s.courtNumbers === undefined) return check(await db.from("settings").upsert(row));
+      const res = await db.from("settings").upsert({ ...row, court_numbers: s.courtNumbers.length ? s.courtNumbers : null });
+      // ยังไม่รัน SQL court_numbers.sql (เช่น นำเข้าข้อมูลสำรองจากเครื่องที่รันแล้ว) บันทึกค่าอื่นไปก่อน
+      return check(res.error && /court_numbers/.test(res.error.message) ? await db.from("settings").upsert(row) : res);
     }
     case "setClosed":
       return a.reason === null

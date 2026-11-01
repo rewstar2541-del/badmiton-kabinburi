@@ -1406,7 +1406,6 @@ export const en: Record<string, string> = {
   "แก้จำนวนลูกได้ ค่าลูกของคนในเกมนั้นคำนวณใหม่ทันที": "Edit the shuttle count. Shuttle fees of the players in that game are recalculated right away.",
   "✓ จ่ายแล้ว / 🔒 แอดมินแก้ยอดไว้ = ยอดเงินคนนั้นไม่เปลี่ยน": "✓ paid / 🔒 fee set by admin = that player's amount won't change",
   "ยอดค่าลูกของคนนี้ล็อกไว้ (จ่ายแล้ว หรือแอดมินแก้ยอด) แก้จำนวนลูกแล้วยอดเงินคนนี้ไม่เปลี่ยน ถ้าจะคิดใหม่ กด แก้ยอดคนนี้ แล้วกด คิดตามราคาปกติ": "This player's shuttle fee is locked (already paid, or set by an admin), so changing the count won't change their amount. To recalculate, tap Adjust this player's court / shuttle fee today, then Use standard price.",
-  "อยากตั้งเบอร์สนามเอง (เช่น 3, 5, 7) ให้รัน SQL court_numbers.sql ก่อน": "To set your own court numbers (e.g. 3, 5, 7), run SQL court_numbers.sql first",
   "สนามในก๊วน": "Club courts",
   "ใส่เบอร์ตามสนามจริง หน้าสนามและจอทีวีจะเรียงตามเบอร์": "Enter the real court numbers. The Courts page and TV screen are sorted by number",
   "เบอร์สนามช่องที่ {n}": "Court number, box {n}",
@@ -1415,5 +1414,8 @@ export const en: Record<string, string> = {
   "มีเบอร์สนามซ้ำกัน": "Two courts have the same number",
   "ใส่เบอร์สนาม 1-99 ให้ครบทุกช่อง": "Enter a court number 1-99 in every box",
   "หน้าสนามจะเรียง": "Courts page order",
-  "สนาม {n} ยังมีเกมหรือคิวค้างอยู่ จะยังโชว์ในหน้าสนามจนจบเกมหรือเอาคิวออก": "Court {n} still has a game or queue. It stays on the Courts page until the game ends or the queue is removed",
+  "ตั้งเบอร์สนามเอง (เช่น 3, 5, 7) ได้หลังผู้ดูแลระบบอัปเดตฐานข้อมูล": "You can set your own court numbers (e.g. 3, 5, 7) after the system admin updates the database",
+  "สนามเช่า เบอร์สนาม จอทีวี": "Rented court, court numbers, TV",
+  "🔒 สนาม {n} มีเกมหรือคิวอยู่ แก้เบอร์ได้หลังจบเกมและไม่มีคิวค้าง": "🔒 Court {n} has a game or queue. You can change its number after the game ends and the queue is empty",
+  "คนที่รอคิวอยู่จะเห็นเบอร์สนามใหม่ทันทีที่บันทึก": "Players waiting will see the new court numbers as soon as you save",
 };

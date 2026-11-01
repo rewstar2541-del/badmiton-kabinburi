@@ -73,7 +73,7 @@ export function SettingsTab() {
         <ClubCalendar bare />
         <PollAdmin />
       </Section>
-      <Section id="court" icon="🏸" title={t("สนามวันนี้")} hint={t("สนามเช่า จำนวนคอร์ท จอทีวี")}>
+      <Section id="court" icon="🏸" title={t("สนามวันนี้")} hint={t("สนามเช่า เบอร์สนาม จอทีวี")}>
           <RentTodayCard />
           <CourtCountCard />
           <Card className="flex items-center gap-3">
@@ -319,7 +319,7 @@ function CourtCountOnly() {
           {saved ? t("บันทึกแล้ว ✓") : t("บันทึก")}
         </Button>
       </div>
-      <p className="text-xs text-amber-700">{t("อยากตั้งเบอร์สนามเอง (เช่น 3, 5, 7) ให้รัน SQL court_numbers.sql ก่อน")}</p>
+      <p className="text-xs text-amber-700">{t("ตั้งเบอร์สนามเอง (เช่น 3, 5, 7) ได้หลังผู้ดูแลระบบอัปเดตฐานข้อมูล")}</p>
     </Card>
   );
 }
@@ -330,14 +330,22 @@ function CourtNumbersEditor() {
   const current = courtList(state.settings);
   const [rows, setRows] = useState(() => current.map(String));
   const [saved, setSaved] = useState(false);
+  // ยังไม่ได้แก้ แล้วข้อมูลเปลี่ยน (แอดมินอีกคนแก้ / บันทึกไม่สำเร็จ) ให้ช่องตามค่าล่าสุด
+  const [base, setBase] = useState(current.join());
+  if (base !== current.join()) {
+    setBase(current.join());
+    if (rows.join() === base) setRows(current.map(String));
+  }
   const nums = rows.map((r) => Number(r));
   const bad = (i: number) => !(nums[i] >= 1 && nums[i] <= 99) || nums.indexOf(nums[i]) !== i;
   const sorted = [...new Set(nums.filter((x) => x >= 1 && x <= 99))].sort((a, b) => a - b);
   const ok = rows.length >= 1 && rows.every((_, i) => !bad(i));
   const same = ok && sorted.join() === current.join();
   // สนามที่ยังมีเกม/คิวค้าง แต่จะไม่อยู่ในรายการใหม่: ยังโชว์จนจบเกม/เอาคิวออก
-  const busy = [...new Set([...day.games.filter((g) => !g.endedAt).map((g) => g.court), ...(day.queued ?? []).map((q) => q.court)])];
-  const leaving = ok ? busy.filter((c) => !sorted.includes(c)).sort((a, b) => a - b) : [];
+  // สนามที่มีเกมหรือคิวอยู่ แก้/เอาออกไม่ได้จนจบเกมหรือเอาคิวออก (ไม่งั้นสนามเดียวจะโชว์สองเบอร์)
+  const busy = new Set([...day.games.filter((g) => !g.endedAt).map((g) => g.court), ...(day.queued ?? []).map((q) => q.court)]);
+  const locked = (i: number) => current.includes(nums[i]) && busy.has(nums[i]);
+  const lockedNow = current.filter((c) => busy.has(c));
   const edit = (i: number, v: string) => {
     setSaved(false);
     setRows(rows.map((r, k) => (k === i ? v.replace(/\D/g, "").slice(0, 2) : r)));
@@ -350,9 +358,10 @@ function CourtNumbersEditor() {
       </div>
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
         {rows.map((r, i) => (
-          <div key={i} className={`rounded-xl border-2 bg-white p-1.5 ${bad(i) ? "border-red-400" : "border-emerald-600/30"}`}>
-            <div className="flex items-center justify-between pl-1">
-              <span className="text-xs text-zinc-500">{t("สนาม")}</span>
+          <div key={i} className={`rounded-xl border-2 bg-white p-1.5 ${bad(i) && rows[i] !== "" ? "border-red-400" : "border-zinc-200"}`}>
+            <div className="flex min-h-11 items-center justify-between pl-1">
+              <span className="whitespace-nowrap text-sm text-zinc-500">{locked(i) ? "🔒 " : ""}{t("สนาม")}</span>
+              {!locked(i) && (
               <button
                 type="button"
                 aria-label={t("เอาสนาม {n} ออก", { n: r || "?" })}
@@ -361,16 +370,19 @@ function CourtNumbersEditor() {
                   setSaved(false);
                   setRows(rows.filter((_, k) => k !== i));
                 }}
-                className="-m-1 flex size-9 items-center justify-center rounded-lg text-lg text-zinc-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-30"
+                className="-m-1.5 flex size-11 items-center justify-center rounded-lg text-xl text-zinc-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-30"
               >
                 ×
               </button>
+              )}
             </div>
             <input
-              className="h-11 w-full rounded-lg bg-zinc-100 text-center font-display text-xl font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+              className="h-11 w-full rounded-lg bg-zinc-100 text-center font-display text-xl font-bold outline-none focus:ring-2 focus:ring-lime-dark read-only:text-zinc-500"
               inputMode="numeric"
               aria-label={t("เบอร์สนามช่องที่ {n}", { n: i + 1 })}
               value={r}
+              readOnly={locked(i)}
+              autoFocus={i === rows.length - 1 && r === "" && i > 0}
               onChange={(e) => edit(i, e.target.value)}
             />
           </div>
@@ -380,9 +392,9 @@ function CourtNumbersEditor() {
             type="button"
             onClick={() => {
               setSaved(false);
-              setRows([...rows, String(Math.min(99, Math.max(0, ...nums.filter((x) => x <= 99)) + 1))]);
+              setRows([...rows, ""]);
             }}
-            className="flex min-h-20 items-center justify-center rounded-xl border-2 border-dashed border-zinc-300 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
+            className="flex min-h-20 items-center justify-center rounded-xl border-2 border-dashed border-zinc-300 text-sm font-semibold text-emerald-700"
           >
             {t("+ เพิ่มสนาม")}
           </button>
@@ -397,11 +409,12 @@ function CourtNumbersEditor() {
           {t("หน้าสนามจะเรียง")}: <b>{sorted.map((n) => t("สนาม {n}", { n })).join(" · ")}</b>
         </p>
       )}
-      {leaving.length > 0 && (
-        <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800">
-          {t("สนาม {n} ยังมีเกมหรือคิวค้างอยู่ จะยังโชว์ในหน้าสนามจนจบเกมหรือเอาคิวออก", { n: leaving.join(", ") })}
+      {lockedNow.length > 0 && (
+        <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-800">
+          {t("🔒 สนาม {n} มีเกมหรือคิวอยู่ แก้เบอร์ได้หลังจบเกมและไม่มีคิวค้าง", { n: lockedNow.join(", ") })}
         </p>
       )}
+      {ok && !same && day.checkIns.length > 0 && <p className="text-xs text-zinc-500">{t("คนที่รอคิวอยู่จะเห็นเบอร์สนามใหม่ทันทีที่บันทึก")}</p>}
       <Button
         variant="primary"
         className="w-full"
