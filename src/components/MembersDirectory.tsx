@@ -100,7 +100,6 @@ function MemberProfile({ player, month, history }: { player: Player; month: stri
   const [me] = useMe();
   const quarter = quarterOf(month);
   const qRec = useMemo(() => (data ? periodRecord(data.days, quarterMonths(quarter)).get(player.id) : undefined), [data, quarter, player.id]);
-  const next = nextLevel(player.level);
   const r = qRec ?? { games: 0, decided: 0, wins: 0 };
   return (
     <div className="space-y-4">
@@ -144,11 +143,22 @@ function MemberProfile({ player, month, history }: { player: Player; month: stri
               </div>
             ))}
           </div>
-          {next !== null && !player.guestOf && <PromotionProgress rec={r} next={next} quarter={quarter} />}
         </>
       )}
     </div>
   );
+}
+
+/** ความคืบหน้าเลื่อนขั้นของตัวเอง (ดูได้ในแก้ไขข้อมูล คนอื่นไม่เห็น) */
+export function MyPromotion({ player }: { player: Player }) {
+  const month = today().slice(0, 7);
+  const quarter = quarterOf(month);
+  const { data, failed } = useHistory(`${quarterMonths(quarter)[0]}-01`);
+  const next = nextLevel(player.level);
+  const rec = useMemo(() => (data ? periodRecord(data.days, quarterMonths(quarter)).get(player.id) : undefined), [data, quarter, player.id]);
+  if (next === null || player.guestOf) return null;
+  if (!data) return <p className="text-sm text-zinc-500">{failed ? t("โหลดข้อมูลไม่สำเร็จ ลองใหม่อีกครั้ง") : t("กำลังโหลด...")}</p>;
+  return <PromotionProgress rec={rec ?? { games: 0, decided: 0, wins: 0 }} next={next} quarter={quarter} />;
 }
 
 /** ความคืบหน้าเลื่อนขั้นเดือนนี้: แยกสองเงื่อนไข จำนวนชนะ และ % ชนะ */
