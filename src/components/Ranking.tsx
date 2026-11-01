@@ -193,7 +193,7 @@ function Podium({ rows, byId, current }: { rows: RankRow[]; byId: Map<string, Pl
           const p = byId.get(r.id);
           return (
             <div key={r.id} className="flex w-1/4 min-w-0 flex-col items-center justify-end gap-1">
-              {p ? <FramedAvatar player={p} size={i === 0 ? 40 : 32} compact /> : <Avatar name="?" size={i === 0 ? 40 : 32} ring />}
+              {p ? <FramedAvatar player={p} size={i === 0 ? 40 : 32} compact ring /> : <Avatar name="?" size={i === 0 ? 40 : 32} ring />}
               <span className="w-full truncate text-center text-xs font-semibold">{p?.name ?? "?"}</span>
               <div
                 className={`flex w-full flex-col items-center justify-start rounded-t-lg pt-1 ${i === 0 ? "bg-lime" : "bg-lime/40"}`}

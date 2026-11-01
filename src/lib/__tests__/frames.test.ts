@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FESTIVAL_FRAMES, frameOf, frameChoices, grantFrame, revokeFrame, isFrameId } from "../frames";
+import { EMPTY_STATE, reducer } from "../state";
 import type { Player } from "../types";
 
 const P = (extra: Partial<Player> = {}): Player => ({ id: "a", name: "a", level: 3, ...extra });
@@ -31,16 +32,19 @@ describe("frameChoices", () => {
 });
 
 describe("grant and revoke", () => {
-  it("adds a festival frame once", () => {
-    const p = grantFrame(grantFrame(P(), "christmas"), "christmas");
+  const run = (p: Player, a: ReturnType<typeof grantFrame> | ReturnType<typeof revokeFrame>) => reducer({ ...EMPTY_STATE, players: [p] }, a).players[0];
+  it("adds a festival frame once and leaves the frame the player is wearing alone", () => {
+    const p = run(run(P({ frame: "level" }), grantFrame(P(), "christmas")), grantFrame(P({ frames: ["christmas"] }), "christmas"));
     expect(p.frames).toEqual(["christmas"]);
+    expect(p.frame).toBe("level");
   });
   it("taking a frame back also takes it off the avatar", () => {
-    const p = revokeFrame(P({ frames: ["christmas", "newyear"], frame: "christmas" }), "christmas");
+    const worn = P({ frames: ["christmas", "newyear"], frame: "christmas" });
+    const p = run(worn, revokeFrame(worn, "christmas"));
     expect(p.frames).toEqual(["newyear"]);
     expect(p.frame).toBeUndefined();
-    const q = revokeFrame(P({ frames: ["christmas"], frame: "level" }), "christmas");
-    expect(q.frame).toBe("level");
+    const lvl = P({ frames: ["christmas"], frame: "level" });
+    expect(run(lvl, revokeFrame(lvl, "christmas")).frame).toBe("level");
   });
   it("knows which ids are festival frames", () => {
     expect(isFrameId("halloween")).toBe(true);

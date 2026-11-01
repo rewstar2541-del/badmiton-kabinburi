@@ -529,7 +529,7 @@ export function AdminHome() {
       {sheet("rank", t("อันดับ"), <ClubCorner />)}
       {sheet("members", t("สมาชิก"), <MembersDirectory />)}
       {sheet("promote", t("เลื่อนขั้นประจำรอบ 3 เดือน"), <PromotionList quarter={lastQuarter} />)}
-      {sheet("frames", t("แจกกรอบเทศกาล"), <FrameGrant />)}
+      {sheet("frames", t("กรอบเทศกาล แจก/ขาย"), <FrameGrant />)}
     </div>
   );
 }

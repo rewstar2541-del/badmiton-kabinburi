@@ -34,13 +34,14 @@ type FramePlayer = Pick<Player, "name" | "photo" | "level" | "frame" | "frames" 
  * รูปโปรไฟล์พร้อมกรอบที่ผู้เล่นเลือก
  * compact = วงแหวนเรืองแสงอย่างเดียว (ใช้ในรายชื่อ) ไม่งั้นมีไอคอนมุมบนและป้ายระดับใต้รูป
  */
-export function FramedAvatar({ player, size = 40, compact, frame: forced }: { player: FramePlayer; size?: number; compact?: boolean; frame?: Frame | null }) {
+export function FramedAvatar({ player, size = 40, compact, ring: plainRing, frame: forced }: { player: FramePlayer; size?: number; compact?: boolean; ring?: boolean; frame?: Frame | null }) {
   const frame = forced === undefined ? frameOf(player) : forced;
-  if (!frame) return <Avatar name={player.name} photo={player.photo} size={size} />;
+  if (!frame) return <Avatar name={player.name} photo={player.photo} size={size} ring={plainRing} />;
   const look = lookOf(frame);
   const glowColor = `${look.colors[1]}aa`;
-  const ring = Math.max(2, Math.round(size * (compact ? 0.06 : 0.045)));
-  const gap = compact ? 1 : Math.max(2, Math.round(size * 0.025));
+  const tiny = size < 28;
+  const ring = tiny ? 1.5 : Math.max(2, Math.round(size * (compact ? 0.06 : 0.045)));
+  const gap = tiny ? 0 : compact ? 1 : Math.max(2, Math.round(size * 0.025));
   const inner = size - (ring + gap) * 2;
   const disc = (
     <span
@@ -50,7 +51,8 @@ export function FramedAvatar({ player, size = 40, compact, frame: forced }: { pl
         height: size,
         padding: ring,
         background: ringBg(look.colors),
-        boxShadow: `0 0 ${(look.glow * size) / (compact ? 240 : 120)}px ${(look.glow * size) / 480}px ${glowColor}`,
+        // ในรายชื่อใช้แสงเบาๆ (หลายคนพร้อมกันจะได้ไม่หน่วง)
+        boxShadow: compact ? `0 0 ${Math.min(6, look.glow / 4)}px ${glowColor}` : `0 0 ${(look.glow * size) / 120}px ${(look.glow * size) / 480}px ${glowColor}`,
       }}
     >
       <span className="grid size-full place-items-center rounded-full bg-[#0b1220]" style={{ padding: gap }}>
@@ -62,7 +64,7 @@ export function FramedAvatar({ player, size = 40, compact, frame: forced }: { pl
 
   const pad = Math.round(size * 0.12);
   const chip = Math.round(size * 0.3);
-  const font = Math.max(10, Math.round(size * 0.13));
+  const font = Math.max(11, Math.round(size * 0.13));
   return (
     <span className="relative inline-block shrink-0" style={{ padding: pad, paddingBottom: pad + font * 0.6 }} role="img" aria-label={look.label}>
       {look.orbit && (

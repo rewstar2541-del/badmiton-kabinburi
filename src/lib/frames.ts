@@ -33,14 +33,16 @@ export function frameChoices(p: Pick<Player, "frames">): { value: string | null;
   ];
 }
 
-export function grantFrame(p: Player, id: FestivalFrameId): Player {
+/** action แจกกรอบ (มีอยู่แล้วก็ไม่เพิ่มซ้ำ) */
+export function grantFrame(p: Pick<Player, "id" | "frames">, id: FestivalFrameId) {
   const frames = p.frames ?? [];
-  return frames.includes(id) ? { ...p, frames } : { ...p, frames: [...frames, id] };
+  return { type: "setFrames" as const, playerId: p.id, frames: frames.includes(id) ? frames : [...frames, id] };
 }
 
-/** เอากรอบคืน ถ้ากำลังใส่อยู่ก็ถอดออกด้วย */
-export function revokeFrame(p: Player, id: FestivalFrameId): Player {
-  const out: Player = { ...p, frames: (p.frames ?? []).filter((f) => f !== id) };
-  if (out.frame === id) delete out.frame;
-  return out;
+/** action เอากรอบคืน ถ้ากำลังใส่อยู่ก็ถอดออกด้วย */
+export function revokeFrame(p: Pick<Player, "id" | "frames">, id: FestivalFrameId) {
+  return { type: "setFrames" as const, playerId: p.id, frames: (p.frames ?? []).filter((f) => f !== id), unwear: id };
 }
+
+/** ข้อความค่ากรอบในบิล (ใช้หาเพื่อลบออกตอนเอากรอบคืน) */
+export const frameFeeNote = (name: string) => `🖼️ ${name}`;

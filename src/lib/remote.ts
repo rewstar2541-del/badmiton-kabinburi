@@ -401,8 +401,7 @@ function playerRow(p: Omit<Player, "id"> & { id: string }) {
     birthday: p.birthday ?? null,
     annual_from: p.annualFrom ?? null,
     annual_until: p.annualUntil ?? null,
-    // กรอบรูป: ส่งเฉพาะตอนแจก/เอาคืน (ถ้ายังไม่รัน SQL กรอบรูป แก้ข้อมูลผู้เล่นอื่นๆ ยังใช้ได้)
-    ...(p.frames !== undefined || p.frame !== undefined ? { frame: p.frame ?? null, frames: p.frames ?? [] } : {}),
+    // กรอบรูปไม่ส่งที่นี่ (ผู้เล่นเลือกเองผ่าน set_my_frame แอดมินแจกผ่าน setFrames) จะได้ไม่ทับกรอบที่ผู้เล่นเพิ่งเลือก
   };
 }
 
@@ -416,6 +415,10 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       return;
     case "updatePlayer":
       return check(await db.from("players").update(playerRow(a.player)).eq("id", a.player.id));
+    case "setFrames":
+      // ถอดก่อน (constraint: กรอบที่ใส่ต้องอยู่ในรายการที่มี)
+      if (a.unwear) check(await db.from("players").update({ frame: null }).eq("id", a.playerId).eq("frame", a.unwear));
+      return check(await db.from("players").update({ frames: a.frames }).eq("id", a.playerId));
     case "addGuest":
       check(await db.from("players").insert({ id: a._id, name: a.name, level: a.level, guest_of: a.hostId }));
       return check(await db.from("checkins").insert({ date: a.date, player_id: a._id, at: iso(a._at) }));
