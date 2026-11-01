@@ -138,6 +138,9 @@ export interface Settings {
   bankName: string;
   bankAccount: string;
   bankHolder: string;
+  /** เปิดให้ผู้เล่นเห็น PromptPay / บัญชีธนาคาร (ไม่มี = ยังไม่รัน SQL ถือว่าเปิด) */
+  promptPayOn?: boolean;
+  bankOn?: boolean;
   /** ธีมเทศกาล (ไม่มี = ยังไม่ได้รัน SQL ใช้อัตโนมัติตามวันที่) */
   festival?: import("./festival").FestivalSetting;
 }

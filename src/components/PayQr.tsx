@@ -10,14 +10,14 @@ import { useStore } from "@/lib/store";
 import { Button } from "./ui";
 
 /** บัญชีธนาคารของก๊วน (ถ้าตั้งไว้) พร้อมปุ่มคัดลอกเลขบัญชี */
-export function BankInfo() {
+export function BankInfo({ only = false }: { only?: boolean } = {}) {
   const { state } = useStore();
-  const { bankName, bankAccount, bankHolder } = state.settings;
+  const { bankName, bankAccount, bankHolder, bankOn } = state.settings;
   const [copied, setCopied] = useState(false);
-  if (!bankAccount) return null;
+  if (!bankAccount || bankOn === false) return null;
   return (
     <div className="w-full space-y-1 rounded-2xl bg-zinc-100 p-3 text-center text-sm">
-      <div className="text-xs text-zinc-500">{t("หรือโอนเข้าบัญชีธนาคาร")}</div>
+      <div className="text-xs text-zinc-500">{only ? t("โอนเข้าบัญชีธนาคาร") : t("หรือโอนเข้าบัญชีธนาคาร")}</div>
       {bankName && <div className="font-semibold">{bankName}</div>}
       <div className="font-display text-xl font-semibold tracking-wide">{bankAccount}</div>
       {bankHolder && <div className="text-zinc-600">{bankHolder}</div>}
@@ -44,7 +44,11 @@ export function PayQr({ promptPayId, amount }: { promptPayId: string; amount: nu
   const [saving, setSaving] = useState(false);
   // แอพ LINE (และแอพอื่นที่เปิดเว็บข้างใน) ไม่ให้ดาวน์โหลดไฟล์ เปิดรูปเต็มจอให้กดค้างเพื่อบันทึกแทน
   const [preview, setPreview] = useState<string | null>(null);
-  const valid = isValidPromptPayId(promptPayId);
+  const { state } = useStore();
+  // แอดมินปิด PromptPay ไว้ (ใช้แค่บัญชีธนาคาร)
+  const ppOff = state.settings.promptPayOn === false;
+  const bankShown = Boolean(state.settings.bankAccount) && state.settings.bankOn !== false;
+  const valid = !ppOff && isValidPromptPayId(promptPayId);
 
   useEffect(() => {
     if (!valid) return;
@@ -60,8 +64,8 @@ export function PayQr({ promptPayId, amount }: { promptPayId: string; amount: nu
   if (!valid)
     return (
       <div className="w-full space-y-2">
-        <p className="text-sm text-amber-700">{t("ยังไม่ได้ตั้ง PromptPay (ไปที่ ตั้งค่า)")}</p>
-        <BankInfo />
+        {(!ppOff || !bankShown) && <p className="text-sm text-amber-700">{bankShown ? t("ยังไม่ได้ตั้ง PromptPay (ไปที่ ตั้งค่า)") : t("ยังไม่ได้ตั้งช่องทางรับเงิน (ไปที่ ตั้งค่า)")}</p>}
+        <BankInfo only />
       </div>
     );
   if (!src) return <div className="size-[280px] animate-pulse rounded-xl bg-zinc-100" />;
