@@ -13,6 +13,7 @@ import { RentHoursSheet } from "./RentHours";
 import { SlipReview } from "./Slips";
 import { Avatar, Button, Card, Icon, SectionTitle, Sheet, baht, inputClass } from "./ui";
 import { Auto } from "@/lib/autoTranslate";
+import { PlayerGameShuttles } from "./GameShuttles";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -211,6 +212,8 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
         </form>
       </div>
       )}
+
+      <PlayerGameShuttles playerId={player.id} adjusted={bill.shuttleAdjusted} />
 
       <FeeEditor key={`${bill.courtFee}|${bill.shuttleFee}`} player={player} bill={bill} />
 
