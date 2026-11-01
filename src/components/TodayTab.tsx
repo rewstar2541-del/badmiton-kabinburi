@@ -21,6 +21,7 @@ import { RestButton } from "./RestButton";
 import { Auto } from "@/lib/autoTranslate";
 import { EventPhotos } from "./EventPhotos";
 import { MonthlyReminder, PlanChoice, goToTab } from "./Membership";
+import { AttendeeStrip } from "./Attendees";
 
 /** ประกาศวันนี้ (ใช้ทั้งหน้าผู้เล่นและแอดมิน) สีและไอคอนตามประเภท จัดก๊วน / อีเว้นพิเศษแต่ละแบบ */
 export function AnnouncementBanner({ message, title, fee, date }: { message: string; title?: string; fee?: number; date?: string }) {
@@ -274,6 +275,7 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
             )}
           </div>
         )}
+        <AttendeeStrip day={day} dark={home} />
         {!home && (
         <div className="flex items-center gap-3">
           <Avatar name={player.name} photo={player.photo} size={52} />
