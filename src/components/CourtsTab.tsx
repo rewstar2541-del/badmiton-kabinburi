@@ -281,10 +281,13 @@ export function CourtsTab() {
   const active = new Map(day.games.filter((g) => !g.endedAt).map((g) => [g.court, g]));
   const resting = day.checkIns.filter((c) => presence(day, c.playerId) === "resting").map((c) => byId.get(c.playerId)).filter((p) => p !== undefined);
   const home = day.checkIns.filter((c) => presence(day, c.playerId) === "home").length;
-  const rest = (playerId: string, on: boolean) => dispatch({ type: "setResting", date, playerId, resting: on });
+  const [showRest, setShowRest] = useState(false);
+  const rest = (playerId: string, on: boolean) => {
+    dispatch({ type: "setResting", date, playerId, resting: on });
+    if (!on) setShowRest(false);
+  };
   // จบก๊วนแล้ว: ไม่มีเกม ไม่มีคนรอ ไม่มีคิวสนาม เหลือแต่คนพักที่ยังไม่จ่าย
   const ended = active.size === 0 && queue.length === 0 && !(day.queued ?? []).length && resting.length > 0;
-  const [showRest, setShowRest] = useState(false);
 
   if (!auth.isAdmin)
     return (
@@ -298,6 +301,19 @@ export function CourtsTab() {
     <div className="space-y-4">
       <PairRequests />
       <SectionTitle right={t("ว่าง {n} สนาม", { n: courts.length - active.size })}>{t("สนาม")}</SectionTitle>
+      {/* หลังจบก๊วน: ทุกคนที่ยังไม่จ่ายถูกพักไว้ บอกว่าจบแล้วและพาไปคิดเงิน (ดูรายชื่อ/ให้กลับมาเล่นได้ถ้าเปิดต่อ) */}
+      {ended ? (
+        <Card className="space-y-3 text-center">
+          <div className="font-display text-lg font-semibold">🏁 {t("จบก๊วนแล้ว")}</div>
+          <p className="text-sm text-zinc-600">{t("ยังไม่จ่ายเงิน {n} คน", { n: resting.length })}</p>
+          <Button variant="accent" className="w-full" onClick={() => goToTab("billing")}>
+            {t("ไปหน้าคิดเงิน")}
+          </Button>
+          <button className="min-h-11 text-sm font-semibold text-zinc-600 underline underline-offset-4" onClick={() => setShowRest(!showRest)}>
+            {showRest ? t("ซ่อนรายชื่อ") : t("ดูรายชื่อ / ให้กลับมาเล่นต่อ")}
+          </button>
+        </Card>
+      ) : (
       <Button
         className="w-full !rounded-3xl !bg-red-600 !py-4 !text-base !text-white shadow-[0_10px_24px_-10px_rgba(220,38,38,0.7)] active:scale-[0.98]"
         onClick={() => {
@@ -313,6 +329,7 @@ export function CourtsTab() {
       >
         🏁 {t("จบก๊วน")}
       </Button>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         {courts.map((c) => {
           const g = active.get(c);
@@ -421,19 +438,6 @@ export function CourtsTab() {
         </>
       )}
 
-      {/* หลังจบก๊วน: ทุกคนที่ยังไม่จ่ายถูกพักไว้ บอกว่าจบแล้วและพาไปคิดเงิน (ดูรายชื่อ/ให้กลับมาเล่นได้ถ้าเปิดต่อ) */}
-      {ended && (
-        <Card className="space-y-3 text-center">
-          <div className="font-display text-lg font-semibold">🏁 {t("จบก๊วนแล้ว")}</div>
-          <p className="text-sm text-zinc-600">{t("ยังไม่จ่ายเงิน {n} คน", { n: resting.length })}</p>
-          <Button variant="accent" className="w-full" onClick={() => goToTab("billing")}>
-            {t("ไปหน้าคิดเงิน")}
-          </Button>
-          <button className="min-h-11 text-sm font-semibold text-zinc-500 underline-offset-2 active:underline" onClick={() => setShowRest(!showRest)}>
-            {showRest ? t("ซ่อนรายชื่อ") : t("ดูรายชื่อ / ให้กลับมาเล่นต่อ")}
-          </button>
-        </Card>
-      )}
       {resting.length > 0 && (!ended || showRest) && (
         <>
           <SectionTitle right={t("{n} คน", { n: resting.length })}>{t("พักอยู่")}</SectionTitle>
