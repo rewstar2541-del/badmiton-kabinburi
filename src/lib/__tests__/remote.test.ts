@@ -8,7 +8,7 @@ describe("rowsToState", () => {
   const state = rowsToState({
     players: [
       { id: "a", name: "ต้น", photo: null, gender: "male", level: 3 },
-      { id: "b", name: "ฝน", photo: "data:x", gender: "female", level: 1 },
+      { id: "b", name: "ฝน", photo: "data:x", gender: "female", level: 1, frame: "songkran", frames: ["songkran"] },
     ],
     checkins: [
       { date: "2026-10-04", player_id: "a", at: "2026-10-04T12:00:00Z", paid_at: null },
@@ -50,6 +50,10 @@ describe("rowsToState", () => {
     expect(state.closed).toEqual({ "2026-10-10": "ปิดปรับปรุง" });
   });
 
+  it("อ่านกรอบรูปที่เลือกและกรอบที่มี", () => {
+    expect(state.players.find((p) => p.id === "b")).toMatchObject({ frame: "songkran", frames: ["songkran"] });
+    expect(state.players.find((p) => p.id === "a")).not.toHaveProperty("frames");
+  });
   it("ประกาศและคนลงชื่อ เรียงตามเวลาที่ลงชื่อ", () => {
     const d = state.days[1];
     expect(d.announcement).toBe("พรุ่งนี้ 1 ทุ่ม");

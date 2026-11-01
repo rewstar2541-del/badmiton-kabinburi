@@ -235,6 +235,8 @@ create table if not exists public.players (
   bio text,
   level_request integer,
   birthday text,
+  frame text,
+  frames text[] default '{}'::text[] not null,
   constraint players_pkey PRIMARY KEY (id)
 );
 
@@ -1050,6 +1052,25 @@ begin
 end $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.set_my_frame(p_player text, p_pin text, p_frame text)
+ RETURNS text
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  err text := check_player_pin(p_player, p_pin);
+  owned text[];
+begin
+  if err is not null then return err; end if;
+  select frames into owned from players where id = p_player and guest_of is null;
+  if not found then return 'ไม่พบผู้เล่น'; end if;
+  if p_frame is not null and p_frame <> 'level' and not (p_frame = any (owned)) then return 'ยังไม่มีกรอบนี้'; end if;
+  update players set frame = p_frame where id = p_player;
+  return null;
+end $function$
+;
+
 CREATE OR REPLACE FUNCTION public.set_my_plan(p_player text, p_pin text, p_plan text)
  RETURNS text
  LANGUAGE plpgsql
@@ -1313,6 +1334,7 @@ alter table public.notices add constraint notices_title_check CHECK (((length(ti
 alter table public.pair_requests add constraint pair_requests_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'accepted'::text, 'declined'::text, 'cancelled'::text])));
 alter table public.players add constraint players_bio_check CHECK (((bio IS NULL) OR (length(bio) <= 200)));
 alter table public.players add constraint players_birthday_check CHECK (((birthday IS NULL) OR (birthday ~ '^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'::text)));
+alter table public.players add constraint players_frame_check CHECK (((frame IS NULL) OR (frame = 'level'::text) OR (frame = ANY (frames))));
 alter table public.players add constraint players_gender_check CHECK ((gender = ANY (ARRAY['male'::text, 'female'::text, 'other'::text, 'lgbtq'::text])));
 alter table public.players add constraint players_level_check CHECK (((level >= 1) AND (level <= 6)));
 alter table public.players add constraint players_level_request_check CHECK (((level_request >= 1) AND (level_request <= 6)));
@@ -1630,6 +1652,8 @@ revoke execute on function public.set_line_prefs(p_player text, p_pin text, p_tu
 grant execute on function public.set_line_prefs(p_player text, p_pin text, p_turn boolean, p_announce boolean) to public, anon, authenticated;
 revoke execute on function public.set_my_birthday(p_player text, p_pin text, p_bday text) from public, anon, authenticated;
 grant execute on function public.set_my_birthday(p_player text, p_pin text, p_bday text) to public, anon, authenticated;
+revoke execute on function public.set_my_frame(p_player text, p_pin text, p_frame text) from public, anon, authenticated;
+grant execute on function public.set_my_frame(p_player text, p_pin text, p_frame text) to public, anon, authenticated;
 revoke execute on function public.set_my_plan(p_player text, p_pin text, p_plan text) from public, anon, authenticated;
 grant execute on function public.set_my_plan(p_player text, p_pin text, p_plan text) to public, anon, authenticated;
 revoke execute on function public.set_partner_prefs(p_player text, p_pin text, p_prefer text[], p_avoid text[]) from public, anon, authenticated;

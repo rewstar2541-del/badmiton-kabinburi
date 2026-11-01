@@ -151,6 +151,11 @@ function LocalProvider({ children }: { children: ReactNode }) {
       else if (req.kind === "birthday") {
         const p = state.players.find((x) => x.id === playerId);
         if (p) dispatch({ type: "updatePlayer", player: { ...p, birthday: req.bday ?? undefined } });
+      } else if (req.kind === "frame") {
+        const p = state.players.find((x) => x.id === playerId);
+        if (!p) return "ไม่พบผู้เล่น";
+        if (req.frame && req.frame !== "level" && !p.frames?.includes(req.frame)) return "ยังไม่มีกรอบนี้";
+        dispatch({ type: "updatePlayer", player: { ...p, frame: req.frame ?? undefined } });
       } else if (req.kind === "boardPost") {
         if ((state.board ?? []).filter((b) => b.playerId === playerId && !b.closedAt).length >= 5) return "ลงประกาศได้ไม่เกิน 5 รายการ ปิดรายการเก่าก่อน";
         const { kind, title, detail, price, photo } = req.post;

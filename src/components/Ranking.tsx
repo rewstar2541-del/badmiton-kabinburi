@@ -12,6 +12,7 @@ import { appName } from "@/lib/brand";
 import { rankingImage } from "@/lib/shareImage";
 import { useMe } from "./PickMe";
 import { useShareImage } from "./ShareImage";
+import { FramedAvatar } from "./AvatarFrame";
 import { Avatar, Button, Card, Icon, LevelBadge, levelCode } from "./ui";
 import { LEVELS, type Level } from "@/lib/types";
 
@@ -65,9 +66,10 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
   const [me] = useMe();
   const { data, failed } = useHistory("2000-01-01");
   const rows = useMemo(() => (data ? monthRanking(data, month) : []), [data, month]);
-  const byId = new Map((data?.players ?? []).map((p) => [p.id, p]));
+  const { auth, state } = useStore();
+  // ข้อมูลผู้เล่นล่าสุด (มีกรอบรูป) ทับข้อมูลจากประวัติ
+  const byId = new Map([...(data?.players ?? []), ...state.players].map((p) => [p.id, p]));
   const mine = rows.findIndex((r) => r.id === me);
-  const { auth } = useStore();
   const meP = byId.get(me ?? "");
   const quarter = quarterOf(now);
   const myRec = useMemo(() => (data && meP ? periodRecord(data.days, quarterMonths(quarter)).get(meP.id) : undefined), [data, meP, quarter]);
@@ -136,7 +138,7 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
               return (
                 <li key={r.id} className={`flex items-center gap-2.5 py-2 ${r.id === me ? "font-semibold" : ""}`}>
                   <span className={`w-6 shrink-0 text-center font-display font-semibold tabular-nums ${i < 3 ? "text-amber-600" : "text-zinc-400"}`}>{i + 1}</span>
-                  <Avatar name={p?.name ?? "?"} photo={p?.photo} size={30} />
+                  {p ? <FramedAvatar player={p} size={30} compact /> : <Avatar name="?" size={30} />}
                   <span className="min-w-0 flex-1 truncate">{p?.name ?? "?"}</span>
                   <span className="shrink-0 text-xs text-zinc-500 tabular-nums">{t("ชนะ {w}/{g}", { w: r.wins, g: r.games })}</span>
                   <span className={`w-12 shrink-0 text-right font-semibold tabular-nums ${r.delta >= 0 ? "text-emerald-700" : "text-red-600"}`}>
@@ -191,7 +193,7 @@ function Podium({ rows, byId, current }: { rows: RankRow[]; byId: Map<string, Pl
           const p = byId.get(r.id);
           return (
             <div key={r.id} className="flex w-1/4 min-w-0 flex-col items-center justify-end gap-1">
-              <Avatar name={p?.name ?? "?"} photo={p?.photo} size={i === 0 ? 40 : 32} ring />
+              {p ? <FramedAvatar player={p} size={i === 0 ? 40 : 32} compact /> : <Avatar name="?" size={i === 0 ? 40 : 32} ring />}
               <span className="w-full truncate text-center text-xs font-semibold">{p?.name ?? "?"}</span>
               <div
                 className={`flex w-full flex-col items-center justify-start rounded-t-lg pt-1 ${i === 0 ? "bg-lime" : "bg-lime/40"}`}
