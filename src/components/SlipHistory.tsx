@@ -73,10 +73,10 @@ export function slipStatus(state: State, month: string) {
 }
 
 /** คิดเงิน > ประวัติโอน: สลิปทุกใบที่ผู้เล่นส่งมาในเดือนที่เลือก ใหม่สุดก่อน (แอดมิน) */
-export function SlipHistory() {
+export function SlipHistory({ initialMonth }: { initialMonth?: string } = {}) {
   const { state, slipImage, dispatch } = useStore();
   const { date } = useToday();
-  const [month, setMonth] = useState(monthOf(date));
+  const [month, setMonth] = useState(initialMonth ?? monthOf(date));
   const [q, setQ] = useState("");
   // เปิดดูได้ทีละใบ ไม่เก็บรูปค้างไว้หลายใบ (มือถือเครื่องเล็กจะหน่วง)
   const [open, setOpen] = useState<{ id: string; img: string | null } | null>(null);

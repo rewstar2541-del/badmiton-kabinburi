@@ -411,17 +411,23 @@ export function AdminHome() {
   const toPromote = candidates.filter((c) => !promoted.includes(c.id));
   // สลิปที่ผู้เล่นส่งมาแล้วยังไม่ได้กดรับเงิน (เดือนนี้ + เดือนก่อน เผื่อโอนช่วงต้นเดือน)
   const month = monthOf(date);
+  // ไม่นับสลิปของคนที่ลบไปแล้ว (กดรับเงินไม่ได้ แถวจะค้างแดง)
   const slips = useMemo(() => {
-    const ids = [month, shiftMonth(month, -1)].flatMap((m) => {
+    const byMonth = [month, shiftMonth(month, -1)].map((m) => {
       const { all, owedById } = slipStatus(state, m);
-      return all.filter((s) => !s.paid && ((owedById.get(s.id)?.length ?? 0) > 0 || !s.player)).map((s) => s.playerId);
+      return { m, ids: all.filter((s) => s.player && !s.paid && (owedById.get(s.id)?.length ?? 0) > 0).map((s) => s.playerId) };
     });
-    return { n: ids.length, people: [...new Set(ids)] };
+    const ids = byMonth.flatMap((x) => x.ids);
+    // เปิดหน้าตรวจที่เดือนที่มีสลิปรอ (เดือนนี้ก่อน)
+    return { n: ids.length, people: [...new Set(ids)], month: byMonth.find((x) => x.ids.length)?.m ?? month };
   }, [state, month]);
+
+  // ส่งสลิปแล้วขึ้นที่แถวสลิปรอตรวจแทน ไม่ซ้ำสองแถว
+  const unpaidNoSlip = unpaid.filter((id) => !slips.people.includes(id));
 
   const todo: Row[] = [
     ...(slips.n
-      ? [{ icon: Icon.Receipt, title: t("สลิปรอตรวจ"), sub: names(slips.people), right: <CountBadge n={slips.n} tone="bg-red-50 text-red-600" />, onClick: () => open("slips") }]
+      ? [{ icon: Icon.Receipt, title: t("สลิปรอตรวจ"), sub: names(slips.people), right: <CountBadge n={slips.n} tone="bg-amber-50 text-amber-700" />, onClick: () => open("slips") }]
       : []),
     ...(toPromote.length
       ? [{ icon: Icon.Trophy, title: t("เข้าเกณฑ์เลื่อนขั้น รอยืนยัน"), sub: names(toPromote.map((c) => c.id)), right: <CountBadge n={toPromote.length} tone="bg-lime/40 text-ink" />, onClick: () => open("promote") }]
@@ -432,8 +438,8 @@ export function AdminHome() {
     ...(notArrived.length
       ? [{ icon: Icon.CheckIn, title: t("ลงชื่อแล้ว ยังไม่มา"), sub: names(notArrived), right: <CountBadge n={notArrived.length} tone="bg-amber-50 text-amber-700" />, onClick: () => goToTab("checkin") }]
       : []),
-    ...(unpaid.length
-      ? [{ icon: Icon.Receipt, title: t("เลิกเล่นแล้ว ยังไม่จ่าย"), sub: names(unpaid), right: <CountBadge n={unpaid.length} tone="bg-red-50 text-red-600" />, onClick: () => goToTab("billing") }]
+    ...(unpaidNoSlip.length
+      ? [{ icon: Icon.Receipt, title: t("เลิกเล่นแล้ว ยังไม่จ่าย"), sub: names(unpaidNoSlip), right: <CountBadge n={unpaidNoSlip.length} tone="bg-red-50 text-red-600" />, onClick: () => goToTab("billing") }]
       : []),
     ...(pending.length
       ? [{ icon: Icon.User, title: t("สมัครใหม่รออนุมัติ"), sub: names(pending.map((p) => p.id)), right: <CountBadge n={pending.length} tone="bg-sky-50 text-sky-700" />, onClick: () => goToTab("players") }]
@@ -544,7 +550,7 @@ export function AdminHome() {
         </div>,
       )}
       {sheet("calendar", t("ปฏิทินก๊วน"), <ClubCalendar bare />)}
-      {sheet("slips", t("ประวัติโอน"), <SlipHistory />)}
+      {sheet("slips", t("ประวัติโอน"), <SlipHistory initialMonth={slips.month} />)}
       {sheet("poll", t("โหวตวันตี"), <PollAdmin />)}
       {sheet("board", t("ของหาย/ฝากขาย"), <BoardCard />)}
       {sheet("photos", t("รูปกิจกรรม"), <EventPhotos bare />)}
