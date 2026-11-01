@@ -265,7 +265,8 @@ export function SlipHistory({ initialMonth }: { initialMonth?: string } = {}) {
               </button>
               {isOpen && (() => {
                 // รอตรวจขึ้นก่อน ที่ตรวจแล้วพับไว้ด้านล่าง (ค้นหาชื่ออยู่ แสดงทั้งหมด)
-                const top = needle ? slips : slips.filter((x) => pending(x) || justDone.includes(x.id));
+                // "ตรวจแล้ว" = รับเงินแล้วเท่านั้น สลิปที่ยังไม่รับ (เช่นไม่มียอดค้าง/โอนซ้ำ) หรือที่เปิดดูอยู่ ค้างไว้ด้านบน
+                const top = needle ? slips : slips.filter((x) => !x.paid || justDone.includes(x.id) || open?.id === x.id || confirming === x.id);
                 const done = needle ? [] : slips.filter((x) => !top.includes(x));
                 const doneOpen = openDone[date] ?? false;
                 return (
