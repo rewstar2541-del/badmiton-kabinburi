@@ -11,6 +11,7 @@ import { t } from "@/lib/i18n";
 import { MyRestCard } from "./RestButton";
 import { PendingNotice, PickMe, useMe } from "./PickMe";
 import { goToTab } from "./Membership";
+import { FinishedGames } from "./GameShuttles";
 
 function useNow(intervalMs = 15000) {
   const [now, setNow] = useState(() => Date.now());
@@ -439,6 +440,7 @@ export function CourtsTab() {
         </>
       )}
       {home > 0 && <p className="px-1 text-xs text-zinc-500">{t("จ่ายเงินแล้วกลับบ้าน {n} คน", { n: home })}</p>}
+      <FinishedGames byId={byId} />
     </div>
   );
 }

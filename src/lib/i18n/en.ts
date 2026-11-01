@@ -1397,4 +1397,13 @@ export const en: Record<string, string> = {
   "เอาคู่นี้ออกจากคิว?": "Remove this match from the queue?",
   "สนาม {n} ยังเริ่มเกมต่อไม่ได้ มีคนในคู่ที่จัดไว้ไม่พร้อม (ชื่อขีดฆ่า) กดแก้หรือเอาคู่นั้นออก": "Court {n} can't start the next game: someone in the queued match isn't ready (crossed out). Edit or remove that match.",
   "ระบบจัดให้รอสนามนี้ อาจเปลี่ยนได้ถ้าคิวขยับ": "Auto-assigned to this court. May change as the queue moves.",
+  "{n} เกม · {m} ลูก": "{n} games · {m} shuttles",
+  "เกมที่จบแล้ววันนี้": "Finished games today",
+  "ซ่อน": "Hide",
+  "ดู / แก้จำนวนลูก": "View / edit shuttles",
+  "ลูกแต่ละเกม (แก้ได้)": "Shuttles per game (editable)",
+  "แก้ลูกของเกม = แก้ให้ทั้ง 4 คนในเกมนั้น": "Editing a game's shuttles changes it for all 4 players in that game",
+  "แก้จำนวนลูกได้ ค่าลูกของคนในเกมนั้นคำนวณใหม่ทันที": "Edit the shuttle count. Shuttle fees of the players in that game are recalculated right away.",
+  "✓ จ่ายแล้ว / 🔒 แอดมินแก้ยอดไว้ = ยอดเงินคนนั้นไม่เปลี่ยน": "✓ paid / 🔒 fee set by admin = that player's amount won't change",
+  "ยอดค่าลูกของคนนี้ล็อกไว้ (จ่ายแล้ว หรือแอดมินแก้ยอด) แก้จำนวนลูกแล้วยอดเงินคนนี้ไม่เปลี่ยน ถ้าจะคิดใหม่ กด แก้ยอดคนนี้ แล้วกด คิดตามราคาปกติ": "This player's shuttle fee is locked (already paid, or set by an admin), so changing the count won't change their amount. To recalculate, tap Adjust this player's court / shuttle fee today, then Use standard price.",
 };
