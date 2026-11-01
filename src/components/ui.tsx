@@ -70,16 +70,18 @@ export function levelCode(level: Level): string {
   return LEVELS.find((l) => l.value === level)?.code ?? "?";
 }
 
-function levelColor(level: Level): string {
-  return [
-    "",
-    "bg-sky-100 text-sky-700",
-    "bg-teal-100 text-teal-700",
-    "bg-amber-100 text-amber-800",
-    "bg-orange-100 text-orange-700",
-    "bg-rose-100 text-rose-700",
-    "bg-lime/40 text-emerald-800",
-  ][level];
+export function levelColor(level: Level): string {
+  return (
+    [
+      "",
+      "bg-sky-100 text-sky-700",
+      "bg-teal-100 text-teal-700",
+      "bg-amber-100 text-amber-800",
+      "bg-orange-100 text-orange-700",
+      "bg-rose-100 text-rose-700",
+      "bg-lime/40 text-emerald-800",
+    ][level] ?? "bg-zinc-100 text-zinc-600"
+  );
 }
 
 export function LevelBadge({ level }: { level: Level }) {

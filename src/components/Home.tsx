@@ -7,7 +7,7 @@ import { Auto } from "@/lib/autoTranslate";
 import { NewsCarousel } from "./NewsCarousel";
 import { activeFestival, festivalInfo } from "@/lib/festival";
 
-import { useState, type ComponentType, type ReactNode, type SVGProps } from "react";
+import { useMemo, useState, type ComponentType, type ReactNode, type SVGProps } from "react";
 import { presence, waitingQueue } from "@/lib/matchmaking";
 import { signupQueue } from "@/lib/social";
 import { useStore, useToday } from "@/lib/store";
@@ -17,6 +17,10 @@ import { BoardCard } from "./Board";
 import { ClubCalendar } from "./Calendar";
 import { FutureSignups, SignupList } from "./CheckInTab";
 import { ClubCorner } from "./ClubCorner";
+import { MembersDirectory } from "./MembersDirectory";
+import { PromotionList, usePromoted } from "./Ranking";
+import { promotionCandidates } from "@/lib/promotion";
+import { shiftMonth } from "./Members";
 import { EventPhotos } from "./EventPhotos";
 import { BringGuest } from "./Guests";
 import { goToTab } from "./Membership";
@@ -260,7 +264,7 @@ export function PlayerHome() {
   const { day, date } = useToday();
   const lang = useLang();
   const [me] = useMe();
-  const { open, sheet } = useSheets<"rest" | "pair" | "calendar" | "rank" | "board" | "photos">();
+  const { open, sheet } = useSheets<"rest" | "pair" | "calendar" | "rank" | "board" | "photos" | "members">();
   // วันที่ประกาศจัดก๊วนล่วงหน้าที่ยังไม่เคยเปิดดู / โพสต์ของหาย-ฝากขายใหม่ของคนอื่น
   const upcoming = state.days.filter((d) => d.date > date && d.announcement !== undefined).map((d) => d.date);
   const [calSeen, markCal] = useSeen("calendar-days", () => upcoming.join(","));
@@ -346,7 +350,7 @@ export function PlayerHome() {
           { icon: Icon.Box, label: t("ของหาย/ฝากขาย"), onClick: () => (markBoard(String(Date.now())), open("board")), badge: newPosts },
           { icon: Icon.Camera, label: t("รูปกิจกรรม"), onClick: () => open("photos") },
           { icon: Icon.Court, label: t("สนามตอนนี้"), onClick: () => goToTab("courts") },
-          { icon: Icon.User, label: t("โปรไฟล์"), onClick: () => goToTab("profile") },
+          { icon: Icon.Users, label: t("สมาชิก"), onClick: () => open("members") },
         ]}
       />
       {sheet("rest", t("ขอพัก"), here ? <RestButton /> : <p className="text-zinc-600">{t("จ่ายแล้ว ไม่ต้องขอพัก")}</p>)}
@@ -362,6 +366,7 @@ export function PlayerHome() {
       {sheet("rank", t("อันดับ"), <ClubCorner />)}
       {sheet("board", t("ของหาย/ฝากขาย"), <BoardCard />)}
       {sheet("photos", t("รูปกิจกรรม"), <EventPhotos bare />)}
+      {sheet("members", t("สมาชิก"), <MembersDirectory />)}
     </div>
   );
 }
@@ -370,7 +375,7 @@ export function PlayerHome() {
 export function AdminHome() {
   const { state } = useStore();
   const { day, date } = useToday();
-  const { open, sheet } = useSheets<"signups" | "next" | "announce" | "calendar" | "poll" | "board" | "photos" | "rank">();
+  const { open, sheet } = useSheets<"signups" | "next" | "announce" | "calendar" | "poll" | "board" | "photos" | "rank" | "members" | "promote">();
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const names = (ids: string[]) =>
     ids
@@ -395,8 +400,16 @@ export function AdminHome() {
   const [boardSeen, markBoard] = useSeen("board", () => String(Date.now()));
   const [me] = useMe();
   const newPosts = (state.board ?? []).filter((b) => b.at > Number(boardSeen) && b.playerId !== me).length;
+  // 7 วันแรกของเดือน เตือนแอดมินให้ยืนยันคนที่เข้าเกณฑ์เลื่อนขั้นของเดือนก่อน
+  const lastMonth = shiftMonth(date.slice(0, 7), -1);
+  const [promoted] = usePromoted(lastMonth);
+  const candidates = useMemo(() => promotionCandidates(state, lastMonth), [state, lastMonth]);
+  const toPromote = Number(date.slice(8)) <= 7 ? candidates.filter((c) => !promoted.includes(c.id)) : [];
 
   const todo: Row[] = [
+    ...(toPromote.length
+      ? [{ icon: Icon.Trophy, title: t("เข้าเกณฑ์เลื่อนขั้น รอยืนยัน"), sub: names(toPromote.map((c) => c.id)), right: <CountBadge n={toPromote.length} tone="bg-lime/40 text-ink" />, onClick: () => open("promote") }]
+      : []),
     ...(stale.length
       ? [{ icon: Icon.CheckIn, title: t("มีชื่อลงค้าง วันนี้ไม่ได้จัดก๊วน"), sub: names(stale), right: <CountBadge n={stale.length} tone="bg-amber-50 text-amber-700" />, onClick: () => goToTab("checkin") }]
       : []),
@@ -494,6 +507,7 @@ export function AdminHome() {
           { icon: Icon.Box, label: t("ของหาย/ฝากขาย"), onClick: () => (markBoard(String(Date.now())), open("board")), badge: newPosts },
           { icon: Icon.Camera, label: t("รูปกิจกรรม"), onClick: () => open("photos") },
           { icon: Icon.Trophy, label: t("อันดับ"), onClick: () => open("rank") },
+          { icon: Icon.Users, label: t("สมาชิก"), onClick: () => open("members") },
         ]}
       />
       {sheet("signups", t("คนที่ลงชื่อวันนี้"), <SignupList bare />)}
@@ -511,6 +525,8 @@ export function AdminHome() {
       {sheet("board", t("ของหาย/ฝากขาย"), <BoardCard />)}
       {sheet("photos", t("รูปกิจกรรม"), <EventPhotos bare />)}
       {sheet("rank", t("อันดับ"), <ClubCorner />)}
+      {sheet("members", t("สมาชิก"), <MembersDirectory />)}
+      {sheet("promote", t("เลื่อนขั้นประจำเดือน"), <PromotionList month={lastMonth} />)}
     </div>
   );
 }
