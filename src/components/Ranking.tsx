@@ -154,7 +154,7 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
             })}
           </ol>
           {rows.length > 10 && (
-            <button className="w-full py-2 text-sm font-semibold text-zinc-600 underline" onClick={() => setAll(!all)}>
+            <button className="min-h-11 w-full py-2 text-sm font-semibold text-zinc-600 underline" onClick={() => setAll(!all)}>
               {all ? t("ย่อ") : t("ดูทั้งหมด {n} คน", { n: rows.length })}
             </button>
           )}

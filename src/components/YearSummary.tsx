@@ -28,6 +28,7 @@ export function YearSummaryView({ year: initial, onClose }: { year?: string; onC
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     } catch {
       prompt(t("คัดลอกลิงก์นี้"), url);
     }
@@ -176,9 +177,11 @@ export function YearSummaryView({ year: initial, onClose }: { year?: string; onC
       </div>
       {img.failed && <p className="text-center text-sm text-red-600">{t("สร้างรูปไม่สำเร็จ ลองใหม่อีกครั้ง")}</p>}
       {/* รูปกดลิงก์ไม่ได้ แนบลิงก์ส่งตามไปได้ */}
-      <button className="w-full py-2 text-sm font-semibold text-zinc-600 underline" onClick={copyLink}>
-        {copied ? t("คัดลอกลิงก์แล้ว") : t("คัดลอกลิงก์")}
-      </button>
+      {s && s.sessions > 0 && (
+        <button className="min-h-11 w-full py-2 text-sm font-semibold text-zinc-600 underline" onClick={copyLink}>
+          {copied ? t("คัดลอกลิงก์แล้ว") : t("คัดลอกลิงก์")}
+        </button>
+      )}
       {img.overlay}
     </div>
   );

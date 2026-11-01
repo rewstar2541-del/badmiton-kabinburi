@@ -35,8 +35,8 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
     img.crossOrigin = "anonymous";
     img.onload = () => ok(img);
     img.onerror = () => ok(null);
-    // เน็ตช้า: ไม่รอเกิน 4 วินาที ใช้ตัวอักษรแทน
-    setTimeout(() => ok(null), 4000);
+    // เน็ตช้า: ไม่รอเกิน 2.5 วินาที ใช้ตัวอักษรแทน (รอนานไป iPhone จะไม่ยอมเปิดเมนูแชร์)
+    setTimeout(() => ok(null), 2500);
     img.src = src;
   });
 }
@@ -151,14 +151,14 @@ function header(g: CanvasRenderingContext2D, f: ReturnType<typeof fonts>, club: 
   }
 }
 
-const FOOT = 24;
+const FOOT = 28;
 const FOOT_LINE = 36;
 
 /** ตัดข้อความเป็นหลายบรรทัด (ตัดที่ช่องว่าง ภาษาไทย/จีนที่ไม่มีช่องว่างตัดทีละตัว) */
 function wrap(g: CanvasRenderingContext2D, text: string, max: number) {
   const lines: string[] = [];
   let line = "";
-  for (const part of text.split(/(?<=\s)/)) {
+  for (const part of (text.match(/\S+\s*|\s+/g) ?? [])) {
     const next = line + part;
     if (textW(g, next.trimEnd()) <= max) {
       line = next;
@@ -199,33 +199,44 @@ export type RankImageRow = Person & { rank: number; record: string; delta: numbe
 
 /** รูปตารางอันดับรายเดือน */
 export async function rankingImage(o: { club: string; title: string; month: string; rows: RankImageRow[]; note: string; podiumNote?: string }): Promise<Blob> {
-  await fontsReady();
+  const [, imgs] = await Promise.all([fontsReady(), photos(o.rows)]);
   const f = fonts();
-  const imgs = await photos(o.rows);
   const HEAD = 250;
-  const ROW = 92;
+  const ROW = 100;
+  // แถวของตัวเองที่อยู่นอก 15 อันดับแรก มีช่อง "⋯" คั่น ไม่ให้ดูเหมือนอันดับหายไป
+  const GAP = 44;
+  const gapBefore = (i: number) => i > 0 && o.rows[i].rank !== o.rows[i - 1].rank + 1;
+  const rowY = (i: number) => i * ROW + o.rows.slice(0, i + 1).filter((_, j) => gapBefore(j)).length * GAP;
+  const listH = o.rows.length ? rowY(o.rows.length - 1) + ROW : 0;
   const top = o.rows.slice(0, 3);
   const PODIUM = top.length ? 520 : 0;
   const listY = HEAD + 16 + (PODIUM ? PODIUM + 24 : 0);
   const note = footerLines(f, o.note);
-  const height = listY + 16 + o.rows.length * ROW + 32 + 50 + note.length * FOOT_LINE;
+  const height = listY + 16 + listH + 32 + 50 + note.length * FOOT_LINE;
   const { c, g } = setup(height);
   g.fillStyle = "#f4f4f5";
   g.fillRect(0, 0, W, height);
   header(g, f, o.club, o.title, o.month, HEAD);
   if (PODIUM) podium(g, f, imgs, top, HEAD + 16, PODIUM, o.podiumNote ?? "");
-  roundRect(g, PAD / 2, listY, W - PAD, o.rows.length * ROW + 32, 36, "#ffffff");
+  roundRect(g, PAD / 2, listY, W - PAD, listH + 32, 36, "#ffffff");
 
   // แต้มชิดขวา ชื่ออยู่บรรทัดบน ผลแพ้ชนะอยู่บรรทัดล่างใต้ชื่อ ไม่อยู่แถวเดียวกับแต้ม จึงไม่มีทางทับกัน
   const deltaText = (d: number) => `${d > 0 ? "+" : ""}${d}`;
   g.font = f.display(600, 36);
   const deltaW = Math.max(0, ...o.rows.map((r) => textW(g, deltaText(r.delta))));
   const nameX = PAD + 150;
-  const nameMax = W - PAD - deltaW - 28 - nameX;
+  // เผื่อระยะไว้อีก 40px เผื่อเครื่องวาดด้วยฟอนต์สำรองที่กว้างกว่าที่วัดได้
+  const nameMax = W - PAD - deltaW - 68 - nameX;
 
   o.rows.forEach((r, i) => {
-    const y = listY + 16 + i * ROW;
+    const y = listY + 16 + rowY(i);
     const mid = y + ROW / 2;
+    if (gapBefore(i)) {
+      g.textAlign = "center";
+      g.fillStyle = "#a1a1aa";
+      g.font = f.display(600, 36);
+      put(g, "⋯", W / 2, y - GAP / 2);
+    }
     if (r.me) roundRect(g, PAD / 2 + 12, y + 6, W - PAD - 24, ROW - 12, 24, "rgba(198,244,50,0.45)");
     else if (i > 0) {
       g.fillStyle = "#f4f4f5";
@@ -245,10 +256,10 @@ export async function rankingImage(o: { club: string; title: string; month: stri
     g.textAlign = "left";
     g.fillStyle = INK;
     g.font = f.body(r.me ? 700 : 500, 32);
-    put(g, fit(g, r.name, nameMax), nameX, mid - 14);
-    g.font = f.body(400, 24);
+    put(g, fit(g, r.name, nameMax), nameX, mid - 17);
+    g.font = f.body(400, 28);
     g.fillStyle = "#71717a";
-    put(g, fit(g, r.record, nameMax), nameX, mid + 22);
+    put(g, fit(g, r.record, nameMax), nameX, mid + 24);
   });
 
   footer(g, f, note, height - 50);
@@ -310,9 +321,8 @@ export async function yearImage(o: {
   lines: string[];
   link: string;
 }): Promise<Blob> {
-  await fontsReady();
+  const [, imgs] = await Promise.all([fontsReady(), photos([...o.lists.flatMap((l) => l.items), ...(o.duo?.people ?? [])])]);
   const f = fonts();
-  const imgs = await photos([...o.lists.flatMap((l) => l.items), ...(o.duo?.people ?? [])]);
   const STAT = 150;
   const HEAD = 180 + Math.ceil(o.stats.length / 2) * (STAT + 20) + 30;
   const ITEM = 76;

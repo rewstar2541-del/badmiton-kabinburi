@@ -29,15 +29,21 @@ export function useShareImage() {
     preview &&
     createPortal(
       <div
-        className="fixed inset-0 z-[100] flex flex-col items-center gap-4 overflow-y-auto overscroll-contain bg-black px-4 pt-[calc(env(safe-area-inset-top)+16px)] pb-[calc(env(safe-area-inset-bottom)+24px)]"
+        className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-black px-4 pb-[calc(env(safe-area-inset-bottom)+24px)]"
+        onClick={() => setPreview(null)}
       >
-        {/* รูปยาวให้เลื่อนดูได้ กว้างเต็มจอจะได้อ่านออก */}
+        {/* คำแนะนำและปุ่มปิดติดหัวจอ รูปยาวเลื่อนลงไปก็ยังเห็น แตะพื้นดำนอกรูปก็ปิดได้ */}
+        <div
+          className="sticky top-0 z-10 mx-auto flex max-w-md items-center gap-3 bg-black pt-[calc(env(safe-area-inset-top)+12px)] pb-3"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <p className="min-w-0 flex-1 text-sm text-white">{t("กดนิ้วค้างที่รูป แล้วเลือก “บันทึกรูปภาพ” หรือส่งต่อในไลน์")}</p>
+          <button className="min-h-11 shrink-0 rounded-full bg-white/15 px-6 py-3 text-base font-semibold text-white" onClick={() => setPreview(null)}>
+            {t("ปิด")}
+          </button>
+        </div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={preview} alt="" className="w-full max-w-md rounded-xl" />
-        <p className="max-w-xs text-center text-sm text-white">{t("กดนิ้วค้างที่รูป แล้วเลือก “บันทึกรูปภาพ” หรือส่งต่อในไลน์")}</p>
-        <button className="min-h-11 rounded-full bg-white/15 px-6 py-3 text-base font-semibold text-white" onClick={() => setPreview(null)}>
-          {t("ปิด")}
-        </button>
+        <img src={preview} alt="" className="mx-auto block w-full max-w-md rounded-xl" onClick={(e) => e.stopPropagation()} />
       </div>,
       document.body,
     );
