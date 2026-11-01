@@ -37,13 +37,13 @@ export function FramePicker({ player }: { player: Player }) {
   };
   return (
     <div className="space-y-3">
-      <p className="text-sm text-zinc-600">{t("เลือกกรอบที่จะโชว์ให้เพื่อนเห็น กรอบระดับมือเปลี่ยนตามระดับของเราเอง กรอบเทศกาลรับได้จากแอดมิน")}</p>
+      <p className="text-sm text-zinc-600">{t("กรอบระดับมือเปลี่ยนตามระดับของเรา กรอบเทศกาลได้จากการมาเล่นช่วงเทศกาล หรือซื้อกับแอดมิน")}</p>
       {msg && (
         <p role="status" className={`rounded-xl px-3 py-2 text-sm font-medium ${msg.ok ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-600"}`}>
           {msg.text}
         </p>
       )}
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-3 gap-2">
         {frameChoices(player).map((c) => {
           const on = c.value === current;
           const name = c.value === null ? t("ไม่ใส่กรอบ") : c.value === "level" ? t("กรอบระดับมือ") : t(frameName(c.value as FestivalFrameId));
@@ -56,11 +56,11 @@ export function FramePicker({ player }: { player: Player }) {
               className={`flex flex-col items-center gap-1 rounded-2xl px-1 pt-2 pb-2.5 ${on ? "bg-lime/40 ring-2 ring-ink dark:ring-lime" : "bg-zinc-50"} ${c.locked ? "" : "active:scale-[0.98]"}`}
             >
               <span className={c.locked ? "opacity-40 grayscale" : ""}>
-                <FramedAvatar player={player} size={60} frame={asFrame(player, c.value)} />
+                <FramedAvatar player={player} size={52} frame={asFrame(player, c.value)} />
               </span>
               <span className="text-sm font-semibold">{name}</span>
               <span className="px-1 text-center text-sm leading-snug text-zinc-600">
-                {c.locked ? `🔒 ${t("มาเล่นช่วงเทศกาล หรือขอซื้อกับแอดมิน")}` : on ? `✓ ${t("ใส่อยู่")}` : busy === c.value ? t("กำลังบันทึก...") : t("แตะเพื่อใส่")}
+                {c.locked ? `🔒 ${t("ยังไม่มี")}` : on ? `✓ ${t("ใส่อยู่")}` : busy === c.value ? t("กำลังบันทึก...") : t("แตะเพื่อใส่")}
               </span>
             </button>
           );

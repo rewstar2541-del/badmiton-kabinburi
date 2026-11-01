@@ -3,12 +3,13 @@ import type { Level, Player } from "./types";
 /** กรอบพิเศษตามเทศกาล แอดมินแจกให้คนที่มาเล่น หรือขายให้คนที่อยากได้ */
 export type FestivalFrameId = "newyear" | "songkran" | "loykrathong" | "halloween" | "christmas";
 
-export const FESTIVAL_FRAMES: { id: FestivalFrameId; name: string; emoji: string; colors: [string, string, string] }[] = [
-  { id: "newyear", name: "ปีใหม่", emoji: "🎆", colors: ["#fde68a", "#1e3a8a", "#0b1a4a"] },
-  { id: "songkran", name: "สงกรานต์", emoji: "💦", colors: ["#7dd3fc", "#ec4899", "#0369a1"] },
-  { id: "loykrathong", name: "ลอยกระทง", emoji: "🪷", colors: ["#fde68a", "#d97706", "#1e1b4b"] },
-  { id: "halloween", name: "ฮาโลวีน", emoji: "🎃", colors: ["#fdba74", "#7c3aed", "#3b0764"] },
-  { id: "christmas", name: "คริสต์มาส", emoji: "🎄", colors: ["#fca5a5", "#dc2626", "#14532d"] },
+/** label = คำบนป้ายของกรอบ (ภาษาอังกฤษเสมอ ไม่แปลตามภาษาแอพ) short = ป้ายตอนรูปเล็ก */
+export const FESTIVAL_FRAMES: { id: FestivalFrameId; name: string; label: string; short: string; emoji: string; colors: [string, string, string] }[] = [
+  { id: "newyear", name: "ปีใหม่", label: "NEW YEAR", short: "NY", emoji: "🎆", colors: ["#fde68a", "#1e3a8a", "#0b1a4a"] },
+  { id: "songkran", name: "สงกรานต์", label: "SONGKRAN", short: "SK", emoji: "💦", colors: ["#7dd3fc", "#ec4899", "#0369a1"] },
+  { id: "loykrathong", name: "ลอยกระทง", label: "LOY KRATHONG", short: "LK", emoji: "🪷", colors: ["#fde68a", "#d97706", "#1e1b4b"] },
+  { id: "halloween", name: "ฮาโลวีน", label: "HALLOWEEN", short: "HW", emoji: "🎃", colors: ["#fdba74", "#7c3aed", "#3b0764"] },
+  { id: "christmas", name: "คริสต์มาส", label: "CHRISTMAS", short: "XMAS", emoji: "🎄", colors: ["#fca5a5", "#dc2626", "#14532d"] },
 ];
 
 export const isFrameId = (id: string): id is FestivalFrameId => FESTIVAL_FRAMES.some((f) => f.id === id);

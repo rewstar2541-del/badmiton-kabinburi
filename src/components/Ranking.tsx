@@ -140,8 +140,8 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
                   <span className={`w-6 shrink-0 text-center font-display font-semibold tabular-nums ${i < 3 ? "text-amber-600" : "text-zinc-400"}`}>{i + 1}</span>
                   {p ? <FramedAvatar player={p} size={30} compact /> : <Avatar name="?" size={30} />}
                   <span className="min-w-0 flex-1 truncate">{p?.name ?? "?"}</span>
-                  <span className="shrink-0 text-xs text-zinc-500 tabular-nums">{t("ชนะ {w}/{g}", { w: r.wins, g: r.games })}</span>
-                  <span className={`w-12 shrink-0 text-right font-semibold tabular-nums ${r.delta >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                  <span className="shrink-0 text-xs whitespace-nowrap text-zinc-500 tabular-nums">{t("ชนะ {w}/{g}", { w: r.wins, g: r.games })}</span>
+                  <span className={`min-w-12 shrink-0 text-right font-semibold whitespace-nowrap tabular-nums ${r.delta >= 0 ? "text-emerald-700" : "text-red-600"}`}>
                     {r.delta > 0 ? "+" : ""}
                     {r.delta}
                   </span>
