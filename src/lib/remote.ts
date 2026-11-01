@@ -85,6 +85,7 @@ export interface Rows {
         festival?: string | null;
         promptpay_on?: boolean | null;
         bank_on?: boolean | null;
+        court_numbers?: number[] | null;
       }
     | null;
 }
@@ -191,6 +192,8 @@ export function rowsToState(r: Rows): State {
         ...(s.festival !== undefined ? { festival: (s.festival ?? "auto") as Settings["festival"] } : {}),
         // ไม่มีคอลัมน์ = ยังไม่รัน SQL สวิตช์ช่องทางรับเงิน
         ...(s.promptpay_on !== undefined ? { promptPayOn: s.promptpay_on !== false, bankOn: s.bank_on !== false } : {}),
+        // ไม่มีคอลัมน์ = ยังไม่รัน SQL court_numbers.sql (undefined), ว่าง = เบอร์ 1..จำนวนสนาม
+        ...(s.court_numbers !== undefined ? { courtNumbers: s.court_numbers ?? [] } : {}),
       }
     : DEFAULT_SETTINGS;
 
@@ -335,7 +338,9 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
       const cols = "court_count,court_fee,first_shuttle_fee,next_shuttle_fee,monthly_fee,promptpay_id,bank_name,bank_account,bank_holder";
       // คอลัมน์ธีมเทศกาลยังไม่มี (ยังไม่รัน SQL) ให้โหลดแบบเดิม
       // สวิตช์ช่องทางรับเงินมาหลังรัน SQL payment_switches.sql ยังไม่รันให้โหลดแบบเดิม
-      const r = await all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on`).eq("id", 1))
+      // เบอร์สนามมาหลังรัน SQL court_numbers.sql ยังไม่รันให้โหลดแบบเดิม
+      const r = await all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers`).eq("id", 1))
+        .catch(() => all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on`).eq("id", 1)))
         .catch(() => all(() => db.from("settings").select(`${cols},festival`).eq("id", 1)))
         .catch(() => all(() => db.from("settings").select(cols).eq("id", 1)));
       return (r[0] as Rows["settings"]) ?? null;
@@ -587,8 +592,7 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
           ),
         );
       }
-      return check(
-        await db.from("settings").upsert({
+      const row = {
           id: 1,
           court_count: s.courtCount,
           court_fee: s.courtFee,
@@ -601,8 +605,11 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
           bank_holder: s.bankHolder.trim(),
           ...(s.festival !== undefined ? { festival: s.festival === "auto" ? null : s.festival } : {}),
           ...(s.promptPayOn !== undefined ? { promptpay_on: s.promptPayOn, bank_on: s.bankOn !== false } : {}),
-        }),
-      );
+      };
+      if (s.courtNumbers === undefined) return check(await db.from("settings").upsert(row));
+      const res = await db.from("settings").upsert({ ...row, court_numbers: s.courtNumbers.length ? s.courtNumbers : null });
+      // ยังไม่รัน SQL court_numbers.sql (เช่น นำเข้าข้อมูลสำรองจากเครื่องที่รันแล้ว) บันทึกค่าอื่นไปก่อน
+      return check(res.error && /court_numbers/.test(res.error.message) ? await db.from("settings").upsert(row) : res);
     }
     case "setClosed":
       return a.reason === null

@@ -9,7 +9,7 @@ import { FestivalPicker } from "./FestivalPicker";
 import { PollAdmin } from "./Polls";
 import { useState, type ReactNode } from "react";
 import { isValidPromptPayId } from "@/lib/promptpay";
-import { useStore } from "@/lib/store";
+import { useStore, useToday } from "@/lib/store";
 import { datesToFreeze } from "@/lib/billing";
 import { normalizeBackup, today } from "@/lib/state";
 import { ClubCalendar } from "./Calendar";
@@ -17,6 +17,7 @@ import { RentTodayCard } from "./RentHours";
 import { EventPhotos } from "./EventPhotos";
 import { LoginTab } from "./LoginTab";
 import { Button, Card, SectionTitle, inputClass } from "./ui";
+import { courtList } from "@/lib/types";
 import { TourneySetup } from "./Tourney";
 import { t } from "@/lib/i18n";
 
@@ -72,7 +73,7 @@ export function SettingsTab() {
         <ClubCalendar bare />
         <PollAdmin />
       </Section>
-      <Section id="court" icon="🏸" title={t("สนามวันนี้")} hint={t("สนามเช่า จำนวนคอร์ท จอทีวี")}>
+      <Section id="court" icon="🏸" title={t("สนามวันนี้")} hint={t("สนามเช่า เบอร์สนาม จอทีวี")}>
           <RentTodayCard />
           <CourtCountCard />
           <Card className="flex items-center gap-3">
@@ -107,7 +108,7 @@ export function SettingsTab() {
                 if (!ppOk && s.promptPayOn !== false) return;
                 const old = state.settings;
                 // ค่ารายเดือนและค่าสนามรายวันมาจากแพ็กเกจ ไม่ทับด้วยค่าในฟอร์มนี้
-                const next = { ...(packagesReady ? { ...s, monthlyFee: old.monthlyFee, courtFee: old.courtFee } : s), festival: old.festival, courtCount: old.courtCount };
+                const next = { ...(packagesReady ? { ...s, monthlyFee: old.monthlyFee, courtFee: old.courtFee } : s), festival: old.festival, courtCount: old.courtCount, courtNumbers: old.courtNumbers };
                 const changed =
                   old.courtFee !== next.courtFee || old.firstShuttleFee !== next.firstShuttleFee || old.nextShuttleFee !== next.nextShuttleFee;
                 // ราคาใหม่ใช้ตั้งแต่วันนี้ เก็บราคาเดิมไว้กับวันก่อนๆ บิลเก่าจะได้ไม่เปลี่ยน
@@ -278,8 +279,14 @@ function PayChannel({ icon, title, on, canToggle, onToggle, children }: { icon: 
   );
 }
 
-/** ตั้งค่า > สนามวันนี้: จำนวนสนามในก๊วน (ใช้ตอนจัดคู่และจอทีวี) */
+/** ตั้งค่า > สนามวันนี้: สนามในก๊วนและเบอร์สนาม (ใช้ตอนจัดคู่และจอทีวี) หน้าสนามเรียงตามเบอร์ */
 function CourtCountCard() {
+  const { state } = useStore();
+  // ยังไม่รัน SQL court_numbers.sql = ตั้งได้แค่จำนวนสนาม (เบอร์ 1..n)
+  return state.settings.courtNumbers === undefined ? <CourtCountOnly /> : <CourtNumbersEditor />;
+}
+
+function CourtCountOnly() {
   const { state, dispatch } = useStore();
   const [n, setN] = useState(String(state.settings.courtCount));
   const [saved, setSaved] = useState(false);
@@ -312,6 +319,116 @@ function CourtCountCard() {
           {saved ? t("บันทึกแล้ว ✓") : t("บันทึก")}
         </Button>
       </div>
+      <p className="text-xs text-amber-700">{t("ตั้งเบอร์สนามเอง (เช่น 3, 5, 7) ได้หลังผู้ดูแลระบบอัปเดตฐานข้อมูล")}</p>
+    </Card>
+  );
+}
+
+function CourtNumbersEditor() {
+  const { state, dispatch } = useStore();
+  const { day } = useToday();
+  const current = courtList(state.settings);
+  const [rows, setRows] = useState(() => current.map(String));
+  const [saved, setSaved] = useState(false);
+  // ยังไม่ได้แก้ แล้วข้อมูลเปลี่ยน (แอดมินอีกคนแก้ / บันทึกไม่สำเร็จ) ให้ช่องตามค่าล่าสุด
+  const [base, setBase] = useState(current.join());
+  if (base !== current.join()) {
+    setBase(current.join());
+    if (rows.join() === base) setRows(current.map(String));
+  }
+  const nums = rows.map((r) => Number(r));
+  const bad = (i: number) => !(nums[i] >= 1 && nums[i] <= 99) || nums.indexOf(nums[i]) !== i;
+  const sorted = [...new Set(nums.filter((x) => x >= 1 && x <= 99))].sort((a, b) => a - b);
+  const ok = rows.length >= 1 && rows.every((_, i) => !bad(i));
+  const same = ok && sorted.join() === current.join();
+  // สนามที่ยังมีเกม/คิวค้าง แต่จะไม่อยู่ในรายการใหม่: ยังโชว์จนจบเกม/เอาคิวออก
+  // สนามที่มีเกมหรือคิวอยู่ แก้/เอาออกไม่ได้จนจบเกมหรือเอาคิวออก (ไม่งั้นสนามเดียวจะโชว์สองเบอร์)
+  const busy = new Set([...day.games.filter((g) => !g.endedAt).map((g) => g.court), ...(day.queued ?? []).map((q) => q.court)]);
+  const locked = (i: number) => current.includes(nums[i]) && busy.has(nums[i]);
+  const lockedNow = current.filter((c) => busy.has(c));
+  const edit = (i: number, v: string) => {
+    setSaved(false);
+    setRows(rows.map((r, k) => (k === i ? v.replace(/\D/g, "").slice(0, 2) : r)));
+  };
+  return (
+    <Card className="space-y-3">
+      <div>
+        <h2 className="font-display font-semibold">{t("สนามในก๊วน")}</h2>
+        <p className="text-xs text-zinc-500">{t("ใส่เบอร์ตามสนามจริง หน้าสนามและจอทีวีจะเรียงตามเบอร์")}</p>
+      </div>
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+        {rows.map((r, i) => (
+          <div key={i} className={`rounded-xl border-2 bg-white p-1.5 ${bad(i) && rows[i] !== "" ? "border-red-400" : "border-zinc-200"}`}>
+            <div className="flex min-h-11 items-center justify-between pl-1">
+              <span className="whitespace-nowrap text-sm text-zinc-500">{locked(i) ? "🔒 " : ""}{t("สนาม")}</span>
+              {!locked(i) && (
+              <button
+                type="button"
+                aria-label={t("เอาสนาม {n} ออก", { n: r || "?" })}
+                disabled={rows.length <= 1}
+                onClick={() => {
+                  setSaved(false);
+                  setRows(rows.filter((_, k) => k !== i));
+                }}
+                className="-m-1.5 flex size-11 items-center justify-center rounded-lg text-xl text-zinc-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-30"
+              >
+                ×
+              </button>
+              )}
+            </div>
+            <input
+              className="h-11 w-full rounded-lg bg-zinc-100 text-center font-display text-xl font-bold outline-none focus:ring-2 focus:ring-lime-dark read-only:text-zinc-500"
+              inputMode="numeric"
+              aria-label={t("เบอร์สนามช่องที่ {n}", { n: i + 1 })}
+              value={r}
+              readOnly={locked(i)}
+              autoFocus={i === rows.length - 1 && r === "" && i > 0}
+              onChange={(e) => edit(i, e.target.value)}
+            />
+          </div>
+        ))}
+        {rows.length < 30 && (
+          <button
+            type="button"
+            onClick={() => {
+              setSaved(false);
+              setRows([...rows, ""]);
+            }}
+            className="flex min-h-20 items-center justify-center rounded-xl border-2 border-dashed border-zinc-300 text-sm font-semibold text-emerald-700"
+          >
+            {t("+ เพิ่มสนาม")}
+          </button>
+        )}
+      </div>
+      {!ok ? (
+        <p className="text-sm text-red-600" role="alert">
+          {rows.some((r, i) => r !== "" && nums[i] >= 1 && nums.indexOf(nums[i]) !== i) ? t("มีเบอร์สนามซ้ำกัน") : t("ใส่เบอร์สนาม 1-99 ให้ครบทุกช่อง")}
+        </p>
+      ) : (
+        <p className="text-sm text-zinc-600">
+          {t("หน้าสนามจะเรียง")}: <b>{sorted.map((n) => t("สนาม {n}", { n })).join(" · ")}</b>
+        </p>
+      )}
+      {lockedNow.length > 0 && (
+        <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-800">
+          {t("🔒 สนาม {n} มีเกมหรือคิวอยู่ แก้เบอร์ได้หลังจบเกมและไม่มีคิวค้าง", { n: lockedNow.join(", ") })}
+        </p>
+      )}
+      {ok && !same && day.checkIns.length > 0 && <p className="text-xs text-zinc-500">{t("คนที่รอคิวอยู่จะเห็นเบอร์สนามใหม่ทันทีที่บันทึก")}</p>}
+      <Button
+        variant="primary"
+        className="w-full"
+        disabled={!ok || same}
+        onClick={() => {
+          // เบอร์ 1..n ตามลำดับ = ไม่ได้ตั้งเบอร์เอง เก็บเป็นค่าว่าง
+          const plain = sorted.every((n, i) => n === i + 1);
+          dispatch({ type: "updateSettings", settings: { ...state.settings, courtCount: sorted.length, courtNumbers: plain ? [] : sorted } });
+          setRows(sorted.map(String));
+          setSaved(true);
+        }}
+      >
+        {saved && same ? t("บันทึกแล้ว ✓") : t("บันทึก")}
+      </Button>
     </Card>
   );
 }
