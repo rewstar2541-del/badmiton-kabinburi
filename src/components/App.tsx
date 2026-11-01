@@ -352,7 +352,7 @@ function SummaryRoute() {
 
 function QrRoute() {
   const { state } = useStore();
-  return <QrOnlyPage promptPayId={state.settings.promptPayId} />;
+  return <QrOnlyPage promptPayId={state.settings.promptPayOn === false ? "" : state.settings.promptPayId} />;
 }
 
 export function App() {

@@ -77,7 +77,7 @@ export function MyBillTab() {
             bill.total > 0 && (
               <Card className="flex flex-col items-center gap-2">
                 <PayQr promptPayId={s.promptPayId} amount={bill.total} />
-                <p className="text-center text-xs text-zinc-500">{t("สแกนจ่ายหรือจ่ายสด แล้วกดปุ่มด้านล่าง")}</p>
+                <p className="text-center text-xs text-zinc-500">{s.promptPayOn === false ? t("โอนเข้าบัญชีหรือจ่ายสด แล้วกดปุ่มด้านล่าง") : t("สแกนจ่ายหรือจ่ายสด แล้วกดปุ่มด้านล่าง")}</p>
                 <SelfPay playerId={player.id} amount={bill.total} action="pay" />
                 <SlipUpload playerId={player.id} amount={bill.total} />
               </Card>

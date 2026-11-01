@@ -10,7 +10,6 @@ import { PollAdmin } from "./Polls";
 import { useState, type ReactNode } from "react";
 import { isValidPromptPayId } from "@/lib/promptpay";
 import { useStore } from "@/lib/store";
-import type { Settings } from "@/lib/types";
 import { datesToFreeze } from "@/lib/billing";
 import { normalizeBackup, today } from "@/lib/state";
 import { ClubCalendar } from "./Calendar";
@@ -21,8 +20,7 @@ import { Button, Card, SectionTitle, inputClass } from "./ui";
 import { TourneySetup } from "./Tourney";
 import { t } from "@/lib/i18n";
 
-const NUMBER_FIELDS: { key: keyof Settings; label: string }[] = [
-  { key: "courtCount", label: "จำนวนสนาม" },
+const NUMBER_FIELDS: { key: "courtFee" | "firstShuttleFee" | "nextShuttleFee" | "monthlyFee"; label: string }[] = [
   { key: "courtFee", label: "ค่าสนามต่อครั้ง (คนไม่จ่ายรายเดือน)" },
   { key: "firstShuttleFee", label: "ค่าลูกแรกของวัน ต่อคน" },
   { key: "nextShuttleFee", label: "ค่าลูกถัดไป ต่อคน ต่อลูก" },
@@ -39,6 +37,12 @@ export function SettingsTab() {
   const [s, setS] = useState(state.settings);
   const [saved, setSaved] = useState(false);
   const ppOk = !s.promptPayId || isValidPromptPayId(s.promptPayId);
+  // มีคอลัมน์สวิตช์แล้ว (รัน SQL แล้ว)
+  const switches = state.settings.promptPayOn !== undefined;
+  const shown = [
+    ...(s.promptPayOn !== false && isValidPromptPayId(s.promptPayId) ? [t("QR PromptPay")] : []),
+    ...(s.bankOn !== false && s.bankAccount.trim() ? [t("บัญชี {bank}", { bank: s.bankName.trim() || s.bankAccount.trim() })] : []),
+  ];
 
   const [inLine, setInLine] = useState(false);
   const exportData = () => {
@@ -63,103 +67,14 @@ export function SettingsTab() {
   return (
     <div className="space-y-3">
       <SectionTitle>{t("ตั้งค่า")}</SectionTitle>
+      <div className="px-1 pt-2 text-sm font-semibold text-zinc-500">{t("ใช้บ่อย")}</div>
       <Section id="calendar" icon="📅" title={t("ปฏิทินและอีเว้น")} hint={t("สร้างอีเว้น วันงดเล่น โหวตวันตี")} defaultOpen>
         <ClubCalendar bare />
         <PollAdmin />
       </Section>
-      <Section id="tourney" icon="🏆" title={t("งานแข่ง")} hint={t("สร้างงาน เปิดวันแข่ง จบงาน")}>
-        <TourneySetup />
-      </Section>
-      {packagesReady && (
-        <Section id="packages" icon="🎫" title={t("แพ็กเกจสมาชิก")} hint={t("รายวัน รายเดือน รายปี ตั้งชื่อ ราคา วันหมดอายุ")}>
-          <PackageAdmin />
-        </Section>
-      )}
-      <Section id="festival" icon="🎉" title={t("ธีมเทศกาล")} hint={t("ฮาโลวีน คริสต์มาส ปีใหม่ สงกรานต์")}>
-        <FestivalPicker />
-      </Section>
-      <Section id="prices" icon="💰" title={t("ราคาและสนาม")} hint={packagesReady ? t("ค่าลูก สนามเช่า PromptPay จอทีวี") : t("ค่าสนาม ค่าลูก สนามเช่า PromptPay จอทีวี")}>
-          <Card>
-            <form
-              className="space-y-3"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!ppOk) return;
-                const old = state.settings;
-                // ค่ารายเดือนและค่าสนามรายวันมาจากแพ็กเกจ ไม่ทับด้วยค่าในฟอร์มนี้
-                const next = { ...(packagesReady ? { ...s, monthlyFee: old.monthlyFee, courtFee: old.courtFee } : s), festival: old.festival };
-                const changed =
-                  old.courtFee !== next.courtFee || old.firstShuttleFee !== next.firstShuttleFee || old.nextShuttleFee !== next.nextShuttleFee;
-                // ราคาใหม่ใช้ตั้งแต่วันนี้ เก็บราคาเดิมไว้กับวันก่อนๆ บิลเก่าจะได้ไม่เปลี่ยน
-                const freeze = changed
-                  ? {
-                      dates: datesToFreeze(state.days, today()),
-                      prices: { courtFee: old.courtFee, firstShuttleFee: old.firstShuttleFee, nextShuttleFee: old.nextShuttleFee },
-                    }
-                  : undefined;
-                dispatch({ type: "updateSettings", settings: next, freeze });
-                setSaved(true);
-              }}
-            >
-              <h2 className="font-display font-semibold">{t("ราคาและสนาม")}</h2>
-              <p className="text-xs text-zinc-500">{t("ราคาใหม่ใช้ตั้งแต่วันนี้ (มีคนจ่ายแล้วเริ่มพรุ่งนี้) บิลเก่าไม่เปลี่ยน แก้ยอดรายคนที่ คิดเงิน > กดชื่อ")}</p>
-              {numberFields.map((f) => (
-                <label key={f.key} className="block text-sm">
-                  {t(f.label)}
-                  <input
-                    className={inputClass}
-                    inputMode="numeric"
-                    value={s[f.key]}
-                    onChange={(e) => {
-                      setSaved(false);
-                      setS({ ...s, [f.key]: Number(e.target.value.replace(/\D/g, "")) || 0 });
-                    }}
-                  />
-                </label>
-              ))}
-              <label className="block space-y-1.5 text-sm font-medium">
-                {t("PromptPay ของก๊วน (เบอร์มือถือ / เลขบัตร 13 หลัก)")}
-                <input
-                  className={inputClass}
-                  inputMode="numeric"
-                  value={s.promptPayId}
-                  onChange={(e) => {
-                    setSaved(false);
-                    setS({ ...s, promptPayId: e.target.value });
-                  }}
-                />
-                {!ppOk && <span className="text-xs text-red-600">{t("ต้องเป็นตัวเลข 10, 13 หรือ 15 หลัก")}</span>}
-              </label>
-              <div className="space-y-2 rounded-2xl bg-zinc-50 p-3">
-                <div className="text-sm font-medium">{t("บัญชีธนาคาร (ไม่บังคับ)")}</div>
-                {(
-                  [
-                    ["bankName", t("ชื่อธนาคาร เช่น กสิกรไทย")],
-                    ["bankAccount", t("เลขบัญชี")],
-                    ["bankHolder", t("ชื่อบัญชี")],
-                  ] as const
-                ).map(([k, ph]) => (
-                  <input
-                    key={k}
-                    className={inputClass}
-                    placeholder={ph}
-                    aria-label={ph}
-                    maxLength={60}
-                    inputMode={k === "bankAccount" ? "numeric" : "text"}
-                    value={s[k]}
-                    onChange={(e) => {
-                      setSaved(false);
-                      setS({ ...s, [k]: e.target.value });
-                    }}
-                  />
-                ))}
-              </div>
-              <Button variant="primary" type="submit" className="w-full">
-                {saved ? t("บันทึกแล้ว ✓") : t("บันทึก")}
-              </Button>
-            </form>
-          </Card>
+      <Section id="court" icon="🏸" title={t("สนามวันนี้")} hint={t("สนามเช่า จำนวนคอร์ท จอทีวี")}>
           <RentTodayCard />
+          <CourtCountCard />
           <Card className="flex items-center gap-3">
             <div className="min-w-0 flex-1">
               <h2 className="font-display font-semibold">{t("จอสนาม")}</h2>
@@ -179,11 +94,133 @@ export function SettingsTab() {
         <BoardCard />
         <EventPhotos bare />
       </Section>
+      <Section id="tourney" icon="🏆" title={t("งานแข่ง")} hint={t("สร้างงาน เปิดวันแข่ง จบงาน")}>
+        <TourneySetup />
+      </Section>
+      <div className="px-1 pt-2 text-sm font-semibold text-zinc-500">{t("ตั้งครั้งเดียว นานๆ แก้")}</div>
+      <Section id="prices" icon="💰" title={t("ราคาและการรับเงิน")} hint={packagesReady ? t("ค่าลูก PromptPay บัญชีธนาคาร") : t("ค่าสนาม ค่าลูก PromptPay บัญชีธนาคาร")}>
+          <Card>
+            <form
+              className="space-y-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!ppOk && s.promptPayOn !== false) return;
+                const old = state.settings;
+                // ค่ารายเดือนและค่าสนามรายวันมาจากแพ็กเกจ ไม่ทับด้วยค่าในฟอร์มนี้
+                const next = { ...(packagesReady ? { ...s, monthlyFee: old.monthlyFee, courtFee: old.courtFee } : s), festival: old.festival, courtCount: old.courtCount };
+                const changed =
+                  old.courtFee !== next.courtFee || old.firstShuttleFee !== next.firstShuttleFee || old.nextShuttleFee !== next.nextShuttleFee;
+                // ราคาใหม่ใช้ตั้งแต่วันนี้ เก็บราคาเดิมไว้กับวันก่อนๆ บิลเก่าจะได้ไม่เปลี่ยน
+                const freeze = changed
+                  ? {
+                      dates: datesToFreeze(state.days, today()),
+                      prices: { courtFee: old.courtFee, firstShuttleFee: old.firstShuttleFee, nextShuttleFee: old.nextShuttleFee },
+                    }
+                  : undefined;
+                dispatch({ type: "updateSettings", settings: next, freeze });
+                setSaved(true);
+              }}
+            >
+              <h2 className="font-display font-semibold">{t("ราคา")}</h2>
+              <p className="text-xs text-zinc-500">{t("ราคาใหม่ใช้ตั้งแต่วันนี้ (มีคนจ่ายแล้วเริ่มพรุ่งนี้) บิลเก่าไม่เปลี่ยน แก้ยอดรายคนที่ คิดเงิน > กดชื่อ")}</p>
+              {numberFields.map((f) => (
+                <label key={f.key} className="block text-sm">
+                  {t(f.label)}
+                  <input
+                    className={inputClass}
+                    inputMode="numeric"
+                    value={s[f.key]}
+                    onChange={(e) => {
+                      setSaved(false);
+                      setS({ ...s, [f.key]: Number(e.target.value.replace(/\D/g, "")) || 0 });
+                    }}
+                  />
+                </label>
+              ))}
+              <div className="space-y-2 border-t border-zinc-100 pt-3">
+                <h2 className="font-display font-semibold">{t("ช่องทางรับเงิน")}</h2>
+                <p className="text-xs text-zinc-500">{t("เปิดได้ทั้ง 2 ทาง หรือทางเดียว ผู้เล่นจะเห็นทุกทางที่เปิดไว้ตอนจ่ายเงิน")}</p>
+                <PayChannel
+                  icon="📱"
+                  title={t("PromptPay")}
+                  on={s.promptPayOn !== false}
+                  canToggle={switches}
+                  onToggle={(v) => {
+                    setSaved(false);
+                    setS({ ...s, promptPayOn: v });
+                  }}
+                >
+                  <label className="block space-y-1.5 text-sm font-medium">
+                    {t("เบอร์มือถือ / เลขบัตร 13 หลัก")}
+                    <input
+                      className={inputClass}
+                      inputMode="numeric"
+                      value={s.promptPayId}
+                      onChange={(e) => {
+                        setSaved(false);
+                        setS({ ...s, promptPayId: e.target.value });
+                      }}
+                    />
+                    {!ppOk && <span className="text-xs text-red-600">{t("ต้องเป็นตัวเลข 10, 13 หรือ 15 หลัก")}</span>}
+                  </label>
+                </PayChannel>
+                <PayChannel
+                  icon="🏦"
+                  title={t("บัญชีธนาคาร")}
+                  on={s.bankOn !== false}
+                  canToggle={switches}
+                  onToggle={(v) => {
+                    setSaved(false);
+                    setS({ ...s, bankOn: v });
+                  }}
+                >
+                  {(
+                    [
+                      ["bankName", t("ชื่อธนาคาร เช่น กสิกรไทย")],
+                      ["bankAccount", t("เลขบัญชี")],
+                      ["bankHolder", t("ชื่อบัญชี")],
+                    ] as const
+                  ).map(([k, ph]) => (
+                    <input
+                      key={k}
+                      className={inputClass}
+                      placeholder={ph}
+                      aria-label={ph}
+                      maxLength={60}
+                      inputMode={k === "bankAccount" ? "numeric" : "text"}
+                      value={s[k]}
+                      onChange={(e) => {
+                        setSaved(false);
+                        setS({ ...s, [k]: e.target.value });
+                      }}
+                    />
+                  ))}
+                </PayChannel>
+                <p className={`rounded-xl px-3 py-2 text-sm ${shown.length ? "bg-zinc-50" : "bg-red-50 font-semibold text-red-600"}`}>
+                  {shown.length ? t("ผู้เล่นจะเห็น: {list}", { list: shown.join(" + ") }) : t("ไม่มีช่องทางรับเงิน ผู้เล่นจะโอนเงินไม่ได้")}
+                </p>
+                {!switches && <p className="text-xs text-zinc-500">{t("สวิตช์เปิด/ปิดใช้ได้หลังรัน SQL payment_switches.sql")}</p>}
+              </div>
+              <Button variant="primary" type="submit" className="w-full">
+                {saved ? t("บันทึกแล้ว ✓") : t("บันทึก")}
+              </Button>
+            </form>
+          </Card>
+      </Section>
+      {packagesReady && (
+        <Section id="packages" icon="🎫" title={t("แพ็กเกจสมาชิก")} hint={t("รายวัน รายเดือน รายปี ตั้งชื่อ ราคา วันหมดอายุ")}>
+          <PackageAdmin />
+        </Section>
+      )}
+      <Section id="festival" icon="🎉" title={t("ธีมเทศกาล")} hint={t("ฮาโลวีน คริสต์มาส ปีใหม่ สงกรานต์")}>
+        <FestivalPicker />
+      </Section>
       {auth.online && (
         <Section id="admins" icon="👤" title={t("แอดมินและบัญชีของฉัน")} hint={t("ผูก LINE ตั้ง/ถอดแอดมิน ออกจากระบบ")}>
           <LoginTab bare />
         </Section>
       )}
+      <div className="px-1 pt-2 text-sm font-semibold text-zinc-500">{t("ระวัง")}</div>
       <Section id="data" icon="🗂️" title={t("ข้อมูลและล้างประวัติ")} hint={t("สำรองไฟล์ ล้างข้อมูล")} danger>
           <Card className="space-y-3">
             <h2 className="font-display font-semibold">{t("สำรองข้อมูล")}</h2>
@@ -216,6 +253,69 @@ export function SettingsTab() {
 }
 
 /** หมวดในหน้าตั้งค่า กดเปิด/ปิดได้ จำสถานะไว้ในเครื่อง */
+/** ช่องทางรับเงินหนึ่งทาง มีสวิตช์เปิด/ปิด (ปิดแล้วเลขเดิมยังเก็บไว้) */
+function PayChannel({ icon, title, on, canToggle, onToggle, children }: { icon: string; title: string; on: boolean; canToggle: boolean; onToggle: (v: boolean) => void; children: ReactNode }) {
+  return (
+    <div className={`space-y-2 rounded-2xl p-3 ring-1 ${on ? "bg-emerald-50 ring-emerald-300" : "bg-zinc-50 ring-zinc-200"}`}>
+      <div className="flex min-h-11 items-center gap-2">
+        <span aria-hidden>{icon}</span>
+        <span className={`min-w-0 flex-1 font-semibold ${on ? "" : "text-zinc-500"}`}>{title}</span>
+        {canToggle && (
+          <button
+            type="button"
+            role="switch"
+            aria-checked={on}
+            aria-label={title}
+            onClick={() => onToggle(!on)}
+            className={`relative h-7 w-12 shrink-0 rounded-full transition ${on ? "bg-emerald-600" : "bg-zinc-300"}`}
+          >
+            <span className={`absolute top-0.5 size-6 rounded-full bg-white shadow transition-all ${on ? "left-[1.375rem]" : "left-0.5"}`} />
+          </button>
+        )}
+      </div>
+      {on ? children : <p className="text-xs text-zinc-500">{t("ปิดไว้ เลขเดิมยังจำไว้ เปิดกลับได้ทันที")}</p>}
+    </div>
+  );
+}
+
+/** ตั้งค่า > สนามวันนี้: จำนวนสนามในก๊วน (ใช้ตอนจัดคู่และจอทีวี) */
+function CourtCountCard() {
+  const { state, dispatch } = useStore();
+  const [n, setN] = useState(String(state.settings.courtCount));
+  const [saved, setSaved] = useState(false);
+  const v = Math.round(Number(n));
+  const ok = v >= 1 && v <= 30;
+  return (
+    <Card className="space-y-2">
+      <h2 className="font-display font-semibold">{t("จำนวนสนามในก๊วน")}</h2>
+      <p className="text-xs text-zinc-500">{t("ใช้ตอนจัดคู่และบนจอทีวี")}</p>
+      <div className="flex gap-2">
+        <input
+          className={inputClass}
+          inputMode="numeric"
+          aria-label={t("จำนวนสนามในก๊วน")}
+          value={n}
+          onChange={(e) => {
+            setSaved(false);
+            setN(e.target.value.replace(/\D/g, ""));
+          }}
+        />
+        <Button
+          variant="primary"
+          className="shrink-0"
+          disabled={!ok || v === state.settings.courtCount}
+          onClick={() => {
+            dispatch({ type: "updateSettings", settings: { ...state.settings, courtCount: v } });
+            setSaved(true);
+          }}
+        >
+          {saved ? t("บันทึกแล้ว ✓") : t("บันทึก")}
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
 function Section({
   id,
   icon,

@@ -267,6 +267,8 @@ create table if not exists public.settings (
   monthly_fee integer default 150 not null,
   promptpay_id text default ''::text not null,
   festival text check (festival is null or festival in ('off', 'halloween', 'christmas', 'newyear', 'songkran')),
+  promptpay_on boolean default true not null,
+  bank_on boolean default true not null,
   constraint settings_pkey PRIMARY KEY (id)
 );
 

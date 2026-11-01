@@ -81,6 +81,8 @@ export interface Rows {
         bank_account?: string;
         bank_holder?: string;
         festival?: string | null;
+        promptpay_on?: boolean | null;
+        bank_on?: boolean | null;
       }
     | null;
 }
@@ -183,6 +185,8 @@ export function rowsToState(r: Rows): State {
         bankHolder: s.bank_holder ?? "",
         // ไม่มีคอลัมน์ = ยังไม่รัน SQL (undefined), ว่าง = อัตโนมัติ
         ...(s.festival !== undefined ? { festival: (s.festival ?? "auto") as Settings["festival"] } : {}),
+        // ไม่มีคอลัมน์ = ยังไม่รัน SQL สวิตช์ช่องทางรับเงิน
+        ...(s.promptpay_on !== undefined ? { promptPayOn: s.promptpay_on !== false, bankOn: s.bank_on !== false } : {}),
       }
     : DEFAULT_SETTINGS;
 
@@ -325,7 +329,10 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
     settings: async () => {
       const cols = "court_count,court_fee,first_shuttle_fee,next_shuttle_fee,monthly_fee,promptpay_id,bank_name,bank_account,bank_holder";
       // คอลัมน์ธีมเทศกาลยังไม่มี (ยังไม่รัน SQL) ให้โหลดแบบเดิม
-      const r = await all(() => db.from("settings").select(`${cols},festival`).eq("id", 1)).catch(() => all(() => db.from("settings").select(cols).eq("id", 1)));
+      // สวิตช์ช่องทางรับเงินมาหลังรัน SQL payment_switches.sql ยังไม่รันให้โหลดแบบเดิม
+      const r = await all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on`).eq("id", 1))
+        .catch(() => all(() => db.from("settings").select(`${cols},festival`).eq("id", 1)))
+        .catch(() => all(() => db.from("settings").select(cols).eq("id", 1)));
       return (r[0] as Rows["settings"]) ?? null;
     },
     announcements: () =>
@@ -568,6 +575,7 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
           bank_account: s.bankAccount.trim(),
           bank_holder: s.bankHolder.trim(),
           ...(s.festival !== undefined ? { festival: s.festival === "auto" ? null : s.festival } : {}),
+          ...(s.promptPayOn !== undefined ? { promptpay_on: s.promptPayOn, bank_on: s.bankOn !== false } : {}),
         }),
       );
     }
