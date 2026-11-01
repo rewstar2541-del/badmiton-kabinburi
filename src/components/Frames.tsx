@@ -81,7 +81,8 @@ export function FrameGrant() {
   // กันกดซ้ำก่อนหน้าจออัปเดต (จะได้ไม่คิดเงินสองรอบ)
   const handled = useRef(new Set<string>());
   const name = t(frameName(fid));
-  const note = frameFeeNote(name);
+  // ข้อความในบิลใช้ชื่อไทยเสมอ จะได้หาเจอตอนเอาคืนไม่ว่าแอดมินใช้ภาษาอะไร
+  const note = frameFeeNote(frameName(fid));
   const members = clubMembers(state.players);
   const here = new Set(day.checkIns.map((c) => c.playerId));
   const hereMembers = members.filter((p) => here.has(p.id));

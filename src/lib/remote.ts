@@ -682,6 +682,11 @@ async function clearRemote(db: SupabaseClient, kinds: ClearKind[], from: string,
 /** นำเข้าไฟล์สำรอง (เพิ่ม/ทับข้อมูลเดิม ไม่ลบของที่ไม่มีในไฟล์) */
 async function importState(db: SupabaseClient, s: State) {
   check(await db.from("players").upsert(s.players.map(playerRow)));
+  // กรอบรูป: ใส่รายการที่มีก่อน แล้วค่อยกรอบที่ใส่ (ตาม constraint)
+  for (const p of s.players.filter((x) => x.frames?.length || x.frame)) {
+    check(await db.from("players").update({ frames: p.frames ?? [] }).eq("id", p.id));
+    check(await db.from("players").update({ frame: p.frame ?? null }).eq("id", p.id));
+  }
   const days = s.days;
   const checkins = days.flatMap((d) =>
     d.checkIns.map((c) => ({ date: d.date, player_id: c.playerId, at: iso(c.at), paid_at: c.paidAt ? iso(c.paidAt) : null,
