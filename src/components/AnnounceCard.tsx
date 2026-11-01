@@ -37,7 +37,7 @@ export function AnnounceCard() {
         <CapLine />
         <div className="flex justify-end gap-4 px-1 text-xs text-zinc-500">
           <button className="underline-offset-2 active:underline" onClick={() => setEditing(true)}>
-            {t("แก้ข้อความ")}
+            {t("แก้ประกาศ")}
           </button>
           <button
             className="text-red-500 underline-offset-2 active:underline"
