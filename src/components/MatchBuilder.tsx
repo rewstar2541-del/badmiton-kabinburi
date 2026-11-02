@@ -61,11 +61,19 @@ export function MatchBuilder({
   const courtTaken = !toQueue && day.games.some((g) => !g.endedAt && g.court === court);
   const slots = picked.map((id) => (id && onCourt.has(id) ? null : id));
 
+  // แตะช่องหนึ่งแล้วแตะอีกช่อง = สลับตำแหน่ง (ซ้าย/ขวา/บน/ล่าง) ชื่อไม่หลุด แตะช่องเดิมซ้ำ = ยกเลิกเลือก
   const tapSlot = (i: number) => {
-    if (selected === i) {
-      setSlots(slots.map((x, j) => (j === i ? null : x)));
-      setSelected(null);
-    } else setSelected(i);
+    if (selected === null) return setSelected(i);
+    if (selected !== i) {
+      const next = [...slots];
+      [next[selected], next[i]] = [next[i], next[selected]];
+      setSlots(next);
+    }
+    setSelected(null);
+  };
+  const clearSlot = (i: number) => {
+    setSlots(slots.map((x, j) => (j === i ? null : x)));
+    setSelected(null);
   };
 
   const pick = (id: string) => {
@@ -94,23 +102,33 @@ export function MatchBuilder({
     const p: Player | undefined = slots[i] ? byId.get(slots[i]!) : undefined;
     const on = selected === i;
     return (
-      <button
-        key={i}
-        onClick={() => tapSlot(i)}
-        className={`flex w-full items-center gap-2 rounded-2xl px-2 py-1.5 text-left transition ${
-          on ? "bg-white text-ink ring-2 ring-lime" : "bg-black/20 text-white backdrop-blur-sm"
-        }`}
-      >
-        {p ? (
-          <>
-            <Avatar name={p.name} photo={p.photo} size={28} ring />
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold">{p.name}</span>
-            <LevelBadge level={p.level} />
-          </>
-        ) : (
-          <span className="flex h-7 flex-1 items-center justify-center text-xs opacity-70">{on ? t("แตะชื่อด้านล่าง") : t("ว่าง")}</span>
+      <div key={i} className="relative w-full">
+        <button
+          onClick={() => tapSlot(i)}
+          className={`flex w-full items-center gap-2 rounded-2xl px-2 py-1.5 text-left transition ${
+            on ? "bg-white text-ink ring-2 ring-lime" : selected !== null ? "bg-black/30 text-white ring-1 ring-white/60" : "bg-black/20 text-white backdrop-blur-sm"
+          }`}
+        >
+          {p ? (
+            <>
+              <Avatar name={p.name} photo={p.photo} size={28} ring />
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold">{p.name}</span>
+              {on ? <span className="w-6" /> : <LevelBadge level={p.level} />}
+            </>
+          ) : (
+            <span className="flex h-7 flex-1 items-center justify-center text-xs opacity-70">{on ? t("แตะชื่อด้านล่าง") : t("ว่าง")}</span>
+          )}
+        </button>
+        {on && p && (
+          <button
+            onClick={() => clearSlot(i)}
+            aria-label={t("เอาออก")}
+            className="absolute top-1/2 right-1 grid size-7 -translate-y-1/2 place-items-center rounded-full bg-zinc-200 text-zinc-600 active:scale-95"
+          >
+            <Icon.X width={14} height={14} />
+          </button>
         )}
-      </button>
+      </div>
     );
   };
 
@@ -130,7 +148,7 @@ export function MatchBuilder({
         ))}
       </div>
       <p className="text-xs text-zinc-500">
-        {t("แตะช่อง แล้วแตะชื่อจากคิว (แตะซ้ำ = เอาออก) ตัวเลขข้างทีม = ผลรวมระดับมือ")}
+        {t("แตะชื่อในสนาม แล้วแตะอีกช่องเพื่อสลับ หรือแตะชื่อจากคิวเพื่อเปลี่ยนคน ตัวเลขข้างทีม = ผลรวมระดับมือ")}
       </p>
 
       {clash && (
