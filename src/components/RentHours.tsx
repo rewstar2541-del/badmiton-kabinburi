@@ -9,25 +9,24 @@ import type { Day, DayRent, Player } from "@/lib/types";
 import { Avatar, Button, Card, Sheet, baht, inputClass } from "./ui";
 
 const hh = clock;
-/** ตัวเลือกเวลาทุก 15 นาที รวมค่าที่เลือกอยู่และขอบเขต (เวลาที่ไม่ตรง 15 นาทีก็ยังเลือกค้างอยู่ได้) */
-const quarters = (a: number, b: number, cur?: number) => {
-  const set = new Set<number>([a, b]);
-  if (cur !== undefined) set.add(cur);
-  for (let h = Math.ceil(a * 4 - 1e-9) / 4; h <= b + 1e-9; h += 0.25) set.add(h);
-  return [...set].filter((h) => h >= a - 1e-9 && h <= b + 1e-9).sort((x, y) => x - y);
-};
 /** ช่วงชั่วโมงตามนาฬิกา: ชั่วโมงแรก/สุดท้ายอาจไม่เต็ม (เริ่ม 19:01 → 19:01-20:00) คืนค่าเวลาเริ่มของแต่ละช่วง */
 const slots = (r: { start: number; end: number }) => Array.from({ length: Math.max(Math.ceil(r.end - 1e-9) - Math.floor(r.start + 1e-9), 0) }, (_, i) => (i === 0 ? r.start : Math.floor(r.start + 1e-9) + i));
 
+/** ช่องเวลาพิมพ์ได้ทุกนาที (23:59 = เที่ยงคืน) */
 function HourSelect({ value, from, to, onChange, label, disabled }: { value: number; from: number; to: number; onChange: (h: number) => void; label: string; disabled?: boolean }) {
   return (
-    <select aria-label={label} disabled={disabled} className="min-h-11 rounded-xl bg-zinc-100 px-2 text-base disabled:opacity-60" value={value} onChange={(e) => onChange(Number(e.target.value))}>
-      {quarters(from, to, value).map((h) => (
-        <option key={h} value={h}>
-          {hh(h)}
-        </option>
-      ))}
-    </select>
+    <input
+      type="time"
+      step={60}
+      aria-label={label}
+      disabled={disabled}
+      className="min-h-11 min-w-0 rounded-xl bg-zinc-100 px-2 text-base disabled:opacity-60"
+      value={value >= 24 ? "23:59" : hh(value)}
+      onChange={(e) => {
+        const h = parseTime(e.target.value);
+        if (h !== null) onChange(Math.min(Math.max(h, from), to));
+      }}
+    />
   );
 }
 
@@ -94,11 +93,13 @@ export const rentFromDraft = (d: RentDraft): DayRent => {
   return { start: d.start, end: d.end, perHour: Number(d.perHour), ...(courts ? { courts } : {}) };
 };
 
-/** "18:30" → 18.5 ปัดทุก 15 นาที */
-const parseTime = (v: string) => {
+/** "18:30" → 18.5 (ทีละนาที) ช่องว่าง → null, 23:59 → 24 (เที่ยงคืน) */
+function parseTime(v: string): number | null {
+  if (!/^\d{1,2}:\d{2}/.test(v)) return null;
   const [a, b] = v.split(":").map(Number);
-  return Number.isNaN(a) ? null : Math.round((a + (b || 0) / 60) * 60) / 60;
-};
+  if (a === 23 && b === 59) return 24;
+  return Math.round((a + b / 60) * 60) / 60;
+}
 
 /** ฟอร์มสนามเช่า: เวลาเริ่ม-เลิก ราคาต่อคอร์ท และจำนวนคอร์ทแต่ละชั่วโมง (ใช้ทั้งตอนประกาศและหน้าคิดเงิน) */
 export function RentFields({ value, onChange }: { value: RentDraft; onChange: (d: RentDraft) => void }) {
@@ -120,7 +121,7 @@ export function RentFields({ value, onChange }: { value: RentDraft; onChange: (d
           {t("เริ่มเช่า")}
           <input type="time" step={60} className={`${inputClass} mt-1`} value={hh(value.start)} onChange={(e) => {
               const h = parseTime(e.target.value);
-              if (h !== null) reshape(Math.min(h, 24 - 1 / 60), Math.max(value.end, h + 1 / 60));
+              if (h !== null && h < value.end) reshape(h, value.end);
             }} />
         </label>
         <label className="block text-sm font-medium">
