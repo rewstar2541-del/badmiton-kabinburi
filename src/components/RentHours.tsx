@@ -9,12 +9,13 @@ import type { Day, DayRent, Player } from "@/lib/types";
 import { Avatar, Button, Card, Sheet, baht, inputClass } from "./ui";
 
 const hh = clock;
-const range = (a: number, b: number) => Array.from({ length: Math.max(b - a + 1, 0) }, (_, i) => a + i);
+const quarters = (a: number, b: number) => Array.from({ length: Math.max(Math.round((b - a) * 4) + 1, 0) }, (_, i) => a + i / 4);
+const slots = (r: { start: number; end: number }) => Array.from({ length: Math.max(Math.ceil(r.end - r.start - 1e-9), 0) }, (_, i) => r.start + i);
 
 function HourSelect({ value, from, to, onChange, label, disabled }: { value: number; from: number; to: number; onChange: (h: number) => void; label: string; disabled?: boolean }) {
   return (
     <select aria-label={label} disabled={disabled} className="min-h-11 rounded-xl bg-zinc-100 px-2 text-base disabled:opacity-60" value={value} onChange={(e) => onChange(Number(e.target.value))}>
-      {range(from, to).map((h) => (
+      {quarters(from, to).map((h) => (
         <option key={h} value={h}>
           {hh(h)}
         </option>
@@ -31,12 +32,13 @@ function HourTable({ rent, day }: { rent: DayRent; day: Day }) {
       <span className="text-zinc-500">{t("ชั่วโมง")}</span>
       <span className="text-right text-zinc-500">{t("คน")}</span>
       <span className="text-right text-zinc-500">{t("คนละ")}</span>
-      {range(rent.start, rent.end - 1).map((h) => {
-        const n = counted.filter((s) => s.from <= h && h < s.to).length;
+      {slots(rent).map((h) => {
+        const e = Math.min(h + 1, rent.end);
+        const n = counted.filter((s) => s.from < e && h < s.to).length;
         return [
-          <span key={`h${h}`} className="whitespace-nowrap">{`${hh(h)}-${hh(h + 1)}`}{rent.courts && <span className="text-zinc-500">{` · ${t("{n} คอร์ท", { n: courtsAt(rent, h) })}`}</span>}</span>,
+          <span key={`h${h}`} className="whitespace-nowrap">{`${hh(h)}-${hh(e)}`}{rent.courts && <span className="text-zinc-500">{` · ${t("{n} คอร์ท", { n: courtsAt(rent, h) })}`}</span>}</span>,
           <span key={`n${h}`} className="text-right">{n}</span>,
-          <span key={`s${h}`} className="text-right font-semibold">{n ? baht(Math.round(rentAt(rent, h) / n)) : "–"}</span>,
+          <span key={`s${h}`} className="text-right font-semibold">{n ? baht(Math.round((rentAt(rent, h) * (e - h)) / n)) : "–"}</span>,
         ];
       })}
     </div>
@@ -73,7 +75,7 @@ export function MyRentHours({ player, day, rent }: { player: Player; day: Day; r
 export type RentDraft = { start: number; end: number; perHour: string; courts: number[]; legacy?: boolean };
 
 export const rentDraft = (r?: DayRent): RentDraft =>
-  r ? { start: r.start, end: r.end, perHour: String(r.perHour), courts: range(r.start, r.end - 1).map((h) => courtsAt(r, h)), legacy: !r.courts } : { start: 19, end: 22, perHour: "", courts: [1, 1, 1] };
+  r ? { start: r.start, end: r.end, perHour: String(r.perHour), courts: slots(r).map((h) => courtsAt(r, h)), legacy: !r.courts } : { start: 19, end: 22, perHour: "", courts: [1, 1, 1] };
 
 /** ค่าสนามเช่าครั้งล่าสุด ใช้เป็นค่าเริ่มต้นตอนตั้งสนามเช่าวันใหม่ */
 export const lastRent = (days: Day[]): DayRent | undefined => [...days].filter((d) => d.rent).sort((a, b) => b.date.localeCompare(a.date))[0]?.rent;
@@ -85,12 +87,18 @@ export const rentFromDraft = (d: RentDraft): DayRent => {
   return { start: d.start, end: d.end, perHour: Number(d.perHour), ...(courts ? { courts } : {}) };
 };
 
+/** "18:30" → 18.5 ปัดทุก 15 นาที */
+const parseTime = (v: string) => {
+  const [a, b] = v.split(":").map(Number);
+  return Number.isNaN(a) ? null : Math.round((a + (b || 0) / 60) * 4) / 4;
+};
+
 /** ฟอร์มสนามเช่า: เวลาเริ่ม-เลิก ราคาต่อคอร์ท และจำนวนคอร์ทแต่ละชั่วโมง (ใช้ทั้งตอนประกาศและหน้าคิดเงิน) */
 export function RentFields({ value, onChange }: { value: RentDraft; onChange: (d: RentDraft) => void }) {
   // เปลี่ยนเวลาเริ่ม/เลิก: จำนวนคอร์ทของชั่วโมงเดิมยังอยู่ ชั่วโมงใหม่ใช้ค่าของชั่วโมงที่ใกล้ที่สุด
   const reshape = (start: number, end: number) => {
     const at = (h: number) => value.courts[Math.min(Math.max(h - value.start, 0), value.courts.length - 1)] ?? 1;
-    onChange({ ...value, start, end, courts: range(start, end - 1).map(at) });
+    onChange({ ...value, start, end, courts: slots({ start, end }).map((h) => at(h)) });
   };
   const setCourts = (i: number, n: number) => onChange({ ...value, courts: value.courts.map((c, j) => (j === i ? Math.min(Math.max(n, 1), 20) : c)) });
   const price = Number(value.perHour) || 0;
@@ -100,29 +108,17 @@ export function RentFields({ value, onChange }: { value: RentDraft; onChange: (d
       <div className="grid grid-cols-2 gap-2">
         <label className="block text-sm font-medium">
           {t("เริ่มเช่า")}
-          <input
-            type="time"
-            step={900}
-            className={`${inputClass} mt-1`}
-            value={hh(value.start)}
-            onChange={(e) => {
-              const [a, b] = e.target.value.split(":").map(Number);
-              if (Number.isNaN(a)) return;
-              // ปัดเป็นทุก 15 นาที ชั่วโมงเช่าเต็มชั่วโมงนับจากเวลาเริ่ม
-              const h = Math.min(Math.round((a + (b || 0) / 60) * 4) / 4, 23);
-              reshape(h, h + Math.max(value.end - value.start, 1));
-            }}
-          />
+          <input type="time" step={900} className={`${inputClass} mt-1`} value={hh(value.start)} onChange={(e) => {
+              const h = parseTime(e.target.value);
+              if (h !== null) reshape(Math.min(h, 23.75), Math.max(value.end, h + 0.25));
+            }} />
         </label>
         <label className="block text-sm font-medium">
           {t("เลิก")}
-          <select className={`${inputClass} mt-1`} value={value.end} onChange={(e) => reshape(value.start, Number(e.target.value))}>
-            {range(value.start + 1, value.start + 18).filter((h) => h <= 24).map((h) => (
-              <option key={h} value={h}>
-                {hh(h)}
-              </option>
-            ))}
-          </select>
+          <input type="time" step={900} className={`${inputClass} mt-1`} value={value.end >= 24 ? "23:59" : hh(value.end)} onChange={(e) => {
+              const h = parseTime(e.target.value);
+              if (h !== null && h > value.start) reshape(value.start, h);
+            }} />
         </label>
       </div>
       <label className="block text-sm font-medium">
@@ -155,7 +151,7 @@ export function RentFields({ value, onChange }: { value: RentDraft; onChange: (d
 
 /** สรุปสนามเช่าบรรทัดเดียว เช่น 19:00-22:00 · 4-5 คอร์ท · คอร์ทละ 200 */
 export function rentLabel(rent: DayRent): string {
-  const cs = range(rent.start, rent.end - 1).map((h) => courtsAt(rent, h));
+  const cs = slots(rent).map((h) => courtsAt(rent, h));
   const lo = Math.min(...cs);
   const hi = Math.max(...cs);
   if (!rent.courts) return t("{from}-{to} ชม.ละ {amount}", { from: hh(rent.start), to: hh(rent.end), amount: baht(rent.perHour) });
@@ -176,7 +172,7 @@ function RentEdit({ rent, day }: { rent?: DayRent; day: Day }) {
     // ขยาย/ย่อเวลาเลิก: คนที่ตั้งไว้ว่าอยู่ถึงเลิกเดิม ให้อยู่ถึงเลิกใหม่ด้วย
     if (rent && next.end !== rent.end)
       for (const c of day.checkIns)
-        if (!c.paidAt && c.hours && c.hours.to >= rent.end) dispatch({ type: "setHours", date: day.date, playerId: c.playerId, hours: { from: Math.min(c.hours.from, next.end - 1), to: next.end } });
+        if (!c.paidAt && c.hours && c.hours.to >= rent.end) dispatch({ type: "setHours", date: day.date, playerId: c.playerId, hours: { from: Math.min(c.hours.from, next.end - 0.25), to: next.end } });
     setSaved(true);
     setOpen(false);
   };
@@ -277,9 +273,9 @@ export function RentHoursSheet({ rent, onClose }: { rent: DayRent; onClose: () =
               </div>
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 {/* จ่ายแล้วล็อกเวลา ยอดที่จ่ายจะได้ไม่เปลี่ยน */}
-                <HourSelect label={t("มา")} disabled={Boolean(c.paidAt)} value={s.from} from={rent.start} to={rent.end - 1} onChange={(h) => set({ from: h, to: Math.max(s.to, h + 1) })} />
+                <HourSelect label={t("มา")} disabled={Boolean(c.paidAt)} value={s.from} from={rent.start} to={rent.end - 0.25} onChange={(h) => set({ from: h, to: Math.max(s.to, h + 0.25) })} />
                 <span>–</span>
-                <HourSelect label={t("เวลากลับ")} disabled={Boolean(c.paidAt)} value={s.to} from={s.from + 1} to={rent.end} onChange={(h) => set({ ...s, to: h })} />
+                <HourSelect label={t("เวลากลับ")} disabled={Boolean(c.paidAt)} value={s.to} from={s.from + 0.25} to={rent.end} onChange={(h) => set({ ...s, to: h })} />
                 {c.paidAt && <span className="text-xs font-semibold text-emerald-700">{t("จ่ายแล้ว")}</span>}
               </div>
             </li>

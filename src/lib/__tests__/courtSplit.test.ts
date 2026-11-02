@@ -87,12 +87,14 @@ d2("สนามเช่าเริ่มไม่ตรงชั่วโม�
     const rent = { start: 18.5, end: 20.5, perHour: 200 };
     e2(clk(18.5)).toBe("18:30");
     e2(clk(18.25)).toBe("18:15");
-    e2(span2(rent, 0, { from: 19, to: 20.5 })).toEqual({ from: 18.5, to: 20.5 });
+    e2(span2(rent, 0, { from: 19, to: 20.5 })).toEqual({ from: 19, to: 20.5 });
+    e2(span2(rent, 0, { from: 18, to: 20 })).toEqual({ from: 18.5, to: 20 });
     const s = shares2(rent, [
       { playerId: "a", at: 0, hours: { from: 18.5, to: 20.5 } },
       { playerId: "b", at: 0, hours: { from: 19.5, to: 20.5 } },
     ]);
     e2(s.get("a")).toBe(300);
     e2(s.get("b")).toBe(100);
+    e2(shares2({ start: 18.5, end: 19.25, perHour: 200 }, [{ playerId: "x", at: 0, hours: { from: 18.5, to: 19.25 } }]).get("x")).toBe(150);
   });
 });
