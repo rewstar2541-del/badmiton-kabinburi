@@ -6,7 +6,6 @@ import { courtsAt, normalizeCourts, rentAt, rentShares, rentSpan, rentTotal } fr
 import { dayAmount } from "@/lib/billing";
 import { useStore, useToday } from "@/lib/store";
 import type { Day, DayRent, Player } from "@/lib/types";
-import { savedPin } from "./PickMe";
 import { Avatar, Button, Card, Sheet, baht, inputClass } from "./ui";
 
 const hh = (h: number) => `${String(h).padStart(2, "0")}:00`;
@@ -44,48 +43,29 @@ function HourTable({ rent, day }: { rent: DayRent; day: Day }) {
   );
 }
 
-/** ผู้เล่น (ยอดของฉัน): วันสนามเช่า บอกเวลามา/กลับของตัวเอง */
+/** ผู้เล่น (ยอดของฉัน): วันสนามเช่า ดูอย่างเดียว เวลามา-กลับแอดมินเป็นคนแก้ */
 export function MyRentHours({ player, day, rent }: { player: Player; day: Day; rent: DayRent }) {
-  const { setMyHours, state } = useStore();
-  const { settings, monthly } = state;
+  const { state } = useStore();
   const ci = day.checkIns.find((c) => c.playerId === player.id);
-  const now = ci ? rentSpan(rent, ci.at, ci.hours) : null;
-  const [span, setSpan] = useState(now);
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  if (!ci || !now || !span) return null;
-  const share = dayAmount(day, player, settings, monthly).courtFee;
-  const changed = span.from !== now.from || span.to !== now.to;
-  const save = async () => {
-    setBusy(true);
-    const err = await setMyHours(player.id, savedPin.get(), span.from, span.to);
-    setBusy(false);
-    setMsg(err ? { ok: false, text: t(err) } : { ok: true, text: t("บันทึกแล้ว") });
-  };
+  if (!ci) return null;
+  const span = rentSpan(rent, ci.at, ci.hours);
+  const share = dayAmount(day, player, state.settings, state.monthly).courtFee;
   return (
-    <Card className="space-y-3">
-      <div>
+    <Card className="space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <h2 className="font-display font-semibold">{t("สนามเช่า")}</h2>
-        <span className="mt-1 inline-block rounded-2xl bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">{rentLabel(rent)}</span>
+        <span className="rounded-2xl bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">{rentLabel(rent)}</span>
       </div>
-      <p className="text-sm text-zinc-500">{t("แต่ละชั่วโมงหารค่าเช่าให้คนที่อยู่ ยอดจะลดลงถ้ามีคนมาเพิ่ม จ่ายตอนกลับจะได้ยอดจริง")}</p>
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        {t("ฉันอยู่")}
-        <HourSelect label={t("มา")} value={span.from} from={rent.start} to={rent.end - 1} disabled={Boolean(ci.paidAt)} onChange={(h) => setSpan({ from: h, to: Math.max(span.to, h + 1) })} />
-        <span>–</span>
-        <HourSelect label={t("เวลากลับ")} value={span.to} from={span.from + 1} to={rent.end} disabled={Boolean(ci.paidAt)} onChange={(h) => setSpan({ ...span, to: h })} />
-        {changed && (
-          <Button variant="primary" disabled={busy} onClick={() => void save()}>
-            {t("บันทึก")}
-          </Button>
-        )}
+      <div className="flex justify-between text-sm">
+        <span>{t("เวลาของฉัน")}</span>
+        <span className="font-semibold">{`${hh(span.from)}-${hh(span.to)}`}</span>
       </div>
-      {msg && <p className={`rounded-xl px-3 py-2 text-sm ${msg.ok ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>{msg.text}</p>}
       <HourTable rent={rent} day={day} />
       <div className="flex justify-between font-semibold">
         <span>{t("ค่าสนามของฉันตอนนี้")}</span>
         <span>{baht(share)}</span>
       </div>
+      <p className="text-xs text-zinc-500">{t("หารตามคนที่อยู่แต่ละชั่วโมง เวลาไม่ตรงแจ้งแอดมินให้แก้")}</p>
     </Card>
   );
 }
