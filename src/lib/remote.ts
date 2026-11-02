@@ -58,6 +58,8 @@ export interface Rows {
     shuttles: number;
     winner: string | null;
     draw?: boolean | null;
+    reported_by?: string | null;
+    disputed_by?: string | null;
   }[];
   drinks: { id: string; date: string; player_id: string; amount: number; note: string }[];
   monthly: { month: string; player_id: string; paid_at: string; amount?: number | null }[];
@@ -148,6 +150,8 @@ export function rowsToState(r: Rows): State {
       shuttles: g.shuttles,
       winner: (g.winner as Game["winner"]) ?? undefined,
       draw: g.draw || undefined,
+      ...(g.reported_by ? { reportedBy: g.reported_by } : {}),
+      ...(g.disputed_by ? { disputedBy: g.disputed_by } : {}),
     });
   for (const x of r.drinks) day(x.date).drinks.push({ id: x.id, playerId: x.player_id, amount: x.amount, note: x.note });
   for (const x of r.pairs ?? [])
@@ -485,11 +489,21 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       return check(await db.from("games").update({ shuttles: Math.max(0, a.shuttles) }).eq("id", a.gameId));
     case "endGame":
     {
-      const res = await db.from("games").update({ ended_at: iso(a._at), winner: a.winner ?? null, ...(a.draw ? { draw: true } : {}) }).eq("id", a.gameId);
+      // .is ended_at null: ผู้เล่นในสนามกดผลไปก่อนแล้ว ไม่ทับผลของผู้เล่น
+      const res = await db.from("games").update({ ended_at: iso(a._at), winner: a.winner ?? null, ...(a.draw ? { draw: true } : {}) }).eq("id", a.gameId).is("ended_at", null);
       // ยังไม่ได้รัน supabase/sql/game_draw.sql: บันทึกจบเกมไปก่อน (ผลเสมอจะไม่ถูกเก็บ)
-      if (res.error && a.draw) return check(await db.from("games").update({ ended_at: iso(a._at), winner: null }).eq("id", a.gameId));
+      if (res.error && a.draw) return check(await db.from("games").update({ ended_at: iso(a._at), winner: null }).eq("id", a.gameId).is("ended_at", null));
       return check(res);
     }
+    case "setResult":
+    {
+      const res = await db.from("games").update({ winner: a.winner ?? null, draw: !!a.draw, disputed_by: null }).eq("id", a.gameId);
+      // ยังไม่ได้รัน supabase/sql/self_report.sql: แก้ผลอย่างเดียว
+      if (res.error?.message.includes("disputed_by")) return check(await db.from("games").update({ winner: a.winner ?? null, draw: !!a.draw }).eq("id", a.gameId));
+      return check(res);
+    }
+    case "disputeGame":
+      return; // ผู้เล่นแจ้งผ่าน disputeGame() (ฟังก์ชัน dispute_game) ไม่ผ่านตรงนี้
     case "cancelGame":
       return check(await db.from("games").delete().eq("id", a.gameId));
     case "addDrink":
@@ -806,6 +820,20 @@ export async function selfService(db: SupabaseClient, action: SelfAction, player
   }
   const { data, error } = await db.rpc("self_service", { p_player: playerId, p_pin: pin, p_action: action });
   if (error) return error.message;
+  return (data as string | null) ?? null;
+}
+
+/** ผู้เล่นในสนามกดผลเกมเอง แล้วให้คู่ถัดไปลงต่อ (ถ้าส่ง next มา) คืนข้อความผิดพลาด หรือ null */
+export async function reportGame(db: SupabaseClient, playerId: string, pin: string, gameId: string, result: "win" | "draw" | "lose", next?: { playerIds: string[]; queuedId?: string }) {
+  const { data, error } = await db.rpc("report_game", { p_player: playerId, p_pin: pin, p_game: gameId, p_result: result, p_next: next?.playerIds ?? null, p_queued: next?.queuedId ?? null });
+  if (error) return error.code === "PGRST202" ? "ยังกดผลเองไม่ได้ ให้แอดมินช่วยก่อน" : "บันทึกไม่สำเร็จ เช็กเน็ตแล้วลองใหม่";
+  return (data as string | null) ?? null;
+}
+
+/** อีกทีมกด "ไม่ตรง" กับผลที่ผู้เล่นกดไว้ คืนข้อความผิดพลาด หรือ null */
+export async function disputeGame(db: SupabaseClient, playerId: string, pin: string, gameId: string) {
+  const { data, error } = await db.rpc("dispute_game", { p_player: playerId, p_pin: pin, p_game: gameId });
+  if (error) return error.code === "PGRST202" ? "ยังแจ้งไม่ตรงไม่ได้ ให้แอดมินช่วยก่อน" : "บันทึกไม่สำเร็จ เช็กเน็ตแล้วลองใหม่";
   return (data as string | null) ?? null;
 }
 
