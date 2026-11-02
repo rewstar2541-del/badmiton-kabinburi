@@ -9,25 +9,24 @@ import type { Day, DayRent, Player } from "@/lib/types";
 import { Avatar, Button, Card, Sheet, baht, inputClass } from "./ui";
 
 const hh = clock;
-/** ตัวเลือกเวลาทุก 15 นาที รวมค่าที่เลือกอยู่และขอบเขต (เวลาที่ไม่ตรง 15 นาทีก็ยังเลือกค้างอยู่ได้) */
-const quarters = (a: number, b: number, cur?: number) => {
-  const set = new Set<number>([a, b]);
-  if (cur !== undefined) set.add(cur);
-  for (let h = Math.ceil(a * 4 - 1e-9) / 4; h <= b + 1e-9; h += 0.25) set.add(h);
-  return [...set].filter((h) => h >= a - 1e-9 && h <= b + 1e-9).sort((x, y) => x - y);
-};
 /** ช่วงชั่วโมงตามนาฬิกา: ชั่วโมงแรก/สุดท้ายอาจไม่เต็ม (เริ่ม 19:01 → 19:01-20:00) คืนค่าเวลาเริ่มของแต่ละช่วง */
 const slots = (r: { start: number; end: number }) => Array.from({ length: Math.max(Math.ceil(r.end - 1e-9) - Math.floor(r.start + 1e-9), 0) }, (_, i) => (i === 0 ? r.start : Math.floor(r.start + 1e-9) + i));
 
+/** ช่องเวลาพิมพ์ได้ทุกนาที (23:59 = เที่ยงคืน) */
 function HourSelect({ value, from, to, onChange, label, disabled }: { value: number; from: number; to: number; onChange: (h: number) => void; label: string; disabled?: boolean }) {
   return (
-    <select aria-label={label} disabled={disabled} className="min-h-11 rounded-xl bg-zinc-100 px-2 text-base disabled:opacity-60" value={value} onChange={(e) => onChange(Number(e.target.value))}>
-      {quarters(from, to, value).map((h) => (
-        <option key={h} value={h}>
-          {hh(h)}
-        </option>
-      ))}
-    </select>
+    <input
+      type="time"
+      step={60}
+      aria-label={label}
+      disabled={disabled}
+      className="min-h-11 min-w-0 rounded-xl bg-zinc-100 px-2 text-base disabled:opacity-60"
+      value={value >= 24 ? "23:59" : hh(value)}
+      onChange={(e) => {
+        const h = parseTime(e.target.value);
+        if (h !== null) onChange(Math.min(Math.max(h, from), to));
+      }}
+    />
   );
 }
 
@@ -94,22 +93,27 @@ export const rentFromDraft = (d: RentDraft): DayRent => {
   return { start: d.start, end: d.end, perHour: Number(d.perHour), ...(courts ? { courts } : {}) };
 };
 
-/** "18:30" → 18.5 ปัดทุก 15 นาที */
-const parseTime = (v: string) => {
+/** "18:30" → 18.5 (ทีละนาที) ช่องว่าง → null, 23:59 → 24 (เที่ยงคืน) */
+function parseTime(v: string): number | null {
+  if (!/^\d{1,2}:\d{2}/.test(v)) return null;
   const [a, b] = v.split(":").map(Number);
-  return Number.isNaN(a) ? null : Math.round((a + (b || 0) / 60) * 60) / 60;
-};
+  if (a === 23 && b === 59) return 24;
+  return Math.round((a + b / 60) * 60) / 60;
+}
 
 /** ฟอร์มสนามเช่า: เวลาเริ่ม-เลิก ราคาต่อคอร์ท และจำนวนคอร์ทแต่ละชั่วโมง (ใช้ทั้งตอนประกาศและหน้าคิดเงิน) */
 export function RentFields({ value, onChange }: { value: RentDraft; onChange: (d: RentDraft) => void }) {
   // เปลี่ยนเวลาเริ่ม/เลิก: จำนวนคอร์ทของชั่วโมงเดิมยังอยู่ ชั่วโมงใหม่ใช้ค่าของชั่วโมงที่ใกล้ที่สุด
   const reshape = (start: number, end: number) => {
-    const at = (h: number) => value.courts[Math.min(Math.max(h - value.start, 0), value.courts.length - 1)] ?? 1;
+    const at = (h: number) => value.courts[Math.min(Math.max(Math.floor(h + 1e-9) - Math.floor(value.start + 1e-9), 0), value.courts.length - 1)] ?? 1;
     onChange({ ...value, start, end, courts: slots({ start, end }).map((h) => at(h)) });
   };
   const setCourts = (i: number, n: number) => onChange({ ...value, courts: value.courts.map((c, j) => (j === i ? Math.min(Math.max(n, 1), 20) : c)) });
   const price = Number(value.perHour) || 0;
-  const total = value.courts.reduce((sum, c) => sum + c * price, 0);
+  // ชั่วโมงแรก/สุดท้ายไม่เต็มคิดตามสัดส่วน (19:15-19:45 = ครึ่งชั่วโมง)
+  const hs = slots(value);
+  const len = (i: number) => Math.min(Math.floor(hs[i] + 1e-9) + 1, value.end) - hs[i];
+  const total = Math.round(value.courts.reduce((sum, c, i) => sum + c * price * (len(i) || 0), 0));
   return (
     <>
       <div className="grid grid-cols-2 gap-2">
@@ -117,7 +121,7 @@ export function RentFields({ value, onChange }: { value: RentDraft; onChange: (d
           {t("เริ่มเช่า")}
           <input type="time" step={60} className={`${inputClass} mt-1`} value={hh(value.start)} onChange={(e) => {
               const h = parseTime(e.target.value);
-              if (h !== null) reshape(Math.min(h, 24 - 1 / 60), Math.max(value.end, h + 1 / 60));
+              if (h !== null && h < value.end) reshape(h, value.end);
             }} />
         </label>
         <label className="block text-sm font-medium">
@@ -139,7 +143,7 @@ export function RentFields({ value, onChange }: { value: RentDraft; onChange: (d
         )}
         {value.courts.map((c, i) => (
           <div key={value.start + i} className="flex items-center gap-1 text-sm">
-            <span className="w-[5rem] shrink-0 whitespace-nowrap text-[13px]">{`${hh(value.start + i)}-${hh(value.start + i + 1)}`}</span>
+            <span className="w-[5.5rem] shrink-0 whitespace-nowrap text-[13px]">{`${hh(hs[i] ?? value.start)}-${hh((hs[i] ?? value.start) + (len(i) || 1))}`}</span>
             <button type="button" aria-label={t("ลดคอร์ท")} disabled={c <= 1} className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-lg font-bold ring-1 ring-zinc-200 disabled:opacity-40" onClick={() => setCourts(i, c - 1)}>
               −
             </button>
@@ -147,7 +151,7 @@ export function RentFields({ value, onChange }: { value: RentDraft; onChange: (d
             <button type="button" aria-label={t("เพิ่มคอร์ท")} className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-lg font-bold ring-1 ring-zinc-200" onClick={() => setCourts(i, c + 1)}>
               +
             </button>
-            <span className="flex-1 whitespace-nowrap text-right text-xs text-zinc-500">{price ? (c * price).toLocaleString() : ""}</span>
+            <span className="flex-1 whitespace-nowrap text-right text-xs text-zinc-500">{price ? Math.round(c * price * (len(i) || 0)).toLocaleString() : ""}</span>
           </div>
         ))}
       </div>
