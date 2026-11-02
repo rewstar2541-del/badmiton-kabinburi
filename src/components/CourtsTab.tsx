@@ -11,7 +11,8 @@ import { t } from "@/lib/i18n";
 import { MyRestCard } from "./RestButton";
 import { PendingNotice, PickMe, useMe } from "./PickMe";
 import { goToTab } from "./Membership";
-import { FinishedGames } from "./GameShuttles";
+import { FinishedGames, SubNotes } from "./GameShuttles";
+import { SubPlayer } from "./SubPlayer";
 
 function useNow(intervalMs = 15000) {
   const [now, setNow] = useState(() => Date.now());
@@ -73,6 +74,7 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
     else alert(t("สนาม {n} ยังเริ่มเกมต่อไม่ได้ มีคนในคู่ที่จัดไว้ไม่พร้อม (ชื่อขีดฆ่า) กดแก้หรือเอาคู่นั้นออก", { n: game.court }));
   };
   const setShuttles = (n: number) => dispatch({ type: "setShuttles", date, gameId: game.id, shuttles: n });
+  const [subbing, setSubbing] = useState(false);
 
   return (
     <div className="space-y-3">
@@ -80,6 +82,7 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
         <CourtSide ids={game.playerIds.slice(0, 2)} byId={byId} team="A" />
         <CourtSide ids={game.playerIds.slice(2)} byId={byId} team="B" />
       </div>
+      <SubNotes game={game} byId={byId} className="rounded-xl bg-amber-50 px-3 py-1 text-xs text-amber-900" />
 
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 text-xs text-zinc-500">
@@ -123,6 +126,13 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
           <Icon.Trophy width={16} height={16} /> {t("ทีม {team} ชนะ", { team: "B" })}
         </Button>
       </div>
+      <button
+        onClick={() => setSubbing(true)}
+        className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-2xl bg-white text-sm font-semibold text-zinc-700 ring-1 ring-zinc-300 active:scale-[0.99]"
+      >
+        <Icon.Swap width={16} height={16} /> {t("เปลี่ยนตัว (บาดเจ็บ / เหนื่อย)")}
+      </button>
+      {subbing && <SubPlayer game={game} onClose={() => setSubbing(false)} />}
       <div className="flex justify-center gap-4 text-xs text-zinc-400">
         <button className="underline-offset-2 active:underline" onClick={() => end(undefined, true)}>
           {t("จบเสมอ")}

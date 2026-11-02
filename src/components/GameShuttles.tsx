@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useStore, useToday } from "@/lib/store";
-import type { Day, Game, Player } from "@/lib/types";
+import { inGame, lineupWith, shuttlesInGame, type Day, type Game, type Player } from "@/lib/types";
 import { Card, Icon, SectionTitle, inputClass } from "./ui";
 import { locale, t } from "@/lib/i18n";
 import { pricesFor, shuttleCountFor, shuttleFee } from "@/lib/billing";
@@ -18,7 +18,7 @@ function useLockPaid(game: Game, day: Day) {
   return () => {
     const prices = pricesFor(day, state.settings);
     for (const c of day.checkIns)
-      if (game.playerIds.includes(c.playerId) && c.paidAt && c.shuttleFee === undefined)
+      if (inGame(game, c.playerId) && c.paidAt && c.shuttleFee === undefined)
         dispatch({ type: "setBillFees", date: day.date, playerId: c.playerId, courtFee: c.courtFee ?? null, shuttleFee: shuttleFee(shuttleCountFor(day, c.playerId), prices) });
   };
 }
@@ -39,6 +39,21 @@ function Team({ ids, byId, won, me }: { ids: string[]; byId: Map<string, Player>
   );
 }
 
+/** บรรทัดเปลี่ยนตัว เช่น "เปลี่ยนตัว: บอล แทน ต้น (ต้นจ่าย 2 ลูก)" */
+export function SubNotes({ game, byId, className = "text-xs text-amber-800" }: { game: Pick<Game, "subs">; byId: Map<string, Player>; className?: string }) {
+  if (!game.subs?.length) return null;
+  const name = (id: string) => byId.get(id)?.name ?? "?";
+  return (
+    <>
+      {game.subs.map((s, i) => (
+        <div key={i} className={`leading-5 ${className}`}>
+          ⇄ {t("{in} แทน {out} (คนออกจ่าย {n} ลูก)", { in: name(s.in), out: name(s.out), n: s.shuttles })}
+        </div>
+      ))}
+    </>
+  );
+}
+
 function Win() {
   return <span className="ml-1.5 inline-block rounded-full bg-lime px-1.5 align-middle text-[11px] font-bold uppercase leading-4 text-ink">win</span>;
 }
@@ -54,7 +69,7 @@ export function GameShuttleRow({ game, byId, day, me, open, onToggle, past = fal
   const setOpen = onToggle;
   const lockPaid = useLockPaid(game, day);
   const ci = new Map(day.checkIns.map((c) => [c.playerId, c]));
-  const fixed = game.playerIds.filter((id) => ci.get(id)?.paidAt || ci.get(id)?.shuttleFee !== undefined);
+  const fixed = [...game.playerIds, ...(game.subs ?? []).map((s) => s.out)].filter((id) => ci.get(id)?.paidAt || ci.get(id)?.shuttleFee !== undefined);
   const change = (n: number) => {
     if (n < 0) return;
     lockPaid();
@@ -77,6 +92,7 @@ export function GameShuttleRow({ game, byId, day, me, open, onToggle, past = fal
         <div className="min-w-0 flex-1 text-sm leading-6">
           <Team ids={game.playerIds.slice(0, 2)} byId={byId} won={game.winner === "A"} me={me} />
           <Team ids={game.playerIds.slice(2)} byId={byId} won={game.winner === "B"} me={me} />
+          <SubNotes game={game} byId={byId} />
         </div>
         {!game.endedAt && <span className="shrink-0 whitespace-nowrap text-xs font-semibold text-emerald-700">{t("กำลังเล่น")}</span>}
         <span className={`flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-sm font-semibold tabular-nums ${game.shuttles === 0 ? "bg-amber-50 text-amber-800" : "bg-zinc-100 text-ink"}`}>
@@ -198,7 +214,7 @@ export function PlayerGameShuttles({ playerId, adjusted }: { playerId: string; a
   const { state } = useStore();
   const { day } = useToday();
   const [editing, setEditing] = useState<string | null>(null);
-  const games = day.games.filter((g) => g.playerIds.includes(playerId)).sort((a, b) => b.startedAt - a.startedAt);
+  const games = day.games.filter((g) => inGame(g, playerId)).sort((a, b) => b.startedAt - a.startedAt);
   if (games.length === 0) return null;
   const byId = new Map(state.players.map((p) => [p.id, p]));
   return (
@@ -224,11 +240,11 @@ export function PlayerGameShuttles({ playerId, adjusted }: { playerId: string; a
 export function MyGames({ playerId }: { playerId: string }) {
   const { state } = useStore();
   const { day } = useToday();
-  const games = day.games.filter((g) => g.playerIds.includes(playerId)).sort((a, b) => a.startedAt - b.startedAt);
+  const games = day.games.filter((g) => inGame(g, playerId)).sort((a, b) => a.startedAt - b.startedAt);
   if (games.length === 0) return null;
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const name = (id: string) => byId.get(id)?.name ?? "?";
-  const total = games.reduce((s, g) => s + g.shuttles, 0);
+  const total = games.reduce((s, g) => s + shuttlesInGame(g, playerId), 0);
   return (
     <Card className="p-0 overflow-hidden">
       <div className="flex items-baseline justify-between px-4 pt-4 pb-2">
@@ -237,11 +253,14 @@ export function MyGames({ playerId }: { playerId: string }) {
       </div>
       <ol className="divide-y divide-zinc-100">
         {games.map((g, i) => {
-          const mine = g.playerIds.indexOf(playerId) < 2 ? "A" : "B";
-          const partner = g.playerIds.find((id, j) => id !== playerId && (j < 2) === (mine === "A"))!;
-          const opp = g.playerIds.filter((_, j) => (j < 2) !== (mine === "A"));
-          const won = !!g.endedAt && g.winner === mine;
-          const result = !g.endedAt ? t("กำลังเล่น") : g.draw ? t("เสมอ") : g.winner && !won ? t("แพ้") : "";
+          // ถูกเปลี่ยนตัวออก: ดูคู่/คู่แข่งตอนที่ยังเล่นอยู่ ไม่นับแพ้ชนะ
+          const left = !g.playerIds.includes(playerId);
+          const ids = lineupWith(g, playerId);
+          const mine = ids.indexOf(playerId) < 2 ? "A" : "B";
+          const partner = ids.find((id, j) => id !== playerId && (j < 2) === (mine === "A"))!;
+          const opp = ids.filter((_, j) => (j < 2) !== (mine === "A"));
+          const won = !left && !!g.endedAt && g.winner === mine;
+          const result = left ? t("เปลี่ยนตัวออก") : !g.endedAt ? t("กำลังเล่น") : g.draw ? t("เสมอ") : g.winner && !won ? t("แพ้") : "";
           return (
             <li key={g.id} className="flex items-center gap-3 px-4 py-3">
               <span className="w-5 shrink-0 text-center text-xs font-semibold text-zinc-400">{i + 1}</span>
@@ -260,7 +279,7 @@ export function MyGames({ playerId }: { playerId: string }) {
               </div>
               <span className="flex shrink-0 items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-1 text-sm font-semibold tabular-nums">
                 <Icon.Shuttle width={14} height={14} />
-                {g.shuttles}
+                {shuttlesInGame(g, playerId)}
               </span>
             </li>
           );

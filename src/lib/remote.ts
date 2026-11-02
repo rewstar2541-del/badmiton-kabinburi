@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Action, SelfAction, State } from "./state";
 import { endOf, startOf, type ClearKind } from "./clear";
-import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Notice, type Gender, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Package, type Plan, type Player, type Settings } from "./types";
+import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Notice, type Gender, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Package, type Plan, type Player, type Settings, type Sub } from "./types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -55,6 +55,8 @@ export interface Rows {
     shuttles: number;
     winner: string | null;
     draw?: boolean | null;
+    /** ไม่มี = ยังไม่รัน SQL game_subs.sql */
+    subs?: Sub[] | null;
   }[];
   drinks: { id: string; date: string; player_id: string; amount: number; note: string }[];
   monthly: { month: string; player_id: string; paid_at: string; amount?: number | null }[];
@@ -145,6 +147,7 @@ export function rowsToState(r: Rows): State {
       shuttles: g.shuttles,
       winner: (g.winner as Game["winner"]) ?? undefined,
       draw: g.draw || undefined,
+      ...(g.subs?.length ? { subs: g.subs } : {}),
     });
   for (const x of r.drinks) day(x.date).drinks.push({ id: x.id, playerId: x.player_id, amount: x.amount, note: x.note });
   for (const x of r.pairs ?? [])
@@ -489,6 +492,14 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
     }
     case "cancelGame":
       return check(await db.from("games").delete().eq("id", a.gameId));
+    case "subPlayer":
+    {
+      const res = await db.from("games").update({ player_ids: a.playerIds, subs: a.subs }).eq("id", a.gameId).select("id");
+      if (res.error?.message.includes("subs")) throw new Error("ต้องรัน SQL supabase/sql/game_subs.sql ก่อน");
+      check(res);
+      if (!res.data?.length) throw new Error("เกมนี้ถูกลบไปแล้ว");
+      return;
+    }
     case "addDrink":
       return check(
         await db.from("drinks").insert({ id: a._id, date: a.date, player_id: a.playerId, amount: a.amount, note: a.note }),

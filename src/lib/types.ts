@@ -187,6 +187,70 @@ export interface Game {
   winner?: Team;
   /** จบเสมอ (ไม่มีทีมชนะ นับว่าเล่นแล้ว ไม่นับแพ้ชนะ) */
   draw?: boolean;
+  /** เปลี่ยนตัวระหว่างเกม เรียงตามเวลา (playerIds คือ 4 คนที่อยู่ในสนามตอนนี้/ตอนจบ) */
+  subs?: Sub[];
+}
+
+/** เปลี่ยนตัว: คนออกจ่ายลูกถึงลูกที่ `shuttles` คนเข้าจ่ายลูกถัดไป ผลแพ้ชนะเป็นของคนที่เล่นจนจบ */
+export interface Sub {
+  out: string;
+  in: string;
+  at: number;
+  /** จำนวนลูกของเกมตอนเปลี่ยนตัว */
+  shuttles: number;
+}
+
+/** คนนี้อยู่ในเกมนี้ (ยังเล่นอยู่ หรือถูกเปลี่ยนออกไปแล้ว) */
+export const inGame = (g: Pick<Game, "playerIds" | "subs">, playerId: string) =>
+  g.playerIds.includes(playerId) || (g.subs ?? []).some((s) => s.out === playerId);
+
+/** เกมหลังเปลี่ยน `out` เป็น `inId` (คนเข้ายืนตำแหน่ง/ทีมเดียวกับคนออก) */
+export function withSub(g: Game, out: string, inId: string, at: number): { playerIds: Game["playerIds"]; subs: Sub[] } {
+  return {
+    playerIds: g.playerIds.map((id) => (id === out ? inId : id)) as Game["playerIds"],
+    subs: [...(g.subs ?? []), { out, in: inId, at, shuttles: g.shuttles }],
+  };
+}
+
+/** 4 คนตอนเริ่มเกม (ย้อนการเปลี่ยนตัวจากหลังไปหน้า) */
+export function startLineup(g: Pick<Game, "playerIds" | "subs">): string[] {
+  const start = [...g.playerIds];
+  for (const s of [...(g.subs ?? [])].reverse()) {
+    const i = start.indexOf(s.in);
+    if (i >= 0) start[i] = s.out;
+  }
+  return start;
+}
+
+/** 4 คนในสนามช่วงที่คนนี้เล่น (คนที่ถูกเปลี่ยนออก = ตอนก่อนออก) ใช้หาคู่/คู่แข่ง */
+export function lineupWith(g: Pick<Game, "playerIds" | "subs">, playerId: string): string[] {
+  if (g.playerIds.includes(playerId)) return g.playerIds;
+  const cur = startLineup(g);
+  let last = cur.includes(playerId) ? [...cur] : null;
+  for (const s of g.subs ?? []) {
+    if (s.out === playerId) last = [...cur];
+    const i = cur.indexOf(s.out);
+    if (i >= 0) cur[i] = s.in;
+  }
+  return last ?? g.playerIds;
+}
+
+/** ลูกของเกมนี้ที่คนนี้ต้องจ่าย (นับเฉพาะช่วงที่อยู่ในสนาม) */
+export function shuttlesInGame(g: Pick<Game, "playerIds" | "subs" | "shuttles">, playerId: string): number {
+  const subs = g.subs ?? [];
+  if (!subs.length) return g.playerIds.includes(playerId) ? g.shuttles : 0;
+  const start = startLineup(g);
+  let total = 0;
+  let from: number | null = start.includes(playerId) ? 0 : null;
+  for (const s of subs) {
+    if (s.out === playerId && from !== null) {
+      total += Math.max(0, s.shuttles - from);
+      from = null;
+    }
+    if (s.in === playerId) from = s.shuttles;
+  }
+  if (from !== null && g.playerIds.includes(playerId)) total += Math.max(0, g.shuttles - from);
+  return total;
 }
 
 /** คู่ที่แอดมินจัดไว้รอลงสนามนั้น (เกมในสนามจบ คู่แรกลงต่อทันที) */

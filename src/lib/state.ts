@@ -1,6 +1,6 @@
 import { clearState, type ClearKind } from "./clear";
 import { guestsOf, markPaid } from "./billing";
-import { DEFAULT_SETTINGS, type Day, type DayPrices, type DayRent, type Expense, type Game, type PairStatus, type Poll, type BoardPost, type Notice, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Package, type Player, type Settings, type Team } from "./types";
+import { DEFAULT_SETTINGS, type Day, type DayPrices, type DayRent, type Expense, type Game, type PairStatus, type Poll, type BoardPost, type Notice, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Package, type Player, type Settings, type Sub, type Team } from "./types";
 
 export interface State {
   players: Player[];
@@ -57,6 +57,8 @@ export type Action =
   | { type: "setShuttles"; date: string; gameId: string; shuttles: number }
   | { type: "endGame"; date: string; gameId: string; winner?: Team; draw?: boolean; _at: number }
   | { type: "cancelGame"; date: string; gameId: string }
+  /** เปลี่ยนตัวระหว่างเกม (ส่ง 4 คนในสนามและรายการเปลี่ยนตัวทั้งหมดหลังเปลี่ยน) */
+  | { type: "subPlayer"; date: string; gameId: string; playerIds: Game["playerIds"]; subs: Sub[] }
   | { type: "addDrink"; date: string; playerId: string; amount: number; note: string; _id: string }
   | { type: "removeDrink"; date: string; drinkId: string }
   | { type: "editDrink"; date: string; drinkId: string; amount: number; note: string }
@@ -264,6 +266,8 @@ export function reducer(state: State, a: Action): State {
       return updateGame(state, a.date, a.gameId, (g) => ({ ...g, endedAt: a._at, winner: a.winner, draw: a.draw || undefined }));
     case "cancelGame":
       return withDay(state, a.date, (d) => ({ ...d, games: d.games.filter((g) => g.id !== a.gameId) }));
+    case "subPlayer":
+      return updateGame(state, a.date, a.gameId, (g) => ({ ...g, playerIds: a.playerIds, subs: a.subs }));
     case "addDrink":
       return withDay(state, a.date, (d) => ({
         ...d,
