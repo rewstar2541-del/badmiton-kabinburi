@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useStore, useToday } from "@/lib/store";
 import type { Day, Game, Player } from "@/lib/types";
+import type { Intent, State } from "@/lib/state";
 import { Card, Icon, SectionTitle, inputClass } from "./ui";
 import { locale, t } from "@/lib/i18n";
 import { pricesFor, shuttleCountFor, shuttleFee } from "@/lib/billing";
@@ -13,14 +14,16 @@ function clock(ms: number) {
 }
 
 /** ล็อกค่าลูกของคนที่จ่ายเงินแล้วไว้ที่ยอดที่จ่ายไป ก่อนแก้หรือลบเกม ยอดเงินในบัญชีจะได้ไม่เพี้ยน */
+export function lockPaid(game: Game, day: Day, settings: State["settings"], dispatch: (a: Intent) => void) {
+  const prices = pricesFor(day, settings);
+  for (const c of day.checkIns)
+    if (game.playerIds.includes(c.playerId) && c.paidAt && c.shuttleFee === undefined)
+      dispatch({ type: "setBillFees", date: day.date, playerId: c.playerId, courtFee: c.courtFee ?? null, shuttleFee: shuttleFee(shuttleCountFor(day, c.playerId), prices) });
+}
+
 function useLockPaid(game: Game, day: Day) {
   const { state, dispatch } = useStore();
-  return () => {
-    const prices = pricesFor(day, state.settings);
-    for (const c of day.checkIns)
-      if (game.playerIds.includes(c.playerId) && c.paidAt && c.shuttleFee === undefined)
-        dispatch({ type: "setBillFees", date: day.date, playerId: c.playerId, courtFee: c.courtFee ?? null, shuttleFee: shuttleFee(shuttleCountFor(day, c.playerId), prices) });
-  };
+  return () => lockPaid(game, day, state.settings, dispatch);
 }
 
 function Team({ ids, byId, won, me }: { ids: string[]; byId: Map<string, Player>; won: boolean; me?: string }) {

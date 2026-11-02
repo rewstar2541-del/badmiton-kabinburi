@@ -326,7 +326,7 @@ export function PlayersTab() {
           title={<h3 className="min-w-0 truncate font-display text-lg font-semibold">{t("ประวัติการเล่นของ {name}", { name: historyOf.name })}</h3>}
           onClose={() => setHistoryOf(null)}
         >
-          <PartnerStats player={historyOf} />
+          <PartnerStats player={historyOf} admin />
         </Sheet>
       )}
       <LineClaims />

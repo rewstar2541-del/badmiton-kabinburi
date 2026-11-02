@@ -5,12 +5,13 @@ import { locale, t } from "@/lib/i18n";
 import { gameHistory, partnerStats, type GameResult, type HistoryGame, type MateStat } from "@/lib/social";
 import { useStore } from "@/lib/store";
 import type { Player } from "@/lib/types";
-import { Avatar, Button, Card } from "./ui";
+import { Avatar, Button, Card, Icon } from "./ui";
+import { lockPaid } from "./GameShuttles";
 
 type Tab = "mates" | "history";
 
 /** สถิติกับคู่: แท็บคู่หู/คู่แข่ง และแท็บประวัติการเล่น */
-export function PartnerStats({ player }: { player: Player }) {
+export function PartnerStats({ player, admin = false }: { player: Player; admin?: boolean }) {
   const [tab, setTab] = useState<Tab>("history");
   const tabs: [Tab, string][] = [
     ["mates", t("คู่หูและคู่แข่ง")],
@@ -31,7 +32,7 @@ export function PartnerStats({ player }: { player: Player }) {
           </button>
         ))}
       </div>
-      {tab === "mates" ? <Mates player={player} /> : <History player={player} />}
+      {tab === "mates" ? <Mates player={player} /> : <History player={player} admin={admin} />}
     </div>
   );
 }
@@ -100,11 +101,20 @@ function clock(ms: number) {
 const dayLabel = (d: string) => new Date(d + "T00:00:00").toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" });
 
 /** ประวัติการเล่น: แต่ละเกมคู่กับใคร เจอใคร แพ้หรือชนะ แบ่งตามวัน */
-function History({ player }: { player: Player }) {
-  const { state } = useStore();
+function History({ player, admin }: { player: Player; admin: boolean }) {
+  const { state, dispatch } = useStore();
   const [shown, setShown] = useState(PAGE);
   const all = gameHistory(state, player.id);
   const byId = new Map(state.players.map((p) => [p.id, p]));
+  // แอดมินลบเกมที่ไม่ได้เล่นจริง (เฉพาะเกมที่จบแล้ว เกมที่กำลังเล่นยกเลิกที่หน้าสนาม)
+  const remove = (h: HistoryGame) => {
+    const day = state.days.find((d) => d.date === h.date);
+    if (!day) return;
+    const time = `${dayLabel(h.date)} ${clock(h.game.startedAt)}`;
+    if (!confirm(t("ลบเกมนี้ (สนาม {n} · {time})? ใช้เมื่อเกมนี้ไม่ได้เล่นจริง ลูกและผลแพ้ชนะของเกมนี้จะหายไป", { n: h.game.court, time }))) return;
+    lockPaid(h.game, day, state.settings, dispatch);
+    dispatch({ type: "cancelGame", date: h.date, gameId: h.game.id });
+  };
   const name = (id: string) => byId.get(id)?.name ?? t("ผู้เล่นที่ออกแล้ว");
 
   if (all.length === 0) return <p className="rounded-2xl bg-zinc-50 px-4 py-6 text-center text-sm text-zinc-500">{t("ยังไม่มีเกมที่เล่น")}</p>;
@@ -155,6 +165,7 @@ function History({ player }: { player: Player }) {
         {[t("นับตั้งแต่ {date}", { date: dayLabel(first) }), ...others].join(" · ")}
         {count("unknown") > 0 && <span className="block">{t("ไม่มีผล = แอดมินไม่ได้กดผลแพ้ชนะตอนจบเกม")}</span>}
       </p>
+      {admin && <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">{t("แตะ ✕ เพื่อลบเกมที่ไม่ได้เล่นจริง เกมวันก่อน: คนที่ยังไม่จ่าย ยอดค้างจะเปลี่ยนตาม")}</p>}
       {recent.length > 0 && (
         <div className="flex flex-wrap items-center gap-1 text-xs text-zinc-600">
           <span className="mr-0.5">{t("{n} เกมล่าสุด", { n: recent.length })}</span>
@@ -196,6 +207,16 @@ function History({ player }: { player: Player }) {
                     <br />
                     {clock(h.game.startedAt)}
                   </div>
+                  {admin && h.game.endedAt && (
+                    <button
+                      onClick={() => remove(h)}
+                      className="-mr-1.5 grid size-11 shrink-0 place-items-center rounded-full text-red-500 active:bg-red-50"
+                      aria-label={t("ลบเกมนี้ (ไม่ได้เล่นจริง)")}
+                      title={t("ลบเกมนี้ (ไม่ได้เล่นจริง)")}
+                    >
+                      <Icon.X width={18} height={18} />
+                    </button>
+                  )}
                 </li>
               );
             })}

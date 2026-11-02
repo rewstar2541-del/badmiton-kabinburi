@@ -1466,4 +1466,5 @@ export const en: Record<string, string> = {
   "ดู / แก้ / ลบเกม (ย้อนหลังได้)": "View / edit / delete games (past days too)",
   "เกมวันก่อน: คนที่ยังไม่จ่าย ยอดค้างจะเปลี่ยนตาม": "Past day: unpaid players' outstanding amounts will change too",
   "ประวัติการเล่นของ {name}": "{name}'s game history",
+  "แตะ ✕ เพื่อลบเกมที่ไม่ได้เล่นจริง เกมวันก่อน: คนที่ยังไม่จ่าย ยอดค้างจะเปลี่ยนตาม": "Tap ✕ to delete a game that didn't really happen. For past days, unpaid balances will change.",
 };
