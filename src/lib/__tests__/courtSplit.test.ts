@@ -98,3 +98,16 @@ d2("สนามเช่าเริ่มไม่ตรงชั่วโม�
     e2(shares2({ start: 18.5, end: 19.25, perHour: 200 }, [{ playerId: "x", at: 0, hours: { from: 18.5, to: 19.25 } }]).get("x")).toBe(150);
   });
 });
+
+d2("เวลาระดับนาที", () => {
+  i2("19:01 เริ่ม หารตามนาทีจริงและรวมเท่าค่าเช่า", () => {
+    const rent = { start: 19 + 1 / 60, end: 21, perHour: 600 };
+    const s = shares2(rent, [
+      { playerId: "a", at: 0, hours: { from: 19 + 1 / 60, to: 21 } },
+      { playerId: "b", at: 0, hours: { from: 20, to: 21 } },
+    ]);
+    e2((s.get("a") ?? 0) + (s.get("b") ?? 0)).toBe(Math.round(600 * (59 / 60) + 600));
+    e2(s.get("b")).toBe(300);
+    e2(clk(19 + 1 / 60)).toBe("19:01");
+  });
+});

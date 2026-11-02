@@ -9,13 +9,20 @@ import type { Day, DayRent, Player } from "@/lib/types";
 import { Avatar, Button, Card, Sheet, baht, inputClass } from "./ui";
 
 const hh = clock;
-const quarters = (a: number, b: number) => Array.from({ length: Math.max(Math.round((b - a) * 4) + 1, 0) }, (_, i) => a + i / 4);
-const slots = (r: { start: number; end: number }) => Array.from({ length: Math.max(Math.ceil(r.end - r.start - 1e-9), 0) }, (_, i) => r.start + i);
+/** ตัวเลือกเวลาทุก 15 นาที รวมค่าที่เลือกอยู่และขอบเขต (เวลาที่ไม่ตรง 15 นาทีก็ยังเลือกค้างอยู่ได้) */
+const quarters = (a: number, b: number, cur?: number) => {
+  const set = new Set<number>([a, b]);
+  if (cur !== undefined) set.add(cur);
+  for (let h = Math.ceil(a * 4 - 1e-9) / 4; h <= b + 1e-9; h += 0.25) set.add(h);
+  return [...set].filter((h) => h >= a - 1e-9 && h <= b + 1e-9).sort((x, y) => x - y);
+};
+/** ช่วงชั่วโมงตามนาฬิกา: ชั่วโมงแรก/สุดท้ายอาจไม่เต็ม (เริ่ม 19:01 → 19:01-20:00) คืนค่าเวลาเริ่มของแต่ละช่วง */
+const slots = (r: { start: number; end: number }) => Array.from({ length: Math.max(Math.ceil(r.end - 1e-9) - Math.floor(r.start + 1e-9), 0) }, (_, i) => (i === 0 ? r.start : Math.floor(r.start + 1e-9) + i));
 
 function HourSelect({ value, from, to, onChange, label, disabled }: { value: number; from: number; to: number; onChange: (h: number) => void; label: string; disabled?: boolean }) {
   return (
     <select aria-label={label} disabled={disabled} className="min-h-11 rounded-xl bg-zinc-100 px-2 text-base disabled:opacity-60" value={value} onChange={(e) => onChange(Number(e.target.value))}>
-      {quarters(from, to).map((h) => (
+      {quarters(from, to, value).map((h) => (
         <option key={h} value={h}>
           {hh(h)}
         </option>
@@ -33,7 +40,7 @@ function HourTable({ rent, day }: { rent: DayRent; day: Day }) {
       <span className="text-right text-zinc-500">{t("คน")}</span>
       <span className="text-right text-zinc-500">{t("คนละ")}</span>
       {slots(rent).map((h) => {
-        const e = Math.min(h + 1, rent.end);
+        const e = Math.min(Math.floor(h + 1e-9) + 1, rent.end);
         const n = counted.filter((s) => s.from < e && h < s.to).length;
         return [
           <span key={`h${h}`} className="whitespace-nowrap">{`${hh(h)}-${hh(e)}`}{rent.courts && <span className="text-zinc-500">{` · ${t("{n} คอร์ท", { n: courtsAt(rent, h) })}`}</span>}</span>,
@@ -90,7 +97,7 @@ export const rentFromDraft = (d: RentDraft): DayRent => {
 /** "18:30" → 18.5 ปัดทุก 15 นาที */
 const parseTime = (v: string) => {
   const [a, b] = v.split(":").map(Number);
-  return Number.isNaN(a) ? null : Math.round((a + (b || 0) / 60) * 4) / 4;
+  return Number.isNaN(a) ? null : Math.round((a + (b || 0) / 60) * 60) / 60;
 };
 
 /** ฟอร์มสนามเช่า: เวลาเริ่ม-เลิก ราคาต่อคอร์ท และจำนวนคอร์ทแต่ละชั่วโมง (ใช้ทั้งตอนประกาศและหน้าคิดเงิน) */
@@ -108,14 +115,14 @@ export function RentFields({ value, onChange }: { value: RentDraft; onChange: (d
       <div className="grid grid-cols-2 gap-2">
         <label className="block text-sm font-medium">
           {t("เริ่มเช่า")}
-          <input type="time" step={900} className={`${inputClass} mt-1`} value={hh(value.start)} onChange={(e) => {
+          <input type="time" step={60} className={`${inputClass} mt-1`} value={hh(value.start)} onChange={(e) => {
               const h = parseTime(e.target.value);
-              if (h !== null) reshape(Math.min(h, 23.75), Math.max(value.end, h + 0.25));
+              if (h !== null) reshape(Math.min(h, 24 - 1 / 60), Math.max(value.end, h + 1 / 60));
             }} />
         </label>
         <label className="block text-sm font-medium">
           {t("เลิก")}
-          <input type="time" step={900} className={`${inputClass} mt-1`} value={value.end >= 24 ? "23:59" : hh(value.end)} onChange={(e) => {
+          <input type="time" step={60} className={`${inputClass} mt-1`} value={value.end >= 24 ? "23:59" : hh(value.end)} onChange={(e) => {
               const h = parseTime(e.target.value);
               if (h !== null && h > value.start) reshape(value.start, h);
             }} />
@@ -172,7 +179,7 @@ function RentEdit({ rent, day }: { rent?: DayRent; day: Day }) {
     // ขยาย/ย่อเวลาเลิก: คนที่ตั้งไว้ว่าอยู่ถึงเลิกเดิม ให้อยู่ถึงเลิกใหม่ด้วย
     if (rent && next.end !== rent.end)
       for (const c of day.checkIns)
-        if (!c.paidAt && c.hours && c.hours.to >= rent.end) dispatch({ type: "setHours", date: day.date, playerId: c.playerId, hours: { from: Math.min(c.hours.from, next.end - 0.25), to: next.end } });
+        if (!c.paidAt && c.hours && c.hours.to >= rent.end) dispatch({ type: "setHours", date: day.date, playerId: c.playerId, hours: { from: Math.min(c.hours.from, next.end - (1 / 60)), to: next.end } });
     setSaved(true);
     setOpen(false);
   };
@@ -273,9 +280,9 @@ export function RentHoursSheet({ rent, onClose }: { rent: DayRent; onClose: () =
               </div>
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 {/* จ่ายแล้วล็อกเวลา ยอดที่จ่ายจะได้ไม่เปลี่ยน */}
-                <HourSelect label={t("มา")} disabled={Boolean(c.paidAt)} value={s.from} from={rent.start} to={rent.end - 0.25} onChange={(h) => set({ from: h, to: Math.max(s.to, h + 0.25) })} />
+                <HourSelect label={t("มา")} disabled={Boolean(c.paidAt)} value={s.from} from={rent.start} to={rent.end} onChange={(h) => set({ from: h, to: Math.max(s.to, h) })} />
                 <span>–</span>
-                <HourSelect label={t("เวลากลับ")} disabled={Boolean(c.paidAt)} value={s.to} from={s.from + 0.25} to={rent.end} onChange={(h) => set({ ...s, to: h })} />
+                <HourSelect label={t("เวลากลับ")} disabled={Boolean(c.paidAt)} value={s.to} from={s.from} to={rent.end} onChange={(h) => set({ ...s, to: h })} />
                 {c.paidAt && <span className="text-xs font-semibold text-emerald-700">{t("จ่ายแล้ว")}</span>}
               </div>
             </li>
