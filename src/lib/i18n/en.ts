@@ -1239,6 +1239,8 @@ export const en: Record<string, string> = {
   "{from}-{to} ชม.ละ {amount}": "{from}-{to}, {amount}/hour",
   "แต่ละชั่วโมงหารค่าเช่าให้คนที่อยู่ ยอดจะลดลงถ้ามีคนมาเพิ่ม จ่ายตอนกลับจะได้ยอดจริง": "Each hour's rent is split among the people there. Your share drops as more people come, so pay when you leave",
   "ฉันอยู่": "I'm here",
+  "เวลาของฉัน": "My hours",
+  "หารตามคนที่อยู่แต่ละชั่วโมง เวลาไม่ตรงแจ้งแอดมินให้แก้": "Split among players present each hour. Wrong hours? Ask an admin to fix them.",
   "ค่าสนามของฉันตอนนี้": "My court fee now",
   "สนามเช่า: เวลามา-กลับ": "Rented court: hours",
   "{from}-{to} ชม.ละ {amount} (แก้ที่ประกาศจัดก๊วน)": "{from}-{to}, {amount}/hour (edit in the session announcement)",
