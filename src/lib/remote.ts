@@ -127,7 +127,7 @@ export function rowsToState(r: Rows): State {
       ...(c.resting ? { resting: true } : {}),
       ...(c.court_fee != null ? { courtFee: Number(c.court_fee) } : {}),
       ...(c.shuttle_fee != null ? { shuttleFee: Number(c.shuttle_fee) } : {}),
-      ...(c.from_hour != null && c.to_hour != null ? { hours: { from: c.from_hour, to: c.to_hour } } : {}),
+      ...(c.from_hour != null && c.to_hour != null ? { hours: { from: Number(c.from_hour), to: Number(c.to_hour) } } : {}),
     });
   for (const x of r.prices ?? [])
     day(x.date).prices = {
@@ -157,7 +157,7 @@ export function rowsToState(r: Rows): State {
     if (a.fee != null) day(a.date).announcementFee = a.fee;
     if (a.cap != null) day(a.date).announcementCap = a.cap;
     if (a.rent_start != null && a.rent_end != null && a.rent_per_hour != null)
-      day(a.date).rent = { start: a.rent_start, end: a.rent_end, perHour: Number(a.rent_per_hour), ...(a.rent_courts?.length ? { courts: a.rent_courts.map(Number) } : {}) };
+      day(a.date).rent = { start: Number(a.rent_start), end: Number(a.rent_end), perHour: Number(a.rent_per_hour), ...(a.rent_courts?.length ? { courts: a.rent_courts.map(Number) } : {}) };
   }
   for (const s of r.signups) (day(s.date).signups ??= []).push({ playerId: s.player_id, at: ms(s.at) });
   for (const x of r.slips)

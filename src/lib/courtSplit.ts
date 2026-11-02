@@ -20,7 +20,8 @@ export function bangkokHour(at: number): number {
 
 /** ชั่วโมงที่แต่ละคนอยู่ ค่าเริ่มต้น = ชั่วโมงที่เช็คอินถึงเลิก ตัดให้อยู่ในเวลาเช่า */
 export function rentSpan(rent: { start: number; end: number }, at: number, hours?: { from: number; to: number }): { from: number; to: number } {
-  const fit = (h: number) => Math.min(Math.max(h, rent.start), rent.end - 1);
+  // สนามเช่าเริ่มไม่ตรงชั่วโมงได้ (เช่น 18:30) ปัดให้ตรงช่วงชั่วโมงของสนาม
+  const fit = (h: number) => rent.start + Math.min(Math.max(Math.floor(h - rent.start + 1e-9), 0), Math.max(rent.end - rent.start - 1, 0));
   const from = fit(hours?.from ?? bangkokHour(at));
   const to = Math.max(from + 1, Math.min(hours?.to ?? rent.end, rent.end));
   return { from, to };
@@ -57,4 +58,10 @@ export function rentTotal(rent: { start: number; end: number; perHour: number; c
 export function normalizeCourts(start: number, end: number, courts?: number[]): number[] | undefined {
   const out = Array.from({ length: Math.max(end - start, 0) }, (_, i) => Math.max(1, Math.round(courts?.[i] ?? courts?.[courts.length - 1] ?? 1)));
   return out.every((c) => c === 1) ? undefined : out;
+}
+
+/** แสดงเวลา เช่น 18.5 → "18:30" */
+export function clock(h: number): string {
+  const m = Math.round(h * 60);
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 }
