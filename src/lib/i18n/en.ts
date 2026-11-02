@@ -1465,4 +1465,6 @@ export const en: Record<string, string> = {
   "ประวัติเกม": "Game history",
   "ค้นหาชื่อผู้เล่น (ทุกวัน)": "Search player name (all days)",
   "ยังไม่มีเกมที่จบ": "No finished games yet",
+  "ล้างคำค้น": "Clear search",
+  "ดูวันก่อนหน้าอีก ({n} วัน)": "Show earlier days ({n} more)",
 };
