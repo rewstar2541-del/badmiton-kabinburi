@@ -305,8 +305,6 @@ export function CourtsTab() {
       <div className="space-y-4">
         <SectionTitle>{t("สนาม")}</SectionTitle>
         <NoSession admin />
-        {/* วันที่ไม่มีก๊วน ยังเข้าไปแก้/ลบเกมของวันก่อนได้ */}
-        <FinishedGames byId={byId} />
       </div>
     );
 

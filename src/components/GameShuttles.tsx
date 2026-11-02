@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useStore, useToday } from "@/lib/store";
 import type { Day, Game, Player } from "@/lib/types";
-import { Card, Icon, SectionTitle, inputClass } from "./ui";
+import { Card, Icon, SearchInput, SectionTitle, inputClass } from "./ui";
 import { locale, t } from "@/lib/i18n";
 import { pricesFor, shuttleCountFor, shuttleFee } from "@/lib/billing";
 
@@ -122,62 +122,23 @@ export function GameShuttleRow({ game, byId, day, me, open, onToggle, past = fal
 
 /** หน้าสนาม (แอดมิน): เกมที่จบแล้ววันนี้ กดเปิดดูแล้วแก้จำนวนลูกได้ */
 export function FinishedGames({ byId }: { byId: Map<string, Player> }) {
-  const { state } = useStore();
-  const { day: today } = useToday();
+  const { day } = useToday();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
-  // ดูวันก่อนๆ ได้ (แก้ลูกหรือลบเกมที่ไม่ได้เล่นจริงย้อนหลัง)
-  // null = วันนี้ (ข้ามเที่ยงคืนก็ตามวันใหม่)
-  const [date, setDate] = useState<string | null>(null);
-  const pastDates = state.days
-    .filter((d) => d.date < today.date && d.games.some((g) => g.endedAt))
-    .map((d) => d.date)
-    .sort((x, y) => y.localeCompare(x));
-  // วันที่เลือกไม่มีเกมเหลือแล้ว (เช่นลบเกมสุดท้าย) กลับไปวันนี้
-  const day = date && pastDates.includes(date) ? (state.days.find((d) => d.date === date) ?? today) : today;
-  const isToday = day.date === today.date;
   const done = day.games.filter((g) => g.endedAt).sort((a, b) => (b.endedAt ?? 0) - (a.endedAt ?? 0));
-  if (done.length === 0 && pastDates.length === 0) return null;
+  if (done.length === 0) return null;
   const total = done.reduce((s, g) => s + g.shuttles, 0);
-  const label = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short", year: "2-digit" });
-  const pick = (d: string) => {
-    setDate(d === today.date ? null : d);
-    setEditing(null);
-    setOpen(true);
-  };
   return (
     <>
-      <SectionTitle right={done.length > 0 && <span className="whitespace-nowrap">{t("{n} เกม · {m} ลูก", { n: done.length, m: total })}</span>}>
-        {isToday ? t("เกมที่จบแล้ววันนี้") : t("เกมวันที่ {date}", { date: dateLabel(day.date) })}
-      </SectionTitle>
+      <SectionTitle right={<span className="whitespace-nowrap">{t("{n} เกม · {m} ลูก", { n: done.length, m: total })}</span>}>{t("เกมที่จบแล้ววันนี้")}</SectionTitle>
       {open ? (
         <Card className="p-0 overflow-hidden">
-          {pastDates.length > 0 && (
-            <label className="flex items-center gap-2 border-b border-zinc-100 px-3 py-2 text-sm text-zinc-600">
-              <span className="shrink-0">{t("ดูวัน")}</span>
-              <select className={inputClass} value={day.date} onChange={(e) => pick(e.target.value)}>
-                <option value={today.date}>{t("วันนี้")}</option>
-                {pastDates.map((d) => (
-                  <option key={d} value={d}>
-                    {label(d)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          {done.length === 0 && isToday && <p className="px-4 py-6 text-center text-sm text-zinc-500">{t("วันนี้ยังไม่มีเกมที่จบ")}</p>}
           <ul className="divide-y divide-zinc-100">
             {done.map((g) => (
-              <GameShuttleRow key={g.id} game={g} byId={byId} day={day} past={!isToday} open={editing === g.id} onToggle={(o) => setEditing(o ? g.id : null)} />
+              <GameShuttleRow key={g.id} game={g} byId={byId} day={day} open={editing === g.id} onToggle={(o) => setEditing(o ? g.id : null)} />
             ))}
           </ul>
-          <button
-            className="min-h-11 w-full border-t border-zinc-100 text-sm font-medium text-zinc-500"
-            onClick={() => {
-              setOpen(false);
-              setDate(null);
-            }}
-          >
+          <button className="min-h-11 w-full border-t border-zinc-100 text-sm font-medium text-zinc-500" onClick={() => setOpen(false)}>
             {t("ซ่อน")}
           </button>
         </Card>
@@ -186,10 +147,66 @@ export function FinishedGames({ byId }: { byId: Map<string, Player> }) {
           className="w-full min-h-11 rounded-2xl border border-dashed border-zinc-300 px-3 py-2.5 text-sm font-medium text-zinc-600"
           onClick={() => setOpen(true)}
         >
-          {pastDates.length ? t("ดู / แก้ / ลบเกม (ย้อนหลังได้)") : t("ดู / แก้ / ลบเกม")}
+          {t("ดู / แก้ / ลบเกม")}
         </button>
       )}
     </>
+  );
+}
+
+/** เมนูก๊วน > ประวัติเกม (แอดมิน): เลือกวัน หรือค้นชื่อทุกวัน แล้วแก้ลูก/ลบเกมที่ไม่ได้เล่นจริง */
+export function GamesHistory() {
+  const { state } = useStore();
+  const { day: today } = useToday();
+  const [date, setDate] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
+  const byId = new Map(state.players.map((p) => [p.id, p]));
+  const dates = state.days
+    .filter((d) => d.games.some((g) => g.endedAt))
+    .map((d) => d.date)
+    .sort((x, y) => y.localeCompare(x));
+  if (!dates.length) return <Card className="py-10 text-center text-sm text-zinc-500">{t("ยังไม่มีเกมที่จบ")}</Card>;
+  // วันที่เลือกไม่มีเกมเหลือแล้ว (เช่นลบเกมสุดท้าย) ไปวันล่าสุดที่มีเกม
+  const picked = date && dates.includes(date) ? date : dates[0];
+  const needle = q.trim().toLowerCase();
+  const match = (g: Game) => g.playerIds.some((id) => (byId.get(id)?.name ?? "").toLowerCase().includes(needle));
+  // ค้นชื่อ: หาทุกวัน ไม่ค้น: วันที่เลือก
+  const groups = (needle ? dates : [picked])
+    .map((d) => {
+      const day = state.days.find((x) => x.date === d)!;
+      const games = day.games.filter((g) => g.endedAt && (!needle || match(g))).sort((a, b) => (b.endedAt ?? 0) - (a.endedAt ?? 0));
+      return { day, games };
+    })
+    .filter((x) => x.games.length);
+  const label = (d: string) => (d === today.date ? t("วันนี้") : new Date(`${d}T00:00:00`).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short", year: "2-digit" }));
+  return (
+    <div className="space-y-3">
+      <SearchInput value={q} onChange={(v) => { setQ(v); setEditing(null); }} placeholder={t("ค้นหาชื่อผู้เล่น (ทุกวัน)")} />
+      {!needle && (
+        <select className={inputClass} value={picked} onChange={(e) => { setDate(e.target.value); setEditing(null); }} aria-label={t("ดูวัน")}>
+          {dates.map((d) => (
+            <option key={d} value={d}>
+              {label(d)}
+            </option>
+          ))}
+        </select>
+      )}
+      {groups.map(({ day, games }) => (
+        <div key={day.date} className="space-y-1.5">
+          <div className="flex items-baseline justify-between px-1">
+            <span className="text-sm font-semibold">{label(day.date)}</span>
+            <span className="whitespace-nowrap text-xs text-zinc-500">{t("{n} เกม · {m} ลูก", { n: games.length, m: games.reduce((s, g) => s + g.shuttles, 0) })}</span>
+          </div>
+          <ul className="divide-y divide-zinc-100 overflow-hidden rounded-3xl bg-white ring-1 ring-zinc-200">
+            {games.map((g) => (
+              <GameShuttleRow key={g.id} game={g} byId={byId} day={day} past={day.date !== today.date} open={editing === g.id} onToggle={(o) => setEditing(o ? g.id : null)} />
+            ))}
+          </ul>
+        </div>
+      ))}
+      {needle && groups.length === 0 && <Card className="py-8 text-center text-sm text-zinc-500">{t("ไม่พบชื่อที่ค้นหา")}</Card>}
+    </div>
   );
 }
 
