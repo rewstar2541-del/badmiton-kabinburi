@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { billFor, datesToFreeze, markPaid, shuttleFee } from "../billing";
+import { billFor, datesToFreeze, markPaid, owedBefore, owedDays, shuttleFee } from "../billing";
 import { prepare, reducer, EMPTY_STATE, type State } from "../state";
 import { DEFAULT_SETTINGS as S, addYears, annualExpiryFor, annualStatus, type Day, type Game, type MonthlyPayments, type Player } from "../types";
 
@@ -25,6 +25,25 @@ function day(date: string, games: Game[], paid = false): Day {
 }
 
 describe("billing", () => {
+  it("ค้างจ่ายจากวันก่อน แยกวัน ไม่รวมวันนี้ และรวมแขกไว้ที่คนพามา", () => {
+    const guest: Player = { id: "g", name: "แขก", level: 3, guestOf: "d" };
+    const d1 = day("2026-10-04", [game("g1", 1)]);
+    const d2 = day("2026-10-11", [game("g2", 1)], true);
+    const d3 = { ...day("2026-10-18", [game("g3", 1, ["d", "g", "x", "y"])]), checkIns: [{ playerId: "d", at: 0 }, { playerId: "g", at: 0 }] };
+    const today = day("2026-10-25", [game("g4", 1)]);
+    const days = [d1, d2, d3, today];
+    expect(owedDays(days, "2026-10-25", daily, S, M).map((x) => x.date)).toEqual(["2026-10-04", "2026-10-18"]);
+    const rows = owedBefore(days, "2026-10-25", [daily, monthly, guest], S, M);
+    const d = rows.find((r) => r.player.id === "d")!;
+    expect(rows.some((r) => r.player.id === "g")).toBe(false);
+    expect(d.dates).toEqual(["2026-10-04", "2026-10-18"]);
+    expect(d.amount).toBe(owedDays(days, "2026-10-25", daily, S, M).reduce((s, x) => s + x.amount, 0) + owedDays(days, "2026-10-25", guest, S, M).reduce((s, x) => s + x.amount, 0));
+    // รับเงินถึงวันค้างล่าสุด ไม่ปิดยอดวันนี้
+    const after = markPaid(days, "2026-10-18", "d", 9);
+    expect(after.find((x) => x.date === "2026-10-25")!.checkIns.find((c) => c.playerId === "d")!.paidAt).toBeUndefined();
+    expect(owedDays(after, "2026-10-25", daily, S, M)).toEqual([]);
+  });
+
   it("ลูกแรก 30 ลูกต่อไป 25", () => {
     expect(shuttleFee(0, S)).toBe(0);
     expect(shuttleFee(1, S)).toBe(30);
