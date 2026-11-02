@@ -60,7 +60,7 @@ export function MyBillTab() {
                   bill.shuttleFee,
                 ] as const,
                 ...(day.rent ? [] : [[t("ค่าน้ำ"), bill.drinkFee] as const])] : []),
-                ...prev.map((d) => [t("ค้าง {date}", { date: shortDate(d.date) }), d.amount] as const),
+                ...prev.map((d) => [t("ค้าง {date}", { date: shortDate(d.date, d.date.slice(0, 4) !== date.slice(0, 4)) }), d.amount] as const),
                 ...bill.guests.map((g) => [t("แขก: {name}", { name: g.name }), g.amount] as const),
               ].map(([label, v]) => (
                 <div key={label} className="flex justify-between text-white/80">

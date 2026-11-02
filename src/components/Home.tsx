@@ -428,7 +428,7 @@ export function AdminHome() {
   const unpaidNoSlip = unpaid.filter((id) => !slips.people.includes(id));
   // ค้างจ่ายจากวันก่อน (คนที่ส่งสลิปแล้วอยู่ในแถวสลิปรอตรวจ)
   const owed = useMemo(() => owedBefore(state.days, date, state.players, state.settings, state.monthly), [state.days, date, state.players, state.settings, state.monthly]);
-  const owedNoSlip = owed.filter((r) => !slips.people.includes(r.player.id));
+  const owedNoSlip = owed.filter((r) => !slips.people.includes(r.player.id) && !unpaidNoSlip.includes(r.player.id));
 
   const todo: Row[] = [
     ...(slips.n

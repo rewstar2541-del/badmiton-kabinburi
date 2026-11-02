@@ -124,12 +124,14 @@ export interface OwedRow {
   /** วันที่ค้าง รวมวันของแขกที่พามา */
   dates: string[];
   amount: number;
+  /** วันค้างล่าสุดของตัวเอง (ไม่นับวันที่มีแค่แขก) ใช้ย้อนการรับเงิน */
+  ownLast?: string;
 }
 
 /** ทุกคนที่ยังค้างจ่ายจากวันก่อน `beforeDate` (ยอดแขกรวมในแถวคนพามา) มากไปน้อย */
 export function owedBefore(days: Day[], beforeDate: string, players: Player[], s: Settings, monthly: MonthlyPayments): OwedRow[] {
   const byId = new Map(players.map((p) => [p.id, p]));
-  const rows = new Map<string, { dates: Set<string>; amount: number }>();
+  const rows = new Map<string, { dates: Set<string>; amount: number; ownLast?: string }>();
   for (const p of players) {
     const list = owedDays(days, beforeDate, p, s, monthly);
     if (!list.length) continue;
@@ -139,10 +141,11 @@ export function owedBefore(days: Day[], beforeDate: string, players: Player[], s
       r.dates.add(d.date);
       r.amount += d.amount;
     });
+    if (host === p) r.ownLast = list[list.length - 1].date;
     rows.set(host.id, r);
   }
   return [...rows]
-    .map(([id, r]) => ({ player: byId.get(id)!, dates: [...r.dates].sort(), amount: r.amount }))
+    .map(([id, r]) => ({ player: byId.get(id)!, dates: [...r.dates].sort(), amount: r.amount, ownLast: r.ownLast }))
     .sort((a, b) => b.amount - a.amount || a.player.name.localeCompare(b.player.name, "th"));
 }
 
