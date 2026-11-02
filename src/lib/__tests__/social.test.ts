@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { nextMatch } from "../matchmaking";
-import { activePairs, canSelfCheckIn, partnerStats, signupQueue, waitingPosition } from "../social";
+import { activePairs, canSelfCheckIn, gameHistory, partnerStats, signupQueue, waitingPosition } from "../social";
 import { EMPTY_STATE, type State } from "../state";
 import type { Day, Player } from "../types";
 
@@ -70,5 +70,30 @@ describe("sign-up cap", () => {
     expect(canSelfCheckIn(day(3, ["a", "b"]), "d")).toBe(false);
     expect(canSelfCheckIn(day(4, ["a"]), "x")).toBe(false);
     expect(canSelfCheckIn(day(5, ["a"]), "x")).toBe(true);
+  });
+});
+
+describe("game history", () => {
+  const g = (id: string, ids: string[], startedAt: number, extra: object = {}) =>
+    ({ id, court: 1, playerIds: ids as [string, string, string, string], startedAt, shuttles: 1, ...extra });
+  const state: State = {
+    ...EMPTY_STATE,
+    days: [
+      { date: "2026-10-01", checkIns: [], drinks: [], games: [g("1", ["me", "b", "c", "d"], 10, { endedAt: 20, winner: "A" })] },
+      { date: "2026-10-02", checkIns: [], drinks: [], games: [
+        g("2", ["c", "d", "b", "me"], 30, { endedAt: 40, winner: "A" }),
+        g("3", ["me", "x", "c", "d"], 50, { endedAt: 60, draw: true }),
+        g("4", ["me", "x", "c", "d"], 70, { endedAt: 80 }),
+        g("5", ["y", "z", "me", "b"], 90),
+        g("6", ["y", "z", "c", "b"], 95),
+      ] },
+    ],
+  };
+  it("lists my games newest first with mate, opponents and result", () => {
+    const h = gameHistory(state, "me");
+    expect(h.map((x) => x.result)).toEqual(["playing", "unknown", "draw", "loss", "win"]);
+    expect(h[3]).toMatchObject({ date: "2026-10-02", mate: "b", opponents: ["c", "d"] });
+    expect(h[4]).toMatchObject({ mate: "b", opponents: ["c", "d"] });
+    expect(h[0]).toMatchObject({ mate: "b", opponents: ["y", "z"] });
   });
 });
