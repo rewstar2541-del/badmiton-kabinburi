@@ -104,12 +104,15 @@ const parseTime = (v: string) => {
 export function RentFields({ value, onChange }: { value: RentDraft; onChange: (d: RentDraft) => void }) {
   // เปลี่ยนเวลาเริ่ม/เลิก: จำนวนคอร์ทของชั่วโมงเดิมยังอยู่ ชั่วโมงใหม่ใช้ค่าของชั่วโมงที่ใกล้ที่สุด
   const reshape = (start: number, end: number) => {
-    const at = (h: number) => value.courts[Math.min(Math.max(h - value.start, 0), value.courts.length - 1)] ?? 1;
+    const at = (h: number) => value.courts[Math.min(Math.max(Math.floor(h + 1e-9) - Math.floor(value.start + 1e-9), 0), value.courts.length - 1)] ?? 1;
     onChange({ ...value, start, end, courts: slots({ start, end }).map((h) => at(h)) });
   };
   const setCourts = (i: number, n: number) => onChange({ ...value, courts: value.courts.map((c, j) => (j === i ? Math.min(Math.max(n, 1), 20) : c)) });
   const price = Number(value.perHour) || 0;
-  const total = value.courts.reduce((sum, c) => sum + c * price, 0);
+  // ชั่วโมงแรก/สุดท้ายไม่เต็มคิดตามสัดส่วน (19:15-19:45 = ครึ่งชั่วโมง)
+  const hs = slots(value);
+  const len = (i: number) => Math.min(Math.floor(hs[i] + 1e-9) + 1, value.end) - hs[i];
+  const total = Math.round(value.courts.reduce((sum, c, i) => sum + c * price * (len(i) || 0), 0));
   return (
     <>
       <div className="grid grid-cols-2 gap-2">
@@ -139,7 +142,7 @@ export function RentFields({ value, onChange }: { value: RentDraft; onChange: (d
         )}
         {value.courts.map((c, i) => (
           <div key={value.start + i} className="flex items-center gap-1 text-sm">
-            <span className="w-[5rem] shrink-0 whitespace-nowrap text-[13px]">{`${hh(value.start + i)}-${hh(value.start + i + 1)}`}</span>
+            <span className="w-[5.5rem] shrink-0 whitespace-nowrap text-[13px]">{`${hh(hs[i] ?? value.start)}-${hh((hs[i] ?? value.start) + (len(i) || 1))}`}</span>
             <button type="button" aria-label={t("ลดคอร์ท")} disabled={c <= 1} className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-lg font-bold ring-1 ring-zinc-200 disabled:opacity-40" onClick={() => setCourts(i, c - 1)}>
               −
             </button>
@@ -147,7 +150,7 @@ export function RentFields({ value, onChange }: { value: RentDraft; onChange: (d
             <button type="button" aria-label={t("เพิ่มคอร์ท")} className="grid size-11 shrink-0 place-items-center rounded-xl bg-white text-lg font-bold ring-1 ring-zinc-200" onClick={() => setCourts(i, c + 1)}>
               +
             </button>
-            <span className="flex-1 whitespace-nowrap text-right text-xs text-zinc-500">{price ? (c * price).toLocaleString() : ""}</span>
+            <span className="flex-1 whitespace-nowrap text-right text-xs text-zinc-500">{price ? Math.round(c * price * (len(i) || 0)).toLocaleString() : ""}</span>
           </div>
         ))}
       </div>
