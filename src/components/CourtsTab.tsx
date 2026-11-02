@@ -153,7 +153,11 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
 /** คู่ที่จัดไว้ หน้าตาเหมือนสนามจริง ทีม A ซ้าย ทีม B ขวา (คนที่ลงไม่ได้ขีดฆ่าพื้นแดง) */
 function QueuedTeams({ q, byId, blocked }: { q: Pick<QueuedGame, "playerIds">; byId: Map<string, Player>; blocked: Set<string> }) {
   return (
-    <div className="court-surface flex min-w-0 flex-1 gap-1 rounded-2xl px-1.5">
+    // จางลงและมีขอบประ ไม่ให้สับสนกับสนามที่กำลังเล่นจริง
+    <div className="court-surface relative flex min-w-0 flex-1 gap-1 rounded-2xl px-1.5 pt-3 opacity-80 outline-2 outline-offset-2 outline-zinc-400 outline-dashed">
+      <span className="absolute -top-2.5 left-1/2 z-10 -translate-x-1/2 rounded-full bg-white px-2 py-0.5 text-[10px] font-bold whitespace-nowrap text-zinc-700 shadow-sm ring-1 ring-zinc-300">
+        ⏳ {t("รอลงสนาม · ยังไม่ได้เล่น")}
+      </span>
       <CourtSide ids={q.playerIds.slice(0, 2)} byId={byId} team="A" compact blocked={blocked} />
       <CourtSide ids={q.playerIds.slice(2)} byId={byId} team="B" compact blocked={blocked} />
     </div>
@@ -203,7 +207,7 @@ function CourtQueue({
           const blocked = new Set(queueBlockers(day, q));
           const ready = blocked.size === 0;
           return (
-            <li key={q.queuedId ?? "auto"} className={`space-y-2 rounded-2xl p-2 ${i === 0 ? "bg-lime/25" : "bg-zinc-50"}`}>
+            <li key={q.queuedId ?? "auto"} className={`space-y-2 rounded-2xl p-2 pt-4 ${i === 0 ? "bg-lime/25" : "bg-zinc-50"}`}>
               <div className="flex items-center gap-2">
                 {rows.length > 1 && (
                   <span className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${i === 0 ? "bg-lime text-ink" : "bg-zinc-200 text-zinc-600"}`}>
