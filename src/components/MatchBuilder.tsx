@@ -64,6 +64,8 @@ export function MatchBuilder({
   // แตะช่องหนึ่งแล้วแตะอีกช่อง = สลับตำแหน่ง (ซ้าย/ขวา/บน/ล่าง) ชื่อไม่หลุด แตะช่องเดิมซ้ำ = ยกเลิกเลือก
   const tapSlot = (i: number) => {
     if (selected === null) return setSelected(i);
+    // ช่องที่เลือกไว้ว่าง: แตะช่องอื่น = เปลี่ยนไปเลือกช่องนั้น (ไม่ย้ายชื่อ)
+    if (selected !== i && !slots[selected]) return setSelected(i);
     if (selected !== i) {
       const next = [...slots];
       [next[selected], next[i]] = [next[i], next[selected]];
@@ -113,7 +115,7 @@ export function MatchBuilder({
             <>
               <Avatar name={p.name} photo={p.photo} size={28} ring />
               <span className="min-w-0 flex-1 truncate text-sm font-semibold">{p.name}</span>
-              {on ? <span className="w-6" /> : <LevelBadge level={p.level} />}
+              {on ? <span className="w-8" /> : <LevelBadge level={p.level} />}
             </>
           ) : (
             <span className="flex h-7 flex-1 items-center justify-center text-xs opacity-70">{on ? t("แตะชื่อด้านล่าง") : t("ว่าง")}</span>
@@ -123,7 +125,7 @@ export function MatchBuilder({
           <button
             onClick={() => clearSlot(i)}
             aria-label={t("เอาออก")}
-            className="absolute top-1/2 right-1 grid size-7 -translate-y-1/2 place-items-center rounded-full bg-zinc-200 text-zinc-600 active:scale-95"
+            className="absolute top-1/2 right-0 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-zinc-200 text-zinc-600 active:scale-95"
           >
             <Icon.X width={14} height={14} />
           </button>

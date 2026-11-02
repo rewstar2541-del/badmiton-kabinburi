@@ -177,7 +177,7 @@ function QueuedTeams({ q, byId, blocked }: { q: Pick<QueuedGame, "playerIds">; b
   return (
     <div className="flex min-w-0 flex-1 items-center gap-2">
       {side(q.playerIds.slice(0, 2), "A")}
-      <span className="shrink-0 text-[11px] font-bold text-zinc-400">VS</span>
+      <span className="shrink-0 text-xs font-bold text-zinc-400">VS</span>
       {side(q.playerIds.slice(2), "B")}
     </div>
   );
@@ -295,17 +295,18 @@ type Result = "A" | "B" | "draw" | "none";
  * จบก๊วนตอนที่ยังมีเกมเล่นอยู่: ให้กดผลเกมสุดท้ายของแต่ละสนามก่อน (ไม่เริ่มคู่ต่อไป)
  * แล้วค่อยล้างคิวและไปหน้าคิดเงิน
  */
-function EndSessionSheet({ games, byId, onClose, onDone }: { games: Game[]; byId: Map<string, Player>; onClose: () => void; onDone: (r: Map<string, Result>) => void }) {
+function EndSessionSheet({ games, byId, queued, onClose, onDone }: { games: Game[]; byId: Map<string, Player>; queued: number; onClose: () => void; onDone: (r: Map<string, Result>) => void }) {
+  const [done, setDone] = useState(false);
   const [res, setRes] = useState<Map<string, Result>>(new Map());
   const choose = (id: string, r: Result) => setRes(new Map(res).set(id, r));
   const all = games.every((g) => res.has(g.id));
-  const opt = (g: Game, r: Result, label: string, on: string) => {
+  const opt = (g: Game, r: Result, label: string, on: string, off: string) => {
     const sel = res.get(g.id) === r;
     return (
       <button
         key={r}
         onClick={() => choose(g.id, r)}
-        className={`flex min-h-11 items-center justify-center gap-1 rounded-full px-2 text-sm font-semibold active:scale-95 ${sel ? `${on} ring-2 ring-ink` : "bg-zinc-100 text-zinc-600"}`}
+        className={`flex min-h-11 items-center justify-center gap-1 rounded-full px-2 text-sm font-semibold active:scale-95 ${sel ? `${on} ring-2 ring-ink` : off} ${r === "draw" ? "min-w-16 px-4" : ""}`}
       >
         {sel && <Icon.Check width={14} height={14} />}
         {label}
@@ -325,22 +326,28 @@ function EndSessionSheet({ games, byId, onClose, onDone }: { games: Game[]; byId
               <CourtSide ids={g.playerIds.slice(2)} byId={byId} team="B" compact />
             </div>
             <div className="grid grid-cols-[1fr_auto_1fr] gap-2">
-              {opt(g, "A", t("ทีม {team} ชนะ", { team: "A" }), "bg-lime text-ink")}
-              {opt(g, "draw", t("เสมอ"), "bg-zinc-200 text-ink")}
-              {opt(g, "B", t("ทีม {team} ชนะ", { team: "B" }), "bg-sky-300 text-ink")}
+              {opt(g, "A", t("ทีม {team} ชนะ", { team: "A" }), "bg-lime text-ink", "bg-lime/35 text-ink")}
+              {opt(g, "draw", t("เสมอ"), "bg-zinc-300 text-ink", "bg-zinc-100 text-zinc-700 ring-1 ring-zinc-300")}
+              {opt(g, "B", t("ทีม {team} ชนะ", { team: "B" }), "bg-sky-300 text-ink", "bg-sky-300/35 text-ink")}
             </div>
             <button
               onClick={() => choose(g.id, "none")}
-              className={`w-full text-center text-xs underline-offset-2 ${res.get(g.id) === "none" ? "font-semibold text-ink underline" : "text-zinc-400"}`}
+              className={`min-h-11 w-full rounded-full text-center text-sm ${res.get(g.id) === "none" ? "bg-zinc-200 font-semibold text-ink ring-2 ring-ink" : "text-zinc-500"}`}
             >
               {t("จบไม่บันทึกผล")}
             </button>
           </div>
         ))}
+      <p className="text-center text-xs text-zinc-500">
+        {queued ? t("จะล้างคิวที่จัดไว้ {n} คู่ ทุกคนที่ยังไม่จ่ายจะเป็นพัก แล้วไปหน้าคิดเงิน", { n: queued }) : t("ทุกคนที่ยังไม่จ่ายจะเป็นพัก แล้วไปหน้าคิดเงิน")}
+      </p>
       <Button
-        disabled={!all}
+        disabled={!all || done}
         className="w-full !rounded-3xl !bg-red-600 !py-4 !text-base !text-white disabled:opacity-40"
-        onClick={() => onDone(res)}
+        onClick={() => {
+          setDone(true);
+          onDone(res);
+        }}
       >
         🏁 {all ? t("จบก๊วน ไปหน้าคิดเงิน") : t("เลือกผลให้ครบทุกสนามก่อน")}
       </Button>
@@ -371,6 +378,8 @@ export function CourtsTab() {
   };
   // จบก๊วนแล้ว: ไม่มีเกม ไม่มีคนรอ ไม่มีคิวสนาม เหลือแต่คนพักที่ยังไม่จ่าย
   const [ending, setEnding] = useState(false);
+  // เกมจบหมดจากอีกเครื่องตอนเปิดหน้าต่างค้าง: ปิดไป ไม่ให้เด้งขึ้นเองตอนเริ่มเกมใหม่
+  if (ending && active.size === 0) setEnding(false);
   const finish = (results: Map<string, Result>) => {
     day.games
       .filter((g) => !g.endedAt)
@@ -484,7 +493,7 @@ export function CourtsTab() {
       </div>
 
       {ending && active.size > 0 && (
-        <EndSessionSheet games={[...active.values()]} byId={byId} onClose={() => setEnding(false)} onDone={finish} />
+        <EndSessionSheet games={[...active.values()]} byId={byId} queued={(day.queued ?? []).length} onClose={() => setEnding(false)} onDone={finish} />
       )}
 
       {building !== null && (

@@ -1470,4 +1470,6 @@ export const en: Record<string, string> = {
   "บันทึกผลเกมสุดท้ายก่อนจบก๊วน": "Record the last games before ending",
   "จบก๊วน ไปหน้าคิดเงิน": "End session · go to billing",
   "เลือกผลให้ครบทุกสนามก่อน": "Pick a result for every court first",
+  "จะล้างคิวที่จัดไว้ {n} คู่ ทุกคนที่ยังไม่จ่ายจะเป็นพัก แล้วไปหน้าคิดเงิน": "Clears {n} queued pair(s); everyone unpaid is set to resting, then billing opens",
+  "ทุกคนที่ยังไม่จ่ายจะเป็นพัก แล้วไปหน้าคิดเงิน": "Everyone unpaid is set to resting, then billing opens",
 };
