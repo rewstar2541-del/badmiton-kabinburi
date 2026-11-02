@@ -161,9 +161,14 @@ function QueuedTeams({ q, byId, blocked }: { q: Pick<QueuedGame, "playerIds">; b
           <div key={id} className="flex min-w-0 items-center gap-1.5">
             <span className={`h-5 w-1 shrink-0 rounded-full ${team === "A" ? "bg-lime" : "bg-sky-300"}`} />
             <Avatar name={p?.name ?? "?"} photo={p?.photo} size={22} />
-            <span className={`truncate text-sm font-medium ${out ? "text-red-500 line-through" : ""}`} title={p?.name}>
+            <span className={`min-w-0 flex-1 truncate text-sm font-medium ${out ? "text-red-500 line-through" : ""}`} title={p?.name}>
               {p?.name ?? "?"}
             </span>
+            {p && (
+              <span className="shrink-0">
+                <LevelBadge level={p.level} />
+              </span>
+            )}
           </div>
         );
       })}
