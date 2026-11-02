@@ -1460,4 +1460,9 @@ export const en: Record<string, string> = {
   "เสมอ {n}": "{n} draws",
   "ไม่มีผล {n}": "{n} no result",
   "นับตั้งแต่ {date}": "Since {date}",
+  "เกมวันที่ {date}": "Games on {date}",
+  "ดูวัน": "Day",
+  "วันนี้ยังไม่มีเกมที่จบ": "No finished games today yet",
+  "ดู / แก้ / ลบเกม (ย้อนหลังได้)": "View / edit / delete games (past days too)",
+  "เกมวันก่อน: คนที่ยังไม่จ่าย ยอดค้างจะเปลี่ยนตาม": "Past day: unpaid players' outstanding amounts will change too",
 };
