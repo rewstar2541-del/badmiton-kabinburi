@@ -489,9 +489,10 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       return check(await db.from("games").update({ shuttles: Math.max(0, a.shuttles) }).eq("id", a.gameId));
     case "endGame":
     {
-      const res = await db.from("games").update({ ended_at: iso(a._at), winner: a.winner ?? null, ...(a.draw ? { draw: true } : {}) }).eq("id", a.gameId);
+      // .is ended_at null: ผู้เล่นในสนามกดผลไปก่อนแล้ว ไม่ทับผลของผู้เล่น
+      const res = await db.from("games").update({ ended_at: iso(a._at), winner: a.winner ?? null, ...(a.draw ? { draw: true } : {}) }).eq("id", a.gameId).is("ended_at", null);
       // ยังไม่ได้รัน supabase/sql/game_draw.sql: บันทึกจบเกมไปก่อน (ผลเสมอจะไม่ถูกเก็บ)
-      if (res.error && a.draw) return check(await db.from("games").update({ ended_at: iso(a._at), winner: null }).eq("id", a.gameId));
+      if (res.error && a.draw) return check(await db.from("games").update({ ended_at: iso(a._at), winner: null }).eq("id", a.gameId).is("ended_at", null));
       return check(res);
     }
     case "setResult":
@@ -825,14 +826,14 @@ export async function selfService(db: SupabaseClient, action: SelfAction, player
 /** ผู้เล่นในสนามกดผลเกมเอง แล้วให้คู่ถัดไปลงต่อ (ถ้าส่ง next มา) คืนข้อความผิดพลาด หรือ null */
 export async function reportGame(db: SupabaseClient, playerId: string, pin: string, gameId: string, result: "win" | "draw" | "lose", next?: { playerIds: string[]; queuedId?: string }) {
   const { data, error } = await db.rpc("report_game", { p_player: playerId, p_pin: pin, p_game: gameId, p_result: result, p_next: next?.playerIds ?? null, p_queued: next?.queuedId ?? null });
-  if (error) return error.code === "PGRST202" ? "ยังกดผลเองไม่ได้ ต้องรัน SQL supabase/sql/self_report.sql ก่อน" : error.message;
+  if (error) return error.code === "PGRST202" ? "ยังกดผลเองไม่ได้ ให้แอดมินช่วยก่อน" : "บันทึกไม่สำเร็จ เช็กเน็ตแล้วลองใหม่";
   return (data as string | null) ?? null;
 }
 
 /** อีกทีมกด "ไม่ตรง" กับผลที่ผู้เล่นกดไว้ คืนข้อความผิดพลาด หรือ null */
 export async function disputeGame(db: SupabaseClient, playerId: string, pin: string, gameId: string) {
   const { data, error } = await db.rpc("dispute_game", { p_player: playerId, p_pin: pin, p_game: gameId });
-  if (error) return error.code === "PGRST202" ? "ยังแจ้งไม่ตรงไม่ได้ ต้องรัน SQL supabase/sql/self_report.sql ก่อน" : error.message;
+  if (error) return error.code === "PGRST202" ? "ยังแจ้งไม่ตรงไม่ได้ ให้แอดมินช่วยก่อน" : "บันทึกไม่สำเร็จ เช็กเน็ตแล้วลองใหม่";
   return (data as string | null) ?? null;
 }
 

@@ -10,7 +10,7 @@ import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, Sheet } from "./u
 import { t } from "@/lib/i18n";
 import { MyRestCard } from "./RestButton";
 import { PendingNotice, PickMe, savedPin, useMe } from "./PickMe";
-import { DISPUTE_MS, disputable, type GameReport } from "@/lib/state";
+import { DISPUTE_MS, disputable, teamOf, type GameReport } from "@/lib/state";
 import { goToTab } from "./Membership";
 import { FinishedGames } from "./GameShuttles";
 
@@ -610,7 +610,7 @@ function NoSession({ admin = false }: { admin?: boolean }) {
 }
 
 /** ผู้เล่นในสนามกดผลเอง (ตอนแอดมินลงเล่นหมด) คนเดียวใน 4 คนกดก็พอ คู่ถัดไปลงต่อทันที */
-function SelfReport({ game, playerId }: { game: Game; playerId: string }) {
+function SelfReport({ game, playerId, onDone }: { game: Game; playerId: string; onDone: (msg: string) => void }) {
   const { state, report } = useStore();
   const { day } = useToday();
   const [busy, setBusy] = useState(false);
@@ -622,26 +622,28 @@ function SelfReport({ game, playerId }: { game: Game; playerId: string }) {
     const next = courtPlan(day, state.players, courtList(state.settings), game.court).get(game.court);
     const ok = next && courtList(state.settings).includes(game.court) && queueBlockers(day, next, game.id).length === 0;
     setBusy(true);
+    setError("");
     const err = await report(playerId, savedPin.get(), game, r, ok ? { playerIds: next.playerIds, queuedId: next.queuedId } : undefined);
     setBusy(false);
-    setError(err ? t(err) : "");
+    if (err) setError(t(err));
+    else onDone(`${t("บันทึกผลแล้ว: {r}", { r: label[r] })} · ${ok ? t("คู่ต่อไปลงสนามแล้ว") : t("คู่ต่อไปยังลงไม่ได้ รอแอดมินจัด")}`);
   };
   return (
     <div className="space-y-2">
-      <p className="text-center text-sm text-zinc-500">{t("เล่นจบแล้ว? กดผลได้เลย")}</p>
-      <div className="grid grid-cols-[1fr_auto_1fr] gap-2">
-        <Button variant="accent" disabled={busy} onClick={() => send("win")} className="flex items-center justify-center gap-1.5 !px-2">
+      <p className="text-center text-sm text-zinc-500">{busy ? t("กำลังบันทึก...") : t("เล่นจบแล้ว? กดผลได้เลย")}</p>
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-3">
+        <Button variant="accent" disabled={busy} onClick={() => send("win")} className="flex items-center justify-center gap-1.5 !px-2 whitespace-nowrap">
           <Icon.Trophy width={16} height={16} /> {label.win}
         </Button>
-        <Button disabled={busy} onClick={() => send("draw")} className="!bg-zinc-100 !px-4 text-zinc-700">
+        <Button variant="secondary" disabled={busy} onClick={() => send("draw")} className="!px-4">
           {label.draw}
         </Button>
-        <Button disabled={busy} onClick={() => send("lose")} className="!bg-red-50 !px-2 text-red-700">
+        <Button variant="danger" disabled={busy} onClick={() => send("lose")} className="!px-2 whitespace-nowrap">
           {label.lose}
         </Button>
       </div>
       {error && <p className="text-center text-sm text-red-600" role="alert">{error}</p>}
-      <p className="text-center text-xs text-zinc-400">{t("คนใดคนหนึ่งใน 4 คนกดก็พอ ถ้าผิด อีกทีมกด \"ไม่ตรง\" ได้")}</p>
+      <p className="text-center text-sm text-zinc-500">{t("คนใดคนหนึ่งใน 4 คนกดก็พอ ถ้าผิด อีกทีมกด \"ไม่ตรง\" ได้")}</p>
     </div>
   );
 }
@@ -653,21 +655,27 @@ function DisputeBanner({ playerId }: { playerId: string }) {
   const now = useNow(1000);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  useEffect(() => {
+    if (!msg) return;
+    const id = setTimeout(() => setMsg(""), 6000);
+    return () => clearTimeout(id);
+  }, [msg]);
   const g = disputable(day, playerId, now);
-  if (!g) return msg ? <p className="rounded-2xl bg-orange-50 px-4 py-3 text-sm text-orange-800" role="status">{msg}</p> : null;
+  if (!g) return msg ? <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800" role="status">{msg}</p> : null;
   const name = (id?: string) => state.players.find((p) => p.id === id)?.name ?? "?";
-  const team = (tm: "A" | "B") => (tm === "A" ? g.playerIds.slice(0, 2) : g.playerIds.slice(2)).map(name).join(" ");
-  const result = g.draw ? t("เสมอ") : g.winner ? t("ทีม {team} ({names}) ชนะ", { team: g.winner, names: team(g.winner) }) : t("ไม่นับผล");
+  // บอกเทียบกับทีมของคนที่ดู จะได้เห็นทันทีว่าผิดไหม
+  const result = g.draw ? t("เสมอ") : !g.winner ? t("ไม่นับผล") : g.winner === teamOf(g, playerId) ? t("ทีมคุณชนะ") : t("ทีมคุณแพ้");
   const left = Math.max(0, Math.ceil((DISPUTE_MS - (now - (g.endedAt ?? now))) / 1000));
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-orange-300 bg-orange-50 px-4 py-3 text-sm">
+    <div className="flex items-center gap-3 rounded-2xl border-2 border-amber-400 bg-amber-50 px-4 py-3 text-sm text-amber-800">
       <div className="min-w-0 flex-1">
         <div>{t("{name} กดผลสนาม {n}", { name: name(g.reportedBy), n: g.court })}</div>
-        <div className="font-semibold">{result}</div>
-        <div className="text-xs text-orange-700">{t("ถ้าไม่ตรง กดได้อีก {m}:{s} นาที", { m: Math.floor(left / 60), s: String(left % 60).padStart(2, "0") })}</div>
+        <div className="text-base font-bold">{result}</div>
+        <div className="font-semibold">{t("ถ้าไม่ตรง กดได้อีก {m}:{s} นาที", { m: Math.floor(left / 60), s: String(left % 60).padStart(2, "0") })}</div>
       </div>
-      <button
-        className="min-h-11 shrink-0 rounded-xl border-2 border-orange-500 bg-white px-3 font-semibold text-orange-700 active:scale-95 disabled:opacity-50"
+      <Button
+        variant="warn"
+        className="min-h-11 shrink-0 !bg-white !px-3"
         disabled={busy}
         onClick={async () => {
           setBusy(true);
@@ -677,7 +685,7 @@ function DisputeBanner({ playerId }: { playerId: string }) {
         }}
       >
         {t("ไม่ตรง")}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -688,6 +696,12 @@ function PlayerCourts() {
   const { day } = useToday();
   const [me, setMe] = useMe();
   const now = useNow();
+  const [reported, setReported] = useState("");
+  useEffect(() => {
+    if (!reported) return;
+    const id = setTimeout(() => setReported(""), 8000);
+    return () => clearTimeout(id);
+  }, [reported]);
   const player = state.players.find((p) => p.id === me);
   if (!player) return <PickMe onPick={setMe} hint={t("เข้าครั้งเดียว เครื่องจะจำไว้")} />;
   if (player.pending) return <PendingNotice name={player.name} onNotMe={() => setMe(null)} />;
@@ -716,6 +730,7 @@ function PlayerCourts() {
     <div className="space-y-4">
       <SectionTitle>{t("สนามของฉัน")}</SectionTitle>
       <DisputeBanner playerId={player.id} />
+      {reported && <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700" role="status">{reported}</p>}
       {myGame ? (
         <Card className="space-y-3">
           <div className="flex items-center justify-between">
@@ -729,7 +744,7 @@ function PlayerCourts() {
             <CourtSide ids={myGame.playerIds.slice(0, 2)} byId={byId} team="A" />
             <CourtSide ids={myGame.playerIds.slice(2)} byId={byId} team="B" />
           </div>
-          <SelfReport game={myGame} playerId={player.id} />
+          <SelfReport game={myGame} playerId={player.id} onDone={setReported} />
         </Card>
       ) : (
         <Card className="py-6 text-center">

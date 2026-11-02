@@ -79,7 +79,7 @@ export function GameShuttleRow({ game, byId, day, me, open, onToggle, past = fal
           <Team ids={game.playerIds.slice(2)} byId={byId} won={game.winner === "B"} me={me} />
         </div>
         {!game.endedAt && <span className="shrink-0 whitespace-nowrap text-xs font-semibold text-emerald-700">{t("กำลังเล่น")}</span>}
-        {game.disputedBy && <span className="shrink-0 whitespace-nowrap rounded-full bg-red-50 px-2 py-0.5 text-xs font-bold text-red-700">⚠ {t("ไม่ตรง")}</span>}
+        {game.disputedBy && <span className="shrink-0 rounded-full bg-red-50 px-1.5 py-0.5 text-xs font-bold text-red-700" title={t("ไม่ตรง")} aria-label={t("ไม่ตรง")}>⚠</span>}
         <span className={`flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-sm font-semibold tabular-nums ${game.shuttles === 0 ? "bg-amber-50 text-amber-800" : "bg-zinc-100 text-ink"}`}>
           <Icon.Shuttle width={14} height={14} />
           {game.shuttles}
@@ -142,18 +142,26 @@ function ResultEditor({ game, day, byId }: { game: Game; day: Day; byId: Map<str
           {game.disputedBy && ` · ${t("{name} แจ้งว่าไม่ตรง", { name: name(game.disputedBy) })}`}
         </p>
       )}
-      <div className="grid grid-cols-4 gap-1.5">
+      <div className="grid grid-cols-2 gap-2">
         {opts.map((o) => (
           <button
             key={o.k}
             aria-pressed={cur === o.k}
-            className={`min-h-11 rounded-xl px-1 text-xs font-semibold active:scale-95 ${cur === o.k ? "bg-lime text-ink" : "bg-white text-zinc-600 ring-1 ring-zinc-200"}`}
+            className={`min-h-11 rounded-xl px-2 text-sm font-semibold active:scale-95 ${cur === o.k ? "bg-lime text-ink" : "bg-white text-zinc-600 ring-1 ring-zinc-200"}`}
             onClick={() => dispatch({ type: "setResult", date: day.date, gameId: game.id, winner: o.k === "A" || o.k === "B" ? o.k : undefined, draw: o.k === "draw" || undefined })}
           >
             {o.label}
           </button>
         ))}
       </div>
+      {game.disputedBy && (
+        <button
+          className="min-h-11 w-full rounded-xl bg-white text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200 active:scale-95"
+          onClick={() => dispatch({ type: "setResult", date: day.date, gameId: game.id, winner: game.winner, draw: game.draw })}
+        >
+          {t("ผลเดิมถูกแล้ว (เอาป้ายออก)")}
+        </button>
+      )}
     </div>
   );
 }
@@ -180,9 +188,11 @@ export function FinishedGames({ byId }: { byId: Map<string, Player> }) {
               <GameShuttleRow key={g.id} game={g} byId={byId} day={day} open={editing === g.id} onToggle={(o) => setEditing(o ? g.id : null)} />
             ))}
           </ul>
-          <button className="min-h-11 w-full border-t border-zinc-100 text-sm font-medium text-zinc-500" onClick={() => setOpen(false)}>
-            {t("ซ่อน")}
-          </button>
+          {disputed === 0 && (
+            <button className="min-h-11 w-full border-t border-zinc-100 text-sm font-medium text-zinc-500" onClick={() => setOpen(false)}>
+              {t("ซ่อน")}
+            </button>
+          )}
         </Card>
       ) : (
         <button
