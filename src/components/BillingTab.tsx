@@ -7,6 +7,7 @@ import { useStore, useToday } from "@/lib/store";
 import { type Drink, type Player } from "@/lib/types";
 import { MembersView } from "./Members";
 import { PayQr } from "./PayQr";
+import { OwedList } from "./Owed";
 import { SlipHistory } from "./SlipHistory";
 import { CourtSplit } from "./CourtSplit";
 import { RentHoursSheet } from "./RentHours";
@@ -336,14 +337,15 @@ function DailyView() {
 }
 
 export function BillingTab() {
-  const [view, setView] = useState<"daily" | "members" | "slips">("daily");
+  const [view, setView] = useState<"daily" | "owed" | "members" | "slips">("daily");
   return (
     <div className="space-y-4">
       <SectionTitle>{t("คิดเงิน")}</SectionTitle>
-      <div className="grid grid-cols-3 gap-1 rounded-2xl bg-white p-1 shadow-sm">
+      <div className="grid grid-cols-4 gap-1 rounded-2xl bg-white p-1 shadow-sm">
         {(
           [
             ["daily", "วันนี้"],
+            ["owed", "ค้างจ่าย"],
             ["members", "สมาชิก"],
             ["slips", "ประวัติโอน"],
           ] as const
@@ -357,7 +359,7 @@ export function BillingTab() {
           </button>
         ))}
       </div>
-      {view === "daily" ? <DailyView /> : view === "members" ? <MembersView /> : <SlipHistory />}
+      {view === "daily" ? <DailyView /> : view === "owed" ? <OwedList /> : view === "members" ? <MembersView /> : <SlipHistory />}
     </div>
   );
 }

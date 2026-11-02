@@ -107,13 +107,46 @@ export function dayAmount(
 
 /** ยอดที่ยังไม่จ่ายจากวันก่อนหน้า `beforeDate` */
 export function carriedOver(days: Day[], beforeDate: string, player: Player, s: Settings, monthly: MonthlyPayments): number {
+  return owedDays(days, beforeDate, player, s, monthly).reduce((sum, d) => sum + d.amount, 0);
+}
+
+/** วันก่อนหน้า `beforeDate` ที่ยังไม่จ่าย เรียงจากเก่าไปใหม่ (ไม่รวมแขกที่พามา) */
+export function owedDays(days: Day[], beforeDate: string, player: Player, s: Settings, monthly: MonthlyPayments): { date: string; amount: number }[] {
   return days
-    .filter((d) => d.date < beforeDate)
-    .reduce((sum, d) => {
-      const ci = d.checkIns.find((c) => c.playerId === player.id);
-      if (!ci || ci.paidAt) return sum;
-      return sum + dayAmount(d, player, s, monthly).amount;
-    }, 0);
+    .filter((d) => d.date < beforeDate && d.checkIns.some((c) => c.playerId === player.id && !c.paidAt))
+    .map((d) => ({ date: d.date, amount: dayAmount(d, player, s, monthly).amount }))
+    .filter((d) => d.amount > 0)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export interface OwedRow {
+  player: Player;
+  /** วันที่ค้าง รวมวันของแขกที่พามา */
+  dates: string[];
+  amount: number;
+  /** วันค้างล่าสุดของตัวเอง (ไม่นับวันที่มีแค่แขก) ใช้ย้อนการรับเงิน */
+  ownLast?: string;
+}
+
+/** ทุกคนที่ยังค้างจ่ายจากวันก่อน `beforeDate` (ยอดแขกรวมในแถวคนพามา) มากไปน้อย */
+export function owedBefore(days: Day[], beforeDate: string, players: Player[], s: Settings, monthly: MonthlyPayments): OwedRow[] {
+  const byId = new Map(players.map((p) => [p.id, p]));
+  const rows = new Map<string, { dates: Set<string>; amount: number; ownLast?: string }>();
+  for (const p of players) {
+    const list = owedDays(days, beforeDate, p, s, monthly);
+    if (!list.length) continue;
+    const host = (p.guestOf && byId.get(p.guestOf)) || p;
+    const r = rows.get(host.id) ?? { dates: new Set<string>(), amount: 0 };
+    list.forEach((d) => {
+      r.dates.add(d.date);
+      r.amount += d.amount;
+    });
+    if (host === p) r.ownLast = list[list.length - 1].date;
+    rows.set(host.id, r);
+  }
+  return [...rows]
+    .map(([id, r]) => ({ player: byId.get(id)!, dates: [...r.dates].sort(), amount: r.amount, ownLast: r.ownLast }))
+    .sort((a, b) => b.amount - a.amount || a.player.name.localeCompare(b.player.name, "th"));
 }
 
 /** แขกของผู้เล่นคนนี้ */
