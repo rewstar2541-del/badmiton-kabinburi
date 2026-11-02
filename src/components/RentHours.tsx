@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { t } from "@/lib/i18n";
-import { courtsAt, normalizeCourts, rentAt, rentShares, rentSpan, rentTotal } from "@/lib/courtSplit";
+import { clock, courtsAt, normalizeCourts, rentAt, rentShares, rentSpan, rentTotal } from "@/lib/courtSplit";
 import { dayAmount } from "@/lib/billing";
 import { useStore, useToday } from "@/lib/store";
 import type { Day, DayRent, Player } from "@/lib/types";
 import { Avatar, Button, Card, Sheet, baht, inputClass } from "./ui";
 
-const hh = (h: number) => `${String(h).padStart(2, "0")}:00`;
+const hh = clock;
 const range = (a: number, b: number) => Array.from({ length: Math.max(b - a + 1, 0) }, (_, i) => a + i);
 
 function HourSelect({ value, from, to, onChange, label, disabled }: { value: number; from: number; to: number; onChange: (h: number) => void; label: string; disabled?: boolean }) {
@@ -100,25 +100,24 @@ export function RentFields({ value, onChange }: { value: RentDraft; onChange: (d
       <div className="grid grid-cols-2 gap-2">
         <label className="block text-sm font-medium">
           {t("เริ่มเช่า")}
-          <select
+          <input
+            type="time"
+            step={900}
             className={`${inputClass} mt-1`}
-            value={value.start}
+            value={hh(value.start)}
             onChange={(e) => {
-              const h = Number(e.target.value);
-              reshape(h, Math.max(value.end, h + 1));
+              const [a, b] = e.target.value.split(":").map(Number);
+              if (Number.isNaN(a)) return;
+              // ปัดเป็นทุก 15 นาที ชั่วโมงเช่าเต็มชั่วโมงนับจากเวลาเริ่ม
+              const h = Math.min(Math.round((a + (b || 0) / 60) * 4) / 4, 23);
+              reshape(h, h + Math.max(value.end - value.start, 1));
             }}
-          >
-            {range(6, 23).map((h) => (
-              <option key={h} value={h}>
-                {hh(h)}
-              </option>
-            ))}
-          </select>
+          />
         </label>
         <label className="block text-sm font-medium">
           {t("เลิก")}
           <select className={`${inputClass} mt-1`} value={value.end} onChange={(e) => reshape(value.start, Number(e.target.value))}>
-            {range(value.start + 1, 24).map((h) => (
+            {range(value.start + 1, value.start + 18).filter((h) => h <= 24).map((h) => (
               <option key={h} value={h}>
                 {hh(h)}
               </option>
