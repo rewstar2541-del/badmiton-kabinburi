@@ -197,6 +197,16 @@ create table if not exists public.pair_requests (
   constraint pair_requests_pkey PRIMARY KEY (id)
 );
 
+create table if not exists public.court_queue (
+  id text default (gen_random_uuid())::text not null,
+  date date not null,
+  court smallint not null,
+  player_ids text[] not null,
+  at timestamp with time zone default now() not null,
+  constraint court_queue_pkey PRIMARY KEY (id),
+  constraint court_queue_player_ids_check CHECK ((cardinality(player_ids) = 4))
+);
+
 create table if not exists public.player_auth (
   player_id text not null,
   pin_hash text,
@@ -269,6 +279,7 @@ create table if not exists public.settings (
   festival text check (festival is null or festival in ('off', 'halloween', 'christmas', 'newyear', 'songkran')),
   promptpay_on boolean default true not null,
   bank_on boolean default true not null,
+  court_numbers smallint[] check (court_numbers is null or (cardinality(court_numbers) between 1 and 30 and 1 <= all(court_numbers) and 99 >= all(court_numbers))),
   constraint settings_pkey PRIMARY KEY (id)
 );
 
@@ -335,6 +346,7 @@ CREATE INDEX expenses_date ON public.expenses USING btree (date);
 CREATE INDEX games_date_idx ON public.games USING btree (date);
 CREATE INDEX monthly_payments_player_idx ON public.monthly_payments USING btree (player_id);
 CREATE INDEX pair_requests_date ON public.pair_requests USING btree (date);
+CREATE INDEX court_queue_date ON public.court_queue USING btree (date);
 CREATE INDEX slips_date_idx ON public.slips USING btree (date);
 
 -- ============================================================
@@ -1383,6 +1395,7 @@ alter table public.line_usage enable row level security;
 alter table public.monthly_payments enable row level security;
 alter table public.notices enable row level security;
 alter table public.pair_requests enable row level security;
+alter table public.court_queue enable row level security;
 alter table public.player_auth enable row level security;
 alter table public.player_contacts enable row level security;
 alter table public.player_sessions enable row level security;
@@ -1483,6 +1496,11 @@ create policy "admins update" on public.games as permissive for update to authen
   with check (( SELECT is_admin() AS is_admin));
 create policy "anyone can read" on public.games as permissive for select to anon, authenticated
   using (true);
+create policy court_queue_read on public.court_queue as permissive for select to anon, authenticated
+  using (true);
+create policy court_queue_admin on public.court_queue as permissive for all to authenticated
+  using (is_admin())
+  with check (is_admin());
 create policy line_claims_admin_read on public.line_claims as permissive for select to public
   using (is_admin());
 create policy "admins read line settings" on public.line_settings as permissive for select to authenticated
@@ -1701,6 +1719,7 @@ grant execute on function public.vote_poll(p_player text, p_pin text, p_poll tex
 -- alter publication supabase_realtime add table public.expenses;
 -- alter publication supabase_realtime add table public.shuttle_stock;
 -- alter publication supabase_realtime add table public.pair_requests;
+-- alter publication supabase_realtime add table public.court_queue;
 -- alter publication supabase_realtime add table public.polls;
 -- alter publication supabase_realtime add table public.poll_votes;
 -- alter publication supabase_realtime add table public.board_posts;
@@ -1773,6 +1792,9 @@ grant all on table public.notices to authenticated;
 revoke all on table public.pair_requests from anon, authenticated;
 grant all on table public.pair_requests to anon;
 grant all on table public.pair_requests to authenticated;
+revoke all on table public.court_queue from anon, authenticated;
+grant select on table public.court_queue to anon;
+grant select, insert, update, delete on table public.court_queue to authenticated;
 grant update (status) on table public.pair_requests to authenticated;
 revoke all on table public.player_auth from anon, authenticated;
 revoke all on table public.player_contacts from anon, authenticated;

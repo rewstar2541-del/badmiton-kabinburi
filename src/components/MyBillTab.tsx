@@ -16,6 +16,7 @@ import { savedPin } from "./PickMe";
 import { Auto } from "@/lib/autoTranslate";
 import { Button, Card, Icon, baht, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
+import { MyGames } from "./GameShuttles";
 
 /** หน้าสำหรับผู้เล่น: เลือกชื่อตัวเอง แล้วดูยอดที่ต้องจ่ายวันนี้ */
 export function MyBillTab() {
@@ -70,6 +71,7 @@ export function MyBillTab() {
               ))}
             </div>
           </div>
+          {checkedIn && <MyGames playerId={player.id} />}
           {checkedIn && day.rent && <MyRentHours key={JSON.stringify(day.checkIns.find((c) => c.playerId === player.id)?.hours ?? null)} player={player} day={day} rent={day.rent} />}
           {checkedIn && !day.rent && <MyDrinks playerId={player.id} paid={Boolean(day.checkIns.find((c) => c.playerId === player.id)?.paidAt)} drinks={day.drinks.filter((d) => d.playerId === player.id)} />}
           {bill.paid ? (

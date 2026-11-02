@@ -1,16 +1,17 @@
 "use client";
 
 import { PairRequests } from "./Pairs";
-import { useEffect, useState } from "react";
-import { presence, waitingQueue } from "@/lib/matchmaking";
+import { useEffect, useMemo, useState } from "react";
+import { courtPlan, courtQueue, plannedCourt, queueByCourt, presence, queueBlockers, queuedSpot, waitingQueue, type CourtNext } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
-import type { Game, Player, Team } from "@/lib/types";
+import { courtList, courtsOfDay, type Game, type Player, type QueuedGame, type Team } from "@/lib/types";
 import { MatchBuilder } from "./MatchBuilder";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle } from "./ui";
 import { t } from "@/lib/i18n";
 import { MyRestCard } from "./RestButton";
 import { PendingNotice, PickMe, useMe } from "./PickMe";
 import { goToTab } from "./Membership";
+import { FinishedGames } from "./GameShuttles";
 
 function useNow(intervalMs = 15000) {
   const [now, setNow] = useState(() => Date.now());
@@ -58,7 +59,19 @@ function CourtSide({ ids, byId, team }: { ids: string[]; byId: Map<string, Playe
 
 function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, Player>; date: string; now: number }) {
   const { dispatch, auth } = useStore();
-  const end = (winner?: Team, draw?: boolean) => dispatch({ type: "endGame", date, gameId: game.id, winner, draw });
+  const { state } = useStore();
+  const { day } = useToday();
+  const end = (winner?: Team, draw?: boolean) => {
+    // สนามนี้ได้คู่แรกของคิวรวม (คนรอนานสุดไม่ถูกแซง) ถ้าแอดมินจัดคิวสนามนี้ไว้เองใช้คู่นั้น
+    const next = courtPlan(day, state.players, courtList(state.settings), game.court).get(game.court);
+    dispatch({ type: "endGame", date, gameId: game.id, winner, draw });
+    // สนามที่เอาออกจากเบอร์สนามแล้ว ไม่ลงต่อ
+    if (!next || !courtList(state.settings).includes(game.court)) return;
+    // ลงต่อทันที ถ้าคนในคู่ยังอยู่ครบ ไม่งั้นแจ้งให้แอดมินแก้คิว
+    if (queueBlockers(day, next, game.id).length === 0)
+      dispatch({ type: "startGame", date, court: game.court, playerIds: next.playerIds, queuedId: next.queuedId });
+    else alert(t("สนาม {n} ยังเริ่มเกมต่อไม่ได้ มีคนในคู่ที่จัดไว้ไม่พร้อม (ชื่อขีดฆ่า) กดแก้หรือเอาคู่นั้นออก", { n: game.court }));
+  };
   const setShuttles = (n: number) => dispatch({ type: "setShuttles", date, gameId: game.id, shuttles: n });
 
   return (
@@ -132,18 +145,151 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
   );
 }
 
+/** ชื่อ 4 คนของคู่ที่จัดไว้ ทีม A vs ทีม B (คนที่ลงไม่ได้ขีดฆ่า) */
+function QueuedTeams({ q, byId, blocked }: { q: Pick<QueuedGame, "playerIds">; byId: Map<string, Player>; blocked: Set<string> }) {
+  const name = (id: string) => (
+    <span key={id} className={`truncate ${blocked.has(id) ? "text-red-500 line-through" : ""}`}>
+      {byId.get(id)?.name ?? "?"}
+    </span>
+  );
+  return (
+    <span className="flex min-w-0 flex-1 items-center gap-1.5 text-sm font-medium">
+      <span className="flex min-w-0 flex-1 basis-0 flex-col leading-tight">{q.playerIds.slice(0, 2).map(name)}</span>
+      <span className="shrink-0 text-xs font-bold text-zinc-400">VS</span>
+      <span className="flex min-w-0 flex-1 basis-0 flex-col leading-tight">{q.playerIds.slice(2).map(name)}</span>
+    </span>
+  );
+}
+
+/** แก้คู่ที่รอสนาม: คู่อัตโนมัติ (ยังไม่มี id) หรือคู่ที่จัดคิวไว้ (มี id) */
+type EditTarget = { court: number; playerIds: string[]; queuedId?: string };
+
+/**
+ * คิวรอลงของสนามหนึ่ง: คู่ถัดไปมาจากคิวรวมอัตโนมัติ (คิว 1-4 สนาม 1, 5-8 สนาม 2)
+ * แอดมินกด "แก้" เปลี่ยนคนได้ (กลายเป็นคู่ที่แอดมินจัด) และจัดคิวต่อได้อีกหลายคู่
+ * เกมจบแล้วคู่แรกลงต่อทันที สนามว่างกด "ลงสนาม" เอง
+ */
+function CourtQueue({
+  court,
+  free,
+  next,
+  waiting,
+  onAdd,
+  onEdit,
+  byId,
+}: {
+  court: number;
+  free: boolean;
+  next?: CourtNext;
+  waiting: number;
+  onAdd: () => void;
+  onEdit: (e: EditTarget) => void;
+  byId: Map<string, Player>;
+}) {
+  const { dispatch, auth } = useStore();
+  const { date, day } = useToday();
+  const locked = courtQueue(day, court);
+  // แถวแรก = คู่ถัดไป (อัตโนมัติถ้าแอดมินยังไม่ได้จัดเอง) ตามด้วยคิวที่แอดมินจัดต่อไว้
+  const rows: { playerIds: Game["playerIds"]; queuedId?: string }[] = next && !next.queuedId ? [next] : locked.map((q) => ({ playerIds: q.playerIds, queuedId: q.id }));
+  if (rows.length === 0) return null;
+  const anyBlocked = rows.some((r) => queueBlockers(day, r).length > 0);
+  return (
+    <div className="mt-3 space-y-1.5 border-t border-zinc-200 pt-3">
+      <div className="flex items-center gap-1.5 text-sm font-semibold text-zinc-600">
+        {free ? t("พร้อมลงสนามนี้") : t("รอลงต่อสนามนี้")}
+        {!rows[0].queuedId && <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600">{t("จัดอัตโนมัติ")}</span>}
+      </div>
+      <ol className="space-y-1.5">
+        {rows.map((q, i) => {
+          const blocked = new Set(queueBlockers(day, q));
+          const ready = blocked.size === 0;
+          return (
+            <li key={q.queuedId ?? "auto"} className={`space-y-2 rounded-2xl p-2 ${i === 0 ? "bg-lime/25" : "bg-zinc-50"}`}>
+              <div className="flex items-center gap-2">
+                {rows.length > 1 && (
+                  <span className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${i === 0 ? "bg-lime text-ink" : "bg-zinc-200 text-zinc-600"}`}>
+                    {i + 1}
+                  </span>
+                )}
+                <QueuedTeams q={q} byId={byId} blocked={blocked} />
+              </div>
+              {auth.isAdmin && (
+                // ปุ่มแยกบรรทัด กดง่ายบนจอแคบ ชื่อไม่ถูกบีบ
+                <div className="flex items-center gap-2">
+                  {free && i === 0 && (
+                    <button
+                      disabled={!ready}
+                      onClick={() => {
+                        // กันกดซ้ำ/แอดมินอีกเครื่องเพิ่งลงสนามนี้ไป
+                        if (day.games.some((g) => !g.endedAt && g.court === court)) return;
+                        dispatch({ type: "startGame", date, court, playerIds: q.playerIds, queuedId: q.queuedId });
+                      }}
+                      className="h-11 flex-1 rounded-full bg-ink px-3 text-sm font-semibold text-white active:scale-95 disabled:opacity-40"
+                    >
+                      {t("ลงสนาม")}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => onEdit({ court, playerIds: q.playerIds, queuedId: q.queuedId })}
+                    className={`h-11 rounded-full bg-white px-4 text-sm font-semibold text-zinc-700 shadow-sm ring-1 ring-zinc-300 active:scale-95 ${free && i === 0 ? "" : "flex-1"}`}
+                  >
+                    {t("แก้")}
+                  </button>
+                  {q.queuedId && (
+                    <button
+                      onClick={() => {
+                        if (confirm(t("เอาคู่นี้ออกจากคิว?"))) dispatch({ type: "unqueueGame", date, id: q.queuedId! });
+                      }}
+                      aria-label={t("เอาออกจากคิว")}
+                      className="ml-2 grid size-11 shrink-0 place-items-center rounded-full text-zinc-400 active:bg-zinc-200"
+                    >
+                      <Icon.X width={18} height={18} />
+                    </button>
+                  )}
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+      {auth.isAdmin && anyBlocked && (
+        <p className="text-[11px] text-red-500">{t("ชื่อขีดฆ่า = พัก กลับบ้าน หรือยังเล่นสนามอื่น เอาคู่นั้นออกแล้วจัดใหม่")}</p>
+      )}
+      {auth.isAdmin && waiting >= 4 && rows[0].queuedId && (
+        <button
+          onClick={onAdd}
+          className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-zinc-300 py-2 text-sm font-semibold text-zinc-600 active:bg-zinc-50"
+        >
+          <Icon.Plus width={16} height={16} /> {t("จัดคิวต่ออีกคู่")}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function CourtsTab() {
   const { state, auth, dispatch } = useStore();
   const { date, day } = useToday();
-  const [building, setBuilding] = useState<number | null>(null);
+  const [building, setBuilding] = useState<{ court: number; queue: boolean; initial?: string[]; editId?: string } | null>(null);
   const now = useNow();
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const queue = waitingQueue(day, state.players);
-  const courts = Array.from({ length: state.settings.courtCount }, (_, i) => i + 1);
+  const courts = courtsOfDay(state.settings, day);
+  // คำนวณใหม่เฉพาะตอนข้อมูลเปลี่ยน (นาฬิกาเดินทุก 15 วินาทีไม่ต้องคำนวณ)
+  const plan = useMemo(() => courtPlan(day, state.players, courtList(state.settings)), [day, state.players, state.settings]);
+  const courtOf = new Map([...plan.values()].filter((n) => !n.queuedId).flatMap((n) => n.playerIds.map((id) => [id, n.court] as const)));
+  // คนในคิวรวมที่ระบบจัดให้สนามอื่นแล้ว (แนะนำใหม่จะไม่ดึงมา)
+  const reservedFor = (court: number) => [...plan.values()].filter((n) => n.court !== court && !n.queuedId).flatMap((n) => n.playerIds);
   const active = new Map(day.games.filter((g) => !g.endedAt).map((g) => [g.court, g]));
   const resting = day.checkIns.filter((c) => presence(day, c.playerId) === "resting").map((c) => byId.get(c.playerId)).filter((p) => p !== undefined);
   const home = day.checkIns.filter((c) => presence(day, c.playerId) === "home").length;
-  const rest = (playerId: string, on: boolean) => dispatch({ type: "setResting", date, playerId, resting: on });
+  const [showRest, setShowRest] = useState(false);
+  const rest = (playerId: string, on: boolean) => {
+    dispatch({ type: "setResting", date, playerId, resting: on });
+    if (!on) setShowRest(false);
+  };
+  // จบก๊วนแล้ว: ไม่มีเกม ไม่มีคนรอ ไม่มีคิวสนาม เหลือแต่คนพักที่ยังไม่จ่าย
+  const ended = active.size === 0 && queue.length === 0 && !(day.queued ?? []).length && resting.length > 0;
 
   if (!auth.isAdmin)
     return (
@@ -167,20 +313,35 @@ export function CourtsTab() {
     <div className="space-y-4">
       <PairRequests />
       <SectionTitle right={t("ว่าง {n} สนาม", { n: courts.length - active.size })}>{t("สนาม")}</SectionTitle>
-      {started && <Button
+      {/* หลังจบก๊วน: ทุกคนที่ยังไม่จ่ายถูกพักไว้ บอกว่าจบแล้วและพาไปคิดเงิน (ดูรายชื่อ/ให้กลับมาเล่นได้ถ้าเปิดต่อ) */}
+      {ended ? (
+        <Card className="space-y-3 text-center">
+          <div className="font-display text-lg font-semibold">🏁 {t("จบก๊วนแล้ว")}</div>
+          <p className="text-sm text-zinc-600">{t("ยังไม่จ่ายเงิน {n} คน", { n: resting.length })}</p>
+          <Button variant="accent" className="w-full" onClick={() => goToTab("billing")}>
+            {t("ไปหน้าคิดเงิน")}
+          </Button>
+          <button className="min-h-11 text-sm font-semibold text-zinc-600 underline underline-offset-4" onClick={() => setShowRest(!showRest)}>
+            {showRest ? t("ซ่อนรายชื่อ") : t("ดูรายชื่อ / ให้กลับมาเล่นต่อ")}
+          </button>
+        </Card>
+      ) : started && (
+      <Button
         className="w-full !rounded-3xl !bg-red-600 !py-4 !text-base !text-white shadow-[0_10px_24px_-10px_rgba(220,38,38,0.7)] active:scale-[0.98]"
         onClick={() => {
           const running = [...active.values()];
           const msg = running.length ? t("จบก๊วน? จะจบเกมที่กำลังเล่นอยู่ {n} เกม (ไม่บันทึกผล) ล้างคิว แล้วไปหน้าคิดเงิน", { n: running.length }) : t("จบก๊วน? ล้างคิว แล้วไปหน้าคิดเงิน");
           if (!confirm(msg)) return;
           running.forEach((g) => dispatch({ type: "endGame", date, gameId: g.id }));
+          (day.queued ?? []).forEach((q) => dispatch({ type: "unqueueGame", date, id: q.id }));
           // ล้างคิว: คนที่ยังรอหรือเพิ่งลงจากสนามเป็นพักทั้งหมด (ยังไม่จ่าย ยังเห็นในหน้าคิดเงิน)
           day.checkIns.filter((c) => !c.paidAt && !c.resting).forEach((c) => dispatch({ type: "setResting", date, playerId: c.playerId, resting: true }));
           goToTab("billing");
         }}
       >
         🏁 {t("จบก๊วน")}
-      </Button>}
+      </Button>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         {courts.map((c) => {
           const g = active.get(c);
@@ -203,10 +364,10 @@ export function CourtsTab() {
                 <div className="court-surface flex h-24 items-center justify-center rounded-2xl text-sm font-semibold text-white/80">
                   {t("ว่าง")}
                 </div>
-              ) : (
+              ) : plan.has(c) ? null : (
                 <button
                   disabled={queue.length < 4}
-                  onClick={() => setBuilding(c)}
+                  onClick={() => setBuilding({ court: c, queue: false })}
                   className="court-surface flex h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl text-white transition active:scale-[0.99] disabled:opacity-40 disabled:grayscale"
                 >
                   <span className="grid size-10 place-items-center rounded-full bg-lime text-ink shadow-lg">
@@ -217,17 +378,39 @@ export function CourtsTab() {
                   </span>
                 </button>
               )}
+              <CourtQueue
+                court={c}
+                free={!g}
+                next={plan.get(c)}
+                waiting={queue.length}
+                onAdd={() => setBuilding({ court: c, queue: true })}
+                // แก้แล้วเก็บเป็นคิวที่แอดมินจัด (ไม่เริ่มเกมเอง) สนามว่างกดลงสนามอีกที
+                onEdit={(e) => setBuilding({ court: c, queue: true, initial: e.playerIds, editId: e.queuedId })}
+                byId={byId}
+              />
             </Card>
           );
         })}
       </div>
 
-      {building !== null && <MatchBuilder court={building} onClose={() => setBuilding(null)} />}
+      {building !== null && (
+        <MatchBuilder
+          court={building.court}
+          queue={building.queue}
+          initial={building.initial}
+          editId={building.editId}
+          reserved={reservedFor(building.court)}
+          courtOf={courtOf}
+          onClose={() => setBuilding(null)}
+        />
+      )}
 
+      {!ended && (
+        <>
       <SectionTitle right={t("{n} คน", { n: queue.length })}>{t("คิวรอลงสนาม")}</SectionTitle>
       <Card className="p-2">
         <ol>
-          {queue.map((e, i) => (
+          {queueByCourt(queue, plan).map((e, i) => (
             <li key={e.player.id} className="flex items-center gap-3 rounded-2xl px-2 py-2">
               <span
                 className={`grid size-6 place-items-center rounded-full text-[11px] font-bold ${
@@ -237,7 +420,14 @@ export function CourtsTab() {
                 {i + 1}
               </span>
               <Avatar name={e.player.name} photo={e.player.photo} size={32} />
-              <span className="min-w-0 flex-1 truncate font-medium">{e.player.name}</span>
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate font-medium">{e.player.name}</span>
+                {courtOf.get(e.player.id) && (
+                  <span className="text-xs font-semibold whitespace-nowrap text-emerald-700">
+                    {t("รอสนาม {n}", { n: courtOf.get(e.player.id)! })}
+                  </span>
+                )}
+              </span>
               <LevelBadge level={e.player.level} />
               <span className="w-20 text-right text-[11px] leading-tight text-zinc-500">
                 {t("เล่น {n} เกม", { n: e.gamesPlayed })}
@@ -257,8 +447,10 @@ export function CourtsTab() {
           {queue.length === 0 && <li className="py-6 text-center text-sm text-zinc-500">{t("ไม่มีคนรอ")}</li>}
         </ol>
       </Card>
+        </>
+      )}
 
-      {resting.length > 0 && (
+      {resting.length > 0 && (!ended || showRest) && (
         <>
           <SectionTitle right={t("{n} คน", { n: resting.length })}>{t("พักอยู่")}</SectionTitle>
           <Card className="p-2">
@@ -283,6 +475,7 @@ export function CourtsTab() {
         </>
       )}
       {home > 0 && <p className="px-1 text-xs text-zinc-500">{t("จ่ายเงินแล้วกลับบ้าน {n} คน", { n: home })}</p>}
+      <FinishedGames byId={byId} />
     </div>
   );
 }
@@ -324,10 +517,15 @@ function PlayerCourts() {
 
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const queue = waitingQueue(day, state.players);
-  const courts = Array.from({ length: state.settings.courtCount }, (_, i) => i + 1);
+  const courts = courtsOfDay(state.settings, day);
   const active = new Map(day.games.filter((g) => !g.endedAt).map((g) => [g.court, g]));
   const myGame = day.games.find((g) => !g.endedAt && g.playerIds.includes(player.id));
-  const myPos = queue.findIndex((e) => e.player.id === player.id);
+  const plan = courtPlan(day, state.players, courtList(state.settings));
+  const courtOf = new Map([...plan.values()].filter((n) => !n.queuedId).flatMap((n) => n.playerIds.map((id) => [id, n.court] as const)));
+  // อยู่คิวสนามไหน: คู่ที่แอดมินจัดไว้ก่อน ไม่งั้นดูจากที่ระบบจัดอัตโนมัติ
+  const planned = plannedCourt(plan, player.id);
+  const myPos = queueByCourt(queue, plan).findIndex((e) => e.player.id === player.id);
+  const mySpot = queuedSpot(day, player.id) ?? (planned ? { court: planned.court, pos: 0 } : null);
   const status = presence(day, player.id);
   if (day.announcement === undefined && day.checkIns.length === 0 && active.size === 0)
     return (
@@ -356,7 +554,14 @@ function PlayerCourts() {
         </Card>
       ) : (
         <Card className="py-6 text-center">
-          {status === "waiting" && myPos >= 0 ? (
+          {status === "waiting" && mySpot ? (
+            <>
+              <div className="font-display text-4xl font-semibold">{t("สนาม {n}", { n: mySpot.court })}</div>
+              <div className="text-sm text-zinc-500">
+                {mySpot.pos === 0 ? t("ระบบจัดให้รอสนามนี้ อาจเปลี่ยนได้ถ้าคิวขยับ") : mySpot.pos === 1 ? t("คุณได้ลงต่อจากเกมที่เล่นอยู่ เตรียมตัวได้เลย") : t("คิวรอลงสนามนี้ คู่ที่ {n}", { n: mySpot.pos })}
+              </div>
+            </>
+          ) : status === "waiting" && myPos >= 0 ? (
             <>
               <div className="font-display text-4xl font-semibold">{myPos + 1}</div>
               <div className="text-sm text-zinc-500">
@@ -400,6 +605,7 @@ function PlayerCourts() {
                   {t("ว่าง")}
                 </div>
               )}
+              <CourtQueue court={c} free={!g} next={plan.get(c)} waiting={0} onAdd={() => {}} onEdit={() => {}} byId={byId} />
             </Card>
           );
         })}
@@ -408,7 +614,7 @@ function PlayerCourts() {
       <SectionTitle right={t("{n} คน", { n: queue.length })}>{t("คิวรอลงสนาม")}</SectionTitle>
       <Card className="p-2">
         <ol>
-          {queue.map((e, i) => (
+          {queueByCourt(queue, plan).map((e, i) => (
             <li key={e.player.id} className={`flex items-center gap-3 rounded-2xl px-2 py-2 ${e.player.id === player.id ? "bg-lime/30" : ""}`}>
               <span
                 className={`grid size-6 place-items-center rounded-full text-[11px] font-bold ${
@@ -418,7 +624,14 @@ function PlayerCourts() {
                 {i + 1}
               </span>
               <Avatar name={e.player.name} photo={e.player.photo} size={32} />
-              <span className="min-w-0 flex-1 truncate font-medium">{e.player.name}</span>
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate font-medium">{e.player.name}</span>
+                {courtOf.get(e.player.id) && (
+                  <span className="text-xs font-semibold whitespace-nowrap text-emerald-700">
+                    {t("รอสนาม {n}", { n: courtOf.get(e.player.id)! })}
+                  </span>
+                )}
+              </span>
               <LevelBadge level={e.player.level} />
               <span className="w-20 text-right text-[11px] leading-tight text-zinc-500">{t("รอ {n} นาที", { n: minutes(now - e.waitingSince) })}</span>
             </li>

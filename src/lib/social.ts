@@ -56,6 +56,39 @@ export function partnerStats(state: State, playerId: string): { partners: MateSt
   return { partners: [...partners.values()].sort(byWins), rivals: [...rivals.values()].sort(byLosses), decided };
 }
 
+export type GameResult = "win" | "loss" | "draw" | "playing" | "unknown";
+
+export interface HistoryGame {
+  date: string;
+  game: Game;
+  mate: string;
+  opponents: [string, string];
+  result: GameResult;
+}
+
+/** ประวัติการเล่นของคนนี้ ใหม่สุดก่อน: คู่กับใคร เจอใคร ผลเป็นอย่างไร */
+export function gameHistory(state: State, playerId: string): HistoryGame[] {
+  const out: HistoryGame[] = [];
+  for (const d of state.days)
+    for (const g of d.games) {
+      const i = g.playerIds.indexOf(playerId);
+      if (i < 0) continue;
+      const teamA = i < 2;
+      const result: GameResult = !g.endedAt
+        ? "playing"
+        : g.winner
+          ? (g.winner === "A") === teamA
+            ? "win"
+            : "loss"
+          : g.draw
+            ? "draw"
+            : "unknown";
+      const opp = teamA ? g.playerIds.slice(2) : g.playerIds.slice(0, 2);
+      out.push({ date: d.date, game: g, mate: g.playerIds[teamA ? 1 - i : 5 - i], opponents: [opp[0], opp[1]], result });
+    }
+  return out.sort((a, b) => b.date.localeCompare(a.date) || b.game.startedAt - a.game.startedAt);
+}
+
 /**
  * จำกัดจำนวนคนลงชื่อ: คนที่ลงชื่อก่อนตามจำนวนที่รับได้ที่ ที่เหลือเป็นรายชื่อสำรอง
  * มีคนยกเลิก คนสำรองลำดับแรกเลื่อนขึ้นเอง (คำนวณจากลำดับการลงชื่อ ไม่ต้องเก็บสถานะ)

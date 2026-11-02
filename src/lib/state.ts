@@ -47,7 +47,13 @@ export type Action =
   | { type: "checkIn"; date: string; playerId: string; _at: number }
   | { type: "undoCheckIn"; date: string; playerId: string }
   | { type: "setResting"; date: string; playerId: string; resting: boolean }
-  | { type: "startGame"; date: string; court: number; playerIds: Game["playerIds"]; _id: string; _at: number }
+  /** queuedId: ลงจากคิวของสนาม (เอาคู่นั้นออกจากคิวด้วย) */
+  | { type: "startGame"; date: string; court: number; playerIds: Game["playerIds"]; queuedId?: string; _id: string; _at: number }
+  /** จัดคู่รอลงสนามนี้ต่อจากเกมที่เล่นอยู่ */
+  | { type: "queueGame"; date: string; court: number; playerIds: Game["playerIds"]; _id: string; _at: number }
+  | { type: "unqueueGame"; date: string; id: string }
+  /** แอดมินแก้คนในคู่ที่จัดคิวไว้ (ลำดับคิวเดิม) */
+  | { type: "editQueued"; date: string; id: string; playerIds: Game["playerIds"] }
   | { type: "setShuttles"; date: string; gameId: string; shuttles: number }
   | { type: "endGame"; date: string; gameId: string; winner?: Team; draw?: boolean; _at: number }
   | { type: "cancelGame"; date: string; gameId: string }
@@ -241,7 +247,17 @@ export function reducer(state: State, a: Action): State {
       return withDay(state, a.date, (d) => ({
         ...d,
         games: [...d.games, { id: a._id, court: a.court, playerIds: a.playerIds, startedAt: a._at, shuttles: 1 }],
+        ...(a.queuedId && d.queued ? { queued: d.queued.filter((q) => q.id !== a.queuedId) } : {}),
       }));
+    case "queueGame":
+      return withDay(state, a.date, (d) => ({
+        ...d,
+        queued: [...(d.queued ?? []), { id: a._id, court: a.court, playerIds: a.playerIds, at: a._at }],
+      }));
+    case "unqueueGame":
+      return withDay(state, a.date, (d) => ({ ...d, queued: (d.queued ?? []).filter((q) => q.id !== a.id) }));
+    case "editQueued":
+      return withDay(state, a.date, (d) => ({ ...d, queued: (d.queued ?? []).map((q) => (q.id === a.id ? { ...q, playerIds: a.playerIds } : q)) }));
     case "setShuttles":
       return updateGame(state, a.date, a.gameId, (g) => ({ ...g, shuttles: Math.max(0, a.shuttles) }));
     case "endGame":

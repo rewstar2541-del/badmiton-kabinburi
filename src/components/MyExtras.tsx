@@ -149,7 +149,7 @@ export function MonthCard({ player }: { player: Player }) {
   const stats = [
     { label: t("มาเล่น"), value: t("{n} วัน", { n: s.days }) },
     { label: t("เกม"), value: String(s.games) },
-    { label: t("ชนะ"), value: s.winRate === null ? "–" : `${s.winRate}%` },
+    { label: t("อัตราชนะ"), value: s.winRate === null ? "–" : `${s.winRate}%` },
     { label: t("ลูกที่ใช้"), value: String(s.shuttles) },
   ];
 

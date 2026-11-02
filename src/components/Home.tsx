@@ -8,7 +8,7 @@ import { NewsCarousel } from "./NewsCarousel";
 import { activeFestival, festivalInfo } from "@/lib/festival";
 
 import { useMemo, useState, type ComponentType, type ReactNode, type SVGProps } from "react";
-import { presence, waitingQueue } from "@/lib/matchmaking";
+import { courtPlan, plannedCourt, presence, queuedSpot, waitingQueue } from "@/lib/matchmaking";
 import { signupQueue } from "@/lib/social";
 import { useStore, useToday } from "@/lib/store";
 import { LANGS, locale, setLang, t, useLang } from "@/lib/i18n";
@@ -27,7 +27,7 @@ import { goToTab } from "./Membership";
 import { SlipHistory, slipStatus } from "./SlipHistory";
 import { OwedList } from "./Owed";
 import { owedBefore } from "@/lib/billing";
-import { monthOf } from "@/lib/types";
+import { courtList, monthOf } from "@/lib/types";
 import { shiftMonth } from "./Members";
 import { NoticeBanners, NoticeComposer } from "./Notices";
 import { PairCard } from "./Pairs";
@@ -286,6 +286,8 @@ export function PlayerHome() {
   const played = day.games.filter((g) => g.endedAt && g.playerIds.includes(player.id)).length;
   const queue = waitingQueue(day, state.players);
   const pos = queue.findIndex((e) => e.player.id === player.id) + 1;
+  const planned = plannedCourt(courtPlan(day, state.players, courtList(state.settings)), player.id);
+  const spot = queuedSpot(day, player.id) ?? (planned ? { court: planned.court, pos: 0 } : null);
   const court = day.games.find((g) => !g.endedAt && g.playerIds.includes(player.id))?.court;
   const closed = state.closed[date];
   const fest = festivalInfo(activeFestival(state.settings.festival, date, birthdays(state.players, date).length > 0));
@@ -293,6 +295,8 @@ export function PlayerHome() {
   const hero: { big: string; sub: string } =
     status === "playing"
       ? { big: t("สนาม {n}", { n: court ?? "" }), sub: t("กำลังเล่นอยู่") }
+      : status === "waiting" && spot
+        ? { big: t("สนาม {n}", { n: spot.court }), sub: spot.pos === 0 ? t("ระบบจัดให้รอสนามนี้ อาจเปลี่ยนได้ถ้าคิวขยับ") : spot.pos === 1 ? t("คุณได้ลงต่อจากเกมที่เล่นอยู่ เตรียมตัวได้เลย") : t("คิวรอลงสนามนี้ คู่ที่ {n}", { n: spot.pos }) }
       : status === "waiting"
         ? { big: t("คิวที่ {n}", { n: pos }), sub: pos <= 4 ? t("ใกล้ถึงคิวแล้ว เตรียมตัวได้เลย") : t("รอคิวอยู่ {n} คน", { n: queue.length }) }
         : status === "resting"

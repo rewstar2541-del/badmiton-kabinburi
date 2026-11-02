@@ -124,7 +124,10 @@ export function isMonthlyPaid(monthly: MonthlyPayments, date: string, playerId: 
 }
 
 export interface Settings {
+  /** จำนวนสนาม (= จำนวนเบอร์ใน courtNumbers ถ้าตั้งไว้) */
   courtCount: number;
+  /** เบอร์สนามจริงที่ใช้ เช่น [3, 5, 7] (ไม่มี = 1..courtCount หรือยังไม่ได้รัน SQL court_numbers.sql) */
+  courtNumbers?: number[];
   /** ค่าสนามต่อครั้ง สำหรับคนที่ไม่ใช่สมาชิกรายเดือน */
   courtFee: number;
   /** ค่าลูกแรกของวัน ต่อคน */
@@ -157,6 +160,20 @@ export const DEFAULT_SETTINGS: Settings = {
   bankHolder: "",
 };
 
+/** เบอร์สนามที่ใช้ เรียงจากน้อยไปมาก (ไม่ได้ตั้งเบอร์ = 1..จำนวนสนาม) */
+export function courtList(s: Pick<Settings, "courtCount" | "courtNumbers">): number[] {
+  if (s.courtNumbers?.length) return [...new Set(s.courtNumbers)].sort((a, b) => a - b);
+  return Array.from({ length: Math.max(0, s.courtCount) }, (_, i) => i + 1);
+}
+
+/** สนามที่โชว์ในหน้าสนามวันนี้: เบอร์ที่ตั้งไว้ + สนามที่ยังมีเกมหรือคิวค้างอยู่ (เผื่อแก้เบอร์ระหว่างเล่น) เรียงตามเบอร์ */
+export function courtsOfDay(s: Pick<Settings, "courtCount" | "courtNumbers">, day: Pick<Day, "games" | "queued">): number[] {
+  const set = new Set(courtList(s));
+  for (const g of day.games) if (!g.endedAt) set.add(g.court);
+  for (const q of day.queued ?? []) set.add(q.court);
+  return [...set].sort((a, b) => a - b);
+}
+
 export type Team = "A" | "B";
 
 export interface Game {
@@ -170,6 +187,15 @@ export interface Game {
   winner?: Team;
   /** จบเสมอ (ไม่มีทีมชนะ นับว่าเล่นแล้ว ไม่นับแพ้ชนะ) */
   draw?: boolean;
+}
+
+/** คู่ที่แอดมินจัดไว้รอลงสนามนั้น (เกมในสนามจบ คู่แรกลงต่อทันที) */
+export interface QueuedGame {
+  id: string;
+  court: number;
+  /** ลำดับเดียวกับ Game.playerIds */
+  playerIds: [string, string, string, string];
+  at: number;
 }
 
 export interface CheckIn {
@@ -229,6 +255,8 @@ export interface Day {
   rent?: DayRent;
   /** คนที่ลงชื่อว่าจะมา */
   signups?: SignUp[];
+  /** คิวรอลงแยกแต่ละสนาม เรียงตามเวลาที่จัด */
+  queued?: QueuedGame[];
   /** คำขอจับคู่เกมถัดไปของวันนั้น */
   pairs?: PairRequest[];
   /** สลิปโอนเงินที่ผู้เล่นส่งมา (รูปโหลดแยกเฉพาะแอดมิน) */

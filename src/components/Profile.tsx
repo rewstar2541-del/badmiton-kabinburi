@@ -103,7 +103,7 @@ export function ProfileTab() {
           ...(eventMode ? [] : [
           { icon: Icon.Calendar, title: t("สรุปเดือนนี้"), sub: t("มากี่วัน เล่นกี่เกม ชนะเท่าไร"), onClick: () => open("month") },
           { icon: Icon.Trophy, title: t("เหรียญของฉัน"), sub: t("เหรียญที่ได้จากการมาเล่น"), onClick: () => open("badges") },
-          { icon: Icon.Chart, title: t("สถิติกับคู่"), sub: t("เล่นกับใครบ่อย ชนะกับใคร"), onClick: () => open("partners") },
+          { icon: Icon.Chart, title: t("สถิติกับคู่"), sub: t("คู่หู คู่แข่ง และประวัติการเล่น"), onClick: () => open("partners") },
           { icon: Icon.Heart, title: t("คู่ที่อยากเล่นด้วย"), sub: t("เลือกคนที่อยากจับคู่หรือไม่อยากเจอ"), onClick: () => open("prefs") },
           ]),
         ]}
