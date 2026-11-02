@@ -86,7 +86,7 @@ export function gameHistory(state: State, playerId: string): HistoryGame[] {
       const opp = teamA ? g.playerIds.slice(2) : g.playerIds.slice(0, 2);
       out.push({ date: d.date, game: g, mate: g.playerIds[teamA ? 1 - i : 5 - i], opponents: [opp[0], opp[1]], result });
     }
-  return out.sort((a, b) => b.game.startedAt - a.game.startedAt);
+  return out.sort((a, b) => b.date.localeCompare(a.date) || b.game.startedAt - a.game.startedAt);
 }
 
 /**

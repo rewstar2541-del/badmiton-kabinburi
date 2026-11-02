@@ -1442,4 +1442,8 @@ export const en: Record<string, string> = {
   "ดูเพิ่ม ({n} เกม)": "Show more ({n} games)",
   "ไม่มีผล = แอดมินไม่ได้กดผลแพ้ชนะตอนจบเกม": "No result = the admin didn't record a winner when the game ended.",
   "คู่หู คู่แข่ง และประวัติการเล่น": "Partners, rivals and game history",
+  "ผู้เล่นที่ออกแล้ว": "Former player",
+  "เสมอ {n}": "{n} draws",
+  "ไม่มีผล {n}": "{n} no result",
+  "นับตั้งแต่ {date}": "Since {date}",
 };

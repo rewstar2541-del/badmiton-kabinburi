@@ -5,13 +5,13 @@ import { locale, t } from "@/lib/i18n";
 import { gameHistory, partnerStats, type GameResult, type HistoryGame, type MateStat } from "@/lib/social";
 import { useStore } from "@/lib/store";
 import type { Player } from "@/lib/types";
-import { Avatar, Card } from "./ui";
+import { Avatar, Button, Card } from "./ui";
 
 type Tab = "mates" | "history";
 
 /** สถิติกับคู่: แท็บคู่หู/คู่แข่ง และแท็บประวัติการเล่น */
 export function PartnerStats({ player }: { player: Player }) {
-  const [tab, setTab] = useState<Tab>("mates");
+  const [tab, setTab] = useState<Tab>("history");
   const tabs: [Tab, string][] = [
     ["mates", t("คู่หูและคู่แข่ง")],
     ["history", t("ประวัติการเล่น")],
@@ -87,7 +87,7 @@ const RESULT: Record<GameResult, { label: () => string; tone: string; dot: strin
   loss: { label: () => t("แพ้"), tone: "bg-red-100 text-red-700", dot: "bg-red-500", mark: "✕" },
   draw: { label: () => t("เสมอ"), tone: "bg-zinc-200 text-zinc-700", dot: "bg-zinc-400", mark: "–" },
   playing: { label: () => t("กำลังเล่น"), tone: "bg-lime text-ink", dot: "", mark: "" },
-  unknown: { label: () => t("ไม่มีผล"), tone: "bg-zinc-100 text-zinc-500", dot: "", mark: "" },
+  unknown: { label: () => t("ไม่มีผล"), tone: "border border-dashed border-zinc-300 text-zinc-500", dot: "", mark: "" },
 };
 
 const PAGE = 30;
@@ -105,7 +105,7 @@ function History({ player }: { player: Player }) {
   const [shown, setShown] = useState(PAGE);
   const all = gameHistory(state, player.id);
   const byId = new Map(state.players.map((p) => [p.id, p]));
-  const name = (id: string) => byId.get(id)?.name ?? "?";
+  const name = (id: string) => byId.get(id)?.name ?? t("ผู้เล่นที่ออกแล้ว");
 
   if (all.length === 0) return <p className="rounded-2xl bg-zinc-50 px-4 py-6 text-center text-sm text-zinc-500">{t("ยังไม่มีเกมที่เล่น")}</p>;
 
@@ -113,7 +113,17 @@ function History({ player }: { player: Player }) {
   const wins = count("win");
   const losses = count("loss");
   const rate = wins + losses ? Math.round((wins * 100) / (wins + losses)) : null;
-  const recent = all.filter((h) => h.result === "win" || h.result === "loss" || h.result === "draw").slice(0, 10);
+  // เรียงเก่าไปใหม่ ให้เกมล่าสุดอยู่ขวาสุด
+  const recent = all.filter((h) => h.result === "win" || h.result === "loss" || h.result === "draw").slice(0, 10).reverse();
+  const perDay = new Map<string, { n: number; w: number }>();
+  for (const h of all) {
+    const x = perDay.get(h.date) ?? { n: 0, w: 0 };
+    x.n++;
+    if (h.result === "win") x.w++;
+    perDay.set(h.date, x);
+  }
+  const first = all[all.length - 1].date;
+  const others = [count("draw") && t("เสมอ {n}", { n: count("draw") }), count("unknown") && t("ไม่มีผล {n}", { n: count("unknown") })].filter(Boolean);
 
   const days: { date: string; games: HistoryGame[] }[] = [];
   for (const h of all.slice(0, shown)) {
@@ -122,10 +132,7 @@ function History({ player }: { player: Player }) {
     else days.push({ date: h.date, games: [h] });
   }
   // จำนวนเกมทั้งวัน (ไม่ใช่แค่ที่แสดงอยู่) ใช้ในหัววัน
-  const dayTotal = (date: string) => {
-    const g = all.filter((h) => h.date === date);
-    return t("{n} เกม · ชนะ {w}", { n: g.length, w: g.filter((h) => h.result === "win").length });
-  };
+  const dayTotal = (date: string) => t("{n} เกม · ชนะ {w}", { n: perDay.get(date)!.n, w: perDay.get(date)!.w });
 
   const tiles = [
     { label: t("เกม"), value: String(all.length), tone: "bg-zinc-100" },
@@ -144,6 +151,10 @@ function History({ player }: { player: Player }) {
           </div>
         ))}
       </div>
+      <p className="px-0.5 text-xs text-zinc-500">
+        {[t("นับตั้งแต่ {date}", { date: dayLabel(first) }), ...others].join(" · ")}
+        {count("unknown") > 0 && <span className="block">{t("ไม่มีผล = แอดมินไม่ได้กดผลแพ้ชนะตอนจบเกม")}</span>}
+      </p>
       {recent.length > 0 && (
         <div className="flex flex-wrap items-center gap-1 text-xs text-zinc-600">
           <span className="mr-0.5">{t("{n} เกมล่าสุด", { n: recent.length })}</span>
@@ -171,7 +182,7 @@ function History({ player }: { player: Player }) {
               const mate = byId.get(h.mate);
               return (
                 <li key={h.game.id} className="flex items-center gap-3 rounded-2xl bg-zinc-50 px-3 py-2.5">
-                  <span className={`w-[4.5rem] shrink-0 rounded-xl px-1 py-1.5 text-center text-xs leading-tight font-bold ${r.tone}`}>{r.label()}</span>
+                  <span className={`w-14 shrink-0 rounded-xl px-1 py-1.5 text-center text-xs leading-tight font-bold ${r.tone}`}>{r.label()}</span>
                   <div className="min-w-0 flex-1 text-sm">
                     <div className="flex min-w-0 items-center gap-1.5">
                       <span className="shrink-0 text-zinc-500">{t("คู่")}</span>
@@ -192,11 +203,10 @@ function History({ player }: { player: Player }) {
         </section>
       ))}
       {shown < all.length && (
-        <button onClick={() => setShown((n) => n + PAGE)} className="h-11 w-full rounded-2xl bg-zinc-100 text-sm font-semibold text-zinc-700">
+        <Button onClick={() => setShown((n) => n + PAGE)} className="w-full">
           {t("ดูเพิ่ม ({n} เกม)", { n: all.length - shown })}
-        </button>
+        </Button>
       )}
-      {count("unknown") > 0 && <p className="px-1 text-xs text-zinc-500">{t("ไม่มีผล = แอดมินไม่ได้กดผลแพ้ชนะตอนจบเกม")}</p>}
     </div>
   );
 }
