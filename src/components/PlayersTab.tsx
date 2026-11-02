@@ -11,6 +11,7 @@ import { LevelGroups, RosterSortSwitch, useRosterSort } from "./RosterSort";
 import { t } from "@/lib/i18n";
 import { useAdmins } from "./AdminsCard";
 import { PlanPanel, fmtDate } from "./Packages";
+import { PartnerStats } from "./PartnerStats";
 
 const GENDERS: { value: Gender; label: string }[] = [
   { value: "male", label: "ชาย" },
@@ -187,6 +188,8 @@ export function PlayersTab() {
   const [editing, setEditing] = useState<string | null>(null);
   // แถวที่เปิดเลือกแพ็กเกจอยู่ (ทีละคน)
   const [planFor, setPlanFor] = useState<string | null>(null);
+  // ผู้เล่นที่เปิดดูประวัติการเล่นอยู่
+  const [historyOf, setHistoryOf] = useState<Player | null>(null);
   const date = today();
   const pending = state.players.filter((p) => p.pending);
   const all = state.players.filter((p) => !p.pending);
@@ -299,6 +302,9 @@ export function PlayersTab() {
                       </Button>
                     );
                   })()}
+                  <Button variant="ghost" className="px-3 py-2 text-xs" onClick={() => setHistoryOf(p)}>
+                    {t("ประวัติการเล่น")}
+                  </Button>
                   <Button variant="ghost" className="px-3 py-2 text-xs" onClick={() => setEditing(p.id)}>
                     {t("แก้ไข")}
                   </Button>
@@ -315,6 +321,14 @@ export function PlayersTab() {
 
   return (
     <div className="space-y-4">
+      {historyOf && (
+        <Sheet
+          title={<h3 className="min-w-0 truncate font-display text-lg font-semibold">{t("ประวัติการเล่นของ {name}", { name: historyOf.name })}</h3>}
+          onClose={() => setHistoryOf(null)}
+        >
+          <PartnerStats player={historyOf} />
+        </Sheet>
+      )}
       <LineClaims />
       <UnlinkedLines linked={admin.emailOf} onLinked={admin.reload} />
       <LevelRequests />
