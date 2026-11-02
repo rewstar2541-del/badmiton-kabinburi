@@ -1470,5 +1470,4 @@ export const en: Record<string, string> = {
   "บันทึกผลเกมสุดท้ายก่อนจบก๊วน": "Record the last games before ending",
   "จบก๊วน ไปหน้าคิดเงิน": "End session · go to billing",
   "เลือกผลให้ครบทุกสนามก่อน": "Pick a result for every court first",
-  "รอลงสนาม · ยังไม่ได้เล่น": "Waiting · not playing yet",
 };
