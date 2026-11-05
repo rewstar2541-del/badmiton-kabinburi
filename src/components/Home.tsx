@@ -1,6 +1,7 @@
 "use client";
 
 import { birthdays } from "@/lib/club";
+import { GamesHistory } from "./GameShuttles";
 
 import { Auto } from "@/lib/autoTranslate";
 
@@ -384,7 +385,7 @@ export function PlayerHome() {
 export function AdminHome() {
   const { state } = useStore();
   const { day, date } = useToday();
-  const { open, sheet } = useSheets<"signups" | "next" | "announce" | "calendar" | "poll" | "board" | "photos" | "rank" | "members" | "promote" | "frames" | "slips" | "owed">();
+  const { open, sheet } = useSheets<"signups" | "next" | "announce" | "calendar" | "poll" | "board" | "photos" | "rank" | "members" | "promote" | "frames" | "slips" | "owed" | "games">();
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const names = (ids: string[]) =>
     ids
@@ -547,6 +548,7 @@ export function AdminHome() {
           { icon: Icon.Box, label: t("ของหาย/ฝากขาย"), onClick: () => (markBoard(String(Date.now())), open("board")), badge: newPosts },
           { icon: Icon.Camera, label: t("รูปกิจกรรม"), onClick: () => open("photos") },
           { icon: Icon.Trophy, label: t("อันดับ"), onClick: () => open("rank") },
+          { icon: Icon.Shuttle, label: t("ประวัติเกม"), onClick: () => open("games") },
           { icon: Icon.Users, label: t("สมาชิก"), onClick: () => open("members") },
           { icon: Icon.Heart, label: t("กรอบเทศกาล"), onClick: () => open("frames") },
         ]}
@@ -571,6 +573,7 @@ export function AdminHome() {
       {sheet("members", t("สมาชิก"), <MembersDirectory />)}
       {sheet("promote", t("เลื่อนขั้นประจำรอบ 3 เดือน"), <PromotionList quarter={lastQuarter} />)}
       {sheet("frames", t("กรอบเทศกาล แจก/ขาย"), <FrameGrant />)}
+      {sheet("games", t("ประวัติเกม"), <GamesHistory />)}
     </div>
   );
 }

@@ -79,3 +79,35 @@ describe("สนามเช่า: จำนวนคอร์ทไม่เ�
     expect(normalizeCourts(19, 23, [4, 5])).toEqual([4, 5, 5, 5]);
   });
 });
+
+import { clock as clk, rentShares as shares2, rentSpan as span2 } from "../courtSplit";
+import { describe as d2, expect as e2, it as i2 } from "vitest";
+d2("สนามเช่าเริ่มไม่ตรงชั่วโมง", () => {
+  i2("18:30-20:30 ปัดช่วงเวลาและหารถูก", () => {
+    const rent = { start: 18.5, end: 20.5, perHour: 200 };
+    e2(clk(18.5)).toBe("18:30");
+    e2(clk(18.25)).toBe("18:15");
+    e2(span2(rent, 0, { from: 19, to: 20.5 })).toEqual({ from: 19, to: 20.5 });
+    e2(span2(rent, 0, { from: 18, to: 20 })).toEqual({ from: 18.5, to: 20 });
+    const s = shares2(rent, [
+      { playerId: "a", at: 0, hours: { from: 18.5, to: 20.5 } },
+      { playerId: "b", at: 0, hours: { from: 19.5, to: 20.5 } },
+    ]);
+    e2(s.get("a")).toBe(300);
+    e2(s.get("b")).toBe(100);
+    e2(shares2({ start: 18.5, end: 19.25, perHour: 200 }, [{ playerId: "x", at: 0, hours: { from: 18.5, to: 19.25 } }]).get("x")).toBe(150);
+  });
+});
+
+d2("เวลาระดับนาที", () => {
+  i2("19:01 เริ่ม หารตามนาทีจริงและรวมเท่าค่าเช่า", () => {
+    const rent = { start: 19 + 1 / 60, end: 21, perHour: 600 };
+    const s = shares2(rent, [
+      { playerId: "a", at: 0, hours: { from: 19 + 1 / 60, to: 21 } },
+      { playerId: "b", at: 0, hours: { from: 20, to: 21 } },
+    ]);
+    e2((s.get("a") ?? 0) + (s.get("b") ?? 0)).toBe(Math.round(600 * (59 / 60) + 600));
+    e2(s.get("b")).toBe(300);
+    e2(clk(19 + 1 / 60)).toBe("19:01");
+  });
+});

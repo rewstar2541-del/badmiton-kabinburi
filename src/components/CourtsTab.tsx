@@ -6,10 +6,11 @@ import { courtPlan, courtQueue, plannedCourt, queueByCourt, presence, queueBlock
 import { useStore, useToday } from "@/lib/store";
 import { courtList, courtsOfDay, type Game, type Player, type QueuedGame, type Team } from "@/lib/types";
 import { MatchBuilder } from "./MatchBuilder";
-import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle } from "./ui";
+import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, Sheet } from "./ui";
 import { t } from "@/lib/i18n";
 import { MyRestCard } from "./RestButton";
-import { PendingNotice, PickMe, useMe } from "./PickMe";
+import { PendingNotice, PickMe, savedPin, useMe } from "./PickMe";
+import { DISPUTE_MS, disputable, teamOf, type GameReport } from "@/lib/state";
 import { goToTab } from "./Membership";
 import { FinishedGames, SubNotes } from "./GameShuttles";
 import { SubPlayer } from "./SubPlayer";
@@ -27,10 +28,10 @@ function minutes(ms: number) {
   return Math.max(0, Math.floor(ms / 60000));
 }
 
-function CourtSide({ ids, byId, team }: { ids: string[]; byId: Map<string, Player>; team: Team }) {
+function CourtSide({ ids, byId, team, compact, blocked }: { ids: string[]; byId: Map<string, Player>; team: Team; compact?: boolean; blocked?: Set<string> }) {
   return (
     // basis-0 + min-w-0: แต่ละฝั่งกว้างครึ่งสนามพอดี ชื่อยาวไม่ล้นข้ามเส้นกลาง
-    <div className="flex min-w-0 flex-1 basis-0 flex-col items-center justify-center gap-2 py-3">
+    <div className={`flex min-w-0 flex-1 basis-0 flex-col items-center justify-center ${compact ? "gap-1.5 py-2" : "gap-2 py-3"}`}>
       <span
         className={`rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide ${
           team === "A" ? "bg-lime text-ink" : "bg-sky-300 text-ink"
@@ -40,13 +41,17 @@ function CourtSide({ ids, byId, team }: { ids: string[]; byId: Map<string, Playe
       </span>
       {ids.map((id) => {
         const p = byId.get(id);
+        const out = blocked?.has(id);
         return (
-          <div key={id} className="flex w-full items-center gap-2 rounded-2xl bg-black/20 px-2 py-1.5 backdrop-blur-sm">
-            <Avatar name={p?.name ?? "?"} photo={p?.photo} size={28} ring />
-            <span className="line-clamp-2 min-w-0 flex-1 text-sm leading-tight font-semibold [overflow-wrap:anywhere] text-white" title={p?.name}>
+          <div key={id} className={`flex w-full items-center gap-2 rounded-2xl px-2 ${compact ? "py-1" : "py-1.5"} backdrop-blur-sm ${out ? "bg-red-600/70" : "bg-black/20"}`}>
+            <Avatar name={p?.name ?? "?"} photo={p?.photo} size={compact ? 24 : 28} ring />
+            <span
+              className={`line-clamp-2 min-w-0 flex-1 text-sm leading-tight font-semibold [overflow-wrap:anywhere] text-white ${out ? "line-through" : ""}`}
+              title={p?.name}
+            >
               {p?.name ?? "?"}
             </span>
-            {p && (
+            {p && !compact && (
               <span className="shrink-0">
                 <LevelBadge level={p.level} />
               </span>
@@ -118,11 +123,15 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
       {auth.isAdmin && (
         <>
 
-      <div className="grid grid-cols-2 gap-2">
-        <Button variant="accent" onClick={() => end("A")} className="flex items-center justify-center gap-1.5">
+      {/* เสมออยู่ตรงกลางระหว่างทีม A กับทีม B */}
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-2">
+        <Button variant="accent" onClick={() => end("A")} className="flex items-center justify-center gap-1.5 !px-2">
           <Icon.Trophy width={16} height={16} /> {t("ทีม {team} ชนะ", { team: "A" })}
         </Button>
-        <Button onClick={() => end("B")} className="flex items-center justify-center gap-1.5 !bg-sky-300 text-ink">
+        <Button onClick={() => end(undefined, true)} className="!bg-zinc-100 !px-4 text-zinc-700">
+          {t("เสมอ")}
+        </Button>
+        <Button onClick={() => end("B")} className="flex items-center justify-center gap-1.5 !bg-sky-300 !px-2 text-ink">
           <Icon.Trophy width={16} height={16} /> {t("ทีม {team} ชนะ", { team: "B" })}
         </Button>
       </div>
@@ -134,9 +143,6 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
       </button>
       {subbing && <SubPlayer game={game} onClose={() => setSubbing(false)} />}
       <div className="flex justify-center gap-4 text-xs text-zinc-400">
-        <button className="underline-offset-2 active:underline" onClick={() => end(undefined, true)}>
-          {t("จบเสมอ")}
-        </button>
         <button className="underline-offset-2 active:underline" onClick={() => end()}>
           {t("จบไม่บันทึกผล")}
         </button>
@@ -155,19 +161,36 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
   );
 }
 
-/** ชื่อ 4 คนของคู่ที่จัดไว้ ทีม A vs ทีม B (คนที่ลงไม่ได้ขีดฆ่า) */
+/** คู่ที่จัดไว้ แบบกะทัดรัด ไม่มีสีสนาม (ไม่ให้สับสนกับคนที่กำลังเล่น) ทีม A ซ้าย VS ทีม B ขวา คนที่ลงไม่ได้ขีดฆ่า */
 function QueuedTeams({ q, byId, blocked }: { q: Pick<QueuedGame, "playerIds">; byId: Map<string, Player>; blocked: Set<string> }) {
-  const name = (id: string) => (
-    <span key={id} className={`truncate ${blocked.has(id) ? "text-red-500 line-through" : ""}`}>
-      {byId.get(id)?.name ?? "?"}
-    </span>
+  const side = (ids: string[], team: Team) => (
+    <div className="flex min-w-0 flex-1 basis-0 flex-col gap-1">
+      {ids.map((id) => {
+        const p = byId.get(id);
+        const out = blocked.has(id);
+        return (
+          <div key={id} className="flex min-w-0 items-center gap-1.5">
+            <span className={`h-5 w-1 shrink-0 rounded-full ${team === "A" ? "bg-lime" : "bg-sky-300"}`} />
+            <Avatar name={p?.name ?? "?"} photo={p?.photo} size={22} />
+            <span className={`min-w-0 flex-1 truncate text-sm font-medium ${out ? "text-red-500 line-through" : ""}`} title={p?.name}>
+              {p?.name ?? "?"}
+            </span>
+            {p && (
+              <span className="shrink-0">
+                <LevelBadge level={p.level} />
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
   return (
-    <span className="flex min-w-0 flex-1 items-center gap-1.5 text-sm font-medium">
-      <span className="flex min-w-0 flex-1 basis-0 flex-col leading-tight">{q.playerIds.slice(0, 2).map(name)}</span>
+    <div className="flex min-w-0 flex-1 items-center gap-2">
+      {side(q.playerIds.slice(0, 2), "A")}
       <span className="shrink-0 text-xs font-bold text-zinc-400">VS</span>
-      <span className="flex min-w-0 flex-1 basis-0 flex-col leading-tight">{q.playerIds.slice(2).map(name)}</span>
-    </span>
+      {side(q.playerIds.slice(2), "B")}
+    </div>
   );
 }
 
@@ -277,6 +300,72 @@ function CourtQueue({
   );
 }
 
+type Result = "A" | "B" | "draw" | "none";
+
+/**
+ * จบก๊วนตอนที่ยังมีเกมเล่นอยู่: ให้กดผลเกมสุดท้ายของแต่ละสนามก่อน (ไม่เริ่มคู่ต่อไป)
+ * แล้วค่อยล้างคิวและไปหน้าคิดเงิน
+ */
+function EndSessionSheet({ games, byId, queued, onClose, onDone }: { games: Game[]; byId: Map<string, Player>; queued: number; onClose: () => void; onDone: (r: Map<string, Result>) => void }) {
+  const [done, setDone] = useState(false);
+  const [res, setRes] = useState<Map<string, Result>>(new Map());
+  const choose = (id: string, r: Result) => setRes(new Map(res).set(id, r));
+  const all = games.every((g) => res.has(g.id));
+  const opt = (g: Game, r: Result, label: string, on: string, off: string) => {
+    const sel = res.get(g.id) === r;
+    return (
+      <button
+        key={r}
+        onClick={() => choose(g.id, r)}
+        className={`flex min-h-11 items-center justify-center gap-1 rounded-full px-2 text-sm font-semibold active:scale-95 ${sel ? `${on} ring-2 ring-ink` : off} ${r === "draw" ? "min-w-16 px-4" : ""}`}
+      >
+        {sel && <Icon.Check width={14} height={14} />}
+        {label}
+      </button>
+    );
+  };
+  return (
+    <Sheet keepOpen onClose={onClose} title={<h3 className="font-display text-lg font-semibold">🏁 {t("บันทึกผลเกมสุดท้ายก่อนจบก๊วน")}</h3>}>
+      {games
+        .slice()
+        .sort((a, b) => a.court - b.court)
+        .map((g) => (
+          <div key={g.id} className="space-y-2">
+            <div className="text-sm font-semibold text-zinc-600">{t("สนาม {n}", { n: g.court })}</div>
+            <div className="court-surface flex gap-1 rounded-2xl px-1.5">
+              <CourtSide ids={g.playerIds.slice(0, 2)} byId={byId} team="A" compact />
+              <CourtSide ids={g.playerIds.slice(2)} byId={byId} team="B" compact />
+            </div>
+            <div className="grid grid-cols-[1fr_auto_1fr] gap-2">
+              {opt(g, "A", t("ทีม {team} ชนะ", { team: "A" }), "bg-lime text-ink", "bg-lime/35 text-ink")}
+              {opt(g, "draw", t("เสมอ"), "bg-zinc-300 text-ink", "bg-zinc-100 text-zinc-700 ring-1 ring-zinc-300")}
+              {opt(g, "B", t("ทีม {team} ชนะ", { team: "B" }), "bg-sky-300 text-ink", "bg-sky-300/35 text-ink")}
+            </div>
+            <button
+              onClick={() => choose(g.id, "none")}
+              className={`min-h-11 w-full rounded-full text-center text-sm ${res.get(g.id) === "none" ? "bg-zinc-200 font-semibold text-ink ring-2 ring-ink" : "text-zinc-500"}`}
+            >
+              {t("จบไม่บันทึกผล")}
+            </button>
+          </div>
+        ))}
+      <p className="text-center text-xs text-zinc-500">
+        {queued ? t("จะล้างคิวที่จัดไว้ {n} คู่ ทุกคนที่ยังไม่จ่ายจะเป็นพัก แล้วไปหน้าคิดเงิน", { n: queued }) : t("ทุกคนที่ยังไม่จ่ายจะเป็นพัก แล้วไปหน้าคิดเงิน")}
+      </p>
+      <Button
+        disabled={!all || done}
+        className="w-full !rounded-3xl !bg-red-600 !py-4 !text-base !text-white disabled:opacity-40"
+        onClick={() => {
+          setDone(true);
+          onDone(res);
+        }}
+      >
+        🏁 {all ? t("จบก๊วน ไปหน้าคิดเงิน") : t("เลือกผลให้ครบทุกสนามก่อน")}
+      </Button>
+    </Sheet>
+  );
+}
+
 export function CourtsTab() {
   const { state, auth, dispatch } = useStore();
   const { date, day } = useToday();
@@ -299,6 +388,22 @@ export function CourtsTab() {
     if (!on) setShowRest(false);
   };
   // จบก๊วนแล้ว: ไม่มีเกม ไม่มีคนรอ ไม่มีคิวสนาม เหลือแต่คนพักที่ยังไม่จ่าย
+  const [ending, setEnding] = useState(false);
+  // เกมจบหมดจากอีกเครื่องตอนเปิดหน้าต่างค้าง: ปิดไป ไม่ให้เด้งขึ้นเองตอนเริ่มเกมใหม่
+  if (ending && active.size === 0) setEnding(false);
+  const finish = (results: Map<string, Result>) => {
+    day.games
+      .filter((g) => !g.endedAt)
+      .forEach((g) => {
+        const r = results.get(g.id);
+        dispatch({ type: "endGame", date, gameId: g.id, winner: r === "A" || r === "B" ? r : undefined, draw: r === "draw" || undefined });
+      });
+    (day.queued ?? []).forEach((q) => dispatch({ type: "unqueueGame", date, id: q.id }));
+    // ล้างคิว: คนที่ยังรอหรือเพิ่งลงจากสนามเป็นพักทั้งหมด (ยังไม่จ่าย ยังเห็นในหน้าคิดเงิน)
+    day.checkIns.filter((c) => !c.paidAt && !c.resting).forEach((c) => dispatch({ type: "setResting", date, playerId: c.playerId, resting: true }));
+    setEnding(false);
+    goToTab("billing");
+  };
   const ended = active.size === 0 && queue.length === 0 && !(day.queued ?? []).length && resting.length > 0;
 
   if (!auth.isAdmin)
@@ -315,8 +420,6 @@ export function CourtsTab() {
       <div className="space-y-4">
         <SectionTitle>{t("สนาม")}</SectionTitle>
         <NoSession admin />
-        {/* วันที่ไม่มีก๊วน ยังเข้าไปแก้/ลบเกมของวันก่อนได้ */}
-        <FinishedGames byId={byId} />
       </div>
     );
 
@@ -341,14 +444,9 @@ export function CourtsTab() {
       <Button
         className="w-full !rounded-3xl !bg-red-600 !py-4 !text-base !text-white shadow-[0_10px_24px_-10px_rgba(220,38,38,0.7)] active:scale-[0.98]"
         onClick={() => {
-          const running = [...active.values()];
-          const msg = running.length ? t("จบก๊วน? จะจบเกมที่กำลังเล่นอยู่ {n} เกม (ไม่บันทึกผล) ล้างคิว แล้วไปหน้าคิดเงิน", { n: running.length }) : t("จบก๊วน? ล้างคิว แล้วไปหน้าคิดเงิน");
-          if (!confirm(msg)) return;
-          running.forEach((g) => dispatch({ type: "endGame", date, gameId: g.id }));
-          (day.queued ?? []).forEach((q) => dispatch({ type: "unqueueGame", date, id: q.id }));
-          // ล้างคิว: คนที่ยังรอหรือเพิ่งลงจากสนามเป็นพักทั้งหมด (ยังไม่จ่าย ยังเห็นในหน้าคิดเงิน)
-          day.checkIns.filter((c) => !c.paidAt && !c.resting).forEach((c) => dispatch({ type: "setResting", date, playerId: c.playerId, resting: true }));
-          goToTab("billing");
+          // ยังมีเกมเล่นอยู่: ให้กดผลเกมสุดท้ายก่อน
+          if (active.size) return setEnding(true);
+          if (confirm(t("จบก๊วน? ล้างคิว แล้วไปหน้าคิดเงิน"))) finish(new Map());
         }}
       >
         🏁 {t("จบก๊วน")}
@@ -404,6 +502,10 @@ export function CourtsTab() {
           );
         })}
       </div>
+
+      {ending && active.size > 0 && (
+        <EndSessionSheet games={[...active.values()]} byId={byId} queued={(day.queued ?? []).length} onClose={() => setEnding(false)} onDone={finish} />
+      )}
 
       {building !== null && (
         <MatchBuilder
@@ -517,12 +619,99 @@ function NoSession({ admin = false }: { admin?: boolean }) {
   );
 }
 
+/** ผู้เล่นในสนามกดผลเอง (ตอนแอดมินลงเล่นหมด) คนเดียวใน 4 คนกดก็พอ คู่ถัดไปลงต่อทันที */
+function SelfReport({ game, playerId, onDone }: { game: Game; playerId: string; onDone: (msg: string) => void }) {
+  const { state, report } = useStore();
+  const { day } = useToday();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const label: Record<GameReport, string> = { win: t("ทีมเราชนะ"), draw: t("เสมอ"), lose: t("ทีมเราแพ้") };
+  const send = async (r: GameReport) => {
+    if (!confirm(t("บันทึกผล: {r}? คู่ต่อไปจะลงสนามทันที", { r: label[r] }))) return;
+    // คู่ถัดไปของสนามนี้ คิดแบบเดียวกับตอนแอดมินกดจบเกม
+    const next = courtPlan(day, state.players, courtList(state.settings), game.court).get(game.court);
+    const ok = next && courtList(state.settings).includes(game.court) && queueBlockers(day, next, game.id).length === 0;
+    setBusy(true);
+    setError("");
+    const err = await report(playerId, savedPin.get(), game, r, ok ? { playerIds: next.playerIds, queuedId: next.queuedId } : undefined);
+    setBusy(false);
+    if (err) setError(t(err));
+    else onDone(`${t("บันทึกผลแล้ว: {r}", { r: label[r] })} · ${ok ? t("คู่ต่อไปลงสนามแล้ว") : t("คู่ต่อไปยังลงไม่ได้ รอแอดมินจัด")}`);
+  };
+  return (
+    <div className="space-y-2">
+      <p className="text-center text-sm text-zinc-500">{busy ? t("กำลังบันทึก...") : t("เล่นจบแล้ว? กดผลได้เลย")}</p>
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-3">
+        <Button variant="accent" disabled={busy} onClick={() => send("win")} className="flex items-center justify-center gap-1.5 !px-2 whitespace-nowrap">
+          <Icon.Trophy width={16} height={16} /> {label.win}
+        </Button>
+        <Button variant="secondary" disabled={busy} onClick={() => send("draw")} className="!px-4">
+          {label.draw}
+        </Button>
+        <Button variant="danger" disabled={busy} onClick={() => send("lose")} className="!px-2 whitespace-nowrap">
+          {label.lose}
+        </Button>
+      </div>
+      {error && <p className="text-center text-sm text-red-600" role="alert">{error}</p>}
+      <p className="text-center text-sm text-zinc-500">{t("คนใดคนหนึ่งใน 4 คนกดก็พอ ถ้าผิด อีกทีมกด \"ไม่ตรง\" ได้")}</p>
+    </div>
+  );
+}
+
+/** อีกทีมกดผลไว้ ให้เวลา 2 นาทีกด "ไม่ตรง" (แจ้งแอดมินมาแก้ ไม่หยุดคิว) */
+function DisputeBanner({ playerId }: { playerId: string }) {
+  const { state, dispute } = useStore();
+  const { day } = useToday();
+  const now = useNow(1000);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  useEffect(() => {
+    if (!msg) return;
+    const id = setTimeout(() => setMsg(""), 6000);
+    return () => clearTimeout(id);
+  }, [msg]);
+  const g = disputable(day, playerId, now);
+  if (!g) return msg ? <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800" role="status">{msg}</p> : null;
+  const name = (id?: string) => state.players.find((p) => p.id === id)?.name ?? "?";
+  // บอกเทียบกับทีมของคนที่ดู จะได้เห็นทันทีว่าผิดไหม
+  const result = g.draw ? t("เสมอ") : !g.winner ? t("ไม่นับผล") : g.winner === teamOf(g, playerId) ? t("ทีมคุณชนะ") : t("ทีมคุณแพ้");
+  const left = Math.max(0, Math.ceil((DISPUTE_MS - (now - (g.endedAt ?? now))) / 1000));
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border-2 border-amber-400 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      <div className="min-w-0 flex-1">
+        <div>{t("{name} กดผลสนาม {n}", { name: name(g.reportedBy), n: g.court })}</div>
+        <div className="text-base font-bold">{result}</div>
+        <div className="font-semibold">{t("ถ้าไม่ตรง กดได้อีก {m}:{s} นาที", { m: Math.floor(left / 60), s: String(left % 60).padStart(2, "0") })}</div>
+      </div>
+      <Button
+        variant="warn"
+        className="min-h-11 shrink-0 !bg-white !px-3"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          const err = await dispute(playerId, savedPin.get(), g.id);
+          setBusy(false);
+          setMsg(err ? t(err) : t("แจ้งแอดมินแล้ว แอดมินจะมาแก้ผลให้"));
+        }}
+      >
+        {t("ไม่ตรง")}
+      </Button>
+    </div>
+  );
+}
+
 /** หน้าสนามของผู้เล่น: สนามและคิวของตัวเองด้านบน แล้วทุกสนามและคิวแบบเดียวกับแอดมิน (ดูอย่างเดียว เหมือนจอทีวี) */
 function PlayerCourts() {
   const { state } = useStore();
   const { day } = useToday();
   const [me, setMe] = useMe();
   const now = useNow();
+  const [reported, setReported] = useState("");
+  useEffect(() => {
+    if (!reported) return;
+    const id = setTimeout(() => setReported(""), 8000);
+    return () => clearTimeout(id);
+  }, [reported]);
   const player = state.players.find((p) => p.id === me);
   if (!player) return <PickMe onPick={setMe} hint={t("เข้าครั้งเดียว เครื่องจะจำไว้")} />;
   if (player.pending) return <PendingNotice name={player.name} onNotMe={() => setMe(null)} />;
@@ -550,6 +739,8 @@ function PlayerCourts() {
   return (
     <div className="space-y-4">
       <SectionTitle>{t("สนามของฉัน")}</SectionTitle>
+      <DisputeBanner playerId={player.id} />
+      {reported && <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700" role="status">{reported}</p>}
       {myGame ? (
         <Card className="space-y-3">
           <div className="flex items-center justify-between">
@@ -563,6 +754,7 @@ function PlayerCourts() {
             <CourtSide ids={myGame.playerIds.slice(0, 2)} byId={byId} team="A" />
             <CourtSide ids={myGame.playerIds.slice(2)} byId={byId} team="B" />
           </div>
+          <SelfReport game={myGame} playerId={player.id} onDone={setReported} />
         </Card>
       ) : (
         <Card className="py-6 text-center">

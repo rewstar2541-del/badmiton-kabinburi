@@ -55,7 +55,12 @@ export type Action =
   /** แอดมินแก้คนในคู่ที่จัดคิวไว้ (ลำดับคิวเดิม) */
   | { type: "editQueued"; date: string; id: string; playerIds: Game["playerIds"] }
   | { type: "setShuttles"; date: string; gameId: string; shuttles: number }
-  | { type: "endGame"; date: string; gameId: string; winner?: Team; draw?: boolean; _at: number }
+  /** reportedBy: ผู้เล่นในสนามกดผลเอง (โหมดเครื่องเดียว ฐานข้อมูลจริงใช้ฟังก์ชัน report_game) */
+  | { type: "endGame"; date: string; gameId: string; winner?: Team; draw?: boolean; reportedBy?: string; _at: number }
+  /** แอดมินแก้ผลเกมที่จบแล้ว (ล้างป้าย "ไม่ตรง" ด้วย) ไม่มี winner และ draw = ไม่นับผล */
+  | { type: "setResult"; date: string; gameId: string; winner?: Team; draw?: boolean }
+  /** อีกทีมกด "ไม่ตรง" (โหมดเครื่องเดียว ฐานข้อมูลจริงใช้ฟังก์ชัน dispute_game) */
+  | { type: "disputeGame"; date: string; gameId: string; playerId: string }
   | { type: "cancelGame"; date: string; gameId: string }
   /** เปลี่ยนตัวระหว่างเกม (ส่ง 4 คนในสนามและรายการเปลี่ยนตัวทั้งหมดหลังเปลี่ยน) */
   | { type: "subPlayer"; date: string; gameId: string; playerIds: Game["playerIds"]; subs: Sub[] }
@@ -195,6 +200,32 @@ export function withGuests(state: State, playerId: string): string[] {
   return [playerId, ...guestsOf(state.players, playerId).map((g) => g.id)];
 }
 
+/** ผลที่ผู้เล่นกดเอง เทียบกับทีมของตัวเอง */
+export type GameReport = "win" | "draw" | "lose";
+
+/** แปลงผลที่ผู้เล่นกด (ทีมเราชนะ/เสมอ/แพ้) เป็นทีมที่ชนะ */
+export function resultOf(game: Game, playerId: string, r: GameReport): { winner?: Team; draw?: boolean } {
+  if (r === "draw") return { draw: true };
+  const mine: Team = teamOf(game, playerId);
+  return { winner: r === "win" ? mine : mine === "A" ? "B" : "A" };
+}
+
+export function teamOf(game: Game, playerId: string): Team {
+  return game.playerIds.indexOf(playerId) < 2 ? "A" : "B";
+}
+
+/** อีกทีมกด "ไม่ตรง" ได้ภายในเวลานี้หลังผู้เล่นกดผล (ฐานข้อมูลเผื่อเพิ่มอีก 1 นาที) */
+export const DISPUTE_MS = 2 * 60_000;
+
+/** เกมที่คนนี้กด "ไม่ตรง" ได้ตอนนี้: ผู้เล่นอีกทีมกดผลไว้ ยังไม่มีใครแย้ง และยังไม่เลยเวลา */
+export function disputable(day: Day, playerId: string, now: number): Game | undefined {
+  return day.games.find(
+    (g) =>
+      g.endedAt && g.reportedBy && !g.disputedBy && g.playerIds.includes(playerId) &&
+      teamOf(g, playerId) !== teamOf(g, g.reportedBy) && now - g.endedAt < DISPUTE_MS,
+  );
+}
+
 export function prepare(i: Intent, now = Date.now(), id = newId): Action {
   return { ...i, _id: id(), _at: now } as Action;
 }
@@ -263,7 +294,11 @@ export function reducer(state: State, a: Action): State {
     case "setShuttles":
       return updateGame(state, a.date, a.gameId, (g) => ({ ...g, shuttles: Math.max(0, a.shuttles) }));
     case "endGame":
-      return updateGame(state, a.date, a.gameId, (g) => ({ ...g, endedAt: a._at, winner: a.winner, draw: a.draw || undefined }));
+      return updateGame(state, a.date, a.gameId, (g) => ({ ...g, endedAt: a._at, winner: a.winner, draw: a.draw || undefined, reportedBy: a.reportedBy }));
+    case "setResult":
+      return updateGame(state, a.date, a.gameId, (g) => ({ ...g, winner: a.winner, draw: a.draw || undefined, disputedBy: undefined }));
+    case "disputeGame":
+      return updateGame(state, a.date, a.gameId, (g) => ({ ...g, disputedBy: a.playerId }));
     case "cancelGame":
       return withDay(state, a.date, (d) => ({ ...d, games: d.games.filter((g) => g.id !== a.gameId) }));
     case "subPlayer":
