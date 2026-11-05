@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useMemo, useState } from "react";
 import { useStore, useToday } from "@/lib/store";
-import { inGame, lineupWith, shuttlesInGame, type Day, type Game, type Player } from "@/lib/types";
+import { inGame, lineupWith, minShuttles, shuttlesInGame, type Day, type Game, type Player } from "@/lib/types";
 import { Card, Icon, SearchInput, SectionTitle, inputClass } from "./ui";
 import { locale, t } from "@/lib/i18n";
 import { pricesFor, shuttleCountFor, shuttleFee } from "@/lib/billing";
@@ -40,14 +40,14 @@ function Team({ ids, byId, won, me }: { ids: string[]; byId: Map<string, Player>
 }
 
 /** บรรทัดเปลี่ยนตัว เช่น "เปลี่ยนตัว: บอล แทน ต้น (ต้นจ่าย 2 ลูก)" */
-export function SubNotes({ game, byId, className = "text-xs text-amber-800" }: { game: Pick<Game, "subs">; byId: Map<string, Player>; className?: string }) {
+export function SubNotes({ game, byId, className = "text-xs text-amber-800" }: { game: Pick<Game, "subs" | "playerIds" | "shuttles">; byId: Map<string, Player>; className?: string }) {
   if (!game.subs?.length) return null;
   const name = (id: string) => byId.get(id)?.name ?? "?";
   return (
     <>
       {game.subs.map((s, i) => (
-        <div key={i} className={`leading-5 ${className}`}>
-          ⇄ {t("{in} แทน {out} (คนออกจ่าย {n} ลูก)", { in: name(s.in), out: name(s.out), n: s.shuttles })}
+        <div key={i} className={`leading-5 [overflow-wrap:anywhere] ${className}`}>
+          ⇄ {t("{in} แทน {out} (คนออกจ่าย {n} ลูก)", { in: name(s.in), out: name(s.out), n: shuttlesInGame(game, s.out) })}
         </div>
       ))}
     </>
@@ -70,8 +70,13 @@ export function GameShuttleRow({ game, byId, day, me, open, onToggle, past = fal
   const lockPaid = useLockPaid(game, day);
   const ci = new Map(day.checkIns.map((c) => [c.playerId, c]));
   const fixed = [...game.playerIds, ...(game.subs ?? []).map((s) => s.out)].filter((id) => ci.get(id)?.paidAt || ci.get(id)?.shuttleFee !== undefined);
+  // หน้าบิลของคนเดียว: ถ้าคนนี้ถูกเปลี่ยนตัวออก แสดงทีมตอนที่เขาเล่น และลูกที่เขาจ่าย/ลูกทั้งเกม
+  const one = typeof me === "string" ? me : undefined;
+  const left = !!one && !game.playerIds.includes(one) && inGame(game, one);
+  const lineup = one ? lineupWith(game, one) : game.playerIds;
+  const mine = one ? shuttlesInGame(game, one) : game.shuttles;
   const change = (n: number) => {
-    if (n < 0) return;
+    if (n < minShuttles(game)) return;
     lockPaid();
     dispatch({ type: "setShuttles", date: day.date, gameId: game.id, shuttles: n });
   };
@@ -90,15 +95,16 @@ export function GameShuttleRow({ game, byId, day, me, open, onToggle, past = fal
           <div className="text-xs text-zinc-500">{t("สนาม {n}", { n: game.court })}</div>
         </div>
         <div className="min-w-0 flex-1 text-sm leading-6">
-          <Team ids={game.playerIds.slice(0, 2)} byId={byId} won={game.winner === "A"} me={me} />
-          <Team ids={game.playerIds.slice(2)} byId={byId} won={game.winner === "B"} me={me} />
+          <Team ids={lineup.slice(0, 2)} byId={byId} won={!left && game.winner === "A"} me={me} />
+          <Team ids={lineup.slice(2)} byId={byId} won={!left && game.winner === "B"} me={me} />
+          {left && <div className="text-xs font-semibold text-zinc-500">{t("เปลี่ยนตัวออก")}</div>}
           <SubNotes game={game} byId={byId} />
         </div>
         {!game.endedAt && <span className="shrink-0 whitespace-nowrap text-xs font-semibold text-emerald-700">{t("กำลังเล่น")}</span>}
         {game.disputedBy && <span className="shrink-0 rounded-full bg-red-50 px-1.5 py-0.5 text-xs font-bold text-red-700" title={t("ไม่ตรง")} aria-label={t("ไม่ตรง")}>⚠</span>}
         <span className={`flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-sm font-semibold tabular-nums ${game.shuttles === 0 ? "bg-amber-50 text-amber-800" : "bg-zinc-100 text-ink"}`}>
           <Icon.Shuttle width={14} height={14} />
-          {game.shuttles}
+          {mine !== game.shuttles ? `${mine}/${game.shuttles}` : game.shuttles}
         </span>
         <Icon.ChevronRight width={16} height={16} className={`shrink-0 text-zinc-400 transition ${open ? "rotate-90" : ""}`} />
       </button>
@@ -107,7 +113,7 @@ export function GameShuttleRow({ game, byId, day, me, open, onToggle, past = fal
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm font-medium">{t("จำนวนลูก")}</span>
             <div className="flex items-center gap-1 rounded-full bg-white p-1 shadow-sm">
-              <button className="grid size-11 place-items-center rounded-full bg-zinc-100 active:scale-95 disabled:opacity-40" onClick={() => change(game.shuttles - 1)} disabled={game.shuttles <= 0} aria-label={t("ลดลูก")}>
+              <button className="grid size-11 place-items-center rounded-full bg-zinc-100 active:scale-95 disabled:opacity-40" onClick={() => change(game.shuttles - 1)} disabled={game.shuttles <= minShuttles(game)} aria-label={t("ลดลูก")}>
                 <Icon.Minus width={16} height={16} />
               </button>
               <span className="min-w-10 text-center font-display text-lg font-semibold tabular-nums">{game.shuttles}</span>
@@ -240,7 +246,7 @@ export function GamesHistory() {
     const ids = state.players.filter((p) => p.name.toLowerCase().includes(needle)).map((p) => p.id);
     const out: { day: Day; games: Game[] }[] = [];
     for (const day of days) {
-      const games = day.games.filter((g) => g.endedAt && g.playerIds.some((id) => ids.includes(id)));
+      const games = day.games.filter((g) => g.endedAt && ids.some((id) => inGame(g, id)));
       if (games.length) out.push({ day, games: games.sort((a, b) => (b.endedAt ?? 0) - (a.endedAt ?? 0)) });
     }
     return { ids, groups: out };
@@ -321,7 +327,7 @@ export function PlayerGameShuttles({ playerId, adjusted }: { playerId: string; a
           {t("ยอดค่าลูกของคนนี้ล็อกไว้ (จ่ายแล้ว หรือแอดมินแก้ยอด) แก้จำนวนลูกแล้วยอดเงินคนนี้ไม่เปลี่ยน ถ้าจะคิดใหม่ กด แก้ยอดคนนี้ แล้วกด คิดตามราคาปกติ")}
         </p>
       ) : (
-        <p className="px-1 text-xs text-zinc-500">{t("แก้ลูกของเกม = แก้ให้ทั้ง 4 คนในเกมนั้น")}</p>
+        <p className="px-1 text-xs text-zinc-500">{games.some((g) => g.subs?.length) ? t("แก้ลูกของเกม = แก้ให้คนที่อยู่ในสนามตอนนี้ คนที่เปลี่ยนตัวออกไปแล้วยอดไม่เปลี่ยน") : t("แก้ลูกของเกม = แก้ให้ทั้ง 4 คนในเกมนั้น")}</p>
       )}
     </div>
   );

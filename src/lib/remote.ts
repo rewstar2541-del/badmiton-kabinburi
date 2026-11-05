@@ -511,10 +511,26 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       return check(await db.from("games").delete().eq("id", a.gameId));
     case "subPlayer":
     {
-      const res = await db.from("games").update({ player_ids: a.playerIds, subs: a.subs }).eq("id", a.gameId).select("id");
+      // คนลงแทนต้องไม่อยู่ในสนามอื่น (คู่ถัดไปอาจเพิ่งลงสนามจากอีกเครื่อง)
+      const incoming = a.playerIds.filter((id) => !a.prevIds.includes(id));
+      if (incoming.length) {
+        const busy = await db.from("games").select("id").eq("date", a.date).is("ended_at", null).neq("id", a.gameId).overlaps("player_ids", incoming);
+        check(busy);
+        if (busy.data?.length) throw new Error("คนลงแทนเพิ่งลงสนามอื่นไปแล้ว เลือกคนใหม่");
+      }
+      // บันทึกเฉพาะตอนเกมยังเล่นอยู่และ 4 คนยังเป็นชุดเดิม (เครื่องอื่นอาจจบเกม/เปลี่ยนตัวไปก่อน)
+      const res = await db
+        .from("games")
+        .update({ player_ids: a.playerIds, subs: a.subs })
+        .eq("id", a.gameId)
+        .is("ended_at", null)
+        .filter("player_ids", "eq", `{${a.prevIds.map((id) => `"${id}"`).join(",")}}`)
+        .select("id");
       if (res.error?.message.includes("subs")) throw new Error("ต้องรัน SQL supabase/sql/game_subs.sql ก่อน");
       check(res);
-      if (!res.data?.length) throw new Error("เกมนี้ถูกลบไปแล้ว");
+      if (!res.data?.length) throw new Error("เกมนี้จบไปแล้ว หรือมีคนเปลี่ยนตัวไปก่อน");
+      for (const r of a.rest ?? [])
+        check(await db.from("checkins").update({ resting: r.resting }).eq("date", a.date).eq("player_id", r.playerId));
       return;
     }
     case "addDrink":
@@ -785,6 +801,7 @@ async function importState(db: SupabaseClient, s: State) {
       shuttles: g.shuttles,
       winner: g.winner ?? null,
       ...(g.draw ? { draw: true } : {}),
+      ...(g.subs?.length ? { subs: g.subs } : {}),
     })),
   );
   const drinks = days.flatMap((d) =>

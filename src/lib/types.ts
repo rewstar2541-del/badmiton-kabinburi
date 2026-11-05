@@ -209,12 +209,27 @@ export const inGame = (g: Pick<Game, "playerIds" | "subs">, playerId: string) =>
   g.playerIds.includes(playerId) || (g.subs ?? []).some((s) => s.out === playerId);
 
 /** เกมหลังเปลี่ยน `out` เป็น `inId` (คนเข้ายืนตำแหน่ง/ทีมเดียวกับคนออก) */
-export function withSub(g: Game, out: string, inId: string, at: number): { playerIds: Game["playerIds"]; subs: Sub[] } {
+export function withSub(g: Game, out: string, inId: string, at: number): { prevIds: Game["playerIds"]; playerIds: Game["playerIds"]; subs: Sub[] } {
   return {
+    prevIds: g.playerIds,
     playerIds: g.playerIds.map((id) => (id === out ? inId : id)) as Game["playerIds"],
     subs: [...(g.subs ?? []), { out, in: inId, at, shuttles: g.shuttles }],
   };
 }
+
+/** เลิกทำการเปลี่ยนตัวครั้งล่าสุด (กดผิดคน) */
+export function undoLastSub(g: Game): { prevIds: Game["playerIds"]; playerIds: Game["playerIds"]; subs: Sub[] } | null {
+  const last = g.subs?.at(-1);
+  if (!last || !g.playerIds.includes(last.in)) return null;
+  return {
+    prevIds: g.playerIds,
+    playerIds: g.playerIds.map((id) => (id === last.in ? last.out : id)) as Game["playerIds"],
+    subs: g.subs!.slice(0, -1),
+  };
+}
+
+/** ลดลูกได้ต่ำสุดเท่านี้ (ไม่ต่ำกว่าตอนเปลี่ยนตัวครั้งล่าสุด ยอดคนที่ออกไปแล้วจะได้ไม่เกินลูกจริง) */
+export const minShuttles = (g: Pick<Game, "subs">) => g.subs?.at(-1)?.shuttles ?? 0;
 
 /** 4 คนตอนเริ่มเกม (ย้อนการเปลี่ยนตัวจากหลังไปหน้า) */
 export function startLineup(g: Pick<Game, "playerIds" | "subs">): string[] {
@@ -248,10 +263,10 @@ export function shuttlesInGame(g: Pick<Game, "playerIds" | "subs" | "shuttles">,
   let from: number | null = start.includes(playerId) ? 0 : null;
   for (const s of subs) {
     if (s.out === playerId && from !== null) {
-      total += Math.max(0, s.shuttles - from);
+      total += Math.max(0, Math.min(s.shuttles, g.shuttles) - from);
       from = null;
     }
-    if (s.in === playerId) from = s.shuttles;
+    if (s.in === playerId) from = Math.min(s.shuttles, g.shuttles);
   }
   if (from !== null && g.playerIds.includes(playerId)) total += Math.max(0, g.shuttles - from);
   return total;

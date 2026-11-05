@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { presence, queuedSpot, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
-import { withSub, type Game, type Player } from "@/lib/types";
+import { shuttlesInGame, withSub, type Game, type Player } from "@/lib/types";
 import { Avatar, Button, LevelBadge, Sheet } from "./ui";
 import { t } from "@/lib/i18n";
 
@@ -37,26 +37,32 @@ export function SubPlayer({ game, onClose }: { game: Game; onClose: () => void }
     }),
   ];
   const name = (id: string | null) => (id ? byId.get(id)?.name ?? "?" : "");
+  // ลูกที่คนออกต้องจ่ายในเกมนี้ (คนที่เพิ่งลงแทนมาก่อนหน้า นับเฉพาะช่วงของตัวเอง)
+  const outPays = out && inId ? shuttlesInGame({ ...game, ...withSub(game, out, inId, 0) }, out) : 0;
+  const inSpot = inId ? queuedSpot(day, inId) : null;
 
   const apply = () => {
     if (!out || !inId) return;
     // แอดมินอีกเครื่องอาจจบเกม/เปลี่ยนตัวคนนี้ไปแล้ว
     const live = day.games.find((g) => g.id === game.id && !g.endedAt);
     if (!live || !live.playerIds.includes(out)) return onClose();
-    dispatch({ type: "subPlayer", date, gameId: game.id, ...withSub(live, out, inId, Date.now()) });
-    if (presence(day, inId) === "resting") dispatch({ type: "setResting", date, playerId: inId, resting: false });
-    if (restOut) dispatch({ type: "setResting", date, playerId: out, resting: true });
+    // พัก/เลิกพักบันทึกไปพร้อมการเปลี่ยนตัว ถ้าเปลี่ยนตัวไม่สำเร็จจะย้อนกลับทั้งหมด
+    const rest = [
+      ...(presence(day, inId) === "resting" ? [{ playerId: inId, resting: false }] : []),
+      ...(restOut ? [{ playerId: out, resting: true }] : []),
+    ];
+    dispatch({ type: "subPlayer", date, gameId: game.id, ...withSub(live, out, inId, Date.now()), rest });
     onClose();
   };
 
   return (
-    <Sheet onClose={onClose} title={<h3 className="font-display text-lg font-semibold">{t("เปลี่ยนตัว สนาม {n}", { n: game.court })}</h3>}>
+    <Sheet keepOpen onClose={onClose} title={<h3 className="font-display text-lg font-semibold">{t("เปลี่ยนตัว สนาม {n}", { n: game.court })}</h3>}>
       <div className="space-y-2">
         <div className="text-sm font-semibold text-zinc-700">{t("1. ใครออก")}</div>
         <div className="court-surface flex gap-1 rounded-2xl px-2 py-3">
           {(["A", "B"] as const).map((team, ti) => (
             <div key={team} className="flex min-w-0 flex-1 basis-0 flex-col items-center gap-2">
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${team === "A" ? "bg-lime text-ink" : "bg-sky-300 text-ink"}`}>
+              <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${team === "A" ? "bg-lime text-ink" : "bg-sky-300 text-ink"}`}>
                 {t("ทีม {team}", { team })}
               </span>
               {game.playerIds.slice(ti * 2, ti * 2 + 2).map((id) => {
@@ -88,7 +94,7 @@ export function SubPlayer({ game, onClose }: { game: Game; onClose: () => void }
         {candidates.length === 0 ? (
           <p className="rounded-2xl bg-zinc-50 px-3 py-4 text-center text-sm text-zinc-500">{t("ไม่มีคนรอ ให้คนเช็คอินก่อน")}</p>
         ) : (
-          <ul className="max-h-64 space-y-1 overflow-y-auto rounded-2xl bg-zinc-50 p-1">
+          <ul className="space-y-1 rounded-2xl bg-zinc-50 p-1">
             {candidates.map(({ p, note }) => {
               const on = inId === p.id;
               return (
@@ -96,7 +102,7 @@ export function SubPlayer({ game, onClose }: { game: Game; onClose: () => void }
                   <button
                     onClick={() => setIn(on ? null : p.id)}
                     aria-pressed={on}
-                    className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-2 py-1.5 text-left active:scale-[0.99] ${on ? "bg-lime" : "bg-white"}`}
+                    className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-2 py-1.5 text-left active:scale-[0.99] ${on ? "bg-lime text-ink" : "bg-white"}`}
                   >
                     <Avatar name={p.name} photo={p.photo} size={32} />
                     <span className="flex min-w-0 flex-1 flex-col">
@@ -104,6 +110,7 @@ export function SubPlayer({ game, onClose }: { game: Game; onClose: () => void }
                       {note && <span className="text-xs text-zinc-500">{note}</span>}
                     </span>
                     <LevelBadge level={p.level} />
+                    {on && <span className="font-bold" aria-hidden>✓</span>}
                   </button>
                 </li>
               );
@@ -117,15 +124,23 @@ export function SubPlayer({ game, onClose }: { game: Game; onClose: () => void }
         {t("ให้คนออกพักก่อน (ไม่ขึ้นคิว)")}
       </label>
 
+      {/* ติดล่างแผ่น: จอเตี้ยก็กดยืนยันได้โดยไม่ต้องเลื่อน */}
+      <div className="sticky -bottom-5 -mx-5 space-y-2 bg-white px-5 pt-2 pb-1">
       {out && inId && (
         <p className="rounded-2xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          {t("{out} จ่าย {n} ลูกที่ใช้ไปแล้ว {in} เริ่มนับจากลูกถัดไป ผลแพ้ชนะเป็นของคนที่เล่นจนจบ", { out: name(out), in: name(inId), n: game.shuttles })}
+          {t("{out} จ่าย {n} ลูกที่ใช้ไปแล้ว {in} เริ่มนับจากลูกถัดไป ผลแพ้ชนะเป็นของคนที่เล่นจนจบ", { out: name(out), in: name(inId), n: outPays })}
+        </p>
+      )}
+      {inSpot && (
+        <p className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-800">
+          {t("{name} อยู่ในคู่ที่รอสนาม {n} คู่นั้นจะลงไม่ได้จนกว่าจะแก้คิว", { name: name(inId), n: inSpot.court })}
         </p>
       )}
 
-      <Button variant="primary" className="w-full disabled:opacity-40" disabled={!out || !inId} onClick={apply}>
+      <Button variant="primary" className="w-full disabled:!bg-zinc-200 disabled:!text-zinc-600" disabled={!out || !inId} onClick={apply}>
         {out && inId ? t("เปลี่ยน {out} เป็น {in}", { out: name(out), in: name(inId) }) : t("เลือกคนออกและคนลงแทน")}
       </Button>
+      </div>
     </Sheet>
   );
 }

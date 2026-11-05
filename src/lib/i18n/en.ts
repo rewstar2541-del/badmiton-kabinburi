@@ -1515,4 +1515,8 @@ export const en: Record<string, string> = {
   "ยังกดผลเองไม่ได้ ให้แอดมินช่วยก่อน": "Self-reporting isn't available yet. Ask an admin",
   "ยังแจ้งไม่ตรงไม่ได้ ให้แอดมินช่วยก่อน": "Disputes aren't available yet. Ask an admin",
   "บันทึกไม่สำเร็จ เช็กเน็ตแล้วลองใหม่": "Couldn't save. Check your connection and try again",
+  "เลิกทำ? ให้ {out} กลับลงสนามแทน {in}": "Undo? Put {out} back on court instead of {in}",
+  "เลิกทำ": "Undo",
+  "แก้ลูกของเกม = แก้ให้คนที่อยู่ในสนามตอนนี้ คนที่เปลี่ยนตัวออกไปแล้วยอดไม่เปลี่ยน": "Changing a game's shuttles changes it for the players on court now. Players already subbed out keep their amount.",
+  "{name} อยู่ในคู่ที่รอสนาม {n} คู่นั้นจะลงไม่ได้จนกว่าจะแก้คิว": "{name} is in a pair waiting for court {n}. That pair can't go on until the queue is fixed.",
 };

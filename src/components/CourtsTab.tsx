@@ -4,7 +4,7 @@ import { PairRequests } from "./Pairs";
 import { useEffect, useMemo, useState } from "react";
 import { courtPlan, courtQueue, plannedCourt, queueByCourt, presence, queueBlockers, queuedSpot, waitingQueue, type CourtNext } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
-import { courtList, courtsOfDay, type Game, type Player, type QueuedGame, type Team } from "@/lib/types";
+import { courtList, courtsOfDay, minShuttles, undoLastSub, type Game, type Player, type QueuedGame, type Team } from "@/lib/types";
 import { MatchBuilder } from "./MatchBuilder";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, Sheet } from "./ui";
 import { t } from "@/lib/i18n";
@@ -78,7 +78,17 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
       dispatch({ type: "startGame", date, court: game.court, playerIds: next.playerIds, queuedId: next.queuedId });
     else alert(t("สนาม {n} ยังเริ่มเกมต่อไม่ได้ มีคนในคู่ที่จัดไว้ไม่พร้อม (ชื่อขีดฆ่า) กดแก้หรือเอาคู่นั้นออก", { n: game.court }));
   };
-  const setShuttles = (n: number) => dispatch({ type: "setShuttles", date, gameId: game.id, shuttles: n });
+  // ไม่ลดลูกต่ำกว่าตอนเปลี่ยนตัวครั้งล่าสุด (คนที่ออกไปแล้วจ่ายถึงลูกนั้น)
+  const setShuttles = (n: number) => n >= minShuttles(game) && dispatch({ type: "setShuttles", date, gameId: game.id, shuttles: n });
+  const undo = undoLastSub(game);
+  const undoSub = () => {
+    const last = game.subs?.at(-1);
+    if (!undo || !last) return;
+    const name = (id: string) => byId.get(id)?.name ?? "?";
+    if (!confirm(t("เลิกทำ? ให้ {out} กลับลงสนามแทน {in}", { out: name(last.out), in: name(last.in) }))) return;
+    // คนที่ออกกลับมาเล่น (เลิกพัก) คนที่ลงแทนกลับไปรอคิว
+    dispatch({ type: "subPlayer", date, gameId: game.id, ...undo, rest: [{ playerId: last.out, resting: false }] });
+  };
   const [subbing, setSubbing] = useState(false);
 
   return (
@@ -87,7 +97,18 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
         <CourtSide ids={game.playerIds.slice(0, 2)} byId={byId} team="A" />
         <CourtSide ids={game.playerIds.slice(2)} byId={byId} team="B" />
       </div>
-      <SubNotes game={game} byId={byId} className="rounded-xl bg-amber-50 px-3 py-1 text-xs text-amber-900" />
+      {game.subs?.length ? (
+        <div className="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-1">
+          <div className="min-w-0 flex-1">
+            <SubNotes game={game} byId={byId} className="text-sm text-amber-900" />
+          </div>
+          {auth.isAdmin && undo && (
+            <button onClick={undoSub} className="min-h-11 shrink-0 px-1 text-sm font-semibold text-amber-900 underline underline-offset-2">
+              {t("เลิกทำ")}
+            </button>
+          )}
+        </div>
+      ) : null}
 
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 text-xs text-zinc-500">
@@ -103,6 +124,7 @@ function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, 
           <button
             className="grid size-8 place-items-center rounded-full bg-white shadow-sm active:scale-95"
             onClick={() => setShuttles(game.shuttles - 1)}
+            disabled={game.shuttles <= minShuttles(game)}
             aria-label={t("ลดลูก")}
           >
             <Icon.Minus width={16} height={16} />

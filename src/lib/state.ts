@@ -63,7 +63,17 @@ export type Action =
   | { type: "disputeGame"; date: string; gameId: string; playerId: string }
   | { type: "cancelGame"; date: string; gameId: string }
   /** เปลี่ยนตัวระหว่างเกม (ส่ง 4 คนในสนามและรายการเปลี่ยนตัวทั้งหมดหลังเปลี่ยน) */
-  | { type: "subPlayer"; date: string; gameId: string; playerIds: Game["playerIds"]; subs: Sub[] }
+  | {
+      type: "subPlayer";
+      date: string;
+      gameId: string;
+      /** 4 คนก่อนเปลี่ยน (ฐานข้อมูลบันทึกเฉพาะเมื่อยังตรงกัน กันสองเครื่องเปลี่ยนทับกัน) */
+      prevIds: Game["playerIds"];
+      playerIds: Game["playerIds"];
+      subs: Sub[];
+      /** ตั้งพัก/เลิกพักไปพร้อมกัน (บันทึกหลังเปลี่ยนตัวสำเร็จเท่านั้น) */
+      rest?: { playerId: string; resting: boolean }[];
+    }
   | { type: "addDrink"; date: string; playerId: string; amount: number; note: string; _id: string }
   | { type: "removeDrink"; date: string; drinkId: string }
   | { type: "editDrink"; date: string; drinkId: string; amount: number; note: string }
@@ -302,7 +312,15 @@ export function reducer(state: State, a: Action): State {
     case "cancelGame":
       return withDay(state, a.date, (d) => ({ ...d, games: d.games.filter((g) => g.id !== a.gameId) }));
     case "subPlayer":
-      return updateGame(state, a.date, a.gameId, (g) => ({ ...g, playerIds: a.playerIds, subs: a.subs }));
+    {
+      const s = updateGame(state, a.date, a.gameId, (g) => ({ ...g, playerIds: a.playerIds, subs: a.subs.length ? a.subs : undefined }));
+      const rest = new Map((a.rest ?? []).map((r) => [r.playerId, r.resting]));
+      if (!rest.size) return s;
+      return withDay(s, a.date, (d) => ({
+        ...d,
+        checkIns: d.checkIns.map((c) => (rest.has(c.playerId) ? { ...c, resting: rest.get(c.playerId) || undefined } : c)),
+      }));
+    }
     case "addDrink":
       return withDay(state, a.date, (d) => ({
         ...d,

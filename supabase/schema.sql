@@ -1909,3 +1909,6 @@ alter table public.announcements alter column rent_start type numeric(7,4);
 alter table public.announcements alter column rent_end type numeric(7,4);
 alter table public.checkins alter column from_hour type numeric(7,4);
 alter table public.checkins alter column to_hour type numeric(7,4);
+
+-- เปลี่ยนตัวระหว่างเกม (รายละเอียดและ undo_my_check_in ตัวใหม่อยู่ใน supabase/sql/game_subs.sql)
+alter table public.games add column if not exists subs jsonb not null default '[]'::jsonb;

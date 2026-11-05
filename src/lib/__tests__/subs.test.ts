@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { shuttleCountFor } from "../billing";
 import { waitingQueue } from "../matchmaking";
 import { reducer, EMPTY_STATE } from "../state";
-import { inGame, lineupWith, shuttlesInGame, startLineup, withSub, type Day, type Game, type Player } from "../types";
+import { inGame, lineupWith, minShuttles, shuttlesInGame, startLineup, undoLastSub, withSub, type Day, type Game, type Player } from "../types";
 
 const g0: Game = { id: "g", court: 1, playerIds: ["a", "b", "c", "d"], startedAt: 0, shuttles: 2 };
 
@@ -58,5 +58,22 @@ describe("เปลี่ยนตัวระหว่างเกม", () => {
     expect(q.map((e) => e.player.id)).toEqual(["b"]);
     expect(q[0].gamesPlayed).toBe(1);
     expect(q[0].waitingSince).toBe(500);
+  });
+
+  it("ลดลูกต่ำกว่าตอนเปลี่ยนตัว: คนออกไม่จ่ายเกินลูกจริง และเลิกทำได้", () => {
+    const g: Game = { ...g0, ...withSub(g0, "b", "e", 100) };
+    expect(minShuttles(g)).toBe(2);
+    expect(shuttlesInGame({ ...g, shuttles: 1 }, "b")).toBe(1);
+    expect(shuttlesInGame({ ...g, shuttles: 1 }, "e")).toBe(0);
+    const u = undoLastSub(g)!;
+    expect(u.playerIds).toEqual(["a", "b", "c", "d"]);
+    expect(u.subs).toEqual([]);
+  });
+
+  it("reducer ตั้งพัก/เลิกพักไปพร้อมการเปลี่ยนตัว", () => {
+    let s = reducer(EMPTY_STATE, { type: "checkIn", date: "2026-11-02", playerId: "b", _at: 0 });
+    s = reducer(s, { type: "startGame", date: "2026-11-02", court: 1, playerIds: ["a", "b", "c", "d"], _id: "g", _at: 0 });
+    s = reducer(s, { type: "subPlayer", date: "2026-11-02", gameId: "g", ...withSub(s.days[0].games[0], "b", "e", 5), rest: [{ playerId: "b", resting: true }] });
+    expect(s.days[0].checkIns.find((c) => c.playerId === "b")?.resting).toBe(true);
   });
 });
