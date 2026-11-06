@@ -55,11 +55,11 @@ export function PollVote() {
                   disabled={busy}
                   aria-pressed={on}
                   onClick={() => toggle(p, d)}
-                  className={`rounded-2xl px-3 py-2 text-left text-sm font-semibold ${on ? "bg-ink text-white" : "bg-zinc-100 text-ink"}`}
+                  className={`rounded-2xl px-3 py-2 text-left text-sm font-semibold ${on ? "bg-lime text-ink" : "bg-zinc-100 text-ink"}`}
                 >
                   {on && "✓ "}
                   {dayLabel(d)}
-                  <span className={`block text-[11px] font-medium ${on ? "text-white/70" : "text-zinc-500"}`}>{t("{n} คนว่าง", { n: count(p, d) })}</span>
+                  <span className={`block text-[11px] font-medium ${on ? "text-zinc-700" : "text-zinc-500"}`}>{t("{n} คนว่าง", { n: count(p, d) })}</span>
                 </button>
               );
             })}

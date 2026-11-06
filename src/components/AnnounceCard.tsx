@@ -89,7 +89,7 @@ export function EventForm({ date, dates, onDone, onCancel }: { date?: string; da
               key={p ?? "session"}
               type="button"
               onClick={() => setTitle(p)}
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${title === p ? "bg-ink text-white" : "bg-zinc-100 text-zinc-600"}`}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${title === p ? "bg-lime text-ink" : "bg-zinc-100 text-zinc-600"}`}
             >
               {eventStyle(p).emoji} {p ? t(p) : t("จัดก๊วน")}
             </button>
@@ -97,7 +97,7 @@ export function EventForm({ date, dates, onDone, onCancel }: { date?: string; da
           <button
             type="button"
             onClick={() => setTitle(custom ? title : "")}
-            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${custom ? "bg-ink text-white" : "bg-zinc-100 text-zinc-600"}`}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${custom ? "bg-lime text-ink" : "bg-zinc-100 text-zinc-600"}`}
           >
             {eventStyle("อื่นๆ").emoji} {t("อื่นๆ")}
           </button>
