@@ -2,7 +2,7 @@
 
 import { PairRequests } from "./Pairs";
 import { useEffect, useMemo, useState } from "react";
-import { courtPlan, courtQueue, plannedCourt, queueByCourt, presence, queueBlockers, queuedSpot, waitingQueue, type CourtNext } from "@/lib/matchmaking";
+import { autoNext, courtPlan, courtQueue, plannedCourt, queueByCourt, presence, queueBlockers, queuedSpot, waitingQueue, type CourtNext } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
 import { courtList, courtsOfDay, minShuttles, undoLastSub, type Game, type Player, type QueuedGame, type Team } from "@/lib/types";
 import { MatchBuilder } from "./MatchBuilder";
@@ -63,20 +63,39 @@ function CourtSide({ ids, byId, team, compact, blocked }: { ids: string[]; byId:
   );
 }
 
-function ActiveCourt({ game, byId, date, now }: { game: Game; byId: Map<string, Player>; date: string; now: number }) {
+/** รอบสุดท้าย: กดผลแล้วไม่ลงคู่ต่อไป (เก็บในเครื่องแอดมิน แยกตามวัน) */
+function useLastRound(date: string) {
+  const key = `lastRound:${date}`;
+  const [on, setOn] = useState(() => {
+    try {
+      return localStorage.getItem(key) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const set = (v: boolean) => {
+    setOn(v);
+    try {
+      if (v) localStorage.setItem(key, "1");
+      else localStorage.removeItem(key);
+    } catch {}
+  };
+  return [on, set] as const;
+}
+
+function ActiveCourt({ game, byId, date, now, lastRound = false }: { game: Game; byId: Map<string, Player>; date: string; now: number; lastRound?: boolean }) {
   const { dispatch, auth } = useStore();
   const { state } = useStore();
   const { day } = useToday();
   const end = (winner?: Team, draw?: boolean) => {
     // สนามนี้ได้คู่แรกของคิวรวม (คนรอนานสุดไม่ถูกแซง) ถ้าแอดมินจัดคิวสนามนี้ไว้เองใช้คู่นั้น
-    const next = courtPlan(day, state.players, courtList(state.settings), game.court).get(game.court);
+    // รอบสุดท้าย (กำลังจะจบก๊วน): กดผลอย่างเดียว ไม่ลงคู่ต่อไป
+    const courts = courtList(state.settings);
+    const next = autoNext(day, state.players, courts, game, lastRound);
+    const planned = !lastRound && courts.includes(game.court) ? courtPlan(day, state.players, courts, game.court).get(game.court) : undefined;
     dispatch({ type: "endGame", date, gameId: game.id, winner, draw });
-    // สนามที่เอาออกจากเบอร์สนามแล้ว ไม่ลงต่อ
-    if (!next || !courtList(state.settings).includes(game.court)) return;
-    // ลงต่อทันที ถ้าคนในคู่ยังอยู่ครบ ไม่งั้นแจ้งให้แอดมินแก้คิว
-    if (queueBlockers(day, next, game.id).length === 0)
-      dispatch({ type: "startGame", date, court: game.court, playerIds: next.playerIds, queuedId: next.queuedId });
-    else alert(t("สนาม {n} ยังเริ่มเกมต่อไม่ได้ มีคนในคู่ที่จัดไว้ไม่พร้อม (ชื่อขีดฆ่า) กดแก้หรือเอาคู่นั้นออก", { n: game.court }));
+    if (next) dispatch({ type: "startGame", date, court: game.court, playerIds: next.playerIds, queuedId: next.queuedId });
+    else if (planned) alert(t("สนาม {n} ยังเริ่มเกมต่อไม่ได้ มีคนในคู่ที่จัดไว้ไม่พร้อม (ชื่อขีดฆ่า) กดแก้หรือเอาคู่นั้นออก", { n: game.court }));
   };
   // ไม่ลดลูกต่ำกว่าตอนเปลี่ยนตัวครั้งล่าสุด (คนที่ออกไปแล้วจ่ายถึงลูกนั้น)
   const setShuttles = (n: number) => n >= minShuttles(game) && dispatch({ type: "setShuttles", date, gameId: game.id, shuttles: n });
@@ -411,6 +430,7 @@ export function CourtsTab() {
   };
   // จบก๊วนแล้ว: ไม่มีเกม ไม่มีคนรอ ไม่มีคิวสนาม เหลือแต่คนพักที่ยังไม่จ่าย
   const [ending, setEnding] = useState(false);
+  const [lastRound, setLastRound] = useLastRound(date);
   // เกมจบหมดจากอีกเครื่องตอนเปิดหน้าต่างค้าง: ปิดไป ไม่ให้เด้งขึ้นเองตอนเริ่มเกมใหม่
   if (ending && active.size === 0) setEnding(false);
   const finish = (results: Map<string, Result>) => {
@@ -423,6 +443,7 @@ export function CourtsTab() {
     (day.queued ?? []).forEach((q) => dispatch({ type: "unqueueGame", date, id: q.id }));
     // ล้างคิว: คนที่ยังรอหรือเพิ่งลงจากสนามเป็นพักทั้งหมด (ยังไม่จ่าย ยังเห็นในหน้าคิดเงิน)
     day.checkIns.filter((c) => !c.paidAt && !c.resting).forEach((c) => dispatch({ type: "setResting", date, playerId: c.playerId, resting: true }));
+    setLastRound(false);
     setEnding(false);
     goToTab("billing");
   };
@@ -474,6 +495,15 @@ export function CourtsTab() {
         🏁 {t("จบก๊วน")}
       </Button>
       )}
+      {started && !ended && (
+        <label className="flex min-h-11 items-center gap-3 rounded-2xl bg-amber-50 px-4 text-sm font-semibold text-amber-900">
+          <input type="checkbox" className="size-5" checked={lastRound} onChange={(e) => setLastRound(e.target.checked)} />
+          <span className="min-w-0 flex-1">
+            {t("รอบสุดท้าย: กดผลแล้วไม่ลงคู่ต่อไป")}
+            <span className="block text-xs font-normal text-amber-800">{t("ไม่สร้างเกมใหม่ ไม่เพิ่มค่าลูก")}</span>
+          </span>
+        </label>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         {courts.map((c) => {
           const g = active.get(c);
@@ -491,7 +521,7 @@ export function CourtsTab() {
                 </span>
               </div>
               {g ? (
-                <ActiveCourt game={g} byId={byId} date={date} now={now} />
+                <ActiveCourt game={g} byId={byId} date={date} now={now} lastRound={lastRound} />
               ) : !auth.isAdmin ? (
                 <div className="court-surface flex h-24 items-center justify-center rounded-2xl text-sm font-semibold text-white/80">
                   {t("ว่าง")}

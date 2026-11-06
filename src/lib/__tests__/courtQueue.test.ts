@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { courtPlan, courtQueue, nextMatch, plannedCourt, queueBlockers, queuedSpot, waitingQueue } from "../matchmaking";
+import { autoNext, courtPlan, courtQueue, nextMatch, plannedCourt, queueBlockers, queuedSpot, waitingQueue } from "../matchmaking";
 import { reducer, type State, EMPTY_STATE } from "../state";
 import type { Day, Player } from "../types";
 
@@ -99,5 +99,20 @@ describe("สนามที่จบก่อนได้คนที่รอ�
     expect(free.get(2)!.playerIds).toContain("a");
     const ending = courtPlan(d, many, 2, 1);
     expect(ending.get(1)!.playerIds).toContain("a");
+  });
+});
+
+describe("รอบสุดท้าย ไม่ลงคู่ต่อไป", () => {
+  const g = { id: "g1", court: 1, playerIds: ["a", "b", "c", "d"] as [string, string, string, string], startedAt: 10, shuttles: 1 };
+  const d = day({ games: [g] });
+
+  it("ปกติ: จบเกมแล้วคนที่รออยู่ลงต่อ", () => {
+    expect(autoNext(d, players, [1, 2], g)?.playerIds).toHaveLength(4);
+  });
+
+  it("รอบสุดท้าย: ไม่ลงต่อ แม้มีคนรอและมีคู่ที่จัดคิวไว้", () => {
+    expect(autoNext(d, players, [1, 2], g, true)).toBeNull();
+    const q = { id: "q1", court: 1, playerIds: ["e", "f", "g", "h"] as [string, string, string, string], at: 20 };
+    expect(autoNext(day({ games: [g], queued: [q] }), players, [1, 2], g, true)).toBeNull();
   });
 });

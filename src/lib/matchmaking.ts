@@ -241,3 +241,13 @@ export function queueByCourt(queue: QueueEntry[], plan: Map<number, CourtNext>):
   const base = new Map(queue.map((e, i) => [e.player.id, i]));
   return [...queue].sort((a, b) => (rank.get(a.player.id) ?? 1e6 + base.get(a.player.id)!) - (rank.get(b.player.id) ?? 1e6 + base.get(b.player.id)!));
 }
+
+/**
+ * คู่ที่จะลงสนามต่อทันทีหลังเกมนี้จบ (null = ไม่ลงต่อ)
+ * lastRound: แอดมินกำลังจะจบก๊วน กดผลได้เลยโดยไม่ลงคู่ถัดไป (ไม่สร้างเกมใหม่ ไม่เพิ่มค่าลูก)
+ */
+export function autoNext(day: Day, players: Player[], courts: number[], game: { id: string; court: number }, lastRound = false): CourtNext | null {
+  if (lastRound || !courts.includes(game.court)) return null;
+  const next = courtPlan(day, players, courts, game.court).get(game.court);
+  return next && queueBlockers(day, next, game.id).length === 0 ? next : null;
+}
