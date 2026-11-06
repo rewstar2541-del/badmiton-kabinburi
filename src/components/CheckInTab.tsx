@@ -124,29 +124,23 @@ function PlayerTile({ p, on, signed, visits }: { p: Player; on: boolean; signed:
             return;
           dispatch({ type: "undoCheckIn", date, playerId: p.id });
         }}
-        className={`relative flex w-full flex-col items-center gap-2 rounded-3xl px-3 pt-4 pb-3 text-center transition active:scale-[0.97] ${
-          on ? "bg-ink text-white shadow-lg shadow-ink/20" : "bg-white shadow-[0_8px_24px_-14px_rgba(11,18,32,0.25)]"
+        className={`flex w-full items-center gap-2.5 rounded-2xl border px-2.5 py-2.5 text-left transition active:scale-[0.97] ${
+          on ? "border-ink bg-ink text-white" : "border-zinc-200 bg-white"
         }`}
       >
-        <span
-          className={`absolute top-2.5 right-2.5 grid size-6 place-items-center rounded-full transition ${
-            on ? "bg-lime text-ink" : "bg-zinc-100 text-transparent"
-          }`}
-        >
-          <Icon.Check width={14} height={14} strokeWidth={3} />
+        <Avatar name={p.name} photo={p.photo} size={40} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold">{p.name}</span>
+          <span className={`flex flex-wrap items-center gap-x-1.5 text-[11px] ${on ? "text-white/60" : "text-zinc-500"}`}>
+            <LevelBadge level={p.level} />
+            {visits !== undefined && <span>{t("มา {n} ครั้ง/30 วัน", { n: visits })}</span>}
+            {p.guestOf && <span className={`font-medium ${on ? "text-amber-300" : "text-amber-600"}`}>{t("แขก")}</span>}
+            {signed && !on && <span className="font-medium text-sky-600">{t("ลงชื่อ")}</span>}
+            {isMonthlyPaid(state.monthly, date, p.id) && <span className={`font-medium ${on ? "text-lime" : "text-emerald-600"}`}>{t("รายเดือน")}</span>}
+          </span>
         </span>
-        <Avatar name={p.name} photo={p.photo} size={52} />
-        <span className="w-full truncate font-semibold">{p.name}</span>
-        {visits !== undefined && (
-          <span className={`-mt-1.5 text-[11px] ${on ? "text-white/60" : "text-zinc-500"}`}>{t("มา {n} ครั้ง/30 วัน", { n: visits })}</span>
-        )}
-        <span className="flex items-center gap-1.5">
-          <LevelBadge level={p.level} />
-          {p.guestOf && <span className={`text-[11px] font-medium ${on ? "text-amber-300" : "text-amber-600"}`}>{t("แขก")}</span>}
-          {signed && !on && <span className="text-[11px] font-medium text-sky-600">{t("ลงชื่อ")}</span>}
-          {isMonthlyPaid(state.monthly, date, p.id) && (
-            <span className={`text-[11px] font-medium ${on ? "text-lime" : "text-emerald-600"}`}>{t("รายเดือน")}</span>
-          )}
+        <span className={`grid size-6 shrink-0 place-items-center rounded-full transition ${on ? "bg-lime text-ink" : "bg-zinc-100 text-transparent"}`}>
+          <Icon.Check width={14} height={14} strokeWidth={3} />
         </span>
       </button>
     </li>

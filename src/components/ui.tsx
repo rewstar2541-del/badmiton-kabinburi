@@ -5,8 +5,8 @@ import { LEVELS, type Level } from "@/lib/types";
 type Variant = "primary" | "accent" | "secondary" | "warn" | "danger" | "ghost";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-ink text-white shadow-sm shadow-ink/20 active:scale-[0.98] disabled:bg-zinc-300 disabled:shadow-none",
-  accent: "bg-lime text-ink shadow-sm shadow-lime-dark/40 active:scale-[0.98] disabled:bg-zinc-200 disabled:text-zinc-500 disabled:shadow-none",
+  primary: "bg-ink text-white active:scale-[0.98] disabled:bg-zinc-300 disabled:shadow-none",
+  accent: "bg-lime text-ink active:scale-[0.98] disabled:bg-zinc-200 disabled:text-zinc-500 disabled:shadow-none",
   secondary: "bg-zinc-100 text-ink active:bg-zinc-200",
   warn: "border-2 border-amber-400 bg-amber-50 text-amber-800 active:scale-[0.98] disabled:opacity-60",
   danger: "bg-red-50 text-red-600 active:bg-red-100",
@@ -20,7 +20,7 @@ export function Button({
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
   return (
     <button
-      className={`rounded-2xl px-4 py-3 text-sm font-semibold transition-all duration-150 disabled:cursor-not-allowed ${variants[variant]} ${className}`}
+      className={`rounded-2xl px-4 py-3 text-sm font-bold transition-all duration-150 disabled:cursor-not-allowed ${variants[variant]} ${className}`}
       {...props}
     />
   );
@@ -28,7 +28,7 @@ export function Button({
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-3xl bg-white p-4 shadow-[0_1px_2px_rgba(11,18,32,0.04),0_8px_24px_-12px_rgba(11,18,32,0.12)] ${className}`}>
+    <div className={`rounded-3xl border border-zinc-200 bg-white p-4 ${className}`}>
       {children}
     </div>
   );
@@ -60,7 +60,7 @@ export function Sheet({ title, onClose, children, keepOpen }: { title: ReactNode
 export function SectionTitle({ children, right }: { children: ReactNode; right?: ReactNode }) {
   return (
     <div className="flex items-end justify-between px-1">
-      <h2 className="font-display text-xl font-semibold tracking-tight">{children}</h2>
+      <h2 className="font-display text-xl font-bold tracking-tight">{children}</h2>
       {right && <div className="text-sm text-zinc-500">{right}</div>}
     </div>
   );
@@ -97,7 +97,7 @@ export function baht(n: number): string {
 }
 
 export const inputClass =
-  "w-full rounded-2xl border-0 bg-zinc-100 px-4 py-3 text-base outline-none ring-2 ring-transparent transition placeholder:text-zinc-400 focus:bg-white focus:ring-lime-dark";
+  "w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-base outline-none ring-2 ring-transparent transition placeholder:text-zinc-400 focus:ring-lime-dark";
 
 const avatarColors = [
   "bg-lime text-ink",
