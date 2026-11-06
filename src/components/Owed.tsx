@@ -83,7 +83,7 @@ export function OwedList() {
               <span className="flex shrink-0 flex-col items-end gap-1">
                 <span className="font-display font-semibold text-red-600">{baht(r.amount)}</span>
                 <button
-                  className="min-h-11 rounded-full bg-ink px-4 text-sm font-semibold text-white active:scale-95"
+                  className="min-h-11 rounded-full bg-lime px-4 text-sm font-semibold text-ink active:scale-95"
                   onClick={() => {
                     if (!confirm(t("ได้รับเงินที่ค้างของ {name} {amount}?", { name: r.player.name, amount: baht(r.amount) }))) return;
                     // ปิดยอดถึงวันล่าสุดที่ค้าง (ไม่แตะยอดวันนี้)

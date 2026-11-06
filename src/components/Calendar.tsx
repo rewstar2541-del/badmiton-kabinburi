@@ -322,7 +322,7 @@ function MultiPanel({ sel, setSel, view }: { sel: string[]; setSel: (v: string[]
               key={i}
               aria-pressed={weekdays.includes(i)}
               onClick={() => setWeekdays(weekdays.includes(i) ? weekdays.filter((x) => x !== i) : [...weekdays, i])}
-              className={`rounded-xl py-2 text-xs font-semibold ${weekdays.includes(i) ? "bg-ink text-white" : "bg-white text-zinc-600"}`}
+              className={`rounded-xl py-2 text-xs font-semibold ${weekdays.includes(i) ? "bg-lime text-ink" : "bg-white text-zinc-600"}`}
             >
               {n}
             </button>
