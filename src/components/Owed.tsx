@@ -71,7 +71,7 @@ export function OwedList() {
         {rows.map((r) => {
           const last = r.dates[r.dates.length - 1];
           return (
-            <li key={r.player.id} className="flex items-center gap-3 rounded-3xl bg-white px-4 py-3 shadow-[0_8px_24px_-14px_rgba(11,18,32,0.25)]">
+            <li key={r.player.id} className="flex items-center gap-3 rounded-3xl bg-white px-4 py-3 border border-zinc-200">
               <Avatar name={r.player.name} photo={r.player.photo} size={40} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold">{r.player.name}</span>

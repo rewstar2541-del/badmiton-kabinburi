@@ -232,7 +232,7 @@ export function Bell() {
           setNow(Date.now());
           setOpen(true);
         }}
-        className="relative grid size-10 shrink-0 place-items-center rounded-full bg-white text-zinc-700 shadow-sm ring-1 ring-zinc-200"
+        className="relative grid size-10 shrink-0 place-items-center rounded-full bg-white text-zinc-700 border border-zinc-200"
         aria-label={unread.length ? t("การแจ้งเตือน ใหม่ {n} เรื่อง", { n: unread.length }) : t("การแจ้งเตือน")}
       >
         <Icon.Bell width={20} height={20} />

@@ -115,7 +115,7 @@ export function CourtSplit({ onClose }: { onClose: () => void }) {
           const s = all.get(c.playerId) ?? null;
           const setSpan = (v: Span) => setSpans((m) => ({ ...m, [c.playerId]: v }));
           return (
-            <li key={c.playerId} className="space-y-2 rounded-2xl bg-white p-3 ring-1 ring-zinc-100">
+            <li key={c.playerId} className="space-y-2 rounded-2xl bg-white p-3 border border-zinc-200">
               <div className="flex items-center gap-2">
                 <Avatar name={p.name} photo={p.photo} size={32} />
                 <span className="min-w-0 flex-1 truncate font-semibold">{p.name}</span>

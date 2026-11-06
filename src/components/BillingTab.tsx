@@ -300,7 +300,7 @@ function DailyView() {
           <li key={player.id}>
             <button
               onClick={() => setOpen(player.id)}
-              className="flex w-full items-center gap-3 rounded-3xl bg-white px-4 py-3 text-left shadow-[0_8px_24px_-14px_rgba(11,18,32,0.25)] active:scale-[0.99]"
+              className="flex w-full items-center gap-3 rounded-3xl bg-white px-4 py-3 text-left border border-zinc-200 active:scale-[0.99]"
             >
               <Avatar name={player.name} photo={player.photo} size={40} />
               <span className="min-w-0 flex-1">
@@ -341,7 +341,7 @@ export function BillingTab() {
   return (
     <div className="space-y-4">
       <SectionTitle>{t("คิดเงิน")}</SectionTitle>
-      <div className="grid grid-cols-4 gap-1 rounded-2xl bg-white p-1 shadow-sm">
+      <div className="grid grid-cols-4 gap-1 rounded-2xl border border-zinc-200 bg-white p-1">
         {(
           [
             ["daily", "วันนี้"],

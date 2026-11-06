@@ -90,7 +90,7 @@ export function MonthlyReminder({ player }: { player: Player }) {
   if (!monthlyReminder(state, player, date)) return null;
   return (
     <button
-      className="flex w-full items-center gap-3 rounded-3xl bg-amber-300 p-4 text-left text-ink shadow-lg shadow-amber-300/30"
+      className="flex w-full items-center gap-3 rounded-3xl bg-amber-300 p-4 text-left text-ink"
       onClick={() => goToTab("mybill")}
     >
       <Icon.Wallet className="shrink-0" />
@@ -126,7 +126,7 @@ export function MonthlyDueCard({ player }: { player: Player }) {
           <div className="text-sm text-amber-900">{t("ยอด {amount} ยังไม่ได้จ่าย", { amount: baht(fee) })}</div>
         </div>
       </div>
-      <div className="flex flex-col items-center gap-2 rounded-2xl bg-white p-3">
+      <div className="flex flex-col items-center gap-2 rounded-2xl border border-zinc-200 bg-white p-3">
         <PayQr promptPayId={state.settings.promptPayId} amount={fee} />
         <SlipUpload playerId={player.id} amount={fee} packageId={monthlyPackage?.id} />
         <SelfPay playerId={player.id} amount={fee} action="payMonth" />

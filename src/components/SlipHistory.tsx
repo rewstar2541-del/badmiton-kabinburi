@@ -139,7 +139,7 @@ export function SlipHistory({ initialMonth }: { initialMonth?: string } = {}) {
     const owed = owedById.get(s.id) ?? [];
     const payer = owed[0]?.payer;
     return (
-    <li key={s.id} className="space-y-2 rounded-3xl bg-white px-4 py-3 shadow-[0_8px_24px_-14px_rgba(11,18,32,0.25)]">
+    <li key={s.id} className="space-y-2 rounded-3xl bg-white px-4 py-3 border border-zinc-200">
       <div className="flex items-center gap-3">
         <Avatar name={s.player?.name ?? "?"} photo={s.player?.photo} size={40} />
         <span className="min-w-0 flex-1">
@@ -243,7 +243,7 @@ export function SlipHistory({ initialMonth }: { initialMonth?: string } = {}) {
           return (
             <li key={date} className="space-y-2">
               <button
-                className="flex min-h-11 w-full items-center gap-2 rounded-2xl bg-white px-4 py-2 text-left shadow-sm"
+                className="flex min-h-11 w-full items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-left"
                 aria-expanded={isOpen}
                 disabled={needle !== ""}
                 onClick={() => setOpenDays((m) => ({ ...m, [date]: !isOpen }))}
