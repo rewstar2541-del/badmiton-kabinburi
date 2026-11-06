@@ -65,7 +65,7 @@ function ThemeSwitch() {
   return (
     <button
       onClick={() => setTheme(dark ? "light" : "dark")}
-      className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-zinc-700 shadow-sm ring-1 ring-zinc-200"
+      className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-zinc-700 border border-zinc-200"
       aria-label={dark ? t("ธีมสว่าง") : t("ธีมมืด")}
       title={dark ? t("ธีมสว่าง") : t("ธีมมืด")}
     >
@@ -92,7 +92,7 @@ function GuideButton() {
   return (
     <a
       href={`/guide/index.html?lang=${lang}&mode=${mode}`}
-      className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-base font-bold text-zinc-700 shadow-sm ring-1 ring-zinc-200"
+      className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-base font-bold text-zinc-700 border border-zinc-200"
       aria-label={t("คู่มือการใช้งาน")}
       title={t("คู่มือการใช้งาน")}
     >
@@ -109,7 +109,7 @@ function LangSwitch() {
     <>
       <button
         onClick={() => open("lang")}
-        className="flex h-10 shrink-0 items-center gap-1 rounded-full bg-white px-2.5 text-sm font-semibold text-zinc-700 shadow-sm ring-1 ring-zinc-200"
+        className="flex h-10 shrink-0 items-center gap-1 rounded-full bg-white px-2.5 text-sm font-semibold text-zinc-700 border border-zinc-200"
         aria-label={t("ภาษา")}
       >
         <Icon.Globe width={16} height={16} />
@@ -318,12 +318,12 @@ function Shell() {
                   window.scrollTo({ top: 0 });
                 }}
                 aria-current={active ? "page" : undefined}
-                className={`flex flex-col items-center gap-0.5 rounded-2xl py-2 text-sm font-semibold transition ${
-                  active ? "bg-lime text-ink" : "text-zinc-600 active:bg-zinc-100"
+                className={`flex flex-col items-center gap-0.5 rounded-2xl py-2 text-xs font-semibold transition ${
+                  active ? "bg-ink text-white" : "text-zinc-600 active:bg-zinc-100"
                 }`}
               >
                 <span className="relative">
-                  <item.icon width={24} height={24} strokeWidth={active ? 2.4 : 2} />
+                  <item.icon width={24} height={24} strokeWidth={active ? 2.4 : 2} className={active ? "text-lime" : ""} />
                   {item.id === "mybill" && billDot && (
                     <span className="absolute -top-1 -right-1.5 size-2.5 rounded-full bg-amber-400 ring-2 ring-white" aria-label={t("ยังไม่จ่ายค่ารายเดือน")} />
                   )}
