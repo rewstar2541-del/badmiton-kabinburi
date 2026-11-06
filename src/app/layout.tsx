@@ -21,6 +21,15 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "แบดมินตันกบินทร์บุรี-สวนน้อมเกล้า",
   description: "เช็คอิน จัดคู่ลงสนาม และคิดเงินค่าลูกค่าน้ำ",
+  applicationName: "แบดกบินทร์",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: { capable: true, title: "แบดกบินทร์", statusBarStyle: "default" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
