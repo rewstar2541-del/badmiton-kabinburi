@@ -76,7 +76,7 @@ export function Hero({
 }) {
   const Box = onClick ? "button" : "div";
   return (
-    <Box onClick={onClick} className={`relative block w-full overflow-hidden ${compact ? "p-4" : "p-5"} rounded-3xl bg-ink text-left text-white shadow-lg shadow-ink/20 active:scale-[0.99]`}>
+    <Box onClick={onClick} className={`relative block w-full overflow-hidden ${compact ? "p-4" : "p-5"} rounded-3xl bg-ink text-left text-white active:scale-[0.99]`}>
       <div className="pointer-events-none absolute -top-20 -right-12 size-48 rounded-full bg-lime/20 blur-3xl" />
       <span className="absolute top-4 right-4 grid size-11 place-items-center rounded-2xl bg-white/10 text-lime">
         <I width={24} height={24} />

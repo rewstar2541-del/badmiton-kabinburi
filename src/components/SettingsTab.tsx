@@ -470,7 +470,7 @@ function Section({
       <button
         onClick={toggle}
         aria-expanded={open}
-        className={`flex w-full items-center gap-3 rounded-2xl bg-white px-4 py-3.5 text-left shadow-sm ${danger ? "ring-1 ring-red-200" : ""}`}
+        className={`flex w-full items-center gap-3 rounded-2xl border bg-white px-4 py-3.5 text-left ${danger ? "border-red-200" : "border-zinc-200"}`}
       >
         <span className="text-2xl" aria-hidden>
           {icon}

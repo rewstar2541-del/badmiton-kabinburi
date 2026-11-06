@@ -56,7 +56,7 @@ export function AnnouncementBanner({ message, title, fee, date }: { message: str
 /** หน้าแรกผู้เล่น: การ์ดดำใบเดียว สถานะ + ประกาศ + ปุ่มลงชื่อ/เช็คอิน */
 export function HomeCard({ top, children }: { top: ReactNode; children?: ReactNode }) {
   return (
-    <div className="relative space-y-3 overflow-hidden rounded-3xl bg-ink p-4 text-white shadow-lg shadow-ink/20">
+    <div className="relative space-y-3 overflow-hidden rounded-3xl bg-ink p-4 text-white">
       <div className="pointer-events-none absolute -top-20 -right-12 size-48 rounded-full bg-lime/20 blur-3xl" />
       <div className="relative">{top}</div>
       {children && <div className="relative space-y-3">{children}</div>}

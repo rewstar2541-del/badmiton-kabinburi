@@ -178,7 +178,7 @@ function ActiveCourt({ game, byId, date, now, lastRound = false }: { game: Game;
       </div>
       <button
         onClick={() => setSubbing(true)}
-        className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-2xl bg-white text-sm font-semibold text-zinc-700 ring-1 ring-zinc-300 active:scale-[0.99]"
+        className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-2xl bg-white text-sm font-semibold text-zinc-700 border border-zinc-300 active:scale-[0.99]"
       >
         <Icon.Swap width={16} height={16} /> {t("เปลี่ยนตัว (บาดเจ็บ / เหนื่อย)")}
       </button>
@@ -485,7 +485,7 @@ export function CourtsTab() {
         </Card>
       ) : started && (
       <Button
-        className="w-full !rounded-3xl !bg-red-600 !py-4 !text-base !text-white shadow-[0_10px_24px_-10px_rgba(220,38,38,0.7)] active:scale-[0.98]"
+        className="w-full !rounded-3xl !bg-red-600 !py-4 !text-base !text-white active:scale-[0.98]"
         onClick={() => {
           // ยังมีเกมเล่นอยู่: ให้กดผลเกมสุดท้ายก่อน
           if (active.size) return setEnding(true);

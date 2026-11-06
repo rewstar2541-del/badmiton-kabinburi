@@ -69,7 +69,7 @@ export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: s
             <li key={p.id}>
               <button
                 onClick={() => setPicked(p.id)}
-                className="flex w-full items-center gap-3 rounded-2xl bg-white px-3 py-2 text-left shadow-[0_8px_24px_-14px_rgba(11,18,32,0.25)] active:scale-[0.99]"
+                className="flex w-full items-center gap-3 rounded-2xl bg-white px-3 py-2 text-left border border-zinc-200 active:scale-[0.99]"
               >
                 <Avatar name={p.name} photo={p.photo} size={32} />
                 <span className="min-w-0 flex-1 truncate font-semibold">{p.name}</span>
