@@ -1,6 +1,6 @@
 import { clearState, type ClearKind } from "./clear";
 import { guestsOf, markPaid } from "./billing";
-import { DEFAULT_SETTINGS, type Day, type DayPrices, type DayRent, type Expense, type Game, type PairStatus, type Poll, type BoardPost, type Notice, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Package, type Player, type Settings, type Team } from "./types";
+import { DEFAULT_SETTINGS, type Day, type DayPrices, type DayRent, type Expense, type Game, type PairStatus, type Poll, type BoardPost, type Notice, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Package, type Player, type Settings, type Sub, type Team } from "./types";
 
 export interface State {
   players: Player[];
@@ -62,6 +62,18 @@ export type Action =
   /** อีกทีมกด "ไม่ตรง" (โหมดเครื่องเดียว ฐานข้อมูลจริงใช้ฟังก์ชัน dispute_game) */
   | { type: "disputeGame"; date: string; gameId: string; playerId: string }
   | { type: "cancelGame"; date: string; gameId: string }
+  /** เปลี่ยนตัวระหว่างเกม (ส่ง 4 คนในสนามและรายการเปลี่ยนตัวทั้งหมดหลังเปลี่ยน) */
+  | {
+      type: "subPlayer";
+      date: string;
+      gameId: string;
+      /** 4 คนก่อนเปลี่ยน (ฐานข้อมูลบันทึกเฉพาะเมื่อยังตรงกัน กันสองเครื่องเปลี่ยนทับกัน) */
+      prevIds: Game["playerIds"];
+      playerIds: Game["playerIds"];
+      subs: Sub[];
+      /** ตั้งพัก/เลิกพักไปพร้อมกัน (บันทึกหลังเปลี่ยนตัวสำเร็จเท่านั้น) */
+      rest?: { playerId: string; resting: boolean }[];
+    }
   | { type: "addDrink"; date: string; playerId: string; amount: number; note: string; _id: string }
   | { type: "removeDrink"; date: string; drinkId: string }
   | { type: "editDrink"; date: string; drinkId: string; amount: number; note: string }
@@ -299,6 +311,16 @@ export function reducer(state: State, a: Action): State {
       return updateGame(state, a.date, a.gameId, (g) => ({ ...g, disputedBy: a.playerId }));
     case "cancelGame":
       return withDay(state, a.date, (d) => ({ ...d, games: d.games.filter((g) => g.id !== a.gameId) }));
+    case "subPlayer":
+    {
+      const s = updateGame(state, a.date, a.gameId, (g) => ({ ...g, playerIds: a.playerIds, subs: a.subs.length ? a.subs : undefined }));
+      const rest = new Map((a.rest ?? []).map((r) => [r.playerId, r.resting]));
+      if (!rest.size) return s;
+      return withDay(s, a.date, (d) => ({
+        ...d,
+        checkIns: d.checkIns.map((c) => (rest.has(c.playerId) ? { ...c, resting: rest.get(c.playerId) || undefined } : c)),
+      }));
+    }
     case "addDrink":
       return withDay(state, a.date, (d) => ({
         ...d,

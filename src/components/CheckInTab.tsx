@@ -5,7 +5,7 @@ import type { Day } from "@/lib/types";
 import { signupQueue } from "@/lib/social";
 import { useState } from "react";
 import { useStore, useToday } from "@/lib/store";
-import { isMonthlyPaid, type Player } from "@/lib/types";
+import { inGame, isMonthlyPaid, type Player } from "@/lib/types";
 import { AdminAddGuest } from "./Guests";
 import { PlayerForm } from "./PlayersTab";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, inputClass } from "./ui";
@@ -119,7 +119,7 @@ function PlayerTile({ p, on, signed, visits }: { p: Player; on: boolean; signed:
           const day = state.days.find((d) => d.date === date);
           if (day?.checkIns.find((c) => c.playerId === p.id)?.paidAt)
             return alert(t("{name} จ่ายแล้ว ยกเลิกการจ่ายที่หน้าคิดเงินก่อน", { name: p.name }));
-          const games = day?.games.filter((g) => g.playerIds.includes(p.id)).length ?? 0;
+          const games = day?.games.filter((g) => inGame(g, p.id)).length ?? 0;
           if (games > 0 && !confirm(t("{name} เล่นแล้ว {n} เกม ยกเลิกเช็คอิน? (ไม่คิดค่าสนาม)", { name: p.name, n: games })))
             return;
           dispatch({ type: "undoCheckIn", date, playerId: p.id });

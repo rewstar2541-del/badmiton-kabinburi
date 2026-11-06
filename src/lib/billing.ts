@@ -1,4 +1,4 @@
-import { isAnnualMember, isMonthlyPaid, type Day, type DayPrices, type MonthlyPayments, type Player, type Settings } from "./types";
+import { isAnnualMember, isMonthlyPaid, shuttlesInGame, type Day, type DayPrices, type MonthlyPayments, type Player, type Settings } from "./types";
 import { rentShares } from "./courtSplit";
 
 export interface Bill {
@@ -25,9 +25,8 @@ export interface Bill {
 }
 
 export function shuttleCountFor(day: Day, playerId: string): number {
-  return day.games
-    .filter((g) => g.playerIds.includes(playerId))
-    .reduce((sum, g) => sum + g.shuttles, 0);
+  // เปลี่ยนตัวระหว่างเกม: นับเฉพาะลูกช่วงที่คนนี้อยู่ในสนาม
+  return day.games.reduce((sum, g) => sum + shuttlesInGame(g, playerId), 0);
 }
 
 /** ลูกแรกของวันคิด firstShuttleFee ลูกต่อไปคิด nextShuttleFee ต่อลูก */

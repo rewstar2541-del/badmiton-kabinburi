@@ -54,9 +54,14 @@ export function waitingQueue(day: Day, players: Player[]): QueueEntry[] {
   for (const ci of day.checkIns) {
     const player = byId.get(ci.playerId);
     if (!player || onCourt.has(player.id) || ci.paidAt || ci.resting) continue;
-    const played = day.games.filter((g) => g.endedAt && g.playerIds.includes(player.id));
-    const lastEnd = Math.max(ci.at, ...played.map((g) => g.endedAt!));
-    entries.push({ player, gamesPlayed: played.length, waitingSince: lastEnd });
+    // เกมที่ลงจากสนามแล้ว: เกมจบ หรือถูกเปลี่ยนตัวออก (เวลาลงจากสนาม = ตอนเปลี่ยนตัว)
+    const left = day.games.flatMap((g) => {
+      const out = g.subs?.filter((s) => s.out === player.id).at(-1);
+      if (out && !g.playerIds.includes(player.id)) return [out.at];
+      return g.endedAt && g.playerIds.includes(player.id) ? [g.endedAt] : [];
+    });
+    const lastEnd = Math.max(ci.at, ...left);
+    entries.push({ player, gamesPlayed: left.length, waitingSince: lastEnd });
   }
   // เล่นน้อยได้ก่อน ถ้าเท่ากัน รอนานได้ก่อน
   return entries.sort((a, b) => a.gamesPlayed - b.gamesPlayed || a.waitingSince - b.waitingSince);

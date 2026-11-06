@@ -12,7 +12,7 @@ import { today, useStore, useToday } from "@/lib/store";
 import { presence } from "@/lib/matchmaking";
 import { BringGuest } from "./Guests";
 import type { SelfAction } from "@/lib/state";
-import type { Day } from "@/lib/types";
+import { inGame, type Day } from "@/lib/types";
 import { ClosedBanner, ClubCalendar } from "./Calendar";
 import { PendingNotice, PickMe, savedPin, useMe } from "./PickMe";
 import { Avatar, Button, Card, Icon, LevelBadge, baht } from "./ui";
@@ -228,7 +228,7 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
   const signedUp = day.signups?.some((s) => s.playerId === player.id) ?? false;
   const checkedIn = day.checkIns.some((c) => c.playerId === player.id);
   const status = presence(day, player.id);
-  const played = day.games.some((g) => g.playerIds.includes(player.id));
+  const played = day.games.some((g) => inGame(g, player.id));
   const statusText = {
     playing: t("กำลังเล่นอยู่"),
     resting: t("พักอยู่ ระบบข้ามคิวให้"),

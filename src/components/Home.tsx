@@ -28,7 +28,7 @@ import { goToTab } from "./Membership";
 import { SlipHistory, slipStatus } from "./SlipHistory";
 import { OwedList } from "./Owed";
 import { owedBefore } from "@/lib/billing";
-import { courtList, monthOf } from "@/lib/types";
+import { courtList, inGame, monthOf } from "@/lib/types";
 import { shiftMonth } from "./Members";
 import { NoticeBanners, NoticeComposer } from "./Notices";
 import { PairCard } from "./Pairs";
@@ -284,7 +284,7 @@ export function PlayerHome() {
   const ci = day.checkIns.find((c) => c.playerId === player.id);
   const signedUp = day.signups?.some((s) => s.playerId === player.id) ?? false;
   const announced = day.announcement !== undefined;
-  const played = day.games.filter((g) => g.endedAt && g.playerIds.includes(player.id)).length;
+  const played = day.games.filter((g) => g.endedAt && inGame(g, player.id)).length;
   const queue = waitingQueue(day, state.players);
   const pos = queue.findIndex((e) => e.player.id === player.id) + 1;
   const planned = plannedCourt(courtPlan(day, state.players, courtList(state.settings)), player.id);

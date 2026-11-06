@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Action, SelfAction, State } from "./state";
 import { endOf, startOf, type ClearKind } from "./clear";
-import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Notice, type Gender, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Package, type Plan, type Player, type Settings } from "./types";
+import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Notice, type Gender, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Package, type Plan, type Player, type Settings, type Sub } from "./types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -58,6 +58,8 @@ export interface Rows {
     shuttles: number;
     winner: string | null;
     draw?: boolean | null;
+    /** ไม่มี = ยังไม่รัน SQL game_subs.sql */
+    subs?: Sub[] | null;
     reported_by?: string | null;
     disputed_by?: string | null;
   }[];
@@ -150,6 +152,7 @@ export function rowsToState(r: Rows): State {
       shuttles: g.shuttles,
       winner: (g.winner as Game["winner"]) ?? undefined,
       draw: g.draw || undefined,
+      ...(g.subs?.length ? { subs: g.subs } : {}),
       ...(g.reported_by ? { reportedBy: g.reported_by } : {}),
       ...(g.disputed_by ? { disputedBy: g.disputed_by } : {}),
     });
@@ -506,6 +509,30 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       return; // ผู้เล่นแจ้งผ่าน disputeGame() (ฟังก์ชัน dispute_game) ไม่ผ่านตรงนี้
     case "cancelGame":
       return check(await db.from("games").delete().eq("id", a.gameId));
+    case "subPlayer":
+    {
+      // คนลงแทนต้องไม่อยู่ในสนามอื่น (คู่ถัดไปอาจเพิ่งลงสนามจากอีกเครื่อง)
+      const incoming = a.playerIds.filter((id) => !a.prevIds.includes(id));
+      if (incoming.length) {
+        const busy = await db.from("games").select("id").eq("date", a.date).is("ended_at", null).neq("id", a.gameId).overlaps("player_ids", incoming);
+        check(busy);
+        if (busy.data?.length) throw new Error("คนลงแทนเพิ่งลงสนามอื่นไปแล้ว เลือกคนใหม่");
+      }
+      // บันทึกเฉพาะตอนเกมยังเล่นอยู่และ 4 คนยังเป็นชุดเดิม (เครื่องอื่นอาจจบเกม/เปลี่ยนตัวไปก่อน)
+      const res = await db
+        .from("games")
+        .update({ player_ids: a.playerIds, subs: a.subs })
+        .eq("id", a.gameId)
+        .is("ended_at", null)
+        .filter("player_ids", "eq", `{${a.prevIds.map((id) => `"${id}"`).join(",")}}`)
+        .select("id");
+      if (res.error?.message.includes("subs")) throw new Error("ต้องรัน SQL supabase/sql/game_subs.sql ก่อน");
+      check(res);
+      if (!res.data?.length) throw new Error("เกมนี้จบไปแล้ว หรือมีคนเปลี่ยนตัวไปก่อน");
+      for (const r of a.rest ?? [])
+        check(await db.from("checkins").update({ resting: r.resting }).eq("date", a.date).eq("player_id", r.playerId));
+      return;
+    }
     case "addDrink":
       return check(
         await db.from("drinks").insert({ id: a._id, date: a.date, player_id: a.playerId, amount: a.amount, note: a.note }),
@@ -774,6 +801,7 @@ async function importState(db: SupabaseClient, s: State) {
       shuttles: g.shuttles,
       winner: g.winner ?? null,
       ...(g.draw ? { draw: true } : {}),
+      ...(g.subs?.length ? { subs: g.subs } : {}),
     })),
   );
   const drinks = days.flatMap((d) =>

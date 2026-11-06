@@ -8,7 +8,7 @@ import { clearLineTicket, handleLineCallback, readLineTicket } from "./lineLogin
 import { canSelfCheckIn } from "./social";
 import { boardPhoto, loadHistory, socialRpc, type SocialRequest, addGuest, claimPlayer, signUpDay, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, addMyDrink, removeMyDrink, reportGame, disputeGame, removeMySlip, setMyHours, setMyPlan, updateMyProfile, type ProfileInput, supabase } from "./remote";
 import { EMPTY_STATE, guestCheck, prepare, reducer, resultOf, today, type GameReport, type Intent, type SelfAction, type State } from "./state";
-import { DEFAULT_SETTINGS, monthOf, type Game, type Level, type Plan, type Player } from "./types";
+import { DEFAULT_SETTINGS, inGame, monthOf, type Game, type Level, type Plan, type Player } from "./types";
 import { t } from "@/lib/i18n";
 
 export { today, newId } from "./state";
@@ -139,7 +139,7 @@ function LocalProvider({ children }: { children: ReactNode }) {
       else if (action === "payMonth") dispatch({ type: "setMonthlyPaid", month: monthOf(date), playerId, paid: true });
       else if (action === "undoCheckIn" || action === "notComing") {
         const day = state.days.find((d) => d.date === date);
-        if (day?.games.some((g) => g.playerIds.includes(playerId))) return "เล่นไปแล้ว ยกเลิกเช็คอินไม่ได้ ให้แอดมินช่วย";
+        if (day?.games.some((g) => inGame(g, playerId))) return "เล่นไปแล้ว ยกเลิกเช็คอินไม่ได้ ให้แอดมินช่วย";
         if (day?.checkIns.some((c) => c.playerId === playerId && c.paidAt)) return "จ่ายเงินแล้ว ยกเลิกเช็คอินไม่ได้ ให้แอดมินช่วย";
         dispatch({ type: "undoCheckIn", date, playerId });
         if (action === "notComing") dispatch({ type: "cancelSignUp", date, playerId });

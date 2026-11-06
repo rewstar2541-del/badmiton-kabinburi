@@ -1,3 +1,4 @@
+-- หมายเหตุ: ตัวใหม่อยู่ใน game_subs.sql (นับคนที่ถูกเปลี่ยนตัวออกด้วย) ถ้ารันไฟล์นี้ซ้ำ ให้รัน game_subs.sql ตามอีกครั้ง
 -- ผู้เล่นยกเลิกเช็คอินเอง (กดผิด) ได้ถ้ายังไม่ได้เล่นและยังไม่จ่าย
 -- p_cancel_signup = true: ยกเลิกลงชื่อด้วย (ไม่มาแล้ว)
 create or replace function public.undo_my_check_in(p_player text, p_pin text, p_cancel_signup boolean)

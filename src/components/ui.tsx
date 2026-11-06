@@ -204,6 +204,11 @@ export const Icon = {
       <path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />
     </Svg>
   ),
+  Swap: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M4 8h15l-4-4M20 16H5l4 4" />
+    </Svg>
+  ),
   Globe: (p: IconProps) => (
     <Svg {...p}>
       <circle cx="12" cy="12" r="10" />

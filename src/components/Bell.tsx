@@ -1,6 +1,6 @@
 "use client";
 
-import { courtList } from "@/lib/types";
+import { courtList, inGame } from "@/lib/types";
 import { useMemo, useState, type ReactNode } from "react";
 import { carriedOver, guestsOf } from "@/lib/billing";
 import { t } from "@/lib/i18n";
@@ -118,7 +118,7 @@ function useNotes(meId: string | null) {
     notes.push({ id: `queued:${spot.key}`, tone: "court", title: t("จัดคิวสนาม {n} ให้แล้ว", { n: spot.court }), sub: spot.pos === 0 ? t("ระบบจัดให้รอสนามนี้ อาจเปลี่ยนได้ถ้าคิวขยับ") : spot.pos === 1 ? t("คุณได้ลงต่อจากเกมที่เล่นอยู่ เตรียมตัวได้เลย") : t("คิวรอลงสนามนี้ คู่ที่ {n}", { n: spot.pos }), at: spot.at, onTap: () => goToTab("courts") });
   else if (status === "waiting") {
     const pos = waitingQueue(day, state.players).findIndex((e) => e.player.id === player.id) + 1;
-    const round = day.games.filter((g) => g.playerIds.includes(player.id)).length;
+    const round = day.games.filter((g) => inGame(g, player.id)).length;
     // เวลา = ตอนที่เกมล่าสุดจบ (คิวขยับ) หรือตอนเช็คอิน
     const moved = Math.max(day.checkIns.find((c) => c.playerId === player.id)?.at ?? 0, ...day.games.map((g) => g.endedAt ?? 0));
     if (pos > 0 && pos <= 4)
