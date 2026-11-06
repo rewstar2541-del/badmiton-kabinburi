@@ -64,6 +64,7 @@ export function LineCard() {
     await updateLineSettings(supabase, patch);
   };
 
+  if (!supabase) return null; // โหมดทดลอง/ไม่ได้ต่อระบบ: ไม่มีอะไรให้ตั้ง
   const limit = s?.monthly_limit ?? 300;
   const used = Math.max(st?.usage.sent ?? 0, st?.lineUsed ?? 0);
   const pct = Math.min(100, Math.round((used / Math.max(1, limit)) * 100));

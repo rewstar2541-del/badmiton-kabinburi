@@ -1,3 +1,4 @@
+import { isDemo } from "./demo";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Action, SelfAction, State } from "./state";
 import { endOf, startOf, type ClearKind } from "./clear";
@@ -10,7 +11,8 @@ const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 /** ชั่วโมงทศนิยมจากฐานข้อมูล ปัดเป็นนาทีเต็ม */
 const mins = (v: unknown) => Math.round(Number(v) * 60) / 60;
 
-export const supabase: SupabaseClient | null = url && key ? createClient(url, key) : null;
+/** โหมดทดลอง (?demo) ไม่แตะข้อมูลจริง จึงไม่สร้างตัวเชื่อม Supabase */
+export const supabase: SupabaseClient | null = url && key && !(typeof window !== "undefined" && isDemo()) ? createClient(url, key) : null;
 
 // ---------- แถวในฐานข้อมูล ----------
 

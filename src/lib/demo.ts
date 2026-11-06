@@ -48,6 +48,7 @@ export function demoState(): State {
   run({ type: "setMonthlyPaid", month: date.slice(0, 7), playerId: s.players[3].id, paid: true });
   // เกมที่จบแล้ววันนี้ พร้อมผลแพ้ชนะ (ให้เห็นสถิติคู่หู)
   const ids = s.players.map((p) => p.id);
+  const pad = (n: number) => String(n).padStart(2, "0");
   const played: [number[], "A" | "B", number][] = [
     [[5, 0, 1, 2], "A", 2],
     [[5, 6, 3, 4], "A", 1],
@@ -59,6 +60,30 @@ export function demoState(): State {
     const g = s.days.find((d) => d.date === date)!.games.at(-1)!;
     run({ type: "setShuttles", date, gameId: g.id, shuttles });
     run({ type: "endGame", date, gameId: g.id, winner }, start + 8 * 60000);
+  });
+  // เกมที่กำลังเล่นอยู่ 2 สนาม + คิวรอสนามละ 1 คู่ (ให้ลองเปลี่ยนตัว กดผลเอง และคิว)
+  run({ type: "startGame", date, court: 1, playerIds: [2, 3, 4, 6].map((n) => ids[n]) as Game["playerIds"] }, now - 6 * 60000);
+  run({ type: "startGame", date, court: 2, playerIds: [0, 1, 5, 7].map((n) => ids[n]) as Game["playerIds"] }, now - 3 * 60000);
+  run({ type: "queueGame", date, court: 1, playerIds: [0, 5, 3, 7].map((n) => ids[n]) as Game["playerIds"] }, now);
+  run({ type: "queueGame", date, court: 2, playerIds: [2, 1, 4, 6].map((n) => ids[n]) as Game["playerIds"] }, now);
+  // ค่าน้ำและสลิปโอนเงินตัวอย่างวันนี้
+  run({ type: "addDrink", date, playerId: ids[2], amount: 20, note: "น้ำ" });
+  run({ type: "addDrink", date, playerId: ids[4], amount: 35, note: "น้ำเกลือแร่" });
+  run({ type: "addSlip", date, playerId: ids[0], amount: 100 }, now - 5 * 60000);
+  // ประวัติเกม 2 วันก่อนหน้า (ให้เห็นแท็บประวัติเกมและสถิติคู่หู)
+  [2, 5].forEach((back, k) => {
+    const d = new Date(now - back * 86400000);
+    const day = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const at = now - back * 86400000;
+    ids.slice(0, 8).forEach((id) => run({ type: "signUp", date: day, playerId: id }, at - 3600000));
+    ids.slice(0, 8).forEach((id) => run({ type: "checkIn", date: day, playerId: id }, at - 3000000));
+    ([[[0, 1, 2, 3], "A"], [[4, 5, 6, 7], "B"], [[0, 4, 1, 5], "A"]] as [number[], "A" | "B"][]).forEach(([four, winner], i) => {
+      const t0 = at - (2400000 - i * 900000);
+      run({ type: "startGame", date: day, court: 1 + ((i + k) % 2), playerIds: four.map((n) => ids[n]) as Game["playerIds"] }, t0);
+      const g = s.days.find((x) => x.date === day)!.games.at(-1)!;
+      run({ type: "setShuttles", date: day, gameId: g.id, shuttles: 1 + (i % 2) });
+      run({ type: "endGame", date: day, gameId: g.id, winner }, t0 + 8 * 60000);
+    });
   });
   // วันเกิดวันนี้ และบอร์ดของหาย / ฝากขาย ตัวอย่าง
   s = { ...s, players: s.players.map((p, i) => (i === 7 ? { ...p, birthday: date.slice(5) } : p)) };
@@ -72,7 +97,6 @@ export function demoState(): State {
   }
   // วันงดเล่นตัวอย่าง: อีก 3 วัน
   const off = new Date(now + 3 * 86400000);
-  const pad = (n: number) => String(n).padStart(2, "0");
   run({ type: "setClosed", date: `${off.getFullYear()}-${pad(off.getMonth() + 1)}-${pad(off.getDate())}`, reason: "สนามปิดปรับปรุง" });
   return s;
 }
