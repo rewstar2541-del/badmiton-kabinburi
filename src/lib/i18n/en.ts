@@ -1413,6 +1413,8 @@ export const en: Record<string, string> = {
   "สนาม {n} ยังเริ่มเกมต่อไม่ได้ มีคนในคู่ที่จัดไว้ไม่พร้อม (ชื่อขีดฆ่า) กดแก้หรือเอาคู่นั้นออก": "Court {n} can't start the next game: someone in the queued match isn't ready (crossed out). Edit or remove that match.",
   "ระบบจัดให้รอสนามนี้ อาจเปลี่ยนได้ถ้าคิวขยับ": "Auto-assigned to this court. May change as the queue moves.",
   "จบก๊วนแล้ว": "Session ended",
+  "รอบสุดท้าย: กดผลแล้วไม่ลงคู่ต่อไป": "Last round: recording a result won't start the next pair",
+  "ไม่สร้างเกมใหม่ ไม่เพิ่มค่าลูก": "No new games, no extra shuttle cost",
   "ยังไม่จ่ายเงิน {n} คน": "{n} not paid yet",
   "ไปหน้าคิดเงิน": "Go to billing",
   "ซ่อนรายชื่อ": "Hide names",
