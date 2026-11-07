@@ -139,7 +139,7 @@ function PlayerTile({ p, on, signed, visits }: { p: Player; on: boolean; signed:
           </span>
           {visits !== undefined && <span className={`block truncate text-xs ${on ? "text-zinc-700" : "text-zinc-500"}`}>{t("มา {n} ครั้ง/30 วัน", { n: visits })}</span>}
         </span>
-        <span className={`grid size-6 shrink-0 place-items-center rounded-full transition ${on ? "bg-white text-ink" : "bg-zinc-100 text-transparent"}`}>
+        <span className={`grid size-6 shrink-0 place-items-center rounded-full transition ${on ? "bg-white/90 text-ink" : "bg-zinc-100 text-transparent"}`}>
           <Icon.Check width={14} height={14} strokeWidth={3} />
         </span>
       </button>

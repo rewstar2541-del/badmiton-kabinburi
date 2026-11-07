@@ -205,7 +205,7 @@ export function PlayersTab() {
     <ul className="space-y-2">
       {list.map((p) => (
           <li key={p.id}>
-            <Card className="!rounded-2xl !p-3">
+            <Card className={`!rounded-2xl !p-3 ${openId === p.id ? "!border-lime-dark" : ""}`}>
               {editing === p.id ? (
                 <PlayerForm
                   initial={p}
@@ -218,7 +218,7 @@ export function PlayersTab() {
               ) : (
                 // ชื่ออยู่แถวบน ปุ่มอยู่แถวล่าง จอมือถือแคบจะได้ไม่บีบชื่อจนหาย
                 <div>
-                <button type="button" className="flex w-full items-center gap-3 text-left" aria-expanded={openId === p.id} onClick={() => setOpenId(openId === p.id ? null : p.id)}>
+                <button type="button" className="flex w-full items-center gap-3 text-left" aria-expanded={openId === p.id} onClick={() => { setOpenId(openId === p.id ? null : p.id); setPlanFor(null); }}>
                   <Avatar name={p.name} photo={p.photo} size={36} />
                   <span className="min-w-0 flex-1">
                     <span className="flex min-w-0 items-center gap-1.5">
@@ -238,7 +238,7 @@ export function PlayersTab() {
                         " "}
                     </span>
                   </span>
-                  <Icon.ChevronRight width={18} height={18} className={`shrink-0 text-zinc-400 transition ${openId === p.id ? "rotate-90" : ""}`} />
+                  <Icon.ChevronRight width={18} height={18} className={`shrink-0 text-zinc-600 transition ${openId === p.id ? "rotate-90" : ""}`} />
                 </button>
                 {openId === p.id && (
                 <div className="mt-2 space-y-2 border-t border-zinc-200 pt-2">
@@ -246,7 +246,7 @@ export function PlayersTab() {
                   {!p.guestOf && (
                     <Button
                       variant="ghost"
-                      className={`px-3 py-2 text-xs ${p.plan === "monthly" ? "text-emerald-700" : "text-zinc-500"}`}
+                      className={`min-h-11 px-3 text-xs ${p.plan === "monthly" ? "text-emerald-700" : "text-zinc-500"}`}
                       title={t("กดเพื่อเลือกแพ็กเกจ")}
                       onClick={() =>
                         state.packages?.length
@@ -266,7 +266,7 @@ export function PlayersTab() {
                   {p.guestOf && (
                     <Button
                       variant="ghost"
-                      className="px-3 py-2 text-xs text-emerald-700"
+                      className="min-h-11 px-3 text-xs text-emerald-700"
                       onClick={() => {
                         const member = { ...p, guestOf: undefined };
                         dispatch({ type: "updatePlayer", player: member });
@@ -283,7 +283,7 @@ export function PlayersTab() {
                     return (
                       <Button
                         variant="ghost"
-                        className={`px-3 py-2 text-xs ${on ? "text-ink" : "text-zinc-500"}`}
+                        className={`min-h-11 px-3 text-xs ${on ? "text-ink" : "text-zinc-500"}`}
                         disabled={admin.busy || self}
                         onClick={() => {
                           const msg = on ? t("เอา {name} ออกจากแอดมิน?", { name: p.name }) : t("ตั้ง {name} เป็นแอดมิน?", { name: p.name });
@@ -294,12 +294,12 @@ export function PlayersTab() {
                       </Button>
                     );
                   })()}
-                  <Button variant="ghost" className="px-3 py-2 text-xs" onClick={() => setEditing(p.id)}>
+                  <Button variant="ghost" className="min-h-11 px-3 text-xs" onClick={() => setEditing(p.id)}>
                     {t("แก้ไข")}
                   </Button>
                   <Button
                     variant="ghost"
-                    className="px-3 py-2 text-xs text-red-600"
+                    className="min-h-11 px-3 text-xs text-red-600"
                     aria-label={t("ลบ {name}", { name: p.name })}
                     onClick={() => {
                       if (confirm(t("ลบ {name}?", { name: p.name }))) dispatch({ type: "removePlayer", playerId: p.id });
@@ -332,8 +332,9 @@ export function PlayersTab() {
         <div className="min-w-0 flex-1">
           <SearchInput value={q} onChange={setQ} />
         </div>
-        <Button variant="accent" className="px-4" onClick={() => setAdding(true)} aria-label={t("ลงทะเบียนผู้เล่นใหม่")}>
+        <Button variant="accent" className="flex items-center gap-1 px-4" onClick={() => setAdding(true)} aria-label={t("ลงทะเบียนผู้เล่นใหม่")}>
           <Icon.Plus width={20} height={20} strokeWidth={2.5} />
+          <span className="text-sm">{t("เพิ่ม")}</span>
         </Button>
       </div>
       {adding && (
@@ -343,6 +344,7 @@ export function PlayersTab() {
             onCancel={() => setAdding(false)}
             onSave={(player) => {
               dispatch({ type: "addPlayer", player });
+              setShowAll(true);
               setAdding(false);
             }}
           />
@@ -439,12 +441,12 @@ function LevelRequests() {
           </span>
           <Button
             variant="accent"
-            className="px-3 py-2 text-xs"
+            className="min-h-11 px-3 text-xs"
             onClick={() => dispatch({ type: "updatePlayer", player: { ...p, level: p.levelRequest!, levelRequest: undefined } })}
           >
             {t("อนุมัติ")}
           </Button>
-          <Button className="px-3 py-2 text-xs" onClick={() => dispatch({ type: "updatePlayer", player: { ...p, levelRequest: undefined } })}>
+          <Button className="min-h-11 px-3 text-xs" onClick={() => dispatch({ type: "updatePlayer", player: { ...p, levelRequest: undefined } })}>
             {t("ไม่อนุมัติ")}
           </Button>
         </Card>

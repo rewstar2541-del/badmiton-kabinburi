@@ -33,13 +33,13 @@ export function MembersDirectory() {
       <SectionTitle right={t("{n} คน", { n: members.length })}>{t("สมาชิกก๊วนทั้งหมด")}</SectionTitle>
       <SearchInput value={q} onChange={setQ} placeholder={t("ค้นหาชื่อ")} />
 
-      <div className="flex gap-1.5 overflow-x-auto pb-1">
+      <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]">
         {counts.map((c) => (
           <button
             key={c.value}
             onClick={() => setLevel(level === c.value ? null : c.value)}
             aria-pressed={level === c.value}
-            className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold ${level === c.value ? "border-lime-dark bg-lime text-ink" : "border-zinc-300 bg-white text-zinc-700"}`}
+            className={`flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold ${level === c.value ? "border-lime-dark bg-lime text-ink" : "border-zinc-300 bg-white text-zinc-700"}`}
           >
             <span className={`size-2.5 rounded-full ${barOf(c.value)}`} />
             {c.code}

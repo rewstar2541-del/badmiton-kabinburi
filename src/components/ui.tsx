@@ -5,7 +5,7 @@ import { LEVELS, type Level } from "@/lib/types";
 type Variant = "primary" | "accent" | "secondary" | "warn" | "danger" | "ghost";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-lime text-ink active:scale-[0.98] disabled:bg-zinc-300 disabled:text-zinc-500 disabled:shadow-none",
+  primary: "bg-lime text-ink active:scale-[0.98] disabled:bg-zinc-300 disabled:text-zinc-600 disabled:shadow-none",
   accent: "bg-lime text-ink active:scale-[0.98] disabled:bg-zinc-200 disabled:text-zinc-500 disabled:shadow-none",
   secondary: "bg-zinc-100 text-ink active:bg-zinc-200",
   warn: "border-2 border-amber-400 bg-amber-50 text-amber-800 active:scale-[0.98] disabled:opacity-60",

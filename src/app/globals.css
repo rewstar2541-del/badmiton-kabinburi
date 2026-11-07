@@ -148,3 +148,4 @@ html.dark {
 .dark .border-lime-dark\/30 { border-color: color-mix(in srgb, var(--color-lime-dark) 35%, transparent); }
 .dark .bg-black\/10 { background-color: rgba(255, 255, 255, 0.12); }
 .dark .\!text-ink { color: #e6eaf2 !important; }
+.dark .bg-lime .text-zinc-600, .dark .bg-lime .text-zinc-700 { color: #3f4a5c; }
