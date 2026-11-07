@@ -28,6 +28,7 @@ function builder(name: string) {
     order: () => b,
     eq: (k: string, v: unknown) => (filters.push((r) => r[k] === v), b),
     in: (k: string, v: unknown[]) => (filters.push((r) => v.includes(r[k])), b),
+    gte: (k: string, v: string) => (filters.push((r) => String(r[k]) >= v), b),
     lt: (k: string, v: string) => (filters.push((r) => String(r[k]) < v), b),
     upsert: (r: Record<string, unknown>[]) => ((upsertRows = r), b),
     delete: () => ((del = true), b),
@@ -44,6 +45,7 @@ vi.mock("web-push", () => ({
     sendNotification: async (s: { endpoint: string }, payload: string) => {
       if (s.endpoint.includes("gone")) throw Object.assign(new Error("gone"), { statusCode: 410 });
       sent.push({ endpoint: s.endpoint, payload });
+      return { statusCode: 201 };
     },
   },
 }));
@@ -65,6 +67,7 @@ beforeEach(() => {
     games: [{ id: "g1", date, court: 5, player_ids: ["a", "b", "c", "d"], started_at: at, ended_at: null, shuttles: 1 }],
     court_queue: [{ id: "q1", date, court: 5, player_ids: ["e", "f", "g", "h"], at }],
     pair_requests: [],
+    announcements: [],
     settings: [{ id: 1, court_count: 1, court_fee: 40, first_shuttle_fee: 30, next_shuttle_fee: 25, monthly_fee: 150, promptpay_id: "", court_numbers: [5] }],
     push_subscriptions: [
       { endpoint: "https://push/e1", player_id: "e", p256dh: "k", auth: "a" },
@@ -80,13 +83,31 @@ describe("ส่งแจ้งเตือนอีก 1 เกมถึงค�
   it("ส่งให้คู่ถัดไปของสนามที่เล่นอยู่ ทุกเครื่อง พร้อมเบอร์สนาม และไม่ส่งซ้ำ", async () => {
     const { notifyTurns } = await import("../pushServer");
     const r = await notifyTurns();
-    expect(r.sent).toBe(2);
-    expect(sent.map((s) => s.endpoint).sort()).toEqual(["https://push/e1", "https://push/e2"]);
-    expect(JSON.parse(sent[0].payload).title).toBe("อีก 1 เกมถึงคิวคุณ ที่สนาม 5");
+    // e (2 เครื่อง) ได้ "อีก 1 เกมถึงคิว", a ที่เพิ่งลงสนามได้ "ถึงคิวแล้ว"
+    expect(r.sent).toBe(3);
+    expect(sent.map((s) => s.endpoint).sort()).toEqual(["https://push/a", "https://push/e1", "https://push/e2"]);
+    const titles = Object.fromEntries(sent.map((s) => [s.endpoint, JSON.parse(s.payload).title]));
+    expect(titles["https://push/e1"]).toBe("อีก 1 เกมถึงคิวคุณ ที่สนาม 5");
+    expect(titles["https://push/a"]).toBe("ถึงคิวคุณแล้ว ลงสนาม 5");
     // เครื่องที่ยกเลิกแล้วถูกลบ ประวัติวันเก่าถูกล้าง
     expect(tables.push_subscriptions.some((s) => s.endpoint === "https://push/gone")).toBe(false);
     expect(tables.push_sent.some((s) => s.date === "2000-01-01")).toBe(false);
     // เรียกซ้ำ: ไม่ส่งอีก
+    expect((await notifyTurns()).sent).toBe(0);
+  });
+
+  it("เปิดลงชื่อ/อีเว้นใหม่ แจ้งทุกคนที่เปิดรับ ครั้งเดียว", async () => {
+    const { notifyTurns } = await import("../pushServer");
+    tables.games = [];
+    tables.court_queue = [];
+    tables.announcements = [
+      { date, message: "ตี 2 ทุ่ม", title: null, created_at: at },
+      { date, message: "", title: "ก๊วนวันเกิด", created_at: new Date(Date.now() - 48 * 3600 * 1000).toISOString() },
+    ];
+    const r = await notifyTurns();
+    // เครื่องที่ใช้ได้ 3 เครื่อง (e 2 เครื่อง, a) ส่วนเครื่องของ f ยกเลิกไปแล้ว (410) ประกาศเก่า (เกิน 36 ชม.) ไม่แจ้ง
+    expect(r.sent).toBe(3);
+    expect(sent.every((s) => JSON.parse(s.payload).title.startsWith("🏸 เปิดลงชื่อก๊วน"))).toBe(true);
     expect((await notifyTurns()).sent).toBe(0);
   });
 
