@@ -9,16 +9,41 @@ self.addEventListener("push", (e) => {
   } catch {
     data = { title: e.data ? e.data.text() : "แบดกบินทร์" };
   }
-  e.waitUntil(
-    self.registration.showNotification(data.title || "แบดกบินทร์", {
-      body: data.body || "",
-      tag: data.tag,
-      renotify: !!data.tag,
-      icon: "/icon-192.png",
-      data: { url: data.url || "/" },
-    }),
-  );
+  e.waitUntil(show(data));
 });
+
+// เสียง+สั่นตอนถึงคิว: ผู้เล่นเปิด/ปิดได้ที่โปรไฟล์ (แอพเขียนค่าไว้ใน Cache Storage ค่าเริ่มต้น = เปิด)
+async function alertOn() {
+  try {
+    const r = await (await caches.open("bk-prefs")).match("/__bk/turn-alert");
+    return !r || (await r.text()) !== "0";
+  } catch {
+    return true;
+  }
+}
+
+async function show(data) {
+  const opts = {
+    body: data.body || "",
+    tag: data.tag,
+    renotify: !!data.tag,
+    icon: "/icon-192.png",
+    data: { url: data.url || "/" },
+  };
+  if (data.alert) {
+    const on = await alertOn();
+    // เปิดแอพค้างไว้บนจออยู่: แอพเล่นเสียงและสั่นเอง แจ้งเตือนเด้งเงียบไว้ ไม่ให้ซ้ำ
+    const list = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const visible = list.some((c) => c.visibilityState === "visible");
+    if (!on || visible) opts.silent = true;
+    else {
+      // Android สั่นตามรูปแบบนี้ (iPhone ใช้เสียง/สั่นของเครื่องเอง)
+      opts.vibrate = [200, 100, 200, 100, 400];
+      opts.requireInteraction = true;
+    }
+  }
+  return self.registration.showNotification(data.title || "แบดกบินทร์", opts);
+}
 
 // แตะแจ้งเตือน: เปิดแอพ (หรือสลับไปหน้าที่เปิดอยู่) แล้วไปที่หน้าสนาม
 self.addEventListener("notificationclick", (e) => {
