@@ -37,7 +37,7 @@ export function FestivalPicker() {
               key={o.id}
               disabled={!ready}
               onClick={() => dispatch({ type: "updateSettings", settings: { ...state.settings, festival: o.id } })}
-              className={`min-h-12 rounded-2xl px-3 py-2 text-left text-sm font-semibold disabled:opacity-50 ${on ? "bg-ink text-white" : "bg-zinc-100 text-zinc-700"}`}
+              className={`min-h-12 rounded-2xl px-3 py-2 text-left text-sm font-semibold disabled:opacity-50 ${on ? "bg-lime text-ink" : "bg-zinc-100 text-zinc-700"}`}
             >
               <span className="mr-1.5">{o.emoji}</span>
               {t(o.label)}

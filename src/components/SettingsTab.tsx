@@ -85,7 +85,7 @@ export function SettingsTab() {
               href={`?tv${auth.demo ? "&demo" : ""}`}
               target="_blank"
               rel="noreferrer"
-              className="shrink-0 rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white"
+              className="shrink-0 rounded-2xl bg-lime px-4 py-3 text-sm font-semibold text-ink"
             >
               {t("เปิดจอสนาม")}
             </a>

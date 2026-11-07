@@ -43,7 +43,7 @@ export function RosterSortSwitch({ value, onChange }: { value: RosterSort; onCha
             key={s.value}
             onClick={() => onChange(s.value)}
             aria-pressed={value === s.value}
-            className={`rounded-full px-3 py-1.5 font-semibold ${value === s.value ? "bg-ink text-white" : "text-zinc-600"}`}
+            className={`rounded-full px-3 py-1.5 font-semibold ${value === s.value ? "bg-lime text-ink" : "text-zinc-600"}`}
           >
             {t(s.label)}
           </button>

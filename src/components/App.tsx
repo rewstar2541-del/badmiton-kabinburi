@@ -134,7 +134,7 @@ function DemoBar() {
           <button
             key={String(admin)}
             onClick={() => demo.setAdmin(admin)}
-            className={`rounded-full px-2.5 py-1 font-semibold ${(auth.canAdmin ?? auth.isAdmin) === admin ? "bg-ink text-white" : ""}`}
+            className={`rounded-full px-2.5 py-1 font-semibold ${(auth.canAdmin ?? auth.isAdmin) === admin ? "bg-lime text-ink" : ""}`}
           >
             {admin ? t("แอดมิน") : t("ผู้เล่น")}
           </button>
@@ -143,7 +143,7 @@ function DemoBar() {
       {tourney.t && (
         <div className="flex shrink-0 rounded-full bg-ink/10 p-0.5">
           {[false, true].map((on) => (
-            <button key={String(on)} onClick={() => tourney.setMode(on)} className={`min-h-9 rounded-full px-3 font-semibold ${tourney.mode === on ? "bg-ink text-white" : ""}`}>
+            <button key={String(on)} onClick={() => tourney.setMode(on)} className={`min-h-9 rounded-full px-3 font-semibold ${tourney.mode === on ? "bg-lime text-ink" : ""}`}>
               {on ? t("งานแข่ง") : t("ก๊วนปกติ")}
             </button>
           ))}
@@ -175,7 +175,7 @@ function ModeSwitch() {
             set(player);
             window.scrollTo({ top: 0 });
           }}
-          className={`h-10 rounded-full px-4 text-sm font-semibold ${Boolean(auth.playerMode) === player ? "bg-ink text-white" : "text-zinc-600"}`}
+          className={`h-10 rounded-full px-4 text-sm font-semibold ${Boolean(auth.playerMode) === player ? "bg-lime text-ink" : "text-zinc-600"}`}
         >
           {player ? t("ผู้เล่น") : t("แอดมิน")}
         </button>
@@ -319,11 +319,11 @@ function Shell() {
                 }}
                 aria-current={active ? "page" : undefined}
                 className={`flex flex-col items-center gap-0.5 rounded-2xl py-2 text-xs font-semibold transition ${
-                  active ? "bg-ink text-white" : "text-zinc-600 active:bg-zinc-100"
+                  active ? "bg-lime text-ink" : "text-zinc-600 active:bg-zinc-100"
                 }`}
               >
                 <span className="relative">
-                  <item.icon width={24} height={24} strokeWidth={active ? 2.4 : 2} className={active ? "text-lime" : ""} />
+                  <item.icon width={24} height={24} strokeWidth={active ? 2.4 : 2} />
                   {item.id === "mybill" && billDot && (
                     <span className="absolute -top-1 -right-1.5 size-2.5 rounded-full bg-amber-400 ring-2 ring-white" aria-label={t("ยังไม่จ่ายค่ารายเดือน")} />
                   )}

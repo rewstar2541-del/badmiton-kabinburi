@@ -53,7 +53,7 @@ function Seg<T extends string>({ value, items, onChange }: { value: T; items: [T
   return (
     <div className="flex rounded-full bg-zinc-200 p-0.5">
       {items.map(([v, label]) => (
-        <button key={v} onClick={() => onChange(v)} className={`h-10 flex-1 rounded-full text-sm font-semibold ${v === value ? "bg-ink text-white" : "text-zinc-600"}`}>
+        <button key={v} onClick={() => onChange(v)} className={`h-10 flex-1 rounded-full text-sm font-semibold ${v === value ? "bg-lime text-ink" : "text-zinc-600"}`}>
           {label}
         </button>
       ))}
@@ -386,7 +386,7 @@ function DarkCourts({ t: tr, cols }: { t: Tourney; cols: number }) {
               <>
                 <div className="mt-1 truncate text-sm font-semibold">{teamName(tr, m.a)}</div>
                 <div className="truncate text-sm font-semibold">{teamName(tr, m.b)}</div>
-                <div className="mt-1 text-sm text-lime tabular-nums">{scoreText(m) || t("กำลังเล่น")}</div>
+                <div className="mt-1 text-sm text-ink tabular-nums">{scoreText(m) || t("กำลังเล่น")}</div>
               </>
             ) : (
               <div className="mt-1 text-sm text-white/50">{t("ว่าง")}</div>
@@ -542,7 +542,7 @@ function SignupSheet({ t: tr, onClose, onDone }: { t: Tourney; onClose: () => vo
               key={x.id}
               disabled={full}
               onClick={() => setDiv(x.id)}
-              className={`rounded-full px-4 py-2 text-sm font-semibold ${x.id === div ? "bg-ink text-white" : full ? "bg-zinc-100 text-zinc-300 line-through" : "bg-zinc-100"}`}
+              className={`rounded-full px-4 py-2 text-sm font-semibold ${x.id === div ? "bg-lime text-ink" : full ? "bg-zinc-100 text-zinc-300 line-through" : "bg-zinc-100"}`}
             >
               {x.code}
             </button>
@@ -657,25 +657,25 @@ function MyTeamCard({ t: tr, team, act }: { t: Tourney; team: TTeam; act: (a: Pl
           {t("มาถึงแล้ว")}
         </Button>
       )}
-      <div className="flex items-center gap-3 rounded-3xl bg-ink p-4 text-white">
-        <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/10 text-lime">
+      <div className="flex items-center gap-3 rounded-3xl border border-lime-dark/30 bg-lime/25 p-4 text-ink">
+        <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-black/5 text-ink">
           <Icon.Trophy width={22} height={22} />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-sm text-white/70">{t("ทีมของคุณ · มือ {c}", { c: div.code })}</div>
+          <div className="text-sm text-zinc-600">{t("ทีมของคุณ · มือ {c}", { c: div.code })}</div>
           <div className="truncate font-semibold">
             {team.names[0]} & {team.names[1]}
           </div>
           {match ? (
-            <div className="text-sm text-lime">
+            <div className="text-sm font-semibold text-ink">
               {match.court
                 ? t("ลงสนาม {c} ตอนนี้ · พบ {x}", { c: match.court, x: teamName(tr, opp) })
                 : t("อีก {n} แมตช์ · พบ {x}", { n: ahead, x: teamName(tr, opp) })}
             </div>
           ) : (
-            div.drawn && <div className="text-sm text-white/70">{eliminated ? t("จบการแข่งขันแล้ว ขอบคุณครับ") : t("รอคู่แข่งจากรอบก่อน")}</div>
+            div.drawn && <div className="text-sm text-zinc-600">{eliminated ? t("จบการแข่งขันแล้ว ขอบคุณครับ") : t("รอคู่แข่งจากรอบก่อน")}</div>
           )}
-          {div.drawn && team.here[idx] && !partnerHere && <div className="text-sm text-white/70">{t("{n} ยังไม่กดมาถึง", { n: team.names[idx === 0 ? 1 : 0] })}</div>}
+          {div.drawn && team.here[idx] && !partnerHere && <div className="text-sm text-zinc-600">{t("{n} ยังไม่กดมาถึง", { n: team.names[idx === 0 ? 1 : 0] })}</div>}
         </div>
         {team.pay !== "yes" && <Tag tone={PAY_TONE[team.pay]}>{t(PAY_LABEL[team.pay])}</Tag>}
       </div>
@@ -775,7 +775,7 @@ function JoinCard() {
           <button
             key={l.value}
             onClick={() => setLevel(l.value)}
-            className={`min-h-11 rounded-xl border text-sm font-bold ${level === l.value ? "border-ink bg-ink text-white" : "border-zinc-200 bg-white"}`}
+            className={`min-h-11 rounded-xl border text-sm font-bold ${level === l.value ? "border-lime-dark bg-lime text-ink" : "border-zinc-200 bg-white"}`}
           >
             {l.code}
           </button>
@@ -816,7 +816,7 @@ export function TourneyHome() {
         </Button>
       )}
       {isRef && (
-        <a href={siteUrl("ref")} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white">
+        <a href={siteUrl("ref")} className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-lime px-4 py-3 text-sm font-semibold text-ink">
           {t("จอกรรมการ")}
         </a>
       )}

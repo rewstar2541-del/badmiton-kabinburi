@@ -208,7 +208,7 @@ function PackageForm({
               key={k}
               type="button"
               onClick={() => setKind(k)}
-              className={`min-h-10 flex-1 rounded-full text-sm font-semibold ${kind === k ? "bg-ink text-white" : "text-zinc-600"}`}
+              className={`min-h-10 flex-1 rounded-full text-sm font-semibold ${kind === k ? "bg-lime text-ink" : "text-zinc-600"}`}
             >
               {k === "monthly" ? t("สิ้นเดือนที่จ่าย") : t("วันที่กำหนด")}
             </button>
@@ -336,7 +336,7 @@ export function PlanPanel({ player, onDone }: { player: Player; onDone: () => vo
     <div className="space-y-2 rounded-2xl bg-zinc-50 p-3">
       <div className="text-sm font-semibold">{t("เลือกแพ็กของ {name}", { name: player.name })}</div>
       <button
-        className={`flex w-full items-center gap-3 rounded-2xl p-3 text-left ${player.plan === "daily" ? "bg-ink text-white" : "bg-white"}`}
+        className={`flex w-full items-center gap-3 rounded-2xl p-3 text-left ${player.plan === "daily" ? "bg-lime text-ink" : "bg-white"}`}
         onClick={() => {
           if (player.plan !== "daily") dispatch({ type: "updatePlayer", player: { ...player, plan: "daily" } });
           onDone();
