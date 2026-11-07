@@ -68,7 +68,6 @@ export function SettingsTab() {
   return (
     <div className="space-y-3">
       <SectionTitle>{t("ตั้งค่า")}</SectionTitle>
-      <div className="px-1 pt-2 text-sm font-semibold text-zinc-500">{t("ใช้บ่อย")}</div>
       <Section id="calendar" icon="📅" title={t("ปฏิทินและอีเว้น")} hint={t("สร้างอีเว้น วันงดเล่น โหวตวันตี")} defaultOpen>
         <ClubCalendar bare />
         <PollAdmin />
@@ -98,7 +97,6 @@ export function SettingsTab() {
       <Section id="tourney" icon="🏆" title={t("งานแข่ง")} hint={t("สร้างงาน เปิดวันแข่ง จบงาน")}>
         <TourneySetup />
       </Section>
-      <div className="px-1 pt-2 text-sm font-semibold text-zinc-500">{t("ตั้งครั้งเดียว นานๆ แก้")}</div>
       <Section id="prices" icon="💰" title={t("ราคาและการรับเงิน")} hint={packagesReady ? t("ค่าลูก PromptPay บัญชีธนาคาร") : t("ค่าสนาม ค่าลูก PromptPay บัญชีธนาคาร")}>
           <Card>
             <form
