@@ -4,7 +4,7 @@ import type { Session } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { isDemo, demoState } from "./demo";
 import { randomToken, readSession, remember, restoreRemembered, writeSession } from "./session";
-import { clearLineTicket, handleLineCallback, readLineTicket } from "./lineLogin";
+import { clearLineTicket, handleLineCallback, readLineTicket, takeLineHandoff, waitsForLineHandoff } from "./lineLogin";
 import { canSelfCheckIn } from "./social";
 import { boardPhoto, loadHistory, socialRpc, type SocialRequest, addGuest, claimPlayer, signUpDay, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, addMyDrink, removeMyDrink, reportGame, disputeGame, removeMySlip, setMyHours, setMyPlan, updateMyProfile, type ProfileInput, supabase } from "./remote";
 import { EMPTY_STATE, guestCheck, prepare, reducer, resultOf, today, type GameReport, type Intent, type SelfAction, type State } from "./state";
@@ -358,7 +358,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     // กลับมาจากหน้าเข้าสู่ระบบของ LINE
     handleLineCallback(db).then(async (r) => {
       if (r === "redirect") return;
-      if (r) setError(t(r));
+      if (r) setSaveError(t(r));
       // เครื่องลืมการเข้าสู่ระบบ (เช่น Safari ลบข้อมูลเว็บที่ไม่ได้เปิดเกิน 7 วัน) ดึงคืนจากคุกกี้สำรอง
       const refresh = await restoreRemembered();
       let { data } = await db.auth.getSession();
@@ -376,6 +376,37 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     });
     return () => sub.subscription.unsubscribe();
   }, [db, check]);
+
+  // แอพบนหน้าจอหลัก: LINE อาจส่งกลับไปเปิดใน Safari แทน มารับผลเข้าสู่ระบบเมื่อผู้ใช้สลับกลับมาที่แอพ
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let busy = false;
+    const tryTake = (left: number) => {
+      clearTimeout(timer);
+      if (busy || document.visibilityState !== "visible" || !waitsForLineHandoff()) return;
+      busy = true;
+      takeLineHandoff(db)
+        .then((r) => {
+          busy = false;
+          if (r === "redirect") return;
+          if (r) setSaveError(t(r));
+          // Safari อาจยังทำไม่เสร็จตอนสลับกลับมา ลองอีกสักพัก
+          else if (left > 0) timer = setTimeout(() => tryTake(left - 1), 2000);
+        })
+        .catch(() => {
+          busy = false;
+        });
+    };
+    const onShow = () => tryTake(5);
+    onShow();
+    document.addEventListener("visibilitychange", onShow);
+    window.addEventListener("pageshow", onShow);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onShow);
+      window.removeEventListener("pageshow", onShow);
+    };
+  }, [db]);
 
   // อัปเดตทันทีเมื่อเครื่องอื่นแก้ข้อมูล
   useEffect(() => {
