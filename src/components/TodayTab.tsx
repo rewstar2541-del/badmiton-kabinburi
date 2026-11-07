@@ -56,10 +56,9 @@ export function AnnouncementBanner({ message, title, fee, date }: { message: str
 /** หน้าแรกผู้เล่น: การ์ดดำใบเดียว สถานะ + ประกาศ + ปุ่มลงชื่อ/เช็คอิน */
 export function HomeCard({ top, children }: { top: ReactNode; children?: ReactNode }) {
   return (
-    <div className="relative space-y-2.5 overflow-hidden rounded-3xl border border-zinc-300 bg-white p-4 text-ink">
-      <div className="pointer-events-none absolute -top-20 -right-12 size-48 rounded-full bg-lime/20 blur-3xl" />
-      <div className="relative">{top}</div>
-      {children && <div className="relative space-y-3">{children}</div>}
+    <div className="space-y-2.5 rounded-3xl border border-zinc-200 bg-white p-4 text-ink">
+      <div>{top}</div>
+      {children && <div className="space-y-3">{children}</div>}
     </div>
   );
 }
@@ -81,8 +80,9 @@ export function nextSessionOf(days: Day[], closed: Record<string, string>, date:
   return { next, when };
 }
 
-/** ก๊วนครั้งถัดไปภายใน 7 วัน (เช่นพรุ่งนี้) ลงชื่อล่วงหน้าได้เลยจากหน้าแรก */
-function NextSession({ dark }: { dark?: boolean }) {
+/** ก๊วนครั้งถัดไปภายใน 7 วัน (เช่นพรุ่งนี้) ลงชื่อล่วงหน้าได้เลยจากหน้าแรก
+ *  lead: วันนี้ไม่มีก๊วน ให้ก๊วนถัดไปเป็นเนื้อหาหลักของการ์ด (หัวข้อ สถานะ และปุ่มเดียว ไม่มีกล่องซ้อน) */
+function NextSession({ lead }: { lead?: boolean }) {
   const { state, self } = useStore();
   const { date } = useToday();
   const [me] = useMe();
@@ -101,8 +101,47 @@ function NextSession({ dark }: { dark?: boolean }) {
     setBusy(false);
     setError(err ? t(err) : "");
   };
+  const count = q.cap ? t("ลงชื่อแล้ว {n}/{cap} คน", { n: Math.min(q.confirmed.length, q.cap), cap: q.cap }) : t("ลงชื่อแล้ว {n} คน", { n: next.signups?.length ?? 0 });
+  // การ์ดหลักถามยืนยันทุกครั้ง กันนิ้วพลาดแล้วหลุดรายชื่อ
+  const cancel = () =>
+    (full ? confirm(t("ยกเลิกลงชื่อ{when}? ก๊วนเต็มแล้ว ถ้าลงใหม่จะต่อคิวสำรอง", { when })) : !lead || confirm(t("ยกเลิกลงชื่อ{when}?", { when }))) && go(false);
+  if (lead)
+    return (
+      <div className="space-y-3">
+        <div>
+          <div className="font-display text-2xl leading-tight font-semibold">{t("{when} มีก๊วน", { when })}</div>
+          {next.announcementTitle && (
+            <div className="mt-0.5 text-[15px] font-semibold">
+              {eventStyle(next.announcementTitle).emoji} <Auto text={next.announcementTitle} />
+            </div>
+          )}
+          {next.announcement && (
+            <p className="mt-0.5 line-clamp-2 text-[15px] leading-snug text-zinc-700">
+              <Auto text={next.announcement} />
+            </p>
+          )}
+          <div className="mt-1 text-sm text-zinc-700">{count}</div>
+        </div>
+        {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+        {mine && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`rounded-full px-2.5 py-1 text-sm font-semibold ${waitPos > 0 ? "bg-amber-100 text-amber-800" : "bg-lime/40 text-ink"}`}>
+              {waitPos > 0 ? t("คุณอยู่รายชื่อสำรองลำดับที่ {n}", { n: waitPos }) : `✓ ${t("คุณลงชื่อแล้ว")}`}
+            </span>
+            <button disabled={busy} className="ml-auto min-h-11 rounded-xl border border-zinc-300 px-3 text-sm font-semibold text-red-600 disabled:opacity-50" onClick={cancel}>
+              {t("ยกเลิกลงชื่อ")}
+            </button>
+          </div>
+        )}
+        {!mine && (
+          <Button variant="accent" className="w-full" disabled={busy} onClick={() => go(true)}>
+            {full ? t("เต็มแล้ว ลงชื่อสำรอง") : t("ลงชื่อล่วงหน้า{when}", { when })}
+          </Button>
+        )}
+      </div>
+    );
   return (
-    <div className={`space-y-2 rounded-2xl p-3 ${dark ? "border border-zinc-200 bg-zinc-100" : "bg-white ring-1 ring-zinc-100"}`}>
+    <div className="space-y-2 rounded-2xl bg-white p-3 ring-1 ring-zinc-100">
       <div className="text-sm">
         <span className={`font-semibold text-ink`}>
           {eventStyle(next.announcementTitle).emoji} {t("{when} มีก๊วน", { when })}
@@ -113,12 +152,12 @@ function NextSession({ dark }: { dark?: boolean }) {
             <Auto text={next.announcementTitle} />
           </>
         )}
-        <span className={dark ? "text-zinc-700" : "text-zinc-700"}>
+        <span className="text-zinc-700">
           {" · "}
-          {q.cap ? t("ลงชื่อแล้ว {n}/{cap} คน", { n: Math.min(q.confirmed.length, q.cap), cap: q.cap }) : t("ลงชื่อแล้ว {n} คน", { n: next.signups?.length ?? 0 })}
+          {count}
         </span>
         {next.announcement && (
-          <span className={`mt-0.5 line-clamp-1 block ${dark ? "text-zinc-700" : "text-zinc-700"}`}>
+          <span className="mt-0.5 line-clamp-1 block text-zinc-700">
             <Auto text={next.announcement} />
           </span>
         )}
@@ -132,13 +171,13 @@ function NextSession({ dark }: { dark?: boolean }) {
           <button
             disabled={busy}
             className={`min-h-11 rounded-xl px-3 text-sm font-semibold text-red-600`}
-            onClick={() => (!full || confirm(t("ยกเลิกลงชื่อ{when}? ก๊วนเต็มแล้ว ถ้าลงใหม่จะต่อคิวสำรอง", { when }))) && go(false)}
+            onClick={cancel}
           >
             {t("ยกเลิกลงชื่อ")}
           </button>
         </div>
       ) : (
-        <Button variant={dark ? "accent" : "secondary"} className="w-full" disabled={busy} onClick={() => go(true)}>
+        <Button variant="secondary" className="w-full" disabled={busy} onClick={() => go(true)}>
           {full ? t("เต็มแล้ว ลงชื่อสำรอง") : t("ลงชื่อล่วงหน้า{when}", { when })}
         </Button>
       )}
@@ -189,7 +228,7 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
       <div className="space-y-4">
         <NoticeBanners urgentOnly />
         <HomeCard top={top}>
-          <NextSession dark />
+          <NextSession lead />
         </HomeCard>
         {news}
         <PlanChoice player={player} />

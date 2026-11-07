@@ -315,12 +315,21 @@ export function PlayerHome() {
                   : { big: t("วันนี้ไม่มีก๊วน"), sub: t("รอแอดมินประกาศ") };
   const chips = [...(ci && status !== "playing" && status !== "waiting" ? [t("เช็คอินแล้ว ✓")] : []), ...(played ? [t("เล่นแล้ว {n} เกม", { n: played })] : [])];
   const here = !!ci && !ci.paidAt;
+  // วันนี้ไม่มีก๊วน แต่มีก๊วนถัดไป: หัวการ์ดเหลือบรรทัดเล็กบรรทัดเดียว ให้ก๊วนถัดไปเป็นเนื้อหาหลัก
+  const leadNext = !announced && !ci && !!nextSessionOf(state.days, state.closed, date);
 
   return (
     <div className="space-y-5">
       <TodayTab
         home
         top={
+          leadNext ? (
+            <div className="text-sm text-zinc-700">
+              {fest && <span aria-hidden>{fest.emoji} </span>}
+              {shortDate()} · <span className="font-semibold text-ink">{closed !== undefined ? t("วันนี้งดเล่น") : t("วันนี้ไม่มีก๊วน")}</span>
+              {closed ? ` · ${closed}` : ""}
+            </div>
+          ) : (
           <>
             <div className="text-sm text-zinc-700">
               {fest && <span aria-hidden>{fest.emoji} </span>}
@@ -338,6 +347,7 @@ export function PlayerHome() {
               </div>
             )}
           </>
+          )
         }
         news={<NewsCarousel />}
       />
