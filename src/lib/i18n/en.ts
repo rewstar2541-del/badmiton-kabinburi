@@ -95,6 +95,7 @@ export const en: Record<string, string> = {
   "โหมดทดลอง (ข้อมูลอยู่ในเครื่องนี้)": "Demo mode: data stays on this device",
   "ล้างข้อมูลทดลองแล้วเริ่มใหม่?": "Clear demo data and start over?",
   "เริ่มใหม่": "Reset",
+  "{n}/{cap} คน": "{n}/{cap} people",
   "{n} คน": "{n} people",
   "แอดมิน": "Admin",
   "คุณ": "You",
