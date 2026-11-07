@@ -56,7 +56,7 @@ export function FramePicker({ player }: { player: Player }) {
               className={`flex flex-col items-center gap-1 rounded-2xl px-1 pt-2 pb-2.5 ${on ? "bg-lime/40 ring-2 ring-ink dark:ring-lime" : "bg-zinc-50"} ${c.locked ? "" : "active:scale-[0.98]"}`}
             >
               <span className={c.locked ? "opacity-40 grayscale" : ""}>
-                <FramedAvatar player={player} size={52} frame={asFrame(player, c.value)} />
+                <FramedAvatar player={player} size={52} frame={asFrame(player, c.value)} levelShown />
               </span>
               <span className="text-sm font-semibold">{name}</span>
               <span className="px-1 text-center text-sm leading-snug text-zinc-600">
