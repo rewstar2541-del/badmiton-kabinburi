@@ -36,8 +36,8 @@ describe("แจ้งเตือนอีก 1 เกมถึงคิว", (
   it("กันส่งซ้ำนับตามตา: เล่นจบไป 1 เกมแล้ว ตาถัดไปได้คีย์ใหม่", () => {
     const done = { ...g1, id: "g0", playerIds: ["i", "j", "k", "l"] as [string, string, string, string], endedAt: 9 };
     const d = day({ games: [done, g1], queued: [{ id: "q1", court: 1, playerIds: ["i", "j", "k", "l"], at: 1 }] });
-    expect(turnSoon(d, players, settings).find((r) => r.playerId === "i")?.key).toBe("turn:1");
-    expect(turnSoon(day({ games: [g1], queued: [{ id: "q1", court: 1, playerIds: ["i", "j", "k", "l"], at: 1 }] }), players, settings)[0].key).toBe("turn:0");
+    expect(turnSoon(d, players, settings).find((r) => r.playerId === "i")?.key).toBe("turn:1:1");
+    expect(turnSoon(day({ games: [g1], queued: [{ id: "q1", court: 1, playerIds: ["i", "j", "k", "l"], at: 1 }] }), players, settings)[0].key).toBe("turn:0:1");
   });
 
   it("วันที่ตามเวลาไทย", () => {

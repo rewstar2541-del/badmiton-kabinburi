@@ -15,7 +15,6 @@ self.addEventListener("push", (e) => {
       tag: data.tag,
       renotify: !!data.tag,
       icon: "/icon-192.png",
-      badge: "/icon-192.png",
       data: { url: data.url || "/" },
     }),
   );
@@ -27,11 +26,11 @@ self.addEventListener("notificationclick", (e) => {
   const url = (e.notification.data && e.notification.data.url) || "/";
   e.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
-      for (const c of list) {
-        if ("focus" in c) {
-          c.postMessage({ type: "goto-tab", tab: "courts" });
-          return c.focus();
-        }
+      // หน้าแอพหลัก (ไม่ใช่หน้าคู่มือ) ที่เปิดอยู่
+      const app = list.find((c) => new URL(c.url).pathname === "/" && "focus" in c);
+      if (app) {
+        app.postMessage({ type: "goto-tab", tab: "courts" });
+        return app.focus();
       }
       return self.clients.openWindow(url + (url.includes("?") ? "&" : "?") + "go=courts");
     }),

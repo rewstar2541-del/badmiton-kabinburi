@@ -39,8 +39,10 @@ export function pushSupport(): PushSupport {
 }
 
 /** ลงทะเบียน service worker (ครั้งเดียวตอนเปิดแอพ) และรับคำสั่งเปิดหน้าสนามเมื่อแตะแจ้งเตือน */
+let registered = false;
 export function registerPushWorker(goTo: (tab: string) => void) {
-  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+  if (registered || typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+  registered = true;
   navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).catch(() => {});
   navigator.serviceWorker.addEventListener("message", (e) => {
     const d = e.data as { type?: string; tab?: string } | null;
@@ -60,8 +62,12 @@ let info: Promise<{ ready: boolean; publicKey: string | null }> | null = null;
 /** เซิร์ฟเวอร์ตั้งค่ากุญแจครบหรือยัง (ยังไม่ตั้ง = ซ่อนปุ่ม) */
 export function pushServerInfo() {
   info ??= fetch("/api/push", { headers: HDR })
-    .then((r) => (r.ok ? r.json() : { ready: false, publicKey: null }))
+    .then((r) => {
+      if (!r.ok) throw new Error(String(r.status));
+      return r.json();
+    })
     .catch(() => {
+      // เน็ตหลุด/เซิร์ฟเวอร์ล่ม: ไม่จำค่า ลองใหม่ครั้งหน้า
       info = null;
       return { ready: false, publicKey: null };
     });
@@ -100,17 +106,42 @@ export async function enablePush(db: SupabaseClient, playerId: string, pin: stri
   try {
     const reg = await registration();
     const sub = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(publicKey) }));
-    const j = sub.toJSON();
-    const { data, error } = await db.rpc("push_subscribe", { p_player: playerId, p_pin: pin, p_endpoint: j.endpoint, p_p256dh: j.keys?.p256dh, p_auth: j.keys?.auth });
-    if (error) return "เชื่อมต่อไม่ได้ ลองใหม่";
-    return (data as string | null) ?? null;
+    const err = await savePushOwner(db, sub, playerId, pin);
+    // บันทึกบนเซิร์ฟเวอร์ไม่ได้: ยกเลิกในเครื่องด้วย สวิตช์จะได้ไม่ขึ้นว่าเปิดอยู่ทั้งที่ไม่มีแจ้งเตือนมา
+    if (err) await sub.unsubscribe().catch(() => false);
+    return err;
   } catch {
     return "เปิดแจ้งเตือนไม่สำเร็จ ลองใหม่";
   }
 }
 
+const OWNER = "badminton-kabinburi:push-owner";
+/** ผู้เล่นที่เครื่องนี้รับแจ้งเตือนแทนอยู่ (เผื่อเปลี่ยนคนบนเครื่องเดียวกัน) */
+export function pushOwner(): string | null {
+  try {
+    return localStorage.getItem(OWNER);
+  } catch {
+    return null;
+  }
+}
+
+/** ผูกเครื่องนี้กับผู้เล่น (เครื่องเดิมย้ายไปเป็นของคนใหม่ได้) คืนข้อความผิดพลาด หรือ null */
+export async function savePushOwner(db: SupabaseClient, sub: PushSubscription, playerId: string, pin: string): Promise<string | null> {
+  const j = sub.toJSON();
+  const { data, error } = await db.rpc("push_subscribe", { p_player: playerId, p_pin: pin, p_endpoint: j.endpoint, p_p256dh: j.keys?.p256dh, p_auth: j.keys?.auth });
+  if (error) return "เชื่อมต่อไม่ได้ ลองใหม่";
+  if (data) return data as string;
+  try {
+    localStorage.setItem(OWNER, playerId);
+  } catch {}
+  return null;
+}
+
 /** ปิดแจ้งเตือนบนเครื่องนี้ */
 export async function disablePush(db: SupabaseClient | null) {
+  try {
+    localStorage.removeItem(OWNER);
+  } catch {}
   const sub = await currentSubscription();
   if (!sub) return;
   if (db) await db.rpc("push_unsubscribe", { p_endpoint: sub.endpoint });
@@ -122,7 +153,9 @@ let timer: ReturnType<typeof setTimeout> | undefined;
 export function pokePush() {
   if (typeof window === "undefined") return;
   clearTimeout(timer);
-  timer = setTimeout(() => {
+  timer = setTimeout(async () => {
+    // ยังไม่ได้ตั้งกุญแจบนเซิร์ฟเวอร์ = ไม่ต้องเรียก
+    if (!(await pushServerInfo()).ready) return;
     fetch("/api/push", { method: "POST", headers: HDR, keepalive: true }).catch(() => {});
   }, 1500);
 }
@@ -130,7 +163,9 @@ export function pokePush() {
 /** สวิตช์แอดมิน (null = ยังไม่ได้รัน SQL web_push.sql) */
 export async function getPushEnabled(db: SupabaseClient): Promise<boolean | null> {
   const { data, error } = await db.from("push_settings").select("enabled").eq("id", 1).maybeSingle();
-  if (error || !data) return null;
+  // ไม่มีตาราง = ยังไม่รัน SQL (null) ส่วนเน็ตหลุดให้ถือว่าเปิดอยู่ไปก่อน
+  if (error) return /push_settings|42P01|PGRST205/.test(`${error.code} ${error.message}`) ? null : true;
+  if (!data) return null;
   return data.enabled !== false;
 }
 

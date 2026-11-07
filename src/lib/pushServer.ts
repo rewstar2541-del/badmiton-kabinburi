@@ -33,7 +33,7 @@ async function rows<T>(q: PromiseLike<{ data: T[] | null; error: { message: stri
 /** โหลดเฉพาะข้อมูลของวันนี้ที่ใช้จัดคิว (ไม่ต้องโหลดประวัติทั้งหมด) */
 async function loadDay(d: SupabaseClient, date: string) {
   const [players, checkins, games, queued, pairs, settings] = await Promise.all([
-    rows(d.from("players").select("id,name,photo,gender,level,prefer,avoid,guest_of,pending,plan,bio,level_request,birthday,annual_from,annual_until")),
+    rows(d.from("players").select("id,name,gender,level,prefer,avoid,guest_of,pending")),
     rows(d.from("checkins").select("date,player_id,at,paid_at,resting,court_fee,shuttle_fee").eq("date", date)),
     rows(d.from("games").select("*").eq("date", date).order("id")),
     rows(d.from("court_queue").select("id,date,court,player_ids,at").eq("date", date).order("at")),
@@ -76,12 +76,33 @@ export interface NotifyResult {
  * หาคนที่อีก 1 เกมจะถึงคิว แล้วส่งแจ้งเตือนให้ทุกเครื่องที่เปิดรับไว้ คนละครั้งต่อตา
  * เรียกซ้ำได้ (กี่เครื่องเรียกพร้อมกันก็ไม่ส่งซ้ำ เพราะจองในตาราง push_sent ก่อนส่ง)
  */
+let last = 0;
+let pending: Promise<NotifyResult> | null = null;
+const GAP = 5000;
+
+/** กันคนยิงรัวๆ: ในเครื่องเซิร์ฟเวอร์เดียวกัน ทำงานไม่ถี่กว่าทุก 5 วินาที ครั้งที่มาระหว่างนั้นรวมเป็นรอบเดียว (ไม่ทิ้ง) */
+export function notifyTurnsThrottled(): Promise<NotifyResult> {
+  if (pending) return pending;
+  const wait = Math.max(0, last + GAP - Date.now());
+  pending = new Promise<void>((r) => setTimeout(r, wait))
+    .then(() => {
+      last = Date.now();
+      return notifyTurns();
+    })
+    .finally(() => {
+      pending = null;
+    });
+  return pending;
+}
+
 export async function notifyTurns(): Promise<NotifyResult> {
   const c = pushConfig();
   if (!c.ready) return { sent: 0, skipped: "not-configured" };
   const d = db();
-  const { data: ps } = await d.from("push_settings").select("enabled").eq("id", 1).maybeSingle();
-  if (ps && ps.enabled === false) return { sent: 0, skipped: "off" };
+  const { data: ps, error: psError } = await d.from("push_settings").select("enabled").eq("id", 1).maybeSingle();
+  // ยังไม่ได้รัน SQL web_push.sql
+  if (psError || !ps) return { sent: 0, skipped: "no-sql" };
+  if (ps.enabled === false) return { sent: 0, skipped: "off" };
 
   const date = bangkokDate();
   const { state, day } = await loadDay(d, date);
@@ -106,6 +127,7 @@ export async function notifyTurns(): Promise<NotifyResult> {
   webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:admin@badmiton-kabinburi.vercel.app", c.publicKey, c.privateKey);
   let sent = 0;
   const gone: string[] = [];
+  const reached = new Set<string>();
   await Promise.all(
     withSub
       .filter((x) => mine.has(x.playerId))
@@ -122,16 +144,20 @@ export async function notifyTurns(): Promise<NotifyResult> {
             try {
               await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 15 * 60, urgency: "high" });
               sent++;
+              reached.add(x.playerId);
             } catch (e) {
-              // เครื่องยกเลิกรับแล้ว (ลบแอพ/ปิดสิทธิ์) ลบทิ้ง
+              // เครื่องยกเลิกรับแล้ว (ลบแอพ/ปิดสิทธิ์) หรือสมัครด้วยกุญแจเก่า (403) ลบทิ้ง
               const code = (e as { statusCode?: number }).statusCode;
-              if (code === 404 || code === 410) gone.push(s.endpoint);
+              if (code === 403 || code === 404 || code === 410) gone.push(s.endpoint);
             }
           }),
       ),
   );
   if (gone.length) await d.from("push_subscriptions").delete().in("endpoint", gone);
-  // ล้างประวัติกันส่งซ้ำของวันก่อนๆ
-  await d.from("push_sent").delete().lt("date", date);
+  // ส่งไม่ถึงสักเครื่อง (เน็ตของบริการแจ้งเตือนล่ม) ปลดการจองไว้ ครั้งหน้าลองส่งใหม่
+  for (const x of withSub)
+    if (mine.has(x.playerId) && !reached.has(x.playerId)) await d.from("push_sent").delete().eq("date", date).eq("player_id", x.playerId).eq("key", x.key);
+  // ล้างประวัติกันส่งซ้ำของวันก่อนๆ (ทำเฉพาะรอบที่มีการส่ง)
+  if (mine.size) await d.from("push_sent").delete().lt("date", date);
   return { sent };
 }

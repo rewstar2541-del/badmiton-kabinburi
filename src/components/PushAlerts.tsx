@@ -8,6 +8,9 @@ import {
   currentSubscription,
   disablePush,
   enablePush,
+  isIos,
+  pushOwner,
+  savePushOwner,
   getPushEnabled,
   pushCount,
   pushServerInfo,
@@ -31,21 +34,26 @@ interface PushState {
 }
 
 export function usePush(playerId: string | null) {
+  const { auth } = useStore();
+  const demo = !!auth.demo;
   const [s, setS] = useState<PushState | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const refresh = useCallback(async () => {
-    if (!supabase) return setS(null);
+    if (!supabase || demo) return setS(null);
     const [info, adminOn, sub] = await Promise.all([pushServerInfo(), getPushEnabled(supabase), currentSubscription()]);
+    // เครื่องนี้เคยเปิดรับให้คนอื่น (เปลี่ยนคนบนเครื่องเดียวกัน): ย้ายมาเป็นของคนที่เข้าอยู่ตอนนี้
+    let on = !!sub && pushOwner() === playerId;
+    if (sub && !on && playerId && info.ready) on = !(await savePushOwner(supabase, sub, playerId, savedPin.get()));
     setS({
       ready: info.ready && adminOn !== null,
       support: pushSupport(),
       adminOn: adminOn !== false,
-      on: !!sub,
+      on,
       denied: typeof Notification !== "undefined" && Notification.permission === "denied",
     });
-  }, []);
+  }, [demo, playerId]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- อ่านสถานะจากเครื่องและเซิร์ฟเวอร์ตอนเปิด
@@ -78,9 +86,10 @@ function IosSteps() {
       <p className="font-semibold">{t("iPhone / iPad ต้องเพิ่มแอพลงหน้าจอโฮมก่อน (iOS 16.4 ขึ้นไป)")}</p>
       <ol className="list-decimal space-y-0.5 pl-5">
         <li>{t("เปิดเว็บนี้ใน Safari")}</li>
-        <li>{t("กดปุ่มแชร์ (สี่เหลี่ยมมีลูกศรชี้ขึ้น)")}</li>
-        <li>{t("เลือก \"เพิ่มไปยังหน้าจอโฮม\"")}</li>
-        <li>{t("เปิดแอพจากไอคอนบนหน้าจอโฮม แล้วกดเปิดแจ้งเตือนอีกครั้ง")}</li>
+        <li>{t("กดปุ่มแชร์ □↑ (หรือปุ่ม ••• แล้วเลือกแชร์)")}</li>
+        <li>{t("เลื่อนลง เลือก \"เพิ่มไปยังหน้าจอโฮม\"")}</li>
+        <li>{t("เปิดแอพจากไอคอนบนหน้าจอโฮม เข้าสู่ระบบด้วย LINE อีกครั้ง")}</li>
+        <li>{t("ไปที่ โปรไฟล์ > แจ้งเตือนเด้งในมือถือ แล้วติ๊กเปิด")}</li>
       </ol>
     </div>
   );
@@ -109,7 +118,9 @@ function NotSupported({ support }: { support: PushSupport }) {
 
 const Denied = () => (
   <p className="rounded-2xl bg-amber-50 p-3 text-sm text-amber-900">
-    {t("มือถือปิดการแจ้งเตือนของแอพนี้ไว้ เปิดได้ที่ ตั้งค่าของมือถือ > การแจ้งเตือน แล้วกลับมากดอีกครั้ง")}
+    {isIos()
+      ? t("มือถือปิดการแจ้งเตือนของแอพนี้ไว้ เปิดได้ที่ ตั้งค่าของมือถือ > การแจ้งเตือน แล้วกลับมากดอีกครั้ง")
+      : t("ปิดการแจ้งเตือนของเว็บนี้ไว้ เปิดได้ที่ ไอคอนแม่กุญแจข้างชื่อเว็บ > สิทธิ์ > การแจ้งเตือน (หรือ ตั้งค่ามือถือ > แอพ > การแจ้งเตือน) แล้วกลับมากดอีกครั้ง")}
   </p>
 );
 
@@ -124,7 +135,7 @@ export function PushToggle({ playerId }: { playerId: string }) {
       <label className={`flex items-center justify-between gap-3 text-sm ${can ? "" : "opacity-60"}`}>
         <span className="min-w-0">
           <span className="block font-medium">{t("อีก 1 เกมถึงคิว")}</span>
-          <span className="block text-xs text-zinc-500">{t("เด้งบอกเบอร์สนามแม้ปิดแอพอยู่ ตั้งแยกแต่ละเครื่อง")}</span>
+          <span className="block text-sm text-zinc-500">{busy ? t("กำลังเปิด…") : t("เด้งบอกเบอร์สนามแม้ปิดแอพอยู่ ต้องเปิดในมือถือทุกเครื่องที่ใช้")}</span>
         </span>
         <input
           type="checkbox"
@@ -134,7 +145,7 @@ export function PushToggle({ playerId }: { playerId: string }) {
           onChange={() => (s.on ? turnOff() : turnOn())}
         />
       </label>
-      {!s.adminOn && <p className="text-xs text-zinc-500">{t("แอดมินปิดแจ้งเตือนเด้งไว้ชั่วคราว")}</p>}
+      {!s.adminOn && <p className="rounded-2xl bg-amber-50 p-3 text-sm text-amber-900">{t("แอดมินปิดแจ้งเตือนเด้งไว้ชั่วคราว")}</p>}
       {s.support !== "ok" && <NotSupported support={s.support} />}
       {s.support === "ok" && s.denied && !s.on && <Denied />}
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
@@ -155,14 +166,30 @@ export function PushPrompt({ playerId }: { playerId: string }) {
     }
   });
   const [steps, setSteps] = useState(false);
-  if (hidden || !s?.ready || !s.adminOn || s.on || s.denied) return null;
-  if (s.support !== "ok" && s.support !== "ios-install") return null;
+  // กดเปิดจากการ์ดนี้แล้ว: ค้างการ์ดไว้บอกผล (เปิดแล้ว / มือถือไม่อนุญาต)
+  const [asked, setAsked] = useState(false);
+  if (hidden || !s?.ready || !s.adminOn) return null;
+  if (!asked && (s.on || s.denied)) return null;
+  if (s.support !== "ok" && s.support !== "ios-install" && s.support !== "in-app") return null;
   const dismiss = () => {
     setHidden(true);
     try {
       localStorage.setItem(DISMISS, "1");
     } catch {}
   };
+  if (asked && (s.on || s.denied))
+    return (
+      <Card className="space-y-3 border-lime ring-[1.5px] ring-lime">
+        {s.on ? (
+          <p className="rounded-2xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-700">✓ {t("เปิดแล้ว มือถือจะเด้งเตือนเมื่ออีก 1 เกมถึงคิว ปิดได้ที่หน้าโปรไฟล์")}</p>
+        ) : (
+          <Denied />
+        )}
+        <Button className="min-h-11 w-full" onClick={dismiss}>
+          {t("ตกลง")}
+        </Button>
+      </Card>
+    );
   return (
     <Card className="space-y-3 border-lime ring-[1.5px] ring-lime">
       <div className="flex gap-3">
@@ -175,16 +202,26 @@ export function PushPrompt({ playerId }: { playerId: string }) {
         </div>
       </div>
       {s.support === "ios-install" && steps && <IosSteps />}
+      {s.support === "in-app" && <NotSupported support="in-app" />}
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
-      <div className="grid grid-cols-2 gap-2">
-        <Button className="min-h-11" onClick={dismiss}>
+      <div className={s.support === "in-app" ? "" : "grid grid-cols-2 gap-2"}>
+        <Button className="min-h-11 w-full" onClick={dismiss}>
           {t("ไม่ต้อง")}
         </Button>
-        {s.support === "ok" ? (
-          <Button variant="primary" className="min-h-11" disabled={busy} onClick={turnOn}>
+        {s.support === "ok" && (
+          <Button
+            variant="primary"
+            className="min-h-11"
+            disabled={busy}
+            onClick={async () => {
+              setAsked(true);
+              await turnOn();
+            }}
+          >
             {busy ? t("กำลังเปิด…") : t("เปิดแจ้งเตือน")}
           </Button>
-        ) : (
+        )}
+        {s.support === "ios-install" && (
           <Button variant="primary" className="min-h-11" onClick={() => setSteps(!steps)}>
             {steps ? t("ซ่อนวิธี") : t("ดูวิธีเปิดบน iPhone")}
           </Button>
@@ -214,7 +251,7 @@ export function PushAdminCard() {
     };
   }, [auth.isAdmin]);
 
-  if (!supabase) return null;
+  if (!supabase || auth.demo) return null;
   const toggle = async () => {
     if (!supabase || on === null || on === undefined) return;
     const next = !on;
@@ -229,8 +266,7 @@ export function PushAdminCard() {
   return (
     <Card className="space-y-3">
       <div>
-        <h2 className="font-display font-semibold">{t("แจ้งเตือนเด้งในมือถือ")}</h2>
-        <p className="text-xs text-zinc-500">{t("ส่งฟรี ไม่ใช้โควตา LINE ผู้เล่นเปิดรับเองในหน้าโปรไฟล์ (iPhone ต้องเพิ่มแอพลงหน้าจอโฮมก่อน)")}</p>
+        <p className="text-sm text-zinc-600">{t("ส่งฟรี ไม่ใช้โควตา LINE ผู้เล่นเปิดรับเองในหน้าโปรไฟล์ (iPhone ต้องเพิ่มแอพลงหน้าจอโฮมก่อน)")}</p>
       </div>
       {on === null ? (
         <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">{t("ต้องรัน SQL web_push.sql ก่อน")}</p>
@@ -238,7 +274,7 @@ export function PushAdminCard() {
         <label className="flex items-center justify-between gap-3 text-sm">
           <span className="min-w-0">
             <span className="block font-medium">{t("เด้งเตือนเมื่ออีก 1 เกมถึงคิว")}</span>
-            <span className="block text-xs text-zinc-500">{t("ส่งครั้งเดียวต่อตา บอกเบอร์สนามที่จะได้ลง")}</span>
+            <span className="block text-sm text-zinc-500">{t("ส่งครั้งเดียวต่อตา บอกเบอร์สนามที่จะได้ลง")}</span>
           </span>
           <input type="checkbox" className="size-5 shrink-0 accent-lime" checked={!!on} disabled={on === undefined} onChange={toggle} />
         </label>

@@ -5,7 +5,7 @@ import { courtList, inGame, type Day, type Player, type Settings } from "./types
 export interface TurnSoon {
   playerId: string;
   court: number;
-  /** กันส่งซ้ำ: 1 ครั้งต่อ 1 ตาที่รอลง (นับจากจำนวนเกมที่เล่นไปแล้ววันนี้) */
+  /** กันส่งซ้ำ: 1 ครั้งต่อ 1 ตาที่รอลงต่อสนาม (ตาจากจำนวนเกมที่เล่นไปแล้ววันนี้ ถ้าคิวย้ายสนามจะส่งใหม่และทับอันเดิม) */
   key: string;
 }
 
@@ -21,7 +21,7 @@ export function turnSoon(day: Day, players: Player[], settings: Pick<Settings, "
     for (const id of next.playerIds) {
       if (presence(day, id) !== "waiting") continue;
       const round = day.games.filter((g) => inGame(g, id)).length;
-      out.push({ playerId: id, court: next.court, key: `turn:${round}` });
+      out.push({ playerId: id, court: next.court, key: `turn:${round}:${next.court}` });
     }
   }
   return out;

@@ -17,7 +17,7 @@ export type { State, Intent } from "./state";
 
 const DEMO = typeof window !== "undefined" && isDemo();
 /** การกระทำที่ทำให้คิวลงสนามขยับ: ให้เซิร์ฟเวอร์เช็คว่าต้องส่งแจ้งเตือน "อีก 1 เกมถึงคิว" ให้ใคร */
-const QUEUE_MOVES = new Set<string>(["startGame", "endGame", "cancelGame", "queueGame", "unqueueGame", "editQueued", "checkIn", "undoCheckIn", "setResting", "markPaid", "subPlayer"]);
+const QUEUE_MOVES = new Set<string>(["startGame", "endGame", "cancelGame", "queueGame", "unqueueGame", "editQueued", "checkIn", "undoCheckIn", "setResting", "markPaid", "unmarkPaid", "subPlayer", "removePlayer", "updateSettings"]);
 const STORAGE_KEY = DEMO ? "badminton-kabinburi:demo" : "badminton-kabinburi:v1";
 
 function loadLocal(): State {

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { notifyTurns, pushConfig } from "@/lib/pushServer";
+import { notifyTurnsThrottled, pushConfig } from "@/lib/pushServer";
 
 // แจ้งเตือนเด้งในมือถือ (Web Push)
 // GET: กุญแจสาธารณะสำหรับให้เครื่องผู้เล่นสมัครรับ และบอกว่าตั้งค่าครบแล้วหรือยัง
@@ -17,7 +17,7 @@ export function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   if (!fromApp(req)) return NextResponse.json({}, { status: 403 });
   try {
-    return NextResponse.json(await notifyTurns());
+    return NextResponse.json(await notifyTurnsThrottled());
   } catch (e) {
     console.error("push notify", e);
     return NextResponse.json({ sent: 0, error: "failed" }, { status: 500 });
