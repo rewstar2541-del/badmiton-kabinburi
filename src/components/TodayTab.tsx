@@ -56,7 +56,7 @@ export function AnnouncementBanner({ message, title, fee, date }: { message: str
 /** หน้าแรกผู้เล่น: การ์ดดำใบเดียว สถานะ + ประกาศ + ปุ่มลงชื่อ/เช็คอิน */
 export function HomeCard({ top, children }: { top: ReactNode; children?: ReactNode }) {
   return (
-    <div className="relative space-y-3 overflow-hidden rounded-3xl border border-zinc-300 bg-white p-4 text-ink">
+    <div className="relative space-y-2.5 overflow-hidden rounded-3xl border border-zinc-300 bg-white p-4 text-ink">
       <div className="pointer-events-none absolute -top-20 -right-12 size-48 rounded-full bg-lime/20 blur-3xl" />
       <div className="relative">{top}</div>
       {children && <div className="relative space-y-3">{children}</div>}
@@ -262,17 +262,9 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
 
       <Panel home={home} top={top}>
         {home && announced && (
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-100 px-3 py-2 text-sm">
-            <span className="font-semibold text-ink">
-              {eventStyle(day.announcementTitle).emoji} {day.announcementTitle ? <Auto text={day.announcementTitle} /> : t("วันนี้มีจัดก๊วน")}
-            </span>
-            {!!day.announcementFee && ` · ${t("ค่าใช้จ่ายคนละ {amount}", { amount: baht(day.announcementFee) })}`}
-            {!!q.cap && ` · ${t("รับ {cap} คน · ลงชื่อแล้ว {n}", { cap: q.cap, n: q.confirmed.length })}`}
-            {day.announcement && (
-              <span className="mt-0.5 line-clamp-2 block whitespace-pre-line text-zinc-700">
-                <Auto text={day.announcement} />
-              </span>
-            )}
+          <div className="truncate rounded-2xl border border-zinc-200 bg-zinc-100 px-3 py-2 text-sm font-semibold text-ink">
+            {eventStyle(day.announcementTitle).emoji} {day.announcementTitle ? <Auto text={day.announcementTitle} /> : t("วันนี้มีจัดก๊วน")}
+            {!!day.announcementFee && <span className="font-normal text-zinc-700"> · {baht(day.announcementFee)}</span>}
           </div>
         )}
         <AttendeeStrip day={day} dark={home} />

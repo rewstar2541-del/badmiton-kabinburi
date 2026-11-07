@@ -35,10 +35,12 @@ export function AttendeeStrip({ day, dark }: { day: Day; dark?: boolean }) {
         </span>
         <span className="min-w-0 flex-1 text-sm">
           <span className={`block font-semibold text-ink`}>{t("มาเล่นวันนี้ {n} คน", { n: a.total })}</span>
-          <span className={`block truncate text-xs ${dark ? "text-zinc-700" : "text-zinc-500"}`}>
+          {!dark && (
+          <span className="block truncate text-xs text-zinc-500">
             {t("มาแล้ว {a} · ยังไม่มา {b}", { a: a.here.length, b: a.coming.length })}
             {a.waiting.length > 0 && ` · ${t("สำรอง {n} คน", { n: a.waiting.length })}`}
           </span>
+          )}
         </span>
         <Icon.ChevronRight width={18} height={18} className={`shrink-0 ${dark ? "text-zinc-600" : "text-zinc-400"}`} aria-label={t("ดูรายชื่อ")} />
       </button>
