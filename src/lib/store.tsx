@@ -10,11 +10,14 @@ import { boardPhoto, loadHistory, socialRpc, type SocialRequest, addGuest, claim
 import { EMPTY_STATE, guestCheck, prepare, reducer, resultOf, today, type GameReport, type Intent, type SelfAction, type State } from "./state";
 import { DEFAULT_SETTINGS, inGame, monthOf, type Game, type Level, type Plan, type Player } from "./types";
 import { t } from "@/lib/i18n";
+import { pokePush } from "./push";
 
 export { today, newId } from "./state";
 export type { State, Intent } from "./state";
 
 const DEMO = typeof window !== "undefined" && isDemo();
+/** การกระทำที่ทำให้คิวลงสนามขยับ: ให้เซิร์ฟเวอร์เช็คว่าต้องส่งแจ้งเตือน "อีก 1 เกมถึงคิว" ให้ใคร */
+const QUEUE_MOVES = new Set<string>(["startGame", "endGame", "cancelGame", "queueGame", "unqueueGame", "editQueued", "checkIn", "undoCheckIn", "setResting", "markPaid", "unmarkPaid", "subPlayer", "removePlayer", "updateSettings"]);
 const STORAGE_KEY = DEMO ? "badminton-kabinburi:demo" : "badminton-kabinburi:v1";
 
 function loadLocal(): State {
@@ -436,7 +439,9 @@ function RemoteProvider({ children }: { children: ReactNode }) {
       if (!adminRef.current) return;
       const a = prepare(i);
       apply(a);
-      persist(db, a, playersRef.current).catch((e) => {
+      persist(db, a, playersRef.current).then(() => {
+        if (QUEUE_MOVES.has(a.type)) pokePush();
+      }, (e) => {
         setSaveError(t("บันทึกไม่สำเร็จ ข้อมูลถูกย้อนกลับ ลองใหม่อีกครั้ง ({msg})", { msg: e instanceof Error ? e.message : String(e) }));
         reload();
       });
@@ -448,6 +453,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
     async (action: SelfAction, playerId: string, pin: string, date?: string) => {
       const ahead = date && date !== today() && (action === "signUp" || action === "cancelSignUp");
       const err = ahead ? await signUpDay(db, playerId, pin, date, action === "signUp") : await selfService(db, action, playerId, pin);
+      if (!err && !ahead) pokePush();
       if (!err) await reload();
       return err;
     },
@@ -475,6 +481,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
   const reportRemote = useCallback(
     async (playerId: string, pin: string, game: Game, result: GameReport, next?: { playerIds: Game["playerIds"]; queuedId?: string }) => {
       const err = await reportGame(db, playerId, pin, game.id, result, next);
+      if (!err) pokePush();
       await reload();
       return err;
     },

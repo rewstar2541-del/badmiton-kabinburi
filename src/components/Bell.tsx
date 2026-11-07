@@ -8,6 +8,7 @@ import { courtPlan, plannedCourt, presence, queuedSpot, waitingQueue } from "@/l
 import { useStore, useToday } from "@/lib/store";
 import { goToTab } from "./Membership";
 import { savedPin, useMe } from "./PickMe";
+import { usePush } from "./PushAlerts";
 import { Icon, Sheet, baht, levelCode } from "./ui";
 
 const WEEK = 7 * 24 * 3600 * 1000;
@@ -141,6 +142,7 @@ export function Bell() {
   const { social } = useStore();
   const [me] = useMe();
   const notes = useNotes(me);
+  const push = usePush(me).s;
   const seenKey = `badminton-kabinburi:bell-seen:${me}`;
   const [seen, setSeen] = useState<string[]>(() => store.get<string[]>(seenKey, []));
   const [open, setOpen] = useState(false);
@@ -265,7 +267,11 @@ export function Bell() {
               )}
             </div>
           )}
-          <p className="text-center text-sm text-zinc-500">{t("ไม่เด้งเตือนในมือถือ เปิดแอพแล้วดูที่นี่")}</p>
+          <p className="text-center text-sm text-zinc-500">{push?.ready && push.adminOn
+              ? push.on
+                ? t("อีก 1 เกมถึงคิว มือถือจะเด้งเตือนด้วย เรื่องอื่นดูที่นี่")
+                : t("เปิดให้มือถือเด้งเตือนตอนใกล้ถึงคิวได้ที่หน้าโปรไฟล์")
+              : t("ไม่เด้งเตือนในมือถือ เปิดแอพแล้วดูที่นี่")}</p>
         </Sheet>
       )}
     </>

@@ -12,7 +12,7 @@ import { BillingTab } from "./BillingTab";
 import { FirstAdminCard } from "./PickMe";
 import { readSession } from "@/lib/session";
 import { syncLinePhotoOnOpen } from "@/lib/lineLogin";
-import { monthlyDue } from "./Membership";
+import { goToTab, monthlyDue } from "./Membership";
 import { MyBillTab } from "./MyBillTab";
 import { CheckInTab } from "./CheckInTab";
 import { CourtsTab } from "./CourtsTab";
@@ -29,6 +29,7 @@ import { LANGS, t, useLang } from "@/lib/i18n";
 import { setTheme, useTheme } from "@/lib/theme";
 import { activeFestival, festivalInfo } from "@/lib/festival";
 import { FestivalFalling } from "./FestivalDecor";
+import { registerPushWorker } from "@/lib/push";
 
 type TabId = "event" | "home" | "today" | "checkin" | "courts" | "billing" | "players" | "settings" | "mybill" | "profile";
 type Tab = { id: TabId; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> };
@@ -245,6 +246,11 @@ function Shell() {
     window.addEventListener("goto-tab", go);
     return () => window.removeEventListener("goto-tab", go);
   }, []);
+  const online = auth.online && !auth.demo;
+  // แจ้งเตือนเด้ง: ลงทะเบียน service worker และแตะแจ้งเตือนแล้วเปิดหน้าสนาม
+  useEffect(() => {
+    if (online) registerPushWorker(goToTab);
+  }, [online]);
   // เปิดในแอป LINE: ดึงรูปโปรไฟล์ล่าสุดจาก LINE ให้เอง (ครั้งหนึ่งต่อการเปิด)
   const me = auth.online && ready ? state.players.find((p) => p.id === readSession()?.playerId) : undefined;
   useEffect(() => {
