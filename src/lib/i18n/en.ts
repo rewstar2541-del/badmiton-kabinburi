@@ -1583,4 +1583,10 @@ export const en: Record<string, string> = {
   "ประวัติการเล่นของ {name}": "{name}'s game history",
   "แตะ ✕ เพื่อลบเกมที่ไม่ได้เล่นจริง เกมวันก่อน: คนที่ยังไม่จ่าย ยอดค้างจะเปลี่ยนตาม": "Tap ✕ to delete a game that didn't really happen. For past days, unpaid balances will change.",
   "กดนิ้วค้างที่รูป แล้วเลือก “บันทึกรูปภาพ” หรือส่งต่อในไลน์": "Press and hold the image, then choose “Save image” or forward it in LINE",
+  "ฟอร์มดีวันนี้": "On form today",
+  "ฟอร์มตกวันนี้": "Off form today",
+  "เกมสูสี ฝีมือสองทีมใกล้กัน": "Close game: both teams are evenly matched",
+  "ทีม {team} เหนือกว่าเล็กน้อย": "Team {team} is slightly stronger",
+  "ทีม {team} เหนือกว่ามาก ลองสลับคน": "Team {team} is much stronger, try swapping players",
+  "▲▼ = ฟอร์มวันนี้ ระบบนับรวมตอนจัดคู่": "▲▼ = today's form, counted when pairing.",
 };
