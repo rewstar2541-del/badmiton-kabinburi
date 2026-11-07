@@ -145,7 +145,8 @@ export function PushToggle({ playerId }: { playerId: string }) {
   // ยังไม่ได้ตั้งแจ้งเตือนเด้ง: ยังเปิด/ปิดเสียงในแอพได้
   if (!s?.ready)
     return (
-      <Card>
+      <Card className="space-y-3">
+        <h3 className="font-display font-semibold">{t("แจ้งเตือนถึงคิว")}</h3>
         <SoundToggle />
       </Card>
     );
@@ -185,7 +186,9 @@ function SoundToggle() {
     <label className="flex items-center justify-between gap-3 text-sm">
       <span className="min-w-0">
         <span className="block font-medium">{t("เสียงและสั่นเมื่อถึงคิว")}</span>
-        <span className="block text-sm text-zinc-500">{isIos() ? t("iPhone มีเสียงตอนเปิดแอพอยู่ (ไม่ได้ปิดเสียงเครื่อง) แจ้งเตือนเด้งใช้เสียงของเครื่อง") : t("สั่นและมีเสียงตอนถึงคิว และตอนอีก 1 เกมถึงคิว")}</span>
+        <span className="block text-sm text-zinc-500">
+          {!on ? t("ปิดอยู่ แจ้งเตือนจะเด้งแบบเงียบ") : isIos() ? t("iPhone: มีเสียงตอนเปิดแอพค้างไว้ (ต้องไม่เปิดโหมดเงียบ) ถ้าปิดแอพ แจ้งเตือนใช้เสียงของมือถือ") : t("สั่นและมีเสียงตอนถึงคิว และตอนอีก 1 เกมถึงคิว")}
+        </span>
       </span>
       <input
         type="checkbox"
@@ -208,12 +211,13 @@ function SoundToggle() {
 /**
  * ตอนเปิดแอพอยู่: ถึงคิวลงสนาม / อีก 1 เกมถึงคิว ให้มีเสียงสั้นๆ และสั่น (ครั้งเดียวต่อเรื่อง)
  * ตอนปิดแอพ แจ้งเตือนเด้ง (sw.js) สั่นแทน ไม่เตือนเรื่องที่ค้างอยู่ตั้งแต่ก่อนเปิดแอพ
+ * แจ้งเตือนเด้งอาจดังซ้ำตอนเปิดแอพอยู่: ตั้งใจ ดีกว่าพลาดคิวเพราะแอพเล่นเสียงไม่ได้
  */
 export function TurnAlert() {
   const [me] = useMe();
   const { state, auth } = useStore();
   const { day } = useToday();
-  const seen = useRef<{ me: string | null; keys: Set<string> } | null>(null);
+  const seen = useRef<{ who: string | null; keys: Set<string> } | null>(null);
 
   useEffect(() => {
     syncTurnAlertPref();
@@ -221,12 +225,14 @@ export function TurnAlert() {
   }, []);
 
   const mine = me && !auth.isAdmin ? myTurn(day, state.players, state.settings, me) : null;
+  // เปลี่ยนคน หรือสลับโหมดแอดมิน/ผู้เล่น = เริ่มนับใหม่
+  const who = me && !auth.isAdmin ? me : null;
   const key = mine?.key ?? null;
   const kind = mine?.kind;
   useEffect(() => {
-    if (!seen.current || seen.current.me !== me) {
-      // เปิดแอพ / เปลี่ยนคน: เรื่องที่มีอยู่แล้วไม่ต้องเตือน
-      seen.current = { me, keys: new Set(key ? [key] : []) };
+    if (!seen.current || seen.current.who !== who) {
+      // เปิดแอพ / เปลี่ยนคน / สลับโหมด: เรื่องที่มีอยู่แล้วไม่ต้องเตือน
+      seen.current = { who, keys: new Set(key ? [key] : []) };
       return;
     }
     if (!key || !kind || seen.current.keys.has(key)) return;
@@ -234,7 +240,7 @@ export function TurnAlert() {
     if (!turnAlertOn() || document.visibilityState !== "visible") return;
     playChime(kind);
     buzz();
-  }, [me, key, kind]);
+  }, [who, key, kind]);
   return null;
 }
 

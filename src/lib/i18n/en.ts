@@ -1584,6 +1584,8 @@ export const en: Record<string, string> = {
   "แตะ ✕ เพื่อลบเกมที่ไม่ได้เล่นจริง เกมวันก่อน: คนที่ยังไม่จ่าย ยอดค้างจะเปลี่ยนตาม": "Tap ✕ to delete a game that didn't really happen. For past days, unpaid balances will change.",
   "กดนิ้วค้างที่รูป แล้วเลือก “บันทึกรูปภาพ” หรือส่งต่อในไลน์": "Press and hold the image, then choose “Save image” or forward it in LINE",
   "เสียงและสั่นเมื่อถึงคิว": "Sound and vibration on your turn",
-  "iPhone มีเสียงตอนเปิดแอพอยู่ (ไม่ได้ปิดเสียงเครื่อง) แจ้งเตือนเด้งใช้เสียงของเครื่อง": "On iPhone the chime plays while the app is open (phone not on silent). Phone alerts use the phone's own sound.",
   "สั่นและมีเสียงตอนถึงคิว และตอนอีก 1 เกมถึงคิว": "Vibrate and chime when it's your turn, and 1 game before",
+  "iPhone: มีเสียงตอนเปิดแอพค้างไว้ (ต้องไม่เปิดโหมดเงียบ) ถ้าปิดแอพ แจ้งเตือนใช้เสียงของมือถือ": "iPhone: chimes while the app is open (not in silent mode). With the app closed, alerts use the phone's own sound.",
+  "แจ้งเตือนถึงคิว": "Turn alerts",
+  "ปิดอยู่ แจ้งเตือนจะเด้งแบบเงียบ": "Off: phone alerts arrive silently",
 };

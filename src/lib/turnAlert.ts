@@ -40,6 +40,11 @@ function audio(): AudioContext | null {
   if (typeof window === "undefined") return null;
   const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!AC) return null;
+  // iPhone: ล็อกจอ/สลับแอพแล้ว เสียงค้างเป็น "interrupted" หรือปิดไป สร้างใหม่ (ทำตอนแตะจอเท่านั้นถึงจะเล่นได้)
+  if (ctx && (ctx.state === "closed" || (ctx.state as string) === "interrupted")) {
+    void ctx.close().catch(() => {});
+    ctx = null;
+  }
   try {
     ctx ??= new AC();
   } catch {
@@ -49,15 +54,21 @@ function audio(): AudioContext | null {
 }
 
 /**
- * มือถือเล่นเสียงได้หลังผู้ใช้แตะจอครั้งแรกเท่านั้น: ปลุกเสียงไว้ตอนแตะครั้งแรก
- * (ตอนถึงคิวจริงอาจไม่ได้แตะจอเลย)
+ * มือถือเล่นเสียงได้หลังผู้ใช้แตะจอเท่านั้น: ปลุกเสียงไว้ทุกครั้งที่แตะจอแล้วเสียงยังไม่พร้อม
+ * (ตอนถึงคิวจริงอาจไม่ได้แตะจอเลย และ iPhone ปิดเสียงทุกครั้งที่ล็อกจอ)
  */
 export function unlockTurnSound() {
   if (typeof window === "undefined") return () => {};
   const go = () => {
+    if (ctx?.state === "running") return;
     const c = audio();
     if (!c) return;
-    if (c.state === "suspended") void c.resume().catch(() => {});
+    // iPhone (Safari 17+): ให้เสียงในแอพดังเหมือนเพลง
+    try {
+      const s = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+      if (s) s.type = "playback";
+    } catch {}
+    if (c.state !== "running") void c.resume().catch(() => {});
     // iOS ต้องเล่นเสียงเปล่าๆ สักครั้งในจังหวะที่แตะ ถึงจะยอมเล่นทีหลัง
     try {
       const b = c.createBuffer(1, 1, 22050);
@@ -67,7 +78,7 @@ export function unlockTurnSound() {
       s.start(0);
     } catch {}
   };
-  const opts = { once: true, capture: true } as const;
+  const opts = { capture: true, passive: true } as const;
   window.addEventListener("pointerdown", go, opts);
   window.addEventListener("keydown", go, opts);
   return () => {

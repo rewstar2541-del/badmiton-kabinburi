@@ -31,15 +31,14 @@ async function show(data) {
     data: { url: data.url || "/" },
   };
   if (data.alert) {
-    const on = await alertOn();
-    // เปิดแอพค้างไว้บนจออยู่: แอพเล่นเสียงและสั่นเอง แจ้งเตือนเด้งเงียบไว้ ไม่ให้ซ้ำ
-    const list = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    const visible = list.some((c) => c.visibilityState === "visible");
-    if (!on || visible) opts.silent = true;
+    // ผู้เล่นปิดไว้: ยังเด้งบอก แต่เงียบ
+    // (ไม่เงียบตอนแอพเปิดอยู่ เพราะแอพเล่นเสียงเองไม่ได้ทุกกรณี เช่น iPhone ปิดเสียงเครื่อง หรือยังไม่ได้แตะจอ: ยอมดังซ้ำดีกว่าพลาดคิว)
+    if (!(await alertOn())) opts.silent = true;
     else {
-      // Android สั่นตามรูปแบบนี้ (iPhone ใช้เสียง/สั่นของเครื่องเอง)
+      // ขอให้สั่น และให้ "ถึงคิวแล้ว" ค้างบนจอจนกว่าจะปัดทิ้ง
+      // ทั้งสองอย่างเป็นแค่คำขอ: Android รุ่นใหม่ใช้การตั้งค่าแจ้งเตือนของเว็บในเครื่อง iPhone ใช้เสียง/สั่นของเครื่องเอง
       opts.vibrate = [200, 100, 200, 100, 400];
-      opts.requireInteraction = true;
+      if (data.alert === "play") opts.requireInteraction = true;
     }
   }
   return self.registration.showNotification(data.title || "แบดกบินทร์", opts);

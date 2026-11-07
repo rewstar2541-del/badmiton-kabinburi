@@ -103,8 +103,8 @@ interface Msg {
   title: string;
   body: string;
   tag: string;
-  /** ถึงคิว / อีก 1 เกมถึงคิว: ให้มือถือสั่นและมีเสียง (ถ้าผู้เล่นเปิดไว้) */
-  alert?: boolean;
+  /** ถึงคิว (play) / อีก 1 เกมถึงคิว (soon): ให้มือถือสั่นและมีเสียง (ถ้าผู้เล่นเปิดไว้) */
+  alert?: "play" | "soon";
 }
 
 function setVapid() {
@@ -119,11 +119,11 @@ async function collect(d: SupabaseClient, date: string, subscribers: string[]): 
   const now = Date.now();
   if (day) {
     for (const x of turnSoon(day, state.players, state.settings))
-      out.push({ playerId: x.playerId, key: x.key, title: `อีก 1 เกมถึงคิวคุณ ที่สนาม ${x.court}`, body: "เตรียมตัวได้เลย จบเกมนี้แล้วลงต่อ", tag: `turn-${date}`, alert: true });
+      out.push({ playerId: x.playerId, key: x.key, title: `อีก 1 เกมถึงคิวคุณ ที่สนาม ${x.court}`, body: "เตรียมตัวได้เลย จบเกมนี้แล้วลงต่อ", tag: `turn-${date}`, alert: "soon" });
     // เกมที่เพิ่งเริ่ม (ไม่เกิน 3 นาที) แจ้งคนที่ได้ลงสนามว่าถึงคิวแล้ว
     for (const g of day.games)
       if (!g.endedAt && now - g.startedAt < 3 * 60 * 1000)
-        for (const id of g.playerIds) out.push({ playerId: id, key: `play:${g.id}`, title: `ถึงคิวคุณแล้ว ลงสนาม ${g.court}`, body: "ไปที่สนามได้เลย", tag: `play-${date}`, alert: true });
+        for (const id of g.playerIds) out.push({ playerId: id, key: `play:${g.id}`, title: `ถึงคิวคุณแล้ว ลงสนาม ${g.court}`, body: "ไปที่สนามได้เลย", tag: `play-${date}`, alert: "play" });
   }
   // ประกาศเปิดลงชื่อ / อีเว้นที่เพิ่งสร้าง (ไม่เกิน 36 ชม.) แจ้งทุกคนที่เปิดรับแจ้งเตือน
   const anns = await rows<{ date: string; message: string; title: string | null; created_at: string }>(
@@ -205,7 +205,7 @@ interface DeliverResult {
   detail?: string;
 }
 
-async function deliver(s: { endpoint: string; p256dh: string; auth: string }, payload: { title: string; body: string; tag: string; url: string; alert?: boolean }): Promise<DeliverResult> {
+async function deliver(s: { endpoint: string; p256dh: string; auth: string }, payload: { title: string; body: string; tag: string; url: string; alert?: "play" | "soon" }): Promise<DeliverResult> {
   const host = new URL(s.endpoint).host;
   try {
     const r = await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(payload), { TTL: 15 * 60, urgency: "high" });
@@ -233,5 +233,5 @@ export async function sendTest(endpoint: string): Promise<DeliverResult & { erro
   if (!data) return { ok: false, error: "not-subscribed" };
   setVapid();
   await new Promise((r) => setTimeout(r, 6000));
-  return deliver(data, { title: "ทดสอบแจ้งเตือน ✓", body: "เห็นข้อความนี้ แปลว่าแจ้งเตือนใช้ได้ ตอนใกล้ถึงคิวจะเด้งแบบนี้", tag: "test", url: "/", alert: true });
+  return deliver(data, { title: "ทดสอบแจ้งเตือน ✓", body: "เห็นข้อความนี้ แปลว่าแจ้งเตือนใช้ได้ ตอนใกล้ถึงคิวจะเด้งแบบนี้", tag: "test", url: "/", alert: "soon" });
 }
