@@ -1560,4 +1560,6 @@ export const en: Record<string, string> = {
   "เด้งบอกเบอร์สนามแม้ปิดแอพอยู่ ต้องเปิดในมือถือทุกเครื่องที่ใช้": "Shows the court number even when the app is closed. Turn it on on every phone you use.",
   "เปิดแล้ว มือถือจะเด้งเตือนเมื่ออีก 1 เกมถึงคิว ปิดได้ที่หน้าโปรไฟล์": "Done! Your phone will alert you 1 game before your turn. Turn it off on the Profile page.",
   "ตกลง": "OK",
+  "ถ้าเริ่มเข้าสู่ระบบจากไอคอนแอพบนหน้าจอหลัก กลับไปที่แอพนั้นได้เลย ถ้าไม่ใช่ กดเข้าสู่ระบบด้วย LINE อีกครั้ง": "If you started signing in from the app icon on your home screen, go back to that app. Otherwise, tap Sign in with LINE again.",
+  "ยกเลิกการเข้าสู่ระบบด้วย LINE แล้ว": "LINE sign-in cancelled",
 };
