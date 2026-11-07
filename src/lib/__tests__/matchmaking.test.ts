@@ -80,3 +80,48 @@ describe("ระดับ NB", () => {
     expect(strength(6)).toBeLessThan(strength(3));
   });
 });
+
+describe("ฟอร์มวันนี้", () => {
+  const ended = (id: string, ids: string[], winner: "A" | "B", at: number) => ({
+    id, court: 1, playerIds: ids as [string, string, string, string], startedAt: at, endedAt: at + 1, shuttles: 1, winner,
+  });
+
+  it("ชนะติดกันฟอร์มขึ้น แพ้ติดกันฟอร์มลง แต่ไม่เกินครึ่งระดับ", async () => {
+    const { formToday, FORM_CAP } = await import("../matchmaking");
+    const ps = ["a", "b", "c", "d"].map((id) => p(id, 3));
+    const games = Array.from({ length: 10 }, (_, i) => ended(`g${i}`, ["a", "b", "c", "d"], "A", i * 10));
+    const f = formToday(dayWith(ps, games), ps);
+    expect(f.get("a")).toBe(FORM_CAP);
+    expect(f.get("c")).toBe(-FORM_CAP);
+  });
+
+  it("ชนะทีมที่อ่อนกว่าได้ฟอร์มน้อยกว่าชนะทีมที่เก่งกว่า", async () => {
+    const { formToday } = await import("../matchmaking");
+    const ps = [p("a", 3), p("b", 3), p("c", 5), p("d", 5), p("e", 1), p("f", 1)];
+    const up = formToday(dayWith(ps, [ended("g1", ["a", "b", "c", "d"], "A", 0)]), ps).get("a")!;
+    const down = formToday(dayWith(ps, [ended("g1", ["a", "b", "e", "f"], "A", 0)]), ps).get("a")!;
+    expect(up).toBeGreaterThan(down);
+    expect(down).toBeGreaterThan(0);
+  });
+
+  it("เสมอและเกมที่ยังไม่จบไม่นับ", async () => {
+    const { formToday } = await import("../matchmaking");
+    const ps = ["a", "b", "c", "d"].map((id) => p(id, 3));
+    const d = dayWith(ps, [
+      { ...ended("g1", ["a", "b", "c", "d"], "A", 0), draw: true, winner: undefined },
+      { id: "g2", court: 1, playerIds: ["a", "b", "c", "d"], startedAt: 5, shuttles: 0 },
+    ]);
+    expect(formToday(d, ps).size).toBe(0);
+  });
+
+  it("คนระดับเท่ากัน คนที่ชนะมาทั้งวันไม่อยู่ทีมเดียวกัน", async () => {
+    // a, b ชนะ 3 เกมรวด (ฟอร์มดี) c, d แพ้ทุกเกม ระดับมือเท่ากันหมด
+    const ps = ["a", "b", "c", "d", "x", "y"].map((id) => p(id, 3));
+    const games = [0, 1, 2].map((i) => ended(`g${i}`, i % 2 ? ["c", "x", "a", "y"] : ["a", "y", "c", "x"], i % 2 ? "B" : "A", i * 10));
+    games.push(ended("g3", ["b", "x", "d", "y"], "A", 40), ended("g4", ["b", "y", "d", "x"], "A", 50), ended("g5", ["d", "x", "b", "y"], "B", 60));
+    const d = dayWith(ps, games);
+    const { teams } = splitTeams([ps[0], ps[1], ps[2], ps[3]], new Map(), [], (await import("../matchmaking")).formToday(d, ps));
+    const teamOf = (id: string) => (teams.indexOf(id as never) < 2 ? "A" : "B");
+    expect(teamOf("a")).not.toBe(teamOf("b"));
+  });
+});

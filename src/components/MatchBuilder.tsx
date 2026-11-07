@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { hasAvoid, nextMatch, waitingQueue } from "@/lib/matchmaking";
+import { formToday, hasAvoid, nextMatch, skillOf, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
 import { strength, type Game, type Player } from "@/lib/types";
 import { Avatar, Button, Icon, LevelBadge, Sheet } from "./ui";
@@ -95,6 +95,13 @@ export function MatchBuilder({
   const full = slots.every(Boolean);
   const chosen = slots.map((id) => (id ? byId.get(id) : undefined)).filter((p) => p !== undefined);
   const clash = hasAvoid(chosen);
+  // ฟอร์มวันนี้ (ชนะ/แพ้ติดๆ กัน) ระบบนับรวมตอนจัดคู่ด้วย
+  const form = formToday(day, state.players);
+  const skillSum = (ids: Slots) => ids.reduce((n, id) => {
+      const p = id ? byId.get(id) : undefined;
+      return n + (p ? skillOf(p, form) : 0);
+    }, 0);
+  const edge = skillSum(slots.slice(0, 2)) - skillSum(slots.slice(2, 4));
   const teamSum = (ids: Slots) => ids.reduce((n, id) => {
       const p = id ? byId.get(id) : undefined;
       return n + (p ? strength(p.level) : 0);
@@ -115,6 +122,12 @@ export function MatchBuilder({
             <>
               <Avatar name={p.name} photo={p.photo} size={28} ring />
               <span className="min-w-0 flex-1 truncate text-sm font-semibold">{p.name}</span>
+              {!on && (form.get(p.id) ?? 0) >= 0.25 && (
+                <span title={t("ฟอร์มดีวันนี้")} aria-label={t("ฟอร์มดีวันนี้")} className="text-xs font-bold text-lime">▲</span>
+              )}
+              {!on && (form.get(p.id) ?? 0) <= -0.25 && (
+                <span title={t("ฟอร์มตกวันนี้")} aria-label={t("ฟอร์มตกวันนี้")} className="text-xs font-bold text-white/70">▼</span>
+              )}
               {on ? <span className="w-8" /> : <LevelBadge level={p.level} />}
             </>
           ) : (
@@ -151,7 +164,18 @@ export function MatchBuilder({
       </div>
       <p className="text-xs text-zinc-500">
         {t("แตะชื่อในสนาม แล้วแตะอีกช่องเพื่อสลับ หรือแตะชื่อจากคิวเพื่อเปลี่ยนคน ตัวเลขข้างทีม = ผลรวมระดับมือ")}
+        {form.size > 0 && <> {t("▲▼ = ฟอร์มวันนี้ ระบบนับรวมตอนจัดคู่")}</>}
       </p>
+
+      {full && (
+        <p className={`rounded-xl px-3 py-2 text-sm font-medium ${Math.abs(edge) <= 0.5 ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
+          {Math.abs(edge) <= 0.5
+            ? t("เกมสูสี ฝีมือสองทีมใกล้กัน")
+            : Math.abs(edge) <= 1.5
+              ? t("ทีม {team} เหนือกว่าเล็กน้อย", { team: edge > 0 ? "A" : "B" })
+              : t("ทีม {team} เหนือกว่ามาก ลองสลับคน", { team: edge > 0 ? "A" : "B" })}
+        </p>
+      )}
 
       {clash && (
         <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">{t("มีคู่ที่ไม่อยากเจอกันในเกมนี้")}</p>
