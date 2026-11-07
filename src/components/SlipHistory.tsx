@@ -212,8 +212,8 @@ export function SlipHistory({ initialMonth }: { initialMonth?: string } = {}) {
   }
   return (
     <>
-      <div className="flex items-center justify-between rounded-3xl border border-lime-dark/60 bg-lime/25 px-3 py-3 text-ink">
-        <button className="grid size-11 place-items-center rounded-full border border-zinc-200 bg-white" onClick={() => go(-1)} aria-label={t("เดือนก่อน")}>
+      <div className="flex items-center justify-between rounded-3xl border border-zinc-300 bg-white px-3 py-3 text-ink">
+        <button className="grid size-11 place-items-center rounded-full border border-zinc-200 bg-zinc-100" onClick={() => go(-1)} aria-label={t("เดือนก่อน")}>
           ‹
         </button>
         <div className="text-center">
@@ -224,7 +224,7 @@ export function SlipHistory({ initialMonth }: { initialMonth?: string } = {}) {
           </div>
         </div>
         <button
-          className="grid size-11 place-items-center rounded-full border border-zinc-200 bg-white disabled:opacity-30"
+          className="grid size-11 place-items-center rounded-full border border-zinc-200 bg-zinc-100 disabled:opacity-30"
           onClick={() => go(1)}
           disabled={isCurrent}
           aria-label={t("เดือนถัดไป")}

@@ -319,7 +319,7 @@ function Shell() {
                 }}
                 aria-current={active ? "page" : undefined}
                 className={`flex flex-col items-center gap-0.5 rounded-2xl py-2 text-xs font-semibold transition ${
-                  active ? "bg-lime text-ink" : "text-zinc-600 active:bg-zinc-100"
+                  active ? "bg-lime/30 text-ink shadow-[inset_0_-3px_0_var(--color-lime-dark)]" : "text-zinc-600 active:bg-zinc-100"
                 }`}
               >
                 <span className="relative">

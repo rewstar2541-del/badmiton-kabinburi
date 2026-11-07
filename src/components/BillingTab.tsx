@@ -277,10 +277,10 @@ function DailyView() {
 
   return (
     <>
-      <div className="rounded-3xl border border-lime-dark/60 bg-lime/25 p-5 text-ink">
+      <div className="rounded-3xl border border-zinc-300 bg-white p-5 text-ink">
         <div className="text-xs text-zinc-500">{t("ยอดรวมวันนี้")}</div>
         <div className="font-display text-3xl font-semibold">{baht(total)}</div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full border border-zinc-200 bg-white">
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-zinc-200">
           <div className="h-full rounded-full bg-lime transition-all" style={{ width: total ? `${(received / total) * 100}%` : 0 }} />
         </div>
         <div className="mt-2 flex justify-between text-xs text-zinc-700">

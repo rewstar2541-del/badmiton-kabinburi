@@ -71,7 +71,7 @@ export function YearSummaryView({ year: initial, onClose }: { year?: string; onC
   };
 
   const stat = (label: string, value: number | string) => (
-    <div className="rounded-2xl border border-zinc-200 bg-white px-3 py-3">
+    <div className="rounded-2xl border border-zinc-200 bg-zinc-100 px-3 py-3">
       <div className="font-display text-3xl font-semibold tabular-nums">{value}</div>
       <div className="text-xs text-zinc-700">{label}</div>
     </div>
@@ -95,7 +95,7 @@ export function YearSummaryView({ year: initial, onClose }: { year?: string; onC
 
   return (
     <div className="mx-auto max-w-md space-y-4">
-      <div className="space-y-4 rounded-3xl border border-lime-dark/60 bg-lime/25 p-5 text-ink">
+      <div className="space-y-4 rounded-3xl border border-zinc-300 bg-white p-5 text-ink">
         <div className="flex items-start justify-between gap-2">
           <div>
             <div className="text-sm text-ink">
@@ -104,7 +104,7 @@ export function YearSummaryView({ year: initial, onClose }: { year?: string; onC
             <h2 className="font-display text-2xl font-semibold">{t("สรุปก๊วนปี {year}", { year: yearLabel(year) })}</h2>
           </div>
           <select
-            className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-sm"
+            className="rounded-full bg-lime/40 px-3 py-1.5 text-sm"
             value={year}
             aria-label={t("ปี")}
             onChange={(e) => setYear(e.target.value)}

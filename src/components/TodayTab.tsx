@@ -56,7 +56,7 @@ export function AnnouncementBanner({ message, title, fee, date }: { message: str
 /** หน้าแรกผู้เล่น: การ์ดดำใบเดียว สถานะ + ประกาศ + ปุ่มลงชื่อ/เช็คอิน */
 export function HomeCard({ top, children }: { top: ReactNode; children?: ReactNode }) {
   return (
-    <div className="relative space-y-3 overflow-hidden rounded-3xl border border-lime-dark/60 bg-lime/25 p-4 text-ink">
+    <div className="relative space-y-3 overflow-hidden rounded-3xl border border-zinc-300 bg-white p-4 text-ink">
       <div className="pointer-events-none absolute -top-20 -right-12 size-48 rounded-full bg-lime/20 blur-3xl" />
       <div className="relative">{top}</div>
       {children && <div className="relative space-y-3">{children}</div>}
@@ -102,7 +102,7 @@ function NextSession({ dark }: { dark?: boolean }) {
     setError(err ? t(err) : "");
   };
   return (
-    <div className={`space-y-2 rounded-2xl p-3 ${dark ? "border border-zinc-200 bg-white" : "bg-white ring-1 ring-zinc-100"}`}>
+    <div className={`space-y-2 rounded-2xl p-3 ${dark ? "border border-zinc-200 bg-zinc-100" : "bg-white ring-1 ring-zinc-100"}`}>
       <div className="text-sm">
         <span className={`font-semibold text-ink`}>
           {eventStyle(next.announcementTitle).emoji} {t("{when} มีก๊วน", { when })}
@@ -262,7 +262,7 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
 
       <Panel home={home} top={top}>
         {home && announced && (
-          <div className="rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm">
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-100 px-3 py-2 text-sm">
             <span className="font-semibold text-ink">
               {eventStyle(day.announcementTitle).emoji} {day.announcementTitle ? <Auto text={day.announcementTitle} /> : t("วันนี้มีจัดก๊วน")}
             </span>
@@ -355,7 +355,7 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
             <Button variant="accent" disabled={busy || !selfIn} onClick={() => act("checkIn")} className="flex items-center justify-center gap-1.5">
               <Icon.CheckIn width={18} height={18} /> {t("ถึงสนามแล้ว เช็คอิน")}
             </Button>
-            <Button variant="ghost" disabled={busy} className={home ? "!text-red-600 active:!border border-zinc-200 bg-white" : "!text-red-600"} onClick={() => act("cancelSignUp")}>
+            <Button variant="ghost" disabled={busy} className={home ? "!text-red-600 active:!border border-zinc-200 bg-zinc-100" : "!text-red-600"} onClick={() => act("cancelSignUp")}>
               {t("ยกเลิกลงชื่อ")}
             </Button>
           </div>

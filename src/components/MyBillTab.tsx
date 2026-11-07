@@ -45,7 +45,7 @@ export function MyBillTab() {
         <Card className="py-8 text-center text-sm text-zinc-500">{t("วันนี้ยังไม่ได้เช็คอิน")}</Card>
       ) : (
         <>
-          <div className="rounded-3xl border border-lime-dark/60 bg-lime/25 p-5 text-ink">
+          <div className="rounded-3xl border border-zinc-300 bg-white p-5 text-ink">
             <div className="text-xs text-zinc-500">{checkedIn ? t("ยอดที่ต้องจ่าย") : t("ยอดค้างจ่ายจากวันก่อน")}</div>
             <div className="font-display text-4xl font-semibold">{baht(bill.total)}</div>
             <div className="mt-4 space-y-1.5 text-sm">

@@ -21,7 +21,7 @@ export function AttendeeStrip({ day, dark }: { day: Day; dark?: boolean }) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className={`flex w-full items-center gap-2.5 rounded-2xl px-3 py-2 text-left active:scale-[0.99] ${dark ? "border border-zinc-200 bg-white" : "bg-zinc-50"}`}
+        className={`flex w-full items-center gap-2.5 rounded-2xl px-3 py-2 text-left active:scale-[0.99] ${dark ? "border border-zinc-200 bg-zinc-100" : "bg-zinc-50"}`}
       >
         <span className="flex shrink-0 -space-x-1.5">
           {faces.map((id) => (

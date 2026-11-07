@@ -76,9 +76,9 @@ export function Hero({
 }) {
   const Box = onClick ? "button" : "div";
   return (
-    <Box onClick={onClick} className={`relative block w-full overflow-hidden ${compact ? "p-4" : "p-5"} rounded-3xl border border-lime-dark/60 bg-lime/25 text-left text-ink active:scale-[0.99]`}>
+    <Box onClick={onClick} className={`relative block w-full overflow-hidden ${compact ? "p-4" : "p-5"} rounded-3xl border border-zinc-300 bg-white text-left text-ink active:scale-[0.99]`}>
       <div className="pointer-events-none absolute -top-20 -right-12 size-48 rounded-full bg-lime/20 blur-3xl" />
-      <span className="absolute top-4 right-4 grid size-11 place-items-center rounded-2xl border border-zinc-200 bg-white text-ink">
+      <span className="absolute top-4 right-4 grid size-11 place-items-center rounded-2xl border border-zinc-200 bg-zinc-100 text-ink">
         <I width={24} height={24} />
       </span>
       <div className="relative pr-14 text-sm text-zinc-700">{label}</div>
@@ -90,7 +90,7 @@ export function Hero({
       {chips.length > 0 && (
         <div className={`relative flex flex-wrap gap-1.5 ${compact ? "mt-2" : "mt-3"}`}>
           {chips.map((c) => (
-            <span key={c} className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-sm font-semibold text-ink">
+            <span key={c} className="rounded-full bg-lime/40 px-2.5 py-1 text-sm font-semibold text-ink">
               {c}
             </span>
           ))}
@@ -329,7 +329,7 @@ export function PlayerHome() {
             {chips.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {chips.map((c) => (
-                  <span key={c} className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-sm font-semibold text-ink">
+                  <span key={c} className="rounded-full bg-lime/40 px-2.5 py-1 text-sm font-semibold text-ink">
                     {c}
                   </span>
                 ))}
@@ -475,7 +475,7 @@ export function AdminHome() {
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {[t("กำลังเล่น {n}", { n: playing }), t("รอคิว {n}", { n: waiting }), ...(q.waiting.length ? [t("สำรอง {n}", { n: q.waiting.length })] : [])].map((c) => (
-                <span key={c} className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-sm font-semibold text-ink">
+                <span key={c} className="rounded-full bg-lime/40 px-2.5 py-1 text-sm font-semibold text-ink">
                   {c}
                 </span>
               ))}
@@ -485,7 +485,7 @@ export function AdminHome() {
       >
         {announced ? (
           <>
-            <button className="block w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-left text-sm" onClick={() => open("announce")}>
+            <button className="block w-full rounded-2xl border border-zinc-200 bg-zinc-100 px-3 py-2 text-left text-sm" onClick={() => open("announce")}>
               <span className="font-semibold text-ink">📣 {day.announcementTitle ? <Auto text={day.announcementTitle} /> : t("วันนี้มีจัดก๊วน")}</span>
               {!!q.cap && ` · ${t("รับ {cap} คน", { cap: q.cap })}`}
               {day.announcement && (
@@ -499,7 +499,7 @@ export function AdminHome() {
             </Button>
           </>
         ) : closed ? (
-          <div className="rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm">{t("วันนี้งดเล่น")}</div>
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-100 px-3 py-2 text-sm">{t("วันนี้งดเล่น")}</div>
         ) : (
           <Button variant="accent" className="flex w-full items-center justify-center gap-2" onClick={() => open("announce")}>
             <Icon.Megaphone width={18} height={18} /> {t("ประกาศจัดก๊วนวันนี้")}
@@ -510,7 +510,7 @@ export function AdminHome() {
             <Icon.Calendar width={18} height={18} className="shrink-0 text-ink" />
             <span className="max-w-[65%] shrink-0 truncate font-semibold">{t("{when} มีก๊วน", { when: next.when })}</span>
             <span className="min-w-0 flex-1 truncate text-zinc-700">{nextIds.length ? names(nextIds) : t("ยังไม่มีใครลงชื่อ")}</span>
-            {!!nextIds.length && <CountBadge n={nextIds.length} tone="border border-zinc-200 bg-white text-ink" />}
+            {!!nextIds.length && <CountBadge n={nextIds.length} tone="border border-zinc-200 bg-zinc-100 text-ink" />}
             <Icon.ChevronRight width={18} height={18} className="shrink-0 text-zinc-500" />
           </button>
         )}
