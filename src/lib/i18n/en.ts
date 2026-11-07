@@ -1572,4 +1572,11 @@ export const en: Record<string, string> = {
   "ให้มือถือเด้งเตือนเมื่อเปิดลงชื่อก๊วน อีก 1 เกมถึงคิว และถึงคิวลงสนาม ไม่ต้องเฝ้าจอ": "Get a phone alert when sign-up opens, 1 game before your turn, and when it's your turn. No need to watch the screen.",
   "กดปุ่มด้านล่าง แล้วเลือก \"อนุญาต\" เมื่อมือถือถาม": "Tap the button below, then choose \"Allow\" when your phone asks.",
   "ไว้ทีหลัง": "Later",
+  "ตีก๊วน": "Badminton session",
+  "เพิ่มลงปฏิทินในมือถือ": "Add to your phone calendar",
+  "บันทึกวันตีก๊วนทั้งหมดลงปฏิทิน ({n} วัน)": "Save all sessions to calendar ({n} days)",
+  "iPhone / Apple": "iPhone / Apple",
+  "iPhone: แตะไฟล์ที่โหลดแล้วกด เพิ่ม · Android: ใช้ปุ่ม Google Calendar": "iPhone: tap the downloaded file, then Add · Android: use the Google Calendar button",
+  "ได้ไฟล์ .ics ใน iPhone แตะไฟล์แล้วกด เพิ่มทั้งหมด ส่วน Google Calendar นำเข้าไฟล์ได้ทางคอมพิวเตอร์ ในมือถือ Android ให้แตะวันในปฏิทินแล้วกด Google Calendar ทีละวัน": "Downloads an .ics file. On iPhone, tap the file and choose Add All. Google Calendar can import it on a computer; on Android, tap a day in the calendar and use Google Calendar one day at a time",
+  "ตารางอาจเปลี่ยน ดูในแอพก่อนไป": "Schedule may change. Check the app before you go:",
 };
