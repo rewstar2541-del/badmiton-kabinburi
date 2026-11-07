@@ -189,6 +189,7 @@ export function ClubCalendar({ bare }: { bare?: boolean } = {}) {
                       variant="danger"
                       className="flex-1"
                       onClick={() => {
+                        if (signups.length && !confirm(t("ตั้งเป็นวันงดเล่น? คนที่ลงชื่อไว้ {n} คนจะถูกล้างออก", { n: signups.length }))) return;
                         if (sessions.has(picked)) dispatch({ type: "setAnnouncement", date: picked, message: null });
                         dispatch({ type: "setClosed", date: picked, reason: reason.trim() });
                         setPicked(null);
@@ -363,6 +364,8 @@ function MultiPanel({ sel, setSel, view }: { sel: string[]; setSel: (v: string[]
               variant="danger"
               className="w-full"
               onClick={() => {
+                const n = state.days.filter((x) => sel.includes(x.date)).reduce((sum, x) => sum + (x.signups?.length ?? 0), 0);
+                if (n && !confirm(t("ตั้งเป็นวันงดเล่น? คนที่ลงชื่อไว้ {n} คนจะถูกล้างออก", { n }))) return;
                 for (const d of sel) {
                   if (state.days.some((x) => x.date === d && x.announcement !== undefined)) dispatch({ type: "setAnnouncement", date: d, message: null });
                   dispatch({ type: "setClosed", date: d, reason: reason.trim() });
