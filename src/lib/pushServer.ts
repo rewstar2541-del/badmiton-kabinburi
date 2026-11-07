@@ -77,22 +77,23 @@ export interface NotifyResult {
  * เรียกซ้ำได้ (กี่เครื่องเรียกพร้อมกันก็ไม่ส่งซ้ำ เพราะจองในตาราง push_sent ก่อนส่ง)
  */
 let last = 0;
-let pending: Promise<NotifyResult> | null = null;
+let waiting: Promise<NotifyResult> | null = null;
 const GAP = 5000;
 
-/** กันคนยิงรัวๆ: ในเครื่องเซิร์ฟเวอร์เดียวกัน ทำงานไม่ถี่กว่าทุก 5 วินาที ครั้งที่มาระหว่างนั้นรวมเป็นรอบเดียว (ไม่ทิ้ง) */
+/**
+ * กันคนยิงรัวๆ: ในเครื่องเซิร์ฟเวอร์เดียวกัน ทำงานไม่ถี่กว่าทุก 5 วินาที
+ * คำขอที่มาระหว่างรอ รวมเป็นรอบถัดไปรอบเดียว (ไม่ทิ้ง: รอบนั้นโหลดข้อมูลหลังคำขอทุกอัน)
+ */
 export function notifyTurnsThrottled(): Promise<NotifyResult> {
-  if (pending) return pending;
+  if (waiting) return waiting;
   const wait = Math.max(0, last + GAP - Date.now());
-  pending = new Promise<void>((r) => setTimeout(r, wait))
-    .then(() => {
-      last = Date.now();
-      return notifyTurns();
-    })
-    .finally(() => {
-      pending = null;
-    });
-  return pending;
+  waiting = new Promise<void>((r) => setTimeout(r, wait)).then(() => {
+    // เริ่มโหลดแล้ว: คำขอใหม่หลังจากนี้ต้องได้รอบใหม่
+    waiting = null;
+    last = Date.now();
+    return notifyTurns();
+  });
+  return waiting;
 }
 
 export async function notifyTurns(): Promise<NotifyResult> {

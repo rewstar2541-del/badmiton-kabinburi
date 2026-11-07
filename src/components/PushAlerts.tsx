@@ -42,10 +42,17 @@ export function usePush(playerId: string | null) {
 
   const refresh = useCallback(async () => {
     if (!supabase || demo) return setS(null);
-    const [info, adminOn, sub] = await Promise.all([pushServerInfo(), getPushEnabled(supabase), currentSubscription()]);
-    // เครื่องนี้เคยเปิดรับให้คนอื่น (เปลี่ยนคนบนเครื่องเดียวกัน): ย้ายมาเป็นของคนที่เข้าอยู่ตอนนี้
+    const [info, adminOn] = await Promise.all([pushServerInfo(), getPushEnabled(supabase)]);
+    const sub = await currentSubscription(info.publicKey);
+    // ยืนยันกับเซิร์ฟเวอร์ทุกครั้งที่เปิด: เครื่องนี้เคยเปิดรับให้คนอื่น (เปลี่ยนคนบนเครื่องเดียวกัน) ย้ายมาเป็นของคนที่เข้าอยู่ตอนนี้
+    // และสมัครใหม่ถ้าเซิร์ฟเวอร์ลบไปแล้ว (เช่น เปลี่ยนกุญแจ)
     let on = !!sub && pushOwner() === playerId;
-    if (sub && !on && playerId && info.ready) on = !(await savePushOwner(supabase, sub, playerId, savedPin.get()));
+    if (sub && playerId && info.ready) {
+      const err = await savePushOwner(supabase, sub, playerId, savedPin.get());
+      on = !err || (on && err === "เชื่อมต่อไม่ได้ ลองใหม่");
+      // เข้าสู่ระบบไม่ผ่านแล้ว: หยุดรับแจ้งเตือนของคนเดิมบนเครื่องนี้
+      if (err && err !== "เชื่อมต่อไม่ได้ ลองใหม่") await disablePush(supabase).catch(() => {});
+    }
     setS({
       ready: info.ready && adminOn !== null,
       support: pushSupport(),

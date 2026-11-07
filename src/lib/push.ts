@@ -79,11 +79,21 @@ async function registration() {
 }
 
 /** เครื่องนี้เปิดรับอยู่ไหม */
-export async function currentSubscription(): Promise<PushSubscription | null> {
+export async function currentSubscription(publicKey?: string | null): Promise<PushSubscription | null> {
   if (pushSupport() !== "ok") return null;
   try {
     const reg = await navigator.serviceWorker.getRegistration("/");
-    return (await reg?.pushManager.getSubscription()) ?? null;
+    const sub = (await reg?.pushManager.getSubscription()) ?? null;
+    // สมัครไว้ด้วยกุญแจเก่า (แอดมินเปลี่ยนกุญแจ): สมัครใหม่เงียบๆ เพราะเคยอนุญาตแล้ว
+    if (sub && reg && publicKey && sub.options.applicationServerKey) {
+      const old = new Uint8Array(sub.options.applicationServerKey);
+      const now = keyBytes(publicKey);
+      if (old.length !== now.length || old.some((b, i) => b !== now[i])) {
+        await sub.unsubscribe().catch(() => false);
+        return Notification.permission === "granted" ? await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: now }) : null;
+      }
+    }
+    return sub;
   } catch {
     return null;
   }
