@@ -86,17 +86,17 @@ export function MembersView() {
 
   return (
     <>
-      <div className="flex items-center justify-between rounded-3xl bg-ink px-3 py-3 text-white">
-        <button className="grid size-11 place-items-center rounded-full bg-white/10" onClick={() => setMonth(shiftMonth(month, -1))} aria-label={t("เดือนก่อน")}>
+      <div className="flex items-center justify-between rounded-3xl border border-zinc-300 bg-white px-3 py-3 text-ink">
+        <button className="grid size-11 place-items-center rounded-full border border-zinc-200 bg-zinc-100" onClick={() => setMonth(shiftMonth(month, -1))} aria-label={t("เดือนก่อน")}>
           ‹
         </button>
         <div className="text-center">
           <div className="font-display text-lg font-semibold">{monthLabel(month)}</div>
-          <div className="text-sm text-white/70">
+          <div className="text-sm text-zinc-600">
             {t("รายเดือนจ่ายแล้ว {a} คน · รายปี {b} คน", { a: monthlyCount, b: annualCount })}
           </div>
         </div>
-        <button className="grid size-11 place-items-center rounded-full bg-white/10" onClick={() => setMonth(shiftMonth(month, 1))} aria-label={t("เดือนถัดไป")}>
+        <button className="grid size-11 place-items-center rounded-full border border-zinc-200 bg-zinc-100" onClick={() => setMonth(shiftMonth(month, 1))} aria-label={t("เดือนถัดไป")}>
           ›
         </button>
       </div>

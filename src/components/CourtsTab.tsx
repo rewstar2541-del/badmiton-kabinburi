@@ -298,7 +298,7 @@ function CourtQueue({
                         if (day.games.some((g) => !g.endedAt && g.court === court)) return;
                         dispatch({ type: "startGame", date, court, playerIds: q.playerIds, queuedId: q.queuedId });
                       }}
-                      className="h-11 flex-1 rounded-full bg-ink px-3 text-sm font-semibold text-white active:scale-95 disabled:opacity-40"
+                      className="h-11 flex-1 rounded-full bg-lime px-3 text-sm font-semibold text-ink active:scale-95 disabled:opacity-40"
                     >
                       {t("ลงสนาม")}
                     </button>

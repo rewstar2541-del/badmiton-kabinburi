@@ -71,9 +71,9 @@ export function YearSummaryView({ year: initial, onClose }: { year?: string; onC
   };
 
   const stat = (label: string, value: number | string) => (
-    <div className="rounded-2xl bg-white/10 px-3 py-3">
+    <div className="rounded-2xl border border-zinc-200 bg-zinc-100 px-3 py-3">
       <div className="font-display text-3xl font-semibold tabular-nums">{value}</div>
-      <div className="text-xs text-white/70">{label}</div>
+      <div className="text-xs text-zinc-700">{label}</div>
     </div>
   );
   const people = (title: string, list: { id: string; n: number }[], unit: string) =>
@@ -95,16 +95,16 @@ export function YearSummaryView({ year: initial, onClose }: { year?: string; onC
 
   return (
     <div className="mx-auto max-w-md space-y-4">
-      <div className="space-y-4 rounded-3xl bg-ink p-5 text-white">
+      <div className="space-y-4 rounded-3xl border border-zinc-300 bg-white p-5 text-ink">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <div className="text-sm text-lime">
+            <div className="text-sm text-ink">
               {title} {sub}
             </div>
             <h2 className="font-display text-2xl font-semibold">{t("สรุปก๊วนปี {year}", { year: yearLabel(year) })}</h2>
           </div>
           <select
-            className="rounded-full bg-white/10 px-3 py-1.5 text-sm"
+            className="rounded-full bg-lime/40 px-3 py-1.5 text-sm"
             value={year}
             aria-label={t("ปี")}
             onChange={(e) => setYear(e.target.value)}
@@ -127,7 +127,7 @@ export function YearSummaryView({ year: initial, onClose }: { year?: string; onC
             {stat(t("ลูกแบดที่ใช้"), s.shuttles)}
           </div>
         ) : (
-          <p className="text-sm text-white/70">{failed ? t("โหลดข้อมูลไม่สำเร็จ ลองใหม่อีกครั้ง") : t("กำลังโหลด...")}</p>
+          <p className="text-sm text-zinc-700">{failed ? t("โหลดข้อมูลไม่สำเร็จ ลองใหม่อีกครั้ง") : t("กำลังโหลด...")}</p>
         )}
       </div>
 
@@ -146,11 +146,11 @@ export function YearSummaryView({ year: initial, onClose }: { year?: string; onC
                 <span className="min-w-0 flex-1 font-semibold">
                   {name(s.bestDuo.ids[0])} + {name(s.bestDuo.ids[1])}
                 </span>
-                <span className="shrink-0 text-sm text-zinc-600">{t("ชนะ {w} จาก {g} เกม", { w: s.bestDuo.wins, g: s.bestDuo.games })}</span>
+                <span className="shrink-0 text-sm text-zinc-700">{t("ชนะ {w} จาก {g} เกม", { w: s.bestDuo.wins, g: s.bestDuo.games })}</span>
               </div>
             </section>
           )}
-          <section className="space-y-1 text-sm text-zinc-600">
+          <section className="space-y-1 text-sm text-zinc-700">
             {s.busiestDay && <p>{t("วันที่คนมามากที่สุด: {day} ({n} คน)", { day: dayLabel(s.busiestDay.date), n: s.busiestDay.players })}</p>}
             {s.longestGame && <p>{t("เกมที่ยาวที่สุด: {n} นาที ({day})", { n: s.longestGame.minutes, day: dayLabel(s.longestGame.date) })}</p>}
             <p>{t("มาเล่นรวมทั้งปี {n} ครั้ง", { n: s.visits })}</p>

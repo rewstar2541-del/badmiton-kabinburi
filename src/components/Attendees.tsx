@@ -21,26 +21,28 @@ export function AttendeeStrip({ day, dark }: { day: Day; dark?: boolean }) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className={`flex w-full items-center gap-2.5 rounded-2xl px-3 py-2 text-left active:scale-[0.99] ${dark ? "bg-white/10" : "bg-zinc-50"}`}
+        className={`flex w-full items-center gap-2.5 rounded-2xl px-3 py-2 text-left active:scale-[0.99] ${dark ? "border border-zinc-200 bg-zinc-100" : "bg-zinc-50"}`}
       >
-        <span className="flex shrink-0 -space-x-2.5">
+        <span className="flex shrink-0 -space-x-1.5">
           {faces.map((id) => (
             <Avatar key={id} name={byId.get(id)?.name ?? "?"} photo={byId.get(id)?.photo} size={28} ring />
           ))}
           {more > 0 && (
-            <span className={`grid size-7 place-items-center rounded-full text-[11px] font-bold ring-2 ring-white ${dark ? "bg-white/20 text-white" : "bg-zinc-200 text-zinc-700"}`}>
+            <span className={`grid size-7 place-items-center rounded-full text-[11px] font-bold ring-2 ring-white bg-zinc-200 text-zinc-700`}>
               +{more}
             </span>
           )}
         </span>
         <span className="min-w-0 flex-1 text-sm">
-          <span className={`block font-semibold ${dark ? "text-white" : "text-ink"}`}>{t("มาเล่นวันนี้ {n} คน", { n: a.total })}</span>
-          <span className={`block truncate text-xs ${dark ? "text-white/70" : "text-zinc-500"}`}>
+          <span className={`block font-semibold text-ink`}>{t("มาเล่นวันนี้ {n} คน", { n: a.total })}</span>
+          {!dark && (
+          <span className="block truncate text-xs text-zinc-500">
             {t("มาแล้ว {a} · ยังไม่มา {b}", { a: a.here.length, b: a.coming.length })}
             {a.waiting.length > 0 && ` · ${t("สำรอง {n} คน", { n: a.waiting.length })}`}
           </span>
+          )}
         </span>
-        <Icon.ChevronRight width={18} height={18} className={`shrink-0 ${dark ? "text-white/60" : "text-zinc-400"}`} aria-label={t("ดูรายชื่อ")} />
+        <Icon.ChevronRight width={18} height={18} className={`shrink-0 ${dark ? "text-zinc-600" : "text-zinc-400"}`} aria-label={t("ดูรายชื่อ")} />
       </button>
       {open && (
         <Sheet title={<h3 className="font-display text-lg font-semibold">{t("ใครมาบ้างวันนี้")}</h3>} onClose={() => setOpen(false)}>

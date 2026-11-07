@@ -125,21 +125,21 @@ function PlayerTile({ p, on, signed, visits }: { p: Player; on: boolean; signed:
           dispatch({ type: "undoCheckIn", date, playerId: p.id });
         }}
         className={`flex w-full items-center gap-2 rounded-2xl border px-2 py-2.5 text-left transition active:scale-[0.97] ${
-          on ? "border-ink bg-ink text-white" : "border-zinc-300 bg-white"
+          on ? "border-lime-dark bg-lime text-ink" : "border-zinc-300 bg-white"
         }`}
       >
         <Avatar name={p.name} photo={p.photo} size={36} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold">{p.name}</span>
-          <span className={`flex flex-wrap items-center gap-x-1.5 text-xs ${on ? "text-white/60" : "text-zinc-500"}`}>
+          <span className={`flex flex-wrap items-center gap-x-1.5 text-xs ${on ? "text-zinc-700" : "text-zinc-500"}`}>
             <LevelBadge level={p.level} />
-                        {p.guestOf && <span className={`font-medium ${on ? "text-amber-300" : "text-amber-600"}`}>{t("แขก")}</span>}
+                        {p.guestOf && <span className={`font-medium ${on ? "text-amber-800" : "text-amber-600"}`}>{t("แขก")}</span>}
             {signed && !on && <span className="font-medium text-sky-600">{t("ลงชื่อ")}</span>}
-            {isMonthlyPaid(state.monthly, date, p.id) && <span className={`font-medium ${on ? "text-lime" : "text-emerald-600"}`}>{t("รายเดือน")}</span>}
+            {isMonthlyPaid(state.monthly, date, p.id) && <span className={`font-medium ${on ? "text-emerald-800" : "text-emerald-600"}`}>{t("รายเดือน")}</span>}
           </span>
-          {visits !== undefined && <span className={`block truncate text-xs ${on ? "text-white/60" : "text-zinc-500"}`}>{t("มา {n} ครั้ง/30 วัน", { n: visits })}</span>}
+          {visits !== undefined && <span className={`block truncate text-xs ${on ? "text-zinc-700" : "text-zinc-500"}`}>{t("มา {n} ครั้ง/30 วัน", { n: visits })}</span>}
         </span>
-        <span className={`grid size-6 shrink-0 place-items-center rounded-full transition ${on ? "bg-lime text-ink" : "bg-zinc-100 text-transparent"}`}>
+        <span className={`grid size-6 shrink-0 place-items-center rounded-full transition ${on ? "bg-white/90 text-ink" : "bg-zinc-100 text-transparent"}`}>
           <Icon.Check width={14} height={14} strokeWidth={3} />
         </span>
       </button>

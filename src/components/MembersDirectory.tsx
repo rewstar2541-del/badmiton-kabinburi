@@ -9,7 +9,7 @@ import { LEVELS, type Level, type Player } from "@/lib/types";
 import { quarterLabel, useHistory } from "./Ranking";
 import { useMe } from "./PickMe";
 import { FramedAvatar } from "./AvatarFrame";
-import { LevelBadge, SearchInput, Sheet, levelCode, levelColor } from "./ui";
+import { LevelBadge, SearchInput, SectionTitle, Sheet, levelCode, levelColor } from "./ui";
 
 /** สีของแต่ละระดับ ใช้ชุดเดียวกับป้ายระดับทั้งแอพ */
 const barOf = (level: Level) => levelColor(level).split(" ")[0];
@@ -30,57 +30,36 @@ export function MembersDirectory() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-3xl bg-ink p-4 text-white">
-        <div className="text-sm text-white/70">{t("สมาชิกก๊วนทั้งหมด")}</div>
-        <div className="font-display text-4xl font-semibold tabular-nums">
-          {t("{n} คน", { n: members.length })}
-        </div>
-        {members.length > 0 && (
-          <div className="mt-3 flex h-3 gap-0.5 overflow-hidden rounded-full" aria-hidden>
-            {counts
-              .filter((c) => c.n)
-              .map((c) => (
-                <span key={c.value} className={barOf(c.value)} style={{ flexGrow: c.n }} />
-              ))}
-          </div>
-        )}
-      </div>
+      <SectionTitle right={t("{n} คน", { n: members.length })}>{t("สมาชิกก๊วนทั้งหมด")}</SectionTitle>
+      <SearchInput value={q} onChange={setQ} placeholder={t("ค้นหาชื่อ")} />
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]">
         {counts.map((c) => (
           <button
             key={c.value}
             onClick={() => setLevel(level === c.value ? null : c.value)}
             aria-pressed={level === c.value}
-            className={`flex items-center gap-2 rounded-2xl px-2.5 py-2 text-left ${level === c.value ? "bg-ink text-white" : "bg-zinc-100"}`}
+            className={`flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold ${level === c.value ? "border-lime-dark bg-lime text-ink" : "border-zinc-300 bg-white text-zinc-700"}`}
           >
-            <span className={`size-3 shrink-0 rounded-full ${barOf(c.value)}`} />
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-bold">{c.code}</span>
-              <span className={`block text-xs leading-tight ${level === c.value ? "text-white/70" : "text-zinc-500"}`}>{t(c.label)}</span>
-            </span>
-            <span className="font-display text-lg font-semibold tabular-nums">{c.n}</span>
+            <span className={`size-2.5 rounded-full ${barOf(c.value)}`} />
+            {c.code}
+            <span className="tabular-nums">{c.n}</span>
           </button>
         ))}
       </div>
 
-      <SearchInput value={q} onChange={setQ} placeholder={t("ค้นหาชื่อ")} />
-
       {shown.length === 0 ? (
         <p className="py-4 text-center text-sm text-zinc-500">{t("ไม่พบสมาชิก")}</p>
       ) : (
-        <ul className="divide-y divide-zinc-100">
+        <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           {shown.map((p) => (
             <li key={p.id}>
-              <button className="flex w-full items-center gap-3 py-2.5 text-left active:bg-zinc-50" onClick={() => setPicked(p)}>
-                <span className="grid w-14 shrink-0 place-items-center">
-                  <FramedAvatar player={p} size={44} />
-                </span>
+              <button className="flex w-full items-center gap-2 rounded-2xl border border-zinc-300 bg-white px-2 py-2.5 text-left transition active:scale-[0.97]" onClick={() => setPicked(p)}>
+                <FramedAvatar player={p} size={36} compact />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-semibold">{p.name}</span>
-                  <span className="block text-xs text-zinc-500">{t(LEVELS.find((l) => l.value === p.level)?.label ?? "")}</span>
+                  <span className="block truncate text-sm font-semibold">{p.name}</span>
+                  <LevelBadge level={p.level} />
                 </span>
-                <LevelBadge level={p.level} />
               </button>
             </li>
           ))}
@@ -112,13 +91,13 @@ function MemberProfile({ player, month, history }: { player: Player; month: stri
             <span className="truncate font-display text-2xl font-semibold">{player.name}</span>
             <LevelBadge level={player.level} />
           </div>
-          <div className="text-[15px] text-zinc-600">
+          <div className="text-[15px] text-zinc-700">
             {t(LEVELS.find((l) => l.value === player.level)?.label ?? "")}
           </div>
         </div>
       </div>
       <section className="space-y-1 rounded-2xl bg-zinc-50 px-3 py-2.5">
-        <h4 className="text-sm font-semibold text-zinc-600">{t("แนะนำตัว")}</h4>
+        <h4 className="text-sm font-semibold text-zinc-700">{t("แนะนำตัว")}</h4>
         {player.bio ? (
           <p className="text-[15px] whitespace-pre-line text-zinc-700">
             <Auto text={player.bio} />
@@ -175,16 +154,16 @@ export function PromotionProgress({ rec, next, quarter }: { rec: MonthRecord; ne
     <div className={`space-y-1.5 rounded-2xl px-3 py-2.5 ${winsOk && rateOk ? "bg-lime/40" : "bg-zinc-50"}`}>
       <div className="text-sm font-semibold">
         {winsOk && rateOk ? t("เข้าเกณฑ์เลื่อนเป็น {level} แล้ว", { level: levelCode(next) }) : t("ทางไปขั้น {level}", { level: levelCode(next) })}
-        <span className="block text-sm font-normal whitespace-nowrap text-zinc-600">{t("รวม 3 เดือน · รอบ {period}", { period: quarterLabel(quarter) })}</span>
+        <span className="block text-sm font-normal whitespace-nowrap text-zinc-700">{t("รวม 3 เดือน · รอบ {period}", { period: quarterLabel(quarter) })}</span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-zinc-200">
         <div className="h-full rounded-full bg-emerald-600" style={{ width: `${pct}%` }} />
       </div>
       <div className="flex flex-wrap gap-x-3 text-sm tabular-nums">
-        <span className={winsOk ? "text-emerald-700" : "text-zinc-600"}>
+        <span className={winsOk ? "text-emerald-700" : "text-zinc-700"}>
           {mark(winsOk)} {t("ชนะ {w}/{n} เกม", { w: rec.wins, n: rule.wins })}
         </span>
-        <span className={rateOk ? "text-emerald-700" : "text-zinc-600"}>
+        <span className={rateOk ? "text-emerald-700" : "text-zinc-700"}>
           {mark(rateOk)} {t("% ชนะ {r}/{n}", { r: rec.decided ? rate : "–", n: rule.rate })}
         </span>
       </div>

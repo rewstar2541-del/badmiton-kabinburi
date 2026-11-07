@@ -38,12 +38,12 @@ export function Segmented<T extends string | number>({
           key={o.value}
           onClick={() => onChange(o.value)}
           className={`rounded-xl px-1 py-2 text-sm font-semibold transition ${
-            value === o.value ? "bg-ink text-white shadow-sm" : "text-zinc-600"
+            value === o.value ? "bg-lime text-ink shadow-sm" : "text-zinc-600"
           }`}
         >
           {t(o.label)}
           {o.sub && (
-            <div className={`truncate text-[10px] font-normal ${value === o.value ? "text-white/70" : "text-zinc-400"}`}>{t(o.sub)}</div>
+            <div className={`truncate text-[10px] font-normal ${value === o.value ? "text-zinc-700" : "text-zinc-400"}`}>{t(o.sub)}</div>
           )}
         </button>
       ))}
@@ -185,6 +185,8 @@ export function PlayersTab() {
   const { state, dispatch, auth } = useStore();
   const admin = useAdmins();
   const [editing, setEditing] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   // แถวที่เปิดเลือกแพ็กเกจอยู่ (ทีละคน)
   const [planFor, setPlanFor] = useState<string | null>(null);
   const date = today();
@@ -203,7 +205,7 @@ export function PlayersTab() {
     <ul className="space-y-2">
       {list.map((p) => (
           <li key={p.id}>
-            <Card className="py-3">
+            <Card className={`!rounded-2xl !p-3 ${openId === p.id ? "!border-lime-dark" : ""}`}>
               {editing === p.id ? (
                 <PlayerForm
                   initial={p}
@@ -215,12 +217,12 @@ export function PlayersTab() {
                 />
               ) : (
                 // ชื่ออยู่แถวบน ปุ่มอยู่แถวล่าง จอมือถือแคบจะได้ไม่บีบชื่อจนหาย
-                <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <Avatar name={p.name} photo={p.photo} size={44} />
+                <div>
+                <button type="button" className="flex w-full items-center gap-3 text-left" aria-expanded={openId === p.id} onClick={() => { setOpenId(openId === p.id ? null : p.id); setPlanFor(null); }}>
+                  <Avatar name={p.name} photo={p.photo} size={36} />
                   <span className="min-w-0 flex-1">
                     <span className="flex min-w-0 items-center gap-1.5">
-                      <span className="min-w-0 truncate font-semibold">{p.name}</span>
+                      <span className="min-w-0 truncate text-sm font-semibold">{p.name}</span>
                       <span className="shrink-0">
                         <LevelBadge level={p.level} />
                       </span>
@@ -236,22 +238,15 @@ export function PlayersTab() {
                         " "}
                     </span>
                   </span>
-                  <Button
-                    variant="ghost"
-                    className="shrink-0 px-2 text-red-500"
-                    aria-label={t("ลบ {name}", { name: p.name })}
-                    onClick={() => {
-                      if (confirm(t("ลบ {name}?", { name: p.name }))) dispatch({ type: "removePlayer", playerId: p.id });
-                    }}
-                  >
-                    <Icon.X width={18} height={18} />
-                  </Button>
-                </div>
+                  <Icon.ChevronRight width={18} height={18} className={`shrink-0 text-zinc-600 transition ${openId === p.id ? "rotate-90" : ""}`} />
+                </button>
+                {openId === p.id && (
+                <div className="mt-2 space-y-2 border-t border-zinc-200 pt-2">
                 <div className="flex flex-wrap justify-end gap-1.5">
                   {!p.guestOf && (
                     <Button
                       variant="ghost"
-                      className={`px-3 py-2 text-xs ${p.plan === "monthly" ? "text-emerald-700" : "text-zinc-500"}`}
+                      className={`min-h-11 px-3 text-xs ${p.plan === "monthly" ? "text-emerald-700" : "text-zinc-500"}`}
                       title={t("กดเพื่อเลือกแพ็กเกจ")}
                       onClick={() =>
                         state.packages?.length
@@ -271,7 +266,7 @@ export function PlayersTab() {
                   {p.guestOf && (
                     <Button
                       variant="ghost"
-                      className="px-3 py-2 text-xs text-emerald-700"
+                      className="min-h-11 px-3 text-xs text-emerald-700"
                       onClick={() => {
                         const member = { ...p, guestOf: undefined };
                         dispatch({ type: "updatePlayer", player: member });
@@ -288,7 +283,7 @@ export function PlayersTab() {
                     return (
                       <Button
                         variant="ghost"
-                        className={`px-3 py-2 text-xs ${on ? "text-ink" : "text-zinc-500"}`}
+                        className={`min-h-11 px-3 text-xs ${on ? "text-ink" : "text-zinc-500"}`}
                         disabled={admin.busy || self}
                         onClick={() => {
                           const msg = on ? t("เอา {name} ออกจากแอดมิน?", { name: p.name }) : t("ตั้ง {name} เป็นแอดมิน?", { name: p.name });
@@ -299,11 +294,23 @@ export function PlayersTab() {
                       </Button>
                     );
                   })()}
-                  <Button variant="ghost" className="px-3 py-2 text-xs" onClick={() => setEditing(p.id)}>
+                  <Button variant="ghost" className="min-h-11 px-3 text-xs" onClick={() => setEditing(p.id)}>
                     {t("แก้ไข")}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="min-h-11 px-3 text-xs text-red-600"
+                    aria-label={t("ลบ {name}", { name: p.name })}
+                    onClick={() => {
+                      if (confirm(t("ลบ {name}?", { name: p.name }))) dispatch({ type: "removePlayer", playerId: p.id });
+                    }}
+                  >
+                    {t("ลบ")}
                   </Button>
                 </div>
                 {planFor === p.id && <PlanPanel player={p} onDone={() => setPlanFor(null)} />}
+                </div>
+                )}
                 </div>
               )}
             </Card>
@@ -319,14 +326,30 @@ export function PlayersTab() {
       <UnlinkedLines linked={admin.emailOf} onLinked={admin.reload} />
       <LevelRequests />
       {pending.length > 0 && <PendingList players={pending} />}
-      <SectionTitle>{t("ลงทะเบียนผู้เล่นใหม่")}</SectionTitle>
-      <Card>
-        <PlayerForm onSave={(player) => dispatch({ type: "addPlayer", player })} />
-      </Card>
-
       <SectionTitle right={t("{n} คน", { n: all.length })}>{t("ผู้เล่นทั้งหมด")}</SectionTitle>
       {admin.error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{admin.error}</p>}
-      <SearchInput value={q} onChange={setQ} />
+      <div className="flex gap-2">
+        <div className="min-w-0 flex-1">
+          <SearchInput value={q} onChange={setQ} />
+        </div>
+        <Button variant="accent" className="flex items-center gap-1 px-4" onClick={() => setAdding(true)} aria-label={t("ลงทะเบียนผู้เล่นใหม่")}>
+          <Icon.Plus width={20} height={20} strokeWidth={2.5} />
+          <span className="text-sm">{t("เพิ่ม")}</span>
+        </Button>
+      </div>
+      {adding && (
+        <Card>
+          <h3 className="mb-3 font-display font-semibold">{t("ลงทะเบียนผู้เล่นใหม่")}</h3>
+          <PlayerForm
+            onCancel={() => setAdding(false)}
+            onSave={(player) => {
+              dispatch({ type: "addPlayer", player });
+              setShowAll(true);
+              setAdding(false);
+            }}
+          />
+        </Card>
+      )}
       <RosterSortSwitch value={sort} onChange={setSort} />
       {sort === "level" ? (
         <LevelGroups players={players} forceOpen={q.trim() !== ""} summary={(list) => t("{n} คน", { n: list.length })}>
@@ -418,12 +441,12 @@ function LevelRequests() {
           </span>
           <Button
             variant="accent"
-            className="px-3 py-2 text-xs"
+            className="min-h-11 px-3 text-xs"
             onClick={() => dispatch({ type: "updatePlayer", player: { ...p, level: p.levelRequest!, levelRequest: undefined } })}
           >
             {t("อนุมัติ")}
           </Button>
-          <Button className="px-3 py-2 text-xs" onClick={() => dispatch({ type: "updatePlayer", player: { ...p, levelRequest: undefined } })}>
+          <Button className="min-h-11 px-3 text-xs" onClick={() => dispatch({ type: "updatePlayer", player: { ...p, levelRequest: undefined } })}>
             {t("ไม่อนุมัติ")}
           </Button>
         </Card>
