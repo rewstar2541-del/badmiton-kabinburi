@@ -24,7 +24,7 @@ import { useMe } from "./PickMe";
 import { TvView } from "./TvView";
 import { QrOnlyPage } from "./PayQr";
 import { appName } from "@/lib/brand";
-import { Avatar, Icon } from "./ui";
+import { Icon } from "./ui";
 import { LANGS, t, useLang } from "@/lib/i18n";
 import { setTheme, useTheme } from "@/lib/theme";
 import { activeFestival, festivalInfo } from "@/lib/festival";
@@ -194,16 +194,14 @@ function Header() {
   return (
     <header className="mx-auto w-full max-w-3xl px-4 pt-[calc(env(safe-area-inset-top)+14px)] pb-3">
       <div className="flex items-center gap-3">
-        {player ? (
-          <Avatar name={player.name} photo={player.photo} size={46} />
-        ) : (
+        {!player && (
           <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-lime text-ink">
             <Icon.Shuttle width={24} height={24} strokeWidth={2.2} />
           </span>
         )}
         <div className="min-w-0 flex-1">
           <h1 className={`font-display leading-tight font-semibold ${player ? "truncate text-lg" : "text-base"}`}>
-            {player ? t("สวัสดี {name}", { name: player.name }) : appName()[0]}
+            {player ? t("สวัสดี") : appName()[0]}
           </h1>
           <p className="truncate text-sm text-zinc-600">{player ? appName()[0] : appName()[1]}</p>
         </div>
