@@ -85,7 +85,7 @@ function MemberProfile({ player, month, history }: { player: Player; month: stri
   return (
     <div className="space-y-4">
       <div className="flex flex-col items-center gap-1 text-center">
-        <FramedAvatar player={player} size={104} />
+        <FramedAvatar player={player} size={104} levelShown />
         <div className="min-w-0 max-w-full">
           <div className="flex items-center justify-center gap-2">
             <span className="truncate font-display text-2xl font-semibold">{player.name}</span>

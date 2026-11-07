@@ -59,7 +59,7 @@ export function ProfileTab() {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-4 px-1">
-        <FramedAvatar player={player} size={68} />
+        <FramedAvatar player={player} size={68} levelShown />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="truncate font-display text-2xl font-semibold">{player.name}</span>
