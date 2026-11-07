@@ -326,7 +326,8 @@ export function PlayerHome() {
           leadNext ? (
             <div className="text-sm text-zinc-700">
               {fest && <span aria-hidden>{fest.emoji} </span>}
-              {shortDate()} · {closed !== undefined ? t("วันนี้งดเล่น") : t("วันนี้ไม่มีก๊วน")}
+              {shortDate()} · <span className="font-semibold text-ink">{closed !== undefined ? t("วันนี้งดเล่น") : t("วันนี้ไม่มีก๊วน")}</span>
+              {closed ? ` · ${closed}` : ""}
             </div>
           ) : (
           <>

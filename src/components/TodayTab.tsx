@@ -102,7 +102,9 @@ function NextSession({ lead }: { lead?: boolean }) {
     setError(err ? t(err) : "");
   };
   const count = q.cap ? t("ลงชื่อแล้ว {n}/{cap} คน", { n: Math.min(q.confirmed.length, q.cap), cap: q.cap }) : t("ลงชื่อแล้ว {n} คน", { n: next.signups?.length ?? 0 });
-  const cancel = () => (!full || confirm(t("ยกเลิกลงชื่อ{when}? ก๊วนเต็มแล้ว ถ้าลงใหม่จะต่อคิวสำรอง", { when }))) && go(false);
+  // การ์ดหลักถามยืนยันทุกครั้ง กันนิ้วพลาดแล้วหลุดรายชื่อ
+  const cancel = () =>
+    (full ? confirm(t("ยกเลิกลงชื่อ{when}? ก๊วนเต็มแล้ว ถ้าลงใหม่จะต่อคิวสำรอง", { when })) : !lead || confirm(t("ยกเลิกลงชื่อ{when}?", { when }))) && go(false);
   if (lead)
     return (
       <div className="space-y-3">
@@ -118,23 +120,19 @@ function NextSession({ lead }: { lead?: boolean }) {
               <Auto text={next.announcement} />
             </p>
           )}
+          <div className="mt-1 text-sm text-zinc-700">{count}</div>
         </div>
         {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
-        <div className="flex flex-wrap items-center gap-1.5">
-          {mine && (
+        {mine && (
+          <div className="flex flex-wrap items-center gap-2">
             <span className={`rounded-full px-2.5 py-1 text-sm font-semibold ${waitPos > 0 ? "bg-amber-100 text-amber-800" : "bg-lime/40 text-ink"}`}>
-              {waitPos > 0 ? t("คุณอยู่รายชื่อสำรองลำดับที่ {n}", { n: waitPos }) : `✓ ${t("ลงชื่อแล้ว")}`}
+              {waitPos > 0 ? t("คุณอยู่รายชื่อสำรองลำดับที่ {n}", { n: waitPos }) : `✓ ${t("คุณลงชื่อแล้ว")}`}
             </span>
-          )}
-          <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-sm text-zinc-700">
-            {mine ? (q.cap ? t("{n}/{cap} คน", { n: Math.min(q.confirmed.length, q.cap), cap: q.cap }) : t("{n} คน", { n: next.signups?.length ?? 0 })) : count}
-          </span>
-          {mine && (
-            <button disabled={busy} className="ml-auto min-h-11 rounded-xl border border-zinc-200 px-3 text-sm font-semibold text-red-600 disabled:opacity-50" onClick={cancel}>
+            <button disabled={busy} className="ml-auto min-h-11 rounded-xl border border-zinc-300 px-3 text-sm font-semibold text-red-600 disabled:opacity-50" onClick={cancel}>
               {t("ยกเลิกลงชื่อ")}
             </button>
-          )}
-        </div>
+          </div>
+        )}
         {!mine && (
           <Button variant="accent" className="w-full" disabled={busy} onClick={() => go(true)}>
             {full ? t("เต็มแล้ว ลงชื่อสำรอง") : t("ลงชื่อล่วงหน้า{when}", { when })}
