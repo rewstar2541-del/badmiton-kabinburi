@@ -46,7 +46,7 @@ const TONES = [
   "bg-sky-50 text-sky-700",
   "bg-amber-50 text-amber-700",
   "bg-violet-50 text-violet-700",
-  "bg-zinc-100 text-zinc-600",
+  "bg-zinc-100 text-zinc-700",
   "bg-red-50 text-red-600",
 ];
 
@@ -76,21 +76,21 @@ export function Hero({
 }) {
   const Box = onClick ? "button" : "div";
   return (
-    <Box onClick={onClick} className={`relative block w-full overflow-hidden ${compact ? "p-4" : "p-5"} rounded-3xl border border-lime-dark/30 bg-lime/25 text-left text-ink active:scale-[0.99]`}>
+    <Box onClick={onClick} className={`relative block w-full overflow-hidden ${compact ? "p-4" : "p-5"} rounded-3xl border border-lime-dark/60 bg-lime/25 text-left text-ink active:scale-[0.99]`}>
       <div className="pointer-events-none absolute -top-20 -right-12 size-48 rounded-full bg-lime/20 blur-3xl" />
-      <span className="absolute top-4 right-4 grid size-11 place-items-center rounded-2xl bg-black/5 text-ink">
+      <span className="absolute top-4 right-4 grid size-11 place-items-center rounded-2xl border border-zinc-200 bg-white text-ink">
         <I width={24} height={24} />
       </span>
-      <div className="relative pr-14 text-sm text-zinc-600">{label}</div>
+      <div className="relative pr-14 text-sm text-zinc-700">{label}</div>
       <div className={`relative pr-14 font-display leading-tight font-semibold ${compact ? "text-2xl" : "text-4xl"}`}>
         {big}
-        {small && <span className="ml-1.5 text-lg font-medium text-zinc-600">{small}</span>}
+        {small && <span className="ml-1.5 text-lg font-medium text-zinc-700">{small}</span>}
       </div>
-      {sub && <div className="relative text-[15px] text-zinc-600">{sub}</div>}
+      {sub && <div className="relative text-[15px] text-zinc-700">{sub}</div>}
       {chips.length > 0 && (
         <div className={`relative flex flex-wrap gap-1.5 ${compact ? "mt-2" : "mt-3"}`}>
           {chips.map((c) => (
-            <span key={c} className="rounded-full bg-black/5 px-2.5 py-1 text-sm font-semibold text-ink">
+            <span key={c} className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-sm font-semibold text-ink">
               {c}
             </span>
           ))}
@@ -202,7 +202,7 @@ export function Rows({ items }: { items: Row[] }) {
             </span>
             <span className="min-w-0 flex-1">
               <span className={`block font-semibold ${r.danger ? "text-red-600" : ""}`}>{r.title}</span>
-              {r.sub && <span className="block truncate text-sm text-zinc-600">{r.sub}</span>}
+              {r.sub && <span className="block truncate text-sm text-zinc-700">{r.sub}</span>}
             </span>
             {r.right}
             <Icon.ChevronRight className="shrink-0 text-zinc-400" width={20} height={20} />
@@ -320,16 +320,16 @@ export function PlayerHome() {
         home
         top={
           <>
-            <div className="text-sm text-zinc-600">
+            <div className="text-sm text-zinc-700">
               {fest && <span aria-hidden>{fest.emoji} </span>}
               {t("วันนี้ของฉัน · {date}", { date: shortDate() })}
             </div>
             <div className="font-display text-3xl leading-tight font-semibold">{hero.big}</div>
-            <div className="text-[15px] text-zinc-600">{hero.sub}</div>
+            <div className="text-[15px] text-zinc-700">{hero.sub}</div>
             {chips.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {chips.map((c) => (
-                  <span key={c} className="rounded-full bg-black/5 px-2.5 py-1 text-sm font-semibold text-ink">
+                  <span key={c} className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-sm font-semibold text-ink">
                     {c}
                   </span>
                 ))}
@@ -363,7 +363,7 @@ export function PlayerHome() {
           { icon: Icon.Users, label: t("สมาชิก"), onClick: () => open("members") },
         ]}
       />
-      {sheet("rest", t("ขอพัก"), here ? <RestButton /> : <p className="text-zinc-600">{t("จ่ายแล้ว ไม่ต้องขอพัก")}</p>)}
+      {sheet("rest", t("ขอพัก"), here ? <RestButton /> : <p className="text-zinc-700">{t("จ่ายแล้ว ไม่ต้องขอพัก")}</p>)}
       {sheet(
         "pair",
         t("ขอคู่ / พาเพื่อน"),
@@ -465,17 +465,17 @@ export function AdminHome() {
       <HomeCard
         top={
           <button className="block w-full text-left" onClick={() => open("signups")}>
-            <div className="text-sm text-zinc-600">
+            <div className="text-sm text-zinc-700">
               {fest && <span aria-hidden>{fest.emoji} </span>}
               {t("วันนี้มาแล้ว · {date}", { date: shortDate() })}
             </div>
             <div className="font-display text-3xl leading-tight font-semibold">
               {day.checkIns.length}
-              <span className="ml-1.5 text-lg font-medium text-zinc-600">{t("คน · ลงชื่อ {n}", { n: announced ? (day.signups?.length ?? 0) : 0 })}</span>
+              <span className="ml-1.5 text-lg font-medium text-zinc-700">{t("คน · ลงชื่อ {n}", { n: announced ? (day.signups?.length ?? 0) : 0 })}</span>
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {[t("กำลังเล่น {n}", { n: playing }), t("รอคิว {n}", { n: waiting }), ...(q.waiting.length ? [t("สำรอง {n}", { n: q.waiting.length })] : [])].map((c) => (
-                <span key={c} className="rounded-full bg-black/5 px-2.5 py-1 text-sm font-semibold text-ink">
+                <span key={c} className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-sm font-semibold text-ink">
                   {c}
                 </span>
               ))}
@@ -485,11 +485,11 @@ export function AdminHome() {
       >
         {announced ? (
           <>
-            <button className="block w-full rounded-2xl bg-black/5 px-3 py-2 text-left text-sm" onClick={() => open("announce")}>
+            <button className="block w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-left text-sm" onClick={() => open("announce")}>
               <span className="font-semibold text-ink">📣 {day.announcementTitle ? <Auto text={day.announcementTitle} /> : t("วันนี้มีจัดก๊วน")}</span>
               {!!q.cap && ` · ${t("รับ {cap} คน", { cap: q.cap })}`}
               {day.announcement && (
-                <span className="mt-0.5 line-clamp-2 block whitespace-pre-line text-zinc-600">
+                <span className="mt-0.5 line-clamp-2 block whitespace-pre-line text-zinc-700">
                   <Auto text={day.announcement} />
                 </span>
               )}
@@ -499,7 +499,7 @@ export function AdminHome() {
             </Button>
           </>
         ) : closed ? (
-          <div className="rounded-2xl bg-black/5 px-3 py-2 text-sm">{t("วันนี้งดเล่น")}</div>
+          <div className="rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm">{t("วันนี้งดเล่น")}</div>
         ) : (
           <Button variant="accent" className="flex w-full items-center justify-center gap-2" onClick={() => open("announce")}>
             <Icon.Megaphone width={18} height={18} /> {t("ประกาศจัดก๊วนวันนี้")}
@@ -509,8 +509,8 @@ export function AdminHome() {
           <button className="-mb-2 flex min-h-11 w-full items-center gap-2 border-t border-black/10 py-2.5 text-left text-sm active:opacity-70" onClick={() => open("next")}>
             <Icon.Calendar width={18} height={18} className="shrink-0 text-ink" />
             <span className="max-w-[65%] shrink-0 truncate font-semibold">{t("{when} มีก๊วน", { when: next.when })}</span>
-            <span className="min-w-0 flex-1 truncate text-zinc-600">{nextIds.length ? names(nextIds) : t("ยังไม่มีใครลงชื่อ")}</span>
-            {!!nextIds.length && <CountBadge n={nextIds.length} tone="bg-black/5 text-ink" />}
+            <span className="min-w-0 flex-1 truncate text-zinc-700">{nextIds.length ? names(nextIds) : t("ยังไม่มีใครลงชื่อ")}</span>
+            {!!nextIds.length && <CountBadge n={nextIds.length} tone="border border-zinc-200 bg-white text-ink" />}
             <Icon.ChevronRight width={18} height={18} className="shrink-0 text-zinc-500" />
           </button>
         )}

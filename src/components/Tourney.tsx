@@ -657,8 +657,8 @@ function MyTeamCard({ t: tr, team, act }: { t: Tourney; team: TTeam; act: (a: Pl
           {t("มาถึงแล้ว")}
         </Button>
       )}
-      <div className="flex items-center gap-3 rounded-3xl border border-lime-dark/30 bg-lime/25 p-4 text-ink">
-        <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-black/5 text-ink">
+      <div className="flex items-center gap-3 rounded-3xl border border-lime-dark/60 bg-lime/25 p-4 text-ink">
+        <span className="grid size-11 shrink-0 place-items-center rounded-2xl border border-zinc-200 bg-white text-ink">
           <Icon.Trophy width={22} height={22} />
         </span>
         <div className="min-w-0 flex-1">

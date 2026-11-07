@@ -30,8 +30,8 @@ export function MembersDirectory() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-3xl border border-lime-dark/30 bg-lime/25 p-4 text-ink">
-        <div className="text-sm text-zinc-600">{t("สมาชิกก๊วนทั้งหมด")}</div>
+      <div className="rounded-3xl border border-lime-dark/60 bg-lime/25 p-4 text-ink">
+        <div className="text-sm text-zinc-700">{t("สมาชิกก๊วนทั้งหมด")}</div>
         <div className="font-display text-4xl font-semibold tabular-nums">
           {t("{n} คน", { n: members.length })}
         </div>
@@ -57,7 +57,7 @@ export function MembersDirectory() {
             <span className={`size-3 shrink-0 rounded-full ${barOf(c.value)}`} />
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-bold">{c.code}</span>
-              <span className={`block text-xs leading-tight ${level === c.value ? "text-zinc-600" : "text-zinc-500"}`}>{t(c.label)}</span>
+              <span className={`block text-xs leading-tight ${level === c.value ? "text-zinc-700" : "text-zinc-500"}`}>{t(c.label)}</span>
             </span>
             <span className="font-display text-lg font-semibold tabular-nums">{c.n}</span>
           </button>
@@ -112,13 +112,13 @@ function MemberProfile({ player, month, history }: { player: Player; month: stri
             <span className="truncate font-display text-2xl font-semibold">{player.name}</span>
             <LevelBadge level={player.level} />
           </div>
-          <div className="text-[15px] text-zinc-600">
+          <div className="text-[15px] text-zinc-700">
             {t(LEVELS.find((l) => l.value === player.level)?.label ?? "")}
           </div>
         </div>
       </div>
       <section className="space-y-1 rounded-2xl bg-zinc-50 px-3 py-2.5">
-        <h4 className="text-sm font-semibold text-zinc-600">{t("แนะนำตัว")}</h4>
+        <h4 className="text-sm font-semibold text-zinc-700">{t("แนะนำตัว")}</h4>
         {player.bio ? (
           <p className="text-[15px] whitespace-pre-line text-zinc-700">
             <Auto text={player.bio} />
@@ -175,16 +175,16 @@ export function PromotionProgress({ rec, next, quarter }: { rec: MonthRecord; ne
     <div className={`space-y-1.5 rounded-2xl px-3 py-2.5 ${winsOk && rateOk ? "bg-lime/40" : "bg-zinc-50"}`}>
       <div className="text-sm font-semibold">
         {winsOk && rateOk ? t("เข้าเกณฑ์เลื่อนเป็น {level} แล้ว", { level: levelCode(next) }) : t("ทางไปขั้น {level}", { level: levelCode(next) })}
-        <span className="block text-sm font-normal whitespace-nowrap text-zinc-600">{t("รวม 3 เดือน · รอบ {period}", { period: quarterLabel(quarter) })}</span>
+        <span className="block text-sm font-normal whitespace-nowrap text-zinc-700">{t("รวม 3 เดือน · รอบ {period}", { period: quarterLabel(quarter) })}</span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-zinc-200">
         <div className="h-full rounded-full bg-emerald-600" style={{ width: `${pct}%` }} />
       </div>
       <div className="flex flex-wrap gap-x-3 text-sm tabular-nums">
-        <span className={winsOk ? "text-emerald-700" : "text-zinc-600"}>
+        <span className={winsOk ? "text-emerald-700" : "text-zinc-700"}>
           {mark(winsOk)} {t("ชนะ {w}/{n} เกม", { w: rec.wins, n: rule.wins })}
         </span>
-        <span className={rateOk ? "text-emerald-700" : "text-zinc-600"}>
+        <span className={rateOk ? "text-emerald-700" : "text-zinc-700"}>
           {mark(rateOk)} {t("% ชนะ {r}/{n}", { r: rec.decided ? rate : "–", n: rule.rate })}
         </span>
       </div>

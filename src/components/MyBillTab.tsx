@@ -45,7 +45,7 @@ export function MyBillTab() {
         <Card className="py-8 text-center text-sm text-zinc-500">{t("วันนี้ยังไม่ได้เช็คอิน")}</Card>
       ) : (
         <>
-          <div className="rounded-3xl border border-lime-dark/30 bg-lime/25 p-5 text-ink">
+          <div className="rounded-3xl border border-lime-dark/60 bg-lime/25 p-5 text-ink">
             <div className="text-xs text-zinc-500">{checkedIn ? t("ยอดที่ต้องจ่าย") : t("ยอดค้างจ่ายจากวันก่อน")}</div>
             <div className="font-display text-4xl font-semibold">{baht(bill.total)}</div>
             <div className="mt-4 space-y-1.5 text-sm">
@@ -64,7 +64,7 @@ export function MyBillTab() {
                 ...prev.map((d) => [t("ค้าง {date}", { date: shortDate(d.date, d.date.slice(0, 4) !== date.slice(0, 4)) }), d.amount] as const),
                 ...bill.guests.map((g) => [t("แขก: {name}", { name: g.name }), g.amount] as const),
               ].map(([label, v]) => (
-                <div key={label} className="flex justify-between text-zinc-600">
+                <div key={label} className="flex justify-between text-zinc-700">
                   <span>{label}</span>
                   <span>{baht(Number(v))}</span>
                 </div>
@@ -120,7 +120,7 @@ function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean;
     <Card className="space-y-2">
       <div className="text-sm font-semibold">{t("ค่าน้ำ")}</div>
       {drinks.map((d) => (
-        <div key={d.id} className="flex items-center gap-2 text-sm text-zinc-600">
+        <div key={d.id} className="flex items-center gap-2 text-sm text-zinc-700">
           <span className="min-w-0 flex-1 truncate">
             <Auto text={d.note} />
           </span>
