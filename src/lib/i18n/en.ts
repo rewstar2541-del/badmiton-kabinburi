@@ -1284,8 +1284,6 @@ export const en: Record<string, string> = {
   "ค่าสนาม ค่าลูก PromptPay บัญชีธนาคาร": "Court fee, shuttles, PromptPay, bank account",
   "สนามวันนี้": "Today's court",
   "สนามเช่า จำนวนคอร์ท จอทีวี": "Rented court, courts, TV",
-  "ใช้บ่อย": "Used often",
-  "ตั้งครั้งเดียว นานๆ แก้": "Set once, rarely changed",
   "ระวัง": "Careful",
   "ราคา": "Prices",
   "ช่องทางรับเงิน": "Payment methods",
