@@ -56,7 +56,7 @@ export function AnnouncementBanner({ message, title, fee, date }: { message: str
 /** หน้าแรกผู้เล่น: การ์ดดำใบเดียว สถานะ + ประกาศ + ปุ่มลงชื่อ/เช็คอิน */
 export function HomeCard({ top, children }: { top: ReactNode; children?: ReactNode }) {
   return (
-    <div className="relative space-y-3 overflow-hidden rounded-3xl border border-lime-dark/30 bg-lime/25 p-4 text-ink">
+    <div className="relative space-y-3 overflow-hidden rounded-3xl border border-lime-dark/60 bg-lime/25 p-4 text-ink">
       <div className="pointer-events-none absolute -top-20 -right-12 size-48 rounded-full bg-lime/20 blur-3xl" />
       <div className="relative">{top}</div>
       {children && <div className="relative space-y-3">{children}</div>}
@@ -102,7 +102,7 @@ function NextSession({ dark }: { dark?: boolean }) {
     setError(err ? t(err) : "");
   };
   return (
-    <div className={`space-y-2 rounded-2xl p-3 ${dark ? "bg-black/5" : "bg-white ring-1 ring-zinc-100"}`}>
+    <div className={`space-y-2 rounded-2xl p-3 ${dark ? "border border-zinc-200 bg-white" : "bg-white ring-1 ring-zinc-100"}`}>
       <div className="text-sm">
         <span className={`font-semibold text-ink`}>
           {eventStyle(next.announcementTitle).emoji} {t("{when} มีก๊วน", { when })}
@@ -113,12 +113,12 @@ function NextSession({ dark }: { dark?: boolean }) {
             <Auto text={next.announcementTitle} />
           </>
         )}
-        <span className={dark ? "text-zinc-600" : "text-zinc-500"}>
+        <span className={dark ? "text-zinc-700" : "text-zinc-700"}>
           {" · "}
           {q.cap ? t("ลงชื่อแล้ว {n}/{cap} คน", { n: Math.min(q.confirmed.length, q.cap), cap: q.cap }) : t("ลงชื่อแล้ว {n} คน", { n: next.signups?.length ?? 0 })}
         </span>
         {next.announcement && (
-          <span className={`mt-0.5 line-clamp-1 block ${dark ? "text-zinc-600" : "text-zinc-500"}`}>
+          <span className={`mt-0.5 line-clamp-1 block ${dark ? "text-zinc-700" : "text-zinc-700"}`}>
             <Auto text={next.announcement} />
           </span>
         )}
@@ -211,7 +211,7 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
           <Card className="space-y-1 py-10 text-center">
             <Icon.Megaphone className="mx-auto text-zinc-300" width={32} height={32} />
             <p className="font-semibold">{t("วันนี้ยังไม่มีประกาศจัดก๊วน")}</p>
-            <p className="text-sm text-zinc-500">{t("แอดมินประกาศแล้ว จะลงชื่อได้ที่นี่")}</p>
+            <p className="text-sm text-zinc-700">{t("แอดมินประกาศแล้ว จะลงชื่อได้ที่นี่")}</p>
           </Card>
         )}
         <PollVote />
@@ -262,14 +262,14 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
 
       <Panel home={home} top={top}>
         {home && announced && (
-          <div className="rounded-2xl bg-black/5 px-3 py-2 text-sm">
+          <div className="rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm">
             <span className="font-semibold text-ink">
               {eventStyle(day.announcementTitle).emoji} {day.announcementTitle ? <Auto text={day.announcementTitle} /> : t("วันนี้มีจัดก๊วน")}
             </span>
             {!!day.announcementFee && ` · ${t("ค่าใช้จ่ายคนละ {amount}", { amount: baht(day.announcementFee) })}`}
             {!!q.cap && ` · ${t("รับ {cap} คน · ลงชื่อแล้ว {n}", { cap: q.cap, n: q.confirmed.length })}`}
             {day.announcement && (
-              <span className="mt-0.5 line-clamp-2 block whitespace-pre-line text-zinc-600">
+              <span className="mt-0.5 line-clamp-2 block whitespace-pre-line text-zinc-700">
                 <Auto text={day.announcement} />
               </span>
             )}
@@ -284,11 +284,11 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
               <span className="truncate font-display text-lg font-semibold">{player.name}</span>
               <LevelBadge level={player.level} />
             </div>
-            <div className="text-xs text-zinc-500">
+            <div className="text-xs text-zinc-700">
               {statusText}
             </div>
           </div>
-          <button className="text-xs text-zinc-500 underline" onClick={() => setMe(null)}>
+          <button className="text-xs text-zinc-700 underline" onClick={() => setMe(null)}>
             {t("ออกจากระบบ")}
           </button>
         </div>
@@ -316,7 +316,7 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
                   {t("เลิกเล่นแล้ว ไปจ่ายเงิน")}
                 </Button>
                 {played ? (
-                  <p className={`text-center text-xs text-zinc-500`}>{t("เล่นแล้ว เช็คอินผิดให้แอดมินยกเลิก")}</p>
+                  <p className={`text-center text-xs text-zinc-700`}>{t("เล่นแล้ว เช็คอินผิดให้แอดมินยกเลิก")}</p>
                 ) : undo ? (
                   <div className="space-y-2 rounded-2xl bg-red-50 p-3">
                     <p className="text-center text-sm font-medium text-red-700">{t("กดเช็คอินผิดใช่ไหม?")}</p>
@@ -328,7 +328,7 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
                         {t("ไม่มาแล้ว")}
                       </Button>
                     </div>
-                    <button className="w-full text-xs text-zinc-500 underline" onClick={() => setUndo(false)}>
+                    <button className="w-full text-xs text-zinc-700 underline" onClick={() => setUndo(false)}>
                       {t("ไม่ยกเลิก")}
                     </button>
                   </div>
@@ -355,7 +355,7 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
             <Button variant="accent" disabled={busy || !selfIn} onClick={() => act("checkIn")} className="flex items-center justify-center gap-1.5">
               <Icon.CheckIn width={18} height={18} /> {t("ถึงสนามแล้ว เช็คอิน")}
             </Button>
-            <Button variant="ghost" disabled={busy} className={home ? "!text-red-600 active:!bg-black/5" : "!text-red-600"} onClick={() => act("cancelSignUp")}>
+            <Button variant="ghost" disabled={busy} className={home ? "!text-red-600 active:!border border-zinc-200 bg-white" : "!text-red-600"} onClick={() => act("cancelSignUp")}>
               {t("ยกเลิกลงชื่อ")}
             </Button>
           </div>
@@ -367,7 +367,7 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
             <Button variant={home ? "secondary" : "accent"} disabled={busy || !selfIn} onClick={() => act("checkIn")} className={`flex items-center justify-center gap-1.5 ${home ? "!bg-black/10 !text-ink disabled:!text-zinc-400" : ""}`}>
               <Icon.CheckIn width={18} height={18} /> {t("ถึงสนามแล้ว เช็คอิน")}
             </Button>
-            {!selfIn && <p className={`text-center text-xs text-zinc-500`}>{notOpen ? t("วันนี้ยังไม่ได้ประกาศจัดก๊วน เช็คอินเองไม่ได้") : t("เต็มแล้ว ลงชื่อสำรองได้")}</p>}
+            {!selfIn && <p className={`text-center text-xs text-zinc-700`}>{notOpen ? t("วันนี้ยังไม่ได้ประกาศจัดก๊วน เช็คอินเองไม่ได้") : t("เต็มแล้ว ลงชื่อสำรองได้")}</p>}
           </div>
         )}
       </Panel>

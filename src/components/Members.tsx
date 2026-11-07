@@ -86,8 +86,8 @@ export function MembersView() {
 
   return (
     <>
-      <div className="flex items-center justify-between rounded-3xl border border-lime-dark/30 bg-lime/25 px-3 py-3 text-ink">
-        <button className="grid size-11 place-items-center rounded-full bg-black/5" onClick={() => setMonth(shiftMonth(month, -1))} aria-label={t("เดือนก่อน")}>
+      <div className="flex items-center justify-between rounded-3xl border border-lime-dark/60 bg-lime/25 px-3 py-3 text-ink">
+        <button className="grid size-11 place-items-center rounded-full border border-zinc-200 bg-white" onClick={() => setMonth(shiftMonth(month, -1))} aria-label={t("เดือนก่อน")}>
           ‹
         </button>
         <div className="text-center">
@@ -96,7 +96,7 @@ export function MembersView() {
             {t("รายเดือนจ่ายแล้ว {a} คน · รายปี {b} คน", { a: monthlyCount, b: annualCount })}
           </div>
         </div>
-        <button className="grid size-11 place-items-center rounded-full bg-black/5" onClick={() => setMonth(shiftMonth(month, 1))} aria-label={t("เดือนถัดไป")}>
+        <button className="grid size-11 place-items-center rounded-full border border-zinc-200 bg-white" onClick={() => setMonth(shiftMonth(month, 1))} aria-label={t("เดือนถัดไป")}>
           ›
         </button>
       </div>

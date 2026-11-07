@@ -85,7 +85,7 @@ function FeeEditor({ player, bill }: { player: Player; bill: Bill }) {
 
   if (!open)
     return (
-      <button className="w-full rounded-2xl border border-dashed border-zinc-300 px-3 py-2.5 text-sm font-medium text-zinc-600" onClick={() => setOpen(true)}>
+      <button className="w-full rounded-2xl border border-dashed border-zinc-300 px-3 py-2.5 text-sm font-medium text-zinc-700" onClick={() => setOpen(true)}>
         {adjusted ? t("แก้ยอดแล้ว (กดดู)") : t("แก้ยอดคนนี้ (วันนี้)")}
       </button>
     );
@@ -277,13 +277,13 @@ function DailyView() {
 
   return (
     <>
-      <div className="rounded-3xl border border-lime-dark/30 bg-lime/25 p-5 text-ink">
+      <div className="rounded-3xl border border-lime-dark/60 bg-lime/25 p-5 text-ink">
         <div className="text-xs text-zinc-500">{t("ยอดรวมวันนี้")}</div>
         <div className="font-display text-3xl font-semibold">{baht(total)}</div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/5">
+        <div className="mt-3 h-2 overflow-hidden rounded-full border border-zinc-200 bg-white">
           <div className="h-full rounded-full bg-lime transition-all" style={{ width: total ? `${(received / total) * 100}%` : 0 }} />
         </div>
-        <div className="mt-2 flex justify-between text-xs text-zinc-600">
+        <div className="mt-2 flex justify-between text-xs text-zinc-700">
           <span>{t("รับแล้ว {amount}", { amount: baht(received) })}</span>
           <span>{t("ใช้ลูก {n} ลูก", { n: shuttlesUsed })}</span>
         </div>
