@@ -1579,4 +1579,6 @@ export const en: Record<string, string> = {
   "iPhone: แตะไฟล์ที่โหลดแล้วกด เพิ่ม · Android: ใช้ปุ่ม Google Calendar": "iPhone: tap the downloaded file, then Add · Android: use the Google Calendar button",
   "ได้ไฟล์ .ics ใน iPhone แตะไฟล์แล้วกด เพิ่มทั้งหมด ส่วน Google Calendar นำเข้าไฟล์ได้ทางคอมพิวเตอร์ ในมือถือ Android ให้แตะวันในปฏิทินแล้วกด Google Calendar ทีละวัน": "Downloads an .ics file. On iPhone, tap the file and choose Add All. Google Calendar can import it on a computer; on Android, tap a day in the calendar and use Google Calendar one day at a time",
   "ตารางอาจเปลี่ยน ดูในแอพก่อนไป": "Schedule may change. Check the app before you go:",
+  "ประวัติการเล่นของ {name}": "{name}'s game history",
+  "แตะ ✕ เพื่อลบเกมที่ไม่ได้เล่นจริง เกมวันก่อน: คนที่ยังไม่จ่าย ยอดค้างจะเปลี่ยนตาม": "Tap ✕ to delete a game that didn't really happen. For past days, unpaid balances will change.",
 };
