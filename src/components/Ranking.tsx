@@ -86,10 +86,14 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
           club: appName().join(" "),
           title: t("ตารางอันดับ"),
           month: monthLabel(month),
-          rows: shown.map((r, i) => {
-            const p = byId.get(r.id);
-            return { rank: i + 1, name: p?.name ?? "?", photo: p?.photo, record: t("ชนะ {w}/{g}", { w: r.wins, g: r.games }), delta: r.delta, me: r.id === me };
-          }),
+          // 15 อันดับแรก + แถวของตัวเองถ้าอยู่นอก 15 อันดับ (รูปยาวเกินไปอ่านในไลน์ไม่ออก)
+          rows: rows
+            .map((r, i) => ({ r, i }))
+            .filter(({ i }) => i < 15 || i === mine)
+            .map(({ r, i }) => {
+              const p = byId.get(r.id);
+              return { rank: i + 1, name: p?.name ?? "?", photo: p?.photo, record: t("ชนะ {w}/{g}", { w: r.wins, g: r.games }), delta: r.delta, me: r.id === me };
+            }),
           note: t("แต้มขึ้นลงตามผลแพ้ชนะ ชนะทีมเก่งกว่าได้แต้มมากกว่า"),
           podiumNote: month === now ? t("3 อันดับแรก · แต้มที่ได้เดือนนี้") : t("3 อันดับแรก · แต้มที่ได้ในเดือนนั้น"),
         }),
@@ -150,21 +154,23 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
             })}
           </ol>
           {rows.length > 10 && (
-            <button className="w-full text-sm font-semibold text-zinc-600 underline" onClick={() => setAll(!all)}>
+            <button className="min-h-11 w-full py-2 text-sm font-semibold text-zinc-600 underline" onClick={() => setAll(!all)}>
               {all ? t("ย่อ") : t("ดูทั้งหมด {n} คน", { n: rows.length })}
             </button>
           )}
-          <Button variant="accent" className="w-full" disabled={img.busy} onClick={shareImg}>
-            {img.busy ? t("กำลังสร้างรูป...") : t("แชร์เป็นรูป")}
-          </Button>
-          {img.failed && <p className="text-center text-xs text-red-600">{t("สร้างรูปไม่สำเร็จ ลองใหม่อีกครั้ง")}</p>}
-          {img.overlay}
         </>
       )}
       {data && showPromotion && <PromotionList quarter={lastQ} data={data} admin={auth.isAdmin || !auth.online} />}
       <p className="text-xs text-zinc-500">
         {t("แต้มขึ้นลงตามผลแพ้ชนะ ชนะทีมเก่งกว่าได้แต้มมากกว่า")}
       </p>
+      {data && rows.length > 0 && (
+        <Button variant="accent" className="w-full" disabled={img.busy} onClick={shareImg}>
+          {img.busy ? t("กำลังสร้างรูป...") : t("แชร์เป็นรูป")}
+        </Button>
+      )}
+      {img.failed && <p className="text-center text-sm text-red-600">{t("สร้างรูปไม่สำเร็จ ลองใหม่อีกครั้ง")}</p>}
+      {img.overlay}
       {onYear && (
         <button className="w-full rounded-2xl bg-lime px-4 py-3 text-sm font-semibold text-ink" onClick={onYear}>
           {t("ดูสรุปก๊วนปี {year}", { year: yearLabel(today().slice(0, 4)) })}

@@ -35,6 +35,8 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
     img.crossOrigin = "anonymous";
     img.onload = () => ok(img);
     img.onerror = () => ok(null);
+    // เน็ตช้า: ไม่รอเกิน 2.5 วินาที ใช้ตัวอักษรแทน (รอนานไป iPhone จะไม่ยอมเปิดเมนูแชร์)
+    setTimeout(() => ok(null), 2500);
     img.src = src;
   });
 }
@@ -45,6 +47,44 @@ async function photos(people: Person[]) {
     [...new Set(people.map((p) => p.photo).filter((x): x is string => !!x))].map(async (src) => map.set(src, await loadImage(src))),
   );
   return map;
+}
+
+/**
+ * รอฟอนต์ของแอพ (โหลดตัวอักษรไทยทุกน้ำหนักที่ใช้ในรูปให้ครบ) แต่ไม่เกิน 3 วินาที (ไม่งั้นปุ่มค้าง)
+ * next/font แยกไฟล์ไทยกับอังกฤษ ถ้าไม่สั่งโหลด บางน้ำหนักอาจยังไม่มีในเครื่องตอนวาด
+ */
+function fontsReady() {
+  const f = fonts();
+  const sample = "กขคชนะ ABC 0123+-/";
+  const specs = [...[400, 500, 600, 700].map((w) => f.body(w, 24)), ...[600, 700].map((w) => f.display(w, 24))];
+  const load = Promise.all(specs.map((s) => document.fonts?.load(s, sample).catch(() => null))).then(() => document.fonts?.ready);
+  return Promise.race([load, new Promise((ok) => setTimeout(ok, 3000))]);
+}
+
+let ruler: HTMLSpanElement | null = null;
+
+/**
+ * ความกว้างข้อความ วัดด้วยหน้าเว็บแทน canvas
+ * Safari บน iPhone วัดภาษาไทยใน canvas ผิด (ได้ความกว้างเกือบ 0) ทำให้ "ชนะ" ทับแต้ม และข้อความกลางรูปเยื้อง
+ */
+function textW(g: CanvasRenderingContext2D, s: string) {
+  if (!ruler) {
+    ruler = document.createElement("span");
+    ruler.style.cssText = "position:absolute;left:-99999px;top:0;visibility:hidden;white-space:pre;";
+    document.body.appendChild(ruler);
+  }
+  ruler.style.font = g.font;
+  ruler.textContent = s;
+  return Math.max(ruler.getBoundingClientRect().width, g.measureText(s).width);
+}
+
+/** วาดข้อความตาม textAlign โดยคำนวณตำแหน่งเอง (ไม่พึ่งการจัดชิดของ canvas ที่ Safari วัดภาษาไทยผิด) */
+function put(g: CanvasRenderingContext2D, s: string, x: number, y: number) {
+  const align = g.textAlign;
+  const w = align === "left" || align === "start" ? 0 : textW(g, s);
+  g.textAlign = "left";
+  g.fillText(s, align === "center" ? x - w / 2 : align === "right" || align === "end" ? x - w : x, y);
+  g.textAlign = align;
 }
 
 function setup(height: number) {
@@ -58,6 +98,8 @@ function setup(height: number) {
 
 function roundRect(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, fill: string) {
   g.fillStyle = fill;
+  // เบราว์เซอร์เก่า (iOS ต่ำกว่า 16) ไม่มี roundRect วาดมุมตรงแทน
+  if (!g.roundRect) return g.fillRect(x, y, w, h);
   g.beginPath();
   g.roundRect(x, y, w, h, r);
   g.fill();
@@ -65,9 +107,9 @@ function roundRect(g: CanvasRenderingContext2D, x: number, y: number, w: number,
 
 /** ตัดข้อความให้พอดีความกว้าง */
 function fit(g: CanvasRenderingContext2D, s: string, max: number) {
-  if (g.measureText(s).width <= max) return s;
+  if (textW(g, s) <= max) return s;
   const chars = [...s];
-  while (chars.length && g.measureText(chars.join("") + "…").width > max) chars.pop();
+  while (chars.length && textW(g, chars.join("") + "…") > max) chars.pop();
   return chars.join("") + "…";
 }
 
@@ -87,7 +129,7 @@ function avatar(g: CanvasRenderingContext2D, f: ReturnType<typeof fonts>, imgs: 
     g.fillStyle = fg;
     g.font = f.display(600, size * 0.42);
     g.textAlign = "center";
-    g.fillText(p.name.trim().charAt(0) || "?", x + size / 2, y + size / 2 + 2);
+    put(g, p.name.trim().charAt(0) || "?", x + size / 2, y + size / 2 + 2);
   }
   g.restore();
 }
@@ -98,22 +140,56 @@ function header(g: CanvasRenderingContext2D, f: ReturnType<typeof fonts>, club: 
   g.textAlign = "left";
   g.fillStyle = LIME;
   g.font = f.body(600, 30);
-  g.fillText(fit(g, club, W - PAD * 2), PAD, 70);
+  put(g, fit(g, club, W - PAD * 2), PAD, 70);
   g.fillStyle = "#ffffff";
   g.font = f.display(600, 64);
-  g.fillText(fit(g, title, W - PAD * 2), PAD, 140);
+  put(g, fit(g, title, W - PAD * 2), PAD, 140);
   if (sub) {
     g.fillStyle = "rgba(255,255,255,0.7)";
     g.font = f.body(500, 32);
-    g.fillText(fit(g, sub, W - PAD * 2), PAD, 200);
+    put(g, fit(g, sub, W - PAD * 2), PAD, 200);
   }
 }
 
-function footer(g: CanvasRenderingContext2D, f: ReturnType<typeof fonts>, text: string, y: number) {
+const FOOT = 28;
+const FOOT_LINE = 36;
+
+/** ตัดข้อความเป็นหลายบรรทัด (ตัดที่ช่องว่าง ภาษาไทย/จีนที่ไม่มีช่องว่างตัดทีละตัว) */
+function wrap(g: CanvasRenderingContext2D, text: string, max: number) {
+  const lines: string[] = [];
+  let line = "";
+  for (const part of (text.match(/\S+\s*|\s+/g) ?? [])) {
+    const next = line + part;
+    if (textW(g, next.trimEnd()) <= max) {
+      line = next;
+      continue;
+    }
+    if (line) lines.push(line.trimEnd());
+    line = "";
+    for (const ch of [...part]) {
+      if (textW(g, line + ch) > max && line) {
+        lines.push(line);
+        line = "";
+      }
+      line += ch;
+    }
+  }
+  if (line.trim()) lines.push(line.trimEnd());
+  return lines;
+}
+
+function footerLines(f: ReturnType<typeof fonts>, text: string) {
+  const g = document.createElement("canvas").getContext("2d")!;
+  g.font = f.body(400, FOOT);
+  return wrap(g, text, W - PAD * 2);
+}
+
+/** ข้อความท้ายรูป วาดจากบรรทัดสุดท้ายขึ้นไป */
+function footer(g: CanvasRenderingContext2D, f: ReturnType<typeof fonts>, lines: string[], bottom: number) {
   g.fillStyle = "#71717a";
-  g.font = f.body(400, 24);
+  g.font = f.body(400, FOOT);
   g.textAlign = "center";
-  g.fillText(fit(g, text, W - PAD * 2), W / 2, y);
+  lines.forEach((l, i) => put(g, l, W / 2, bottom - (lines.length - 1 - i) * FOOT_LINE));
 }
 
 const toBlob = (c: HTMLCanvasElement) =>
@@ -123,35 +199,44 @@ export type RankImageRow = Person & { rank: number; record: string; delta: numbe
 
 /** รูปตารางอันดับรายเดือน */
 export async function rankingImage(o: { club: string; title: string; month: string; rows: RankImageRow[]; note: string; podiumNote?: string }): Promise<Blob> {
-  await document.fonts?.ready;
+  const [, imgs] = await Promise.all([fontsReady(), photos(o.rows)]);
   const f = fonts();
-  const imgs = await photos(o.rows);
   const HEAD = 250;
-  const ROW = 92;
+  const ROW = 100;
+  // แถวของตัวเองที่อยู่นอก 15 อันดับแรก มีช่อง "⋯" คั่น ไม่ให้ดูเหมือนอันดับหายไป
+  const GAP = 44;
+  const gapBefore = (i: number) => i > 0 && o.rows[i].rank !== o.rows[i - 1].rank + 1;
+  const rowY = (i: number) => i * ROW + o.rows.slice(0, i + 1).filter((_, j) => gapBefore(j)).length * GAP;
+  const listH = o.rows.length ? rowY(o.rows.length - 1) + ROW : 0;
   const top = o.rows.slice(0, 3);
   const PODIUM = top.length ? 520 : 0;
   const listY = HEAD + 16 + (PODIUM ? PODIUM + 24 : 0);
-  const height = listY + 16 + o.rows.length * ROW + 32 + 80;
+  const note = footerLines(f, o.note);
+  const height = listY + 16 + listH + 32 + 50 + note.length * FOOT_LINE;
   const { c, g } = setup(height);
   g.fillStyle = "#f4f4f5";
   g.fillRect(0, 0, W, height);
   header(g, f, o.club, o.title, o.month, HEAD);
   if (PODIUM) podium(g, f, imgs, top, HEAD + 16, PODIUM, o.podiumNote ?? "");
-  roundRect(g, PAD / 2, listY, W - PAD, o.rows.length * ROW + 32, 36, "#ffffff");
+  roundRect(g, PAD / 2, listY, W - PAD, listH + 32, 36, "#ffffff");
 
-  // วัดคอลัมน์แต้มจากตัวที่กว้างที่สุด แล้ววางผลแพ้ชนะไว้ซ้ายของคอลัมน์นั้น ไม่ให้ตัวเลขทับกัน
+  // แต้มชิดขวา ชื่ออยู่บรรทัดบน ผลแพ้ชนะอยู่บรรทัดล่างใต้ชื่อ ไม่อยู่แถวเดียวกับแต้ม จึงไม่มีทางทับกัน
   const deltaText = (d: number) => `${d > 0 ? "+" : ""}${d}`;
   g.font = f.display(600, 36);
-  const deltaW = Math.max(0, ...o.rows.map((r) => g.measureText(deltaText(r.delta)).width));
-  g.font = f.body(400, 26);
-  const recordW = Math.max(0, ...o.rows.map((r) => g.measureText(r.record).width));
-  const recordRight = W - PAD - deltaW - 28;
+  const deltaW = Math.max(0, ...o.rows.map((r) => textW(g, deltaText(r.delta))));
   const nameX = PAD + 150;
-  const nameMax = recordRight - recordW - 24 - nameX;
+  // เผื่อระยะไว้อีก 40px เผื่อเครื่องวาดด้วยฟอนต์สำรองที่กว้างกว่าที่วัดได้
+  const nameMax = W - PAD - deltaW - 68 - nameX;
 
   o.rows.forEach((r, i) => {
-    const y = listY + 16 + i * ROW;
+    const y = listY + 16 + rowY(i);
     const mid = y + ROW / 2;
+    if (gapBefore(i)) {
+      g.textAlign = "center";
+      g.fillStyle = "#a1a1aa";
+      g.font = f.display(600, 36);
+      put(g, "⋯", W / 2, y - GAP / 2);
+    }
     if (r.me) roundRect(g, PAD / 2 + 12, y + 6, W - PAD - 24, ROW - 12, 24, "rgba(198,244,50,0.45)");
     else if (i > 0) {
       g.fillStyle = "#f4f4f5";
@@ -160,24 +245,24 @@ export async function rankingImage(o: { club: string; title: string; month: stri
     g.textAlign = "center";
     g.fillStyle = r.rank <= 3 ? "#d97706" : "#a1a1aa";
     g.font = f.display(600, 36);
-    g.fillText(String(r.rank), PAD + 28, mid + 2);
+    put(g, String(r.rank), PAD + 28, mid + 2);
     avatar(g, f, imgs, r, PAD + 72, mid - 30, 60);
 
     g.textAlign = "right";
     g.font = f.display(600, 36);
     g.fillStyle = r.delta >= 0 ? "#047857" : "#dc2626";
-    g.fillText(deltaText(r.delta), W - PAD, mid + 2);
-    g.font = f.body(400, 26);
-    g.fillStyle = "#71717a";
-    g.fillText(r.record, recordRight, mid + 2);
+    put(g, deltaText(r.delta), W - PAD, mid + 2);
 
     g.textAlign = "left";
     g.fillStyle = INK;
-    g.font = f.body(r.me ? 700 : 500, 34);
-    g.fillText(fit(g, r.name, nameMax), nameX, mid + 2);
+    g.font = f.body(r.me ? 700 : 500, 32);
+    put(g, fit(g, r.name, nameMax), nameX, mid - 17);
+    g.font = f.body(400, 28);
+    g.fillStyle = "#71717a";
+    put(g, fit(g, r.record, nameMax), nameX, mid + 24);
   });
 
-  footer(g, f, o.note, height - 50);
+  footer(g, f, note, height - 50);
   return toBlob(c);
 }
 
@@ -198,19 +283,21 @@ function podium(g: CanvasRenderingContext2D, f: ReturnType<typeof fonts>, imgs: 
     const bh = barH(r);
     const by = base - bh;
     g.fillStyle = i === 0 ? LIME : "rgba(198,244,50,0.5)";
-    g.beginPath();
-    g.roundRect(x, by, BW, bh, [16, 16, 0, 0]);
-    g.fill();
+    if (g.roundRect) {
+      g.beginPath();
+      g.roundRect(x, by, BW, bh, [16, 16, 0, 0]);
+      g.fill();
+    } else g.fillRect(x, by, BW, bh);
     const size = i === 0 ? 96 : 80;
     avatar(g, f, imgs, r, x + BW / 2 - size / 2, by - size - 70, size);
     g.textAlign = "center";
     g.fillStyle = INK;
     g.font = f.body(600, 28);
-    g.fillText(fit(g, r.name, BW), x + BW / 2, by - 32);
+    put(g, fit(g, r.name, BW), x + BW / 2, by - 32);
     g.font = f.display(700, 40);
-    g.fillText(String(i + 1), x + BW / 2, by + 34);
+    put(g, String(i + 1), x + BW / 2, by + 34);
     g.font = f.display(600, 34);
-    g.fillText(`${r.delta > 0 ? "+" : ""}${r.delta}`, x + BW / 2, by + 78);
+    put(g, `${r.delta > 0 ? "+" : ""}${r.delta}`, x + BW / 2, by + 78);
   });
   g.fillStyle = "#e4e4e7";
   g.fillRect(PAD, base, W - PAD * 2, 2);
@@ -218,7 +305,7 @@ function podium(g: CanvasRenderingContext2D, f: ReturnType<typeof fonts>, imgs: 
     g.fillStyle = "#71717a";
     g.font = f.body(400, 24);
     g.textAlign = "center";
-    g.fillText(fit(g, note, W - PAD * 2), W / 2, base + 36);
+    put(g, fit(g, note, W - PAD * 2), W / 2, base + 36);
   }
 }
 
@@ -234,9 +321,8 @@ export async function yearImage(o: {
   lines: string[];
   link: string;
 }): Promise<Blob> {
-  await document.fonts?.ready;
+  const [, imgs] = await Promise.all([fontsReady(), photos([...o.lists.flatMap((l) => l.items), ...(o.duo?.people ?? [])])]);
   const f = fonts();
-  const imgs = await photos([...o.lists.flatMap((l) => l.items), ...(o.duo?.people ?? [])]);
   const STAT = 150;
   const HEAD = 180 + Math.ceil(o.stats.length / 2) * (STAT + 20) + 30;
   const ITEM = 76;
@@ -244,7 +330,8 @@ export async function yearImage(o: {
   const body =
     lists.reduce((s, l) => s + 70 + l.items.length * ITEM + 20, 0) + (o.duo ? 70 + 110 + 20 : 0) + o.lines.length * 46 + (o.lines.length ? 20 : 0);
   const hasBody = body > 0;
-  const height = HEAD + (hasBody ? 32 + body + 48 : 0) + 100;
+  const link = footerLines(f, o.link);
+  const height = HEAD + (hasBody ? 32 + body + 48 : 0) + 70 + link.length * FOOT_LINE;
   const { c, g } = setup(height);
   g.fillStyle = "#f4f4f5";
   g.fillRect(0, 0, W, height);
@@ -258,10 +345,10 @@ export async function yearImage(o: {
     g.textAlign = "left";
     g.fillStyle = "#ffffff";
     g.font = f.display(600, 60);
-    g.fillText(s.value, x + 30, y + 62);
+    put(g, s.value, x + 30, y + 62);
     g.fillStyle = "rgba(255,255,255,0.7)";
     g.font = f.body(400, 26);
-    g.fillText(fit(g, s.label, sw - 60), x + 30, y + 115);
+    put(g, fit(g, s.label, sw - 60), x + 30, y + 115);
   });
 
   if (hasBody) {
@@ -271,7 +358,7 @@ export async function yearImage(o: {
       g.textAlign = "left";
       g.fillStyle = INK;
       g.font = f.display(600, 36);
-      g.fillText(s, PAD, y + 35);
+      put(g, fit(g, s, W - PAD * 2), PAD, y + 35);
       y += 70;
     };
     for (const l of lists) {
@@ -281,17 +368,17 @@ export async function yearImage(o: {
         g.textAlign = "center";
         g.fillStyle = "#d97706";
         g.font = f.display(600, 32);
-        g.fillText(String(i + 1), PAD + 18, mid + 2);
+        put(g, String(i + 1), PAD + 18, mid + 2);
         avatar(g, f, imgs, p, PAD + 50, mid - 28, 56);
         g.textAlign = "right";
         g.fillStyle = "#71717a";
         g.font = f.body(400, 28);
-        g.fillText(p.value, W - PAD, mid + 2);
-        const vw = g.measureText(p.value).width;
+        put(g, p.value, W - PAD, mid + 2);
+        const vw = textW(g, p.value);
         g.textAlign = "left";
         g.fillStyle = INK;
         g.font = f.body(500, 32);
-        g.fillText(fit(g, p.name, W - PAD * 2 - 126 - vw - 24), PAD + 126, mid + 2);
+        put(g, fit(g, p.name, W - PAD * 2 - 126 - vw - 24), PAD + 126, mid + 2);
         y += ITEM;
       });
       y += 20;
@@ -305,24 +392,24 @@ export async function yearImage(o: {
       g.textAlign = "right";
       g.fillStyle = "#52525b";
       g.font = f.body(400, 26);
-      g.fillText(o.duo.value, W - PAD - 24, mid + 2);
-      const vw = g.measureText(o.duo.value).width;
+      put(g, o.duo.value, W - PAD - 24, mid + 2);
+      const vw = textW(g, o.duo.value);
       g.textAlign = "left";
       g.fillStyle = INK;
       g.font = f.body(600, 30);
-      g.fillText(fit(g, `${o.duo.people[0].name} + ${o.duo.people[1].name}`, W - PAD * 2 - 180 - vw - 48), PAD + 170, mid + 2);
+      put(g, fit(g, `${o.duo.people[0].name} + ${o.duo.people[1].name}`, W - PAD * 2 - 180 - vw - 48), PAD + 170, mid + 2);
       y += 130;
     }
     g.textAlign = "left";
     g.fillStyle = "#52525b";
     g.font = f.body(400, 28);
     for (const line of o.lines) {
-      g.fillText(fit(g, line, W - PAD * 2), PAD, y + 23);
+      put(g, fit(g, line, W - PAD * 2), PAD, y + 23);
       y += 46;
     }
   }
 
-  footer(g, f, o.link, height - 50);
+  footer(g, f, link, height - 50);
   return toBlob(c);
 }
 
@@ -331,13 +418,14 @@ export async function yearImage(o: {
  * เว็บในแอพ LINE / Facebook บันทึกไฟล์ไม่ได้ จึงคืนรูป (data URL) ให้แสดงเต็มจอแล้วกดค้างบันทึกเอง
  */
 export async function shareImage(blob: Blob, name: string): Promise<string | null> {
-  if (inAppBrowser())
-    return new Promise((ok, fail) => {
+  const dataUrl = () =>
+    new Promise<string>((ok, fail) => {
       const r = new FileReader();
       r.onload = () => ok(r.result as string);
       r.onerror = () => fail(r.error);
       r.readAsDataURL(blob);
     });
+  if (inAppBrowser()) return dataUrl();
   const file = new File([blob], name, { type: "image/png" });
   if (navigator.canShare?.({ files: [file] })) {
     try {
@@ -345,6 +433,8 @@ export async function shareImage(blob: Blob, name: string): Promise<string | nul
       return null;
     } catch (e) {
       if ((e as Error).name === "AbortError") return null;
+      // iPhone ไม่ยอมเปิดเมนูแชร์ถ้าสร้างรูปนานเกินไปหลังกดปุ่ม แสดงรูปเต็มจอให้กดค้างแชร์แทน
+      return dataUrl();
     }
   }
   downloadBlob(blob, name);
