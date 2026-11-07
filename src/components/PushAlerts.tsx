@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/remote";
 import { useStore } from "@/lib/store";
 import { t } from "@/lib/i18n";
@@ -10,6 +10,9 @@ import {
   enablePush,
   isIos,
   pushOwner,
+  pushOptedOut,
+  sendTestPush,
+  setPushOptOut,
   savePushOwner,
   getPushEnabled,
   pushCount,
@@ -19,8 +22,8 @@ import {
   type PushSupport,
 } from "@/lib/push";
 import { externalAppUrl, inLineApp } from "@/lib/download";
-import { savedPin } from "./PickMe";
-import { Button, Card } from "./ui";
+import { savedPin, useMe } from "./PickMe";
+import { Button, Card, Sheet } from "./ui";
 
 /** แจ้งเตือนเด้งในมือถือ (Web Push): สถานะของเครื่องนี้ */
 interface PushState {
@@ -72,6 +75,8 @@ export function usePush(playerId: string | null) {
     setBusy(true);
     setError("");
     const err = await enablePush(supabase, playerId, savedPin.get());
+    // กดเปิดเอง = เลิกเป็น "ปิดเอง" (ถ้าไม่ได้สิทธิ์ ก็ไม่ถือว่าปิดเอง)
+    if (!err) setPushOptOut(false);
     setBusy(false);
     if (err && err !== "denied") setError(t(err));
     await refresh();
@@ -79,6 +84,7 @@ export function usePush(playerId: string | null) {
   const turnOff = async () => {
     if (busy) return;
     setBusy(true);
+    setPushOptOut(true);
     await disablePush(supabase).catch(() => {});
     setBusy(false);
     await refresh();
@@ -156,7 +162,28 @@ export function PushToggle({ playerId }: { playerId: string }) {
       {s.support !== "ok" && <NotSupported support={s.support} />}
       {s.support === "ok" && s.denied && !s.on && <Denied />}
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+      {s.on && s.adminOn && s.support === "ok" && <TestPush />}
     </Card>
+  );
+}
+
+/** ปุ่มส่งแจ้งเตือนทดสอบ: ส่งใน 6 วินาที ให้สลับไปหน้าจอโฮมรอดู */
+function TestPush() {
+  const [state, setState] = useState<"idle" | "wait" | { ok: boolean; text: string }>("idle");
+  return (
+    <div className="space-y-2 border-t border-zinc-100 pt-3">
+      <Button
+        className="min-h-11 w-full"
+        disabled={state === "wait"}
+        onClick={async () => {
+          setState("wait");
+          setState(await sendTestPush());
+        }}
+      >
+        {state === "wait" ? t("จะส่งในอีก 6 วินาที ออกไปหน้าจอโฮมรอดูได้เลย") : t("ส่งแจ้งเตือนทดสอบ")}
+      </Button>
+      {typeof state === "object" && <p className={`rounded-xl px-3 py-2 text-sm ${state.ok ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>{state.text}</p>}
+    </div>
   );
 }
 
@@ -164,7 +191,7 @@ const DISMISS = "badminton-kabinburi:push-prompt";
 
 /** หน้าแรกผู้เล่น (เช็คอินแล้ว): ชวนเปิดแจ้งเตือนเด้งครั้งเดียว กด "ไม่ต้อง" แล้วไม่ถามอีก */
 export function PushPrompt({ playerId }: { playerId: string }) {
-  const { s, busy, error, turnOn } = usePush(playerId);
+  const { s, error } = usePush(playerId);
   const [hidden, setHidden] = useState(() => {
     try {
       return localStorage.getItem(DISMISS) === "1";
@@ -173,30 +200,15 @@ export function PushPrompt({ playerId }: { playerId: string }) {
     }
   });
   const [steps, setSteps] = useState(false);
-  // กดเปิดจากการ์ดนี้แล้ว: ค้างการ์ดไว้บอกผล (เปิดแล้ว / มือถือไม่อนุญาต)
-  const [asked, setAsked] = useState(false);
-  if (hidden || !s?.ready || !s.adminOn) return null;
-  if (!asked && (s.on || s.denied)) return null;
-  if (s.support !== "ok" && s.support !== "ios-install" && s.support !== "in-app") return null;
+  if (hidden || !s?.ready || !s.adminOn || s.on || s.denied) return null;
+  // เครื่องที่รับได้เลย (ติดตั้งแล้ว/Android) ใช้หน้าต่างขอสิทธิ์อัตโนมัติ (PushAuto) แทน การ์ดนี้ไว้ชวนเฉพาะคนที่ยังต้องติดตั้งหรือเปิดในเบราว์เซอร์อื่น
+  if (s.support !== "ios-install" && s.support !== "in-app") return null;
   const dismiss = () => {
     setHidden(true);
     try {
       localStorage.setItem(DISMISS, "1");
     } catch {}
   };
-  if (asked && (s.on || s.denied))
-    return (
-      <Card className="space-y-3 border-lime ring-[1.5px] ring-lime">
-        {s.on ? (
-          <p className="rounded-2xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-700">✓ {t("เปิดแล้ว มือถือจะเด้งเตือนเมื่ออีก 1 เกมถึงคิว ปิดได้ที่หน้าโปรไฟล์")}</p>
-        ) : (
-          <Denied />
-        )}
-        <Button className="min-h-11 w-full" onClick={dismiss}>
-          {t("ตกลง")}
-        </Button>
-      </Card>
-    );
   return (
     <Card className="space-y-3 border-lime ring-[1.5px] ring-lime">
       <div className="flex gap-3">
@@ -215,19 +227,6 @@ export function PushPrompt({ playerId }: { playerId: string }) {
         <Button className="min-h-11 w-full" onClick={dismiss}>
           {t("ไม่ต้อง")}
         </Button>
-        {s.support === "ok" && (
-          <Button
-            variant="primary"
-            className="min-h-11"
-            disabled={busy}
-            onClick={async () => {
-              setAsked(true);
-              await turnOn();
-            }}
-          >
-            {busy ? t("กำลังเปิด…") : t("เปิดแจ้งเตือน")}
-          </Button>
-        )}
         {s.support === "ios-install" && (
           <Button variant="primary" className="min-h-11" onClick={() => setSteps(!steps)}>
             {steps ? t("ซ่อนวิธี") : t("ดูวิธีเปิดบน iPhone")}
@@ -290,5 +289,98 @@ export function PushAdminCard() {
       {count !== null && <p className="text-sm text-zinc-600">{t("ผู้เล่นเปิดรับแล้ว {n} คน", { n: count })}</p>}
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
     </Card>
+  );
+}
+
+const SNOOZE = "badminton-kabinburi:push-snooze";
+
+/**
+ * เปิดแอพหลังเข้าสู่ระบบ: ขอเปิดแจ้งเตือนให้เลย (เปิดเป็นค่าเริ่มต้น ผู้เล่นปิดเองได้ที่โปรไฟล์)
+ * - เคยอนุญาตแล้วแต่ยังไม่ได้สมัคร: สมัครให้เงียบๆ
+ * - ยังไม่เคยถาม: ขึ้นหน้าต่างปุ่มเดียว "เปิดแจ้งเตือน" (มือถือบังคับให้ผู้ใช้กดเอง เปิดโดยไม่ถามไม่ได้)
+ * - ผู้เล่นปิดเองไว้ หรือมือถือบล็อกไว้: ไม่ถามซ้ำ
+ */
+export function PushAuto() {
+  const [me] = useMe();
+  const { auth } = useStore();
+  const online = auth.online && !auth.demo;
+  const push = usePush(online ? me : null);
+  const { s, busy, error, turnOn } = push;
+  const [later, setLater] = useState(() => {
+    try {
+      return sessionStorage.getItem(SNOOZE) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const [asked, setAsked] = useState(false);
+  const silent = useRef(false);
+
+  // เคยอนุญาตสิทธิ์แล้ว (เช่น เปิดไว้แล้วเครื่องถูกลบข้อมูลการสมัคร): สมัครให้เองโดยไม่ต้องถามอีก
+  useEffect(() => {
+    if (!s?.ready || !s.adminOn || s.on || s.support !== "ok" || !me || silent.current) return;
+    if (typeof Notification === "undefined" || Notification.permission !== "granted" || pushOptedOut()) return;
+    silent.current = true;
+    void turnOn();
+  }, [s, me, turnOn]);
+
+  if (!online || !me || !s?.ready || !s.adminOn || s.support !== "ok") return null;
+  if (pushOptedOut() || s.denied) return null;
+  if (s.on && !asked) return null;
+  if (later && !asked) return null;
+  if (typeof Notification !== "undefined" && Notification.permission === "granted" && !asked) return null;
+
+  const close = () => {
+    setLater(true);
+    setAsked(false);
+    try {
+      sessionStorage.setItem(SNOOZE, "1");
+    } catch {}
+  };
+  return (
+    <Sheet
+      keepOpen
+      onClose={close}
+      title={
+        <div>
+          <h3 className="font-display text-xl font-semibold">{s.on ? t("เปิดแล้ว") : t("เปิดแจ้งเตือนในมือถือ")}</h3>
+        </div>
+      }
+    >
+      <div className="space-y-4">
+        {s.on ? (
+          <p className="rounded-2xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-700">✓ {t("เปิดแล้ว มือถือจะเด้งเตือนเมื่อเปิดลงชื่อ อีก 1 เกมถึงคิว และถึงคิวลงสนาม ปิดได้ที่หน้าโปรไฟล์")}</p>
+        ) : (
+          <>
+            <p className="text-[15px]">{t("ให้มือถือเด้งเตือนเมื่อเปิดลงชื่อก๊วน อีก 1 เกมถึงคิว และถึงคิวลงสนาม ไม่ต้องเฝ้าจอ")}</p>
+            <p className="text-sm text-zinc-600">{t("กดปุ่มด้านล่าง แล้วเลือก \"อนุญาต\" เมื่อมือถือถาม")}</p>
+          </>
+        )}
+        {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+        {s.denied && <Denied />}
+        {s.on || s.denied ? (
+          <Button className="min-h-12 w-full" variant="primary" onClick={() => setAsked(false)}>
+            {t("ตกลง")}
+          </Button>
+        ) : (
+          <div className="grid gap-2">
+            <Button
+              variant="primary"
+              className="min-h-12 w-full"
+              disabled={busy}
+              onClick={async () => {
+                setAsked(true);
+                await turnOn();
+              }}
+            >
+              {busy ? t("กำลังเปิด…") : t("เปิดแจ้งเตือน")}
+            </Button>
+            <Button className="min-h-11 w-full" onClick={close}>
+              {t("ไว้ทีหลัง")}
+            </Button>
+          </div>
+        )}
+      </div>
+    </Sheet>
   );
 }

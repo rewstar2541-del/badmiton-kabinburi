@@ -125,6 +125,38 @@ export async function enablePush(db: SupabaseClient, playerId: string, pin: stri
   }
 }
 
+const OPT_OUT = "badminton-kabinburi:push-optout";
+/** ผู้เล่นปิดแจ้งเตือนเองบนเครื่องนี้ = ไม่ขอสิทธิ์/ไม่เปิดให้เองอีก */
+export function pushOptedOut(): boolean {
+  try {
+    return localStorage.getItem(OPT_OUT) === "1";
+  } catch {
+    return false;
+  }
+}
+export function setPushOptOut(v: boolean) {
+  try {
+    if (v) localStorage.setItem(OPT_OUT, "1");
+    else localStorage.removeItem(OPT_OUT);
+  } catch {}
+}
+
+/** ส่งแจ้งเตือนทดสอบหาเครื่องนี้ (เซิร์ฟเวอร์รอ 6 วินาทีก่อนส่ง ให้สลับออกจากแอพทัน) คืนข้อความผลลัพธ์ */
+export async function sendTestPush(): Promise<{ ok: boolean; text: string }> {
+  const sub = await currentSubscription();
+  if (!sub) return { ok: false, text: "เครื่องนี้ยังไม่ได้เปิดแจ้งเตือน" };
+  try {
+    const r = await fetch("/api/push", { method: "POST", headers: { ...HDR, "Content-Type": "application/json" }, body: JSON.stringify({ test: sub.endpoint }) });
+    const j = (await r.json()) as { ok?: boolean; code?: number; host?: string; error?: string; detail?: string };
+    if (j.ok) return { ok: true, text: `ส่งถึงบริการแจ้งเตือนแล้ว (${j.host ?? ""} รหัส ${j.code ?? ""}) ถ้าไม่เห็นแจ้งเตือนบนมือถือ ดูการตั้งค่าแจ้งเตือนของมือถือ` };
+    if (j.error === "too-fast") return { ok: false, text: "รอสักครู่แล้วกดใหม่" };
+    if (j.error === "not-subscribed") return { ok: false, text: "เซิร์ฟเวอร์ไม่พบเครื่องนี้ ลองปิดแล้วเปิดแจ้งเตือนใหม่" };
+    return { ok: false, text: `ส่งไม่สำเร็จ (${j.host ?? ""} รหัส ${j.code ?? j.error ?? "?"} ${j.detail ?? ""})` };
+  } catch {
+    return { ok: false, text: "เชื่อมต่อไม่ได้ ลองใหม่" };
+  }
+}
+
 const OWNER = "badminton-kabinburi:push-owner";
 /** ผู้เล่นที่เครื่องนี้รับแจ้งเตือนแทนอยู่ (เผื่อเปลี่ยนคนบนเครื่องเดียวกัน) */
 export function pushOwner(): string | null {

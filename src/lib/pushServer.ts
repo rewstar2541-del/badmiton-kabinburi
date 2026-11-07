@@ -96,6 +96,54 @@ export function notifyTurnsThrottled(): Promise<NotifyResult> {
   return waiting;
 }
 
+interface Msg {
+  playerId: string;
+  /** กันส่งซ้ำ: 1 เรื่องต่อคนต่อวัน */
+  key: string;
+  title: string;
+  body: string;
+  tag: string;
+}
+
+function setVapid() {
+  const c = pushConfig();
+  webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:admin@badmiton-kabinburi.vercel.app", c.publicKey, c.privateKey);
+}
+
+/** รวมเรื่องที่ต้องแจ้งตอนนี้: อีก 1 เกมถึงคิว, ถึงคิวลงสนามแล้ว, เปิดลงชื่อ/อีเว้นใหม่ */
+async function collect(d: SupabaseClient, date: string, subscribers: string[]): Promise<Msg[]> {
+  const out: Msg[] = [];
+  const { state, day } = await loadDay(d, date);
+  const now = Date.now();
+  if (day) {
+    for (const x of turnSoon(day, state.players, state.settings))
+      out.push({ playerId: x.playerId, key: x.key, title: `อีก 1 เกมถึงคิวคุณ ที่สนาม ${x.court}`, body: "เตรียมตัวได้เลย จบเกมนี้แล้วลงต่อ", tag: `turn-${date}` });
+    // เกมที่เพิ่งเริ่ม (ไม่เกิน 3 นาที) แจ้งคนที่ได้ลงสนามว่าถึงคิวแล้ว
+    for (const g of day.games)
+      if (!g.endedAt && now - g.startedAt < 3 * 60 * 1000)
+        for (const id of g.playerIds) out.push({ playerId: id, key: `play:${g.id}`, title: `ถึงคิวคุณแล้ว ลงสนาม ${g.court}`, body: "ไปที่สนามได้เลย", tag: `play-${date}` });
+  }
+  // ประกาศเปิดลงชื่อ / อีเว้นที่เพิ่งสร้าง (ไม่เกิน 36 ชม.) แจ้งทุกคนที่เปิดรับแจ้งเตือน
+  const anns = await rows<{ date: string; message: string; title: string | null; created_at: string }>(
+    d.from("announcements").select("date,message,title,created_at").gte("date", date).gte("created_at", new Date(now - 36 * 3600 * 1000).toISOString()),
+  );
+  const wd = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
+  for (const a of anns) {
+    const dt = new Date(a.date + "T00:00:00Z");
+    const label = `${wd[dt.getUTCDay()]} ${dt.getUTCDate()}/${dt.getUTCMonth() + 1}`;
+    const text = a.title ? `⭐ ${a.title}` : "🏸 เปิดลงชื่อก๊วน";
+    for (const id of subscribers)
+      out.push({ playerId: id, key: `announce:${a.date}:${Date.parse(a.created_at)}`, title: `${text} ${label}`, body: a.message?.trim() ? a.message.trim().slice(0, 120) : "ลงชื่อได้ในแอพ", tag: `announce-${a.date}` });
+  }
+  // คนเดียวกัน เรื่องเดียวกันซ้ำ (เช่นอยู่ทั้งในเกมและคิว) เอาอันแรก
+  const seen = new Set<string>();
+  return out.filter((m) => !seen.has(m.playerId + "|" + m.key) && seen.add(m.playerId + "|" + m.key));
+}
+
+/**
+ * หาเรื่องที่ต้องแจ้ง แล้วส่งให้ทุกเครื่องที่เปิดรับไว้ คนละครั้งต่อเรื่อง
+ * เรียกซ้ำได้ (กี่เครื่องเรียกพร้อมกันก็ไม่ส่งซ้ำ เพราะจองในตาราง push_sent ก่อนส่ง)
+ */
 export async function notifyTurns(): Promise<NotifyResult> {
   const c = pushConfig();
   if (!c.ready) return { sent: 0, skipped: "not-configured" };
@@ -106,59 +154,82 @@ export async function notifyTurns(): Promise<NotifyResult> {
   if (ps.enabled === false) return { sent: 0, skipped: "off" };
 
   const date = bangkokDate();
-  const { state, day } = await loadDay(d, date);
-  if (!day) return { sent: 0 };
-  const due = turnSoon(day, state.players, state.settings);
+  const allSubs = await rows<{ endpoint: string; player_id: string; p256dh: string; auth: string }>(d.from("push_subscriptions").select("endpoint,player_id,p256dh,auth"));
+  if (!allSubs.length) return { sent: 0 };
+  const subscribers = [...new Set(allSubs.map((s) => s.player_id))];
+  const due = (await collect(d, date, subscribers)).filter((m) => subscribers.includes(m.playerId));
   if (!due.length) return { sent: 0 };
-
-  const subs = await rows<{ endpoint: string; player_id: string; p256dh: string; auth: string }>(
-    d.from("push_subscriptions").select("endpoint,player_id,p256dh,auth").in("player_id", due.map((x) => x.playerId)),
-  );
-  const withSub = due.filter((x) => subs.some((s) => s.player_id === x.playerId));
-  if (!withSub.length) return { sent: 0 };
 
   // จองก่อนส่ง: แถวที่เพิ่มได้จริงเท่านั้นที่ส่ง
   const { data: claimed, error } = await d
     .from("push_sent")
-    .upsert(withSub.map((x) => ({ date, player_id: x.playerId, key: x.key })), { onConflict: "date,player_id,key", ignoreDuplicates: true })
-    .select("player_id");
+    .upsert(due.map((x) => ({ date, player_id: x.playerId, key: x.key })), { onConflict: "date,player_id,key", ignoreDuplicates: true })
+    .select("player_id,key");
   if (error) throw new Error(error.message);
-  const mine = new Set((claimed ?? []).map((x) => x.player_id as string));
+  const mine = new Set((claimed ?? []).map((x) => `${x.player_id}|${x.key}`));
+  const todo = due.filter((m) => mine.has(`${m.playerId}|${m.key}`));
 
-  webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:admin@badmiton-kabinburi.vercel.app", c.publicKey, c.privateKey);
+  setVapid();
   let sent = 0;
   const gone: string[] = [];
   const reached = new Set<string>();
   await Promise.all(
-    withSub
-      .filter((x) => mine.has(x.playerId))
-      .flatMap((x) =>
-        subs
-          .filter((s) => s.player_id === x.playerId)
-          .map(async (s) => {
-            const payload = JSON.stringify({
-              title: `อีก 1 เกมถึงคิวคุณ ที่สนาม ${x.court}`,
-              body: "เตรียมตัวได้เลย จบเกมนี้แล้วลงต่อ",
-              tag: `turn-${date}`,
-              url: "/",
-            });
-            try {
-              await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 15 * 60, urgency: "high" });
-              sent++;
-              reached.add(x.playerId);
-            } catch (e) {
-              // เครื่องยกเลิกรับแล้ว (ลบแอพ/ปิดสิทธิ์) หรือสมัครด้วยกุญแจเก่า (403) ลบทิ้ง
-              const code = (e as { statusCode?: number }).statusCode;
-              if (code === 403 || code === 404 || code === 410) gone.push(s.endpoint);
-            }
-          }),
-      ),
+    todo.flatMap((m) =>
+      allSubs
+        .filter((s) => s.player_id === m.playerId)
+        .map(async (s) => {
+          const r = await deliver(s, { title: m.title, body: m.body, tag: m.tag, url: "/" });
+          if (r.ok) {
+            sent++;
+            reached.add(`${m.playerId}|${m.key}`);
+          } else if (r.code === 403 || r.code === 404 || r.code === 410) gone.push(s.endpoint);
+        }),
+    ),
   );
   if (gone.length) await d.from("push_subscriptions").delete().in("endpoint", gone);
   // ส่งไม่ถึงสักเครื่อง (เน็ตของบริการแจ้งเตือนล่ม) ปลดการจองไว้ ครั้งหน้าลองส่งใหม่
-  for (const x of withSub)
-    if (mine.has(x.playerId) && !reached.has(x.playerId)) await d.from("push_sent").delete().eq("date", date).eq("player_id", x.playerId).eq("key", x.key);
+  for (const m of todo)
+    if (!reached.has(`${m.playerId}|${m.key}`)) await d.from("push_sent").delete().eq("date", date).eq("player_id", m.playerId).eq("key", m.key);
   // ล้างประวัติกันส่งซ้ำของวันก่อนๆ (ทำเฉพาะรอบที่มีการส่ง)
   if (mine.size) await d.from("push_sent").delete().lt("date", date);
   return { sent };
+}
+
+interface DeliverResult {
+  ok: boolean;
+  /** รหัสที่บริการแจ้งเตือนของมือถือตอบกลับ (201 = รับไปส่งต่อแล้ว) */
+  code?: number;
+  host?: string;
+  detail?: string;
+}
+
+async function deliver(s: { endpoint: string; p256dh: string; auth: string }, payload: { title: string; body: string; tag: string; url: string }): Promise<DeliverResult> {
+  const host = new URL(s.endpoint).host;
+  try {
+    const r = await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(payload), { TTL: 15 * 60, urgency: "high" });
+    return { ok: true, code: r?.statusCode, host };
+  } catch (e) {
+    const x = e as { statusCode?: number; body?: string; message?: string };
+    console.error("push send failed", host, x.statusCode, x.body ?? x.message);
+    return { ok: false, code: x.statusCode, host, detail: String(x.body ?? x.message ?? "").slice(0, 120) };
+  }
+}
+
+const lastTest = new Map<string, number>();
+
+/**
+ * ส่งแจ้งเตือนทดสอบหาเครื่องนี้เครื่องเดียว (รู้ endpoint ของเครื่องตัวเองเท่านั้นถึงสั่งได้)
+ * รอ 6 วินาทีก่อนส่ง ให้ผู้ทดสอบสลับออกจากแอพทัน และคืนรหัสที่บริการแจ้งเตือนตอบกลับ ไว้ดูว่าขาดตรงไหน
+ */
+export async function sendTest(endpoint: string): Promise<DeliverResult & { error?: string }> {
+  const c = pushConfig();
+  if (!c.ready) return { ok: false, error: "not-configured" };
+  const now = Date.now();
+  if (now - (lastTest.get(endpoint) ?? 0) < 20000) return { ok: false, error: "too-fast" };
+  lastTest.set(endpoint, now);
+  const { data } = await db().from("push_subscriptions").select("endpoint,p256dh,auth").eq("endpoint", endpoint).maybeSingle();
+  if (!data) return { ok: false, error: "not-subscribed" };
+  setVapid();
+  await new Promise((r) => setTimeout(r, 6000));
+  return deliver(data, { title: "ทดสอบแจ้งเตือน ✓", body: "เห็นข้อความนี้ แปลว่าแจ้งเตือนใช้ได้ ตอนใกล้ถึงคิวจะเด้งแบบนี้", tag: "test", url: "/" });
 }

@@ -1563,4 +1563,12 @@ export const en: Record<string, string> = {
   "ตกลง": "OK",
   "ถ้าเริ่มเข้าสู่ระบบจากไอคอนแอพบนหน้าจอหลัก กลับไปที่แอพนั้นได้เลย ถ้าไม่ใช่ กดเข้าสู่ระบบด้วย LINE อีกครั้ง": "If you started signing in from the app icon on your home screen, go back to that app. Otherwise, tap Sign in with LINE again.",
   "ยกเลิกการเข้าสู่ระบบด้วย LINE แล้ว": "LINE sign-in cancelled",
+  "จะส่งในอีก 6 วินาที ออกไปหน้าจอโฮมรอดูได้เลย": "Sending in 6 seconds. Leave the app and watch your phone.",
+  "ส่งแจ้งเตือนทดสอบ": "Send a test alert",
+  "เปิดแล้ว": "Turned on",
+  "เปิดแจ้งเตือนในมือถือ": "Turn on phone alerts",
+  "เปิดแล้ว มือถือจะเด้งเตือนเมื่อเปิดลงชื่อ อีก 1 เกมถึงคิว และถึงคิวลงสนาม ปิดได้ที่หน้าโปรไฟล์": "Done! Your phone will alert you when sign-up opens, 1 game before your turn, and when it's your turn. Turn off on the Profile page.",
+  "ให้มือถือเด้งเตือนเมื่อเปิดลงชื่อก๊วน อีก 1 เกมถึงคิว และถึงคิวลงสนาม ไม่ต้องเฝ้าจอ": "Get a phone alert when sign-up opens, 1 game before your turn, and when it's your turn. No need to watch the screen.",
+  "กดปุ่มด้านล่าง แล้วเลือก \"อนุญาต\" เมื่อมือถือถาม": "Tap the button below, then choose \"Allow\" when your phone asks.",
+  "ไว้ทีหลัง": "Later",
 };
