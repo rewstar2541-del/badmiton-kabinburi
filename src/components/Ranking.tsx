@@ -166,7 +166,7 @@ export function RankingCard({ onYear }: { onYear?: () => void }) {
         {t("แต้มขึ้นลงตามผลแพ้ชนะ ชนะทีมเก่งกว่าได้แต้มมากกว่า")}
       </p>
       {onYear && (
-        <button className="w-full rounded-2xl bg-lime px-4 py-3 text-sm font-semibold text-ink" onClick={onYear}>
+        <button className="w-full rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white" onClick={onYear}>
           {t("ดูสรุปก๊วนปี {year}", { year: yearLabel(today().slice(0, 4)) })}
         </button>
       )}

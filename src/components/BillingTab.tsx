@@ -277,13 +277,13 @@ function DailyView() {
 
   return (
     <>
-      <div className="rounded-3xl border border-lime-dark/30 bg-lime/25 p-5 text-ink">
-        <div className="text-xs text-zinc-500">{t("ยอดรวมวันนี้")}</div>
+      <div className="rounded-3xl bg-ink p-5 text-white">
+        <div className="text-xs text-white/60">{t("ยอดรวมวันนี้")}</div>
         <div className="font-display text-3xl font-semibold">{baht(total)}</div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/5">
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
           <div className="h-full rounded-full bg-lime transition-all" style={{ width: total ? `${(received / total) * 100}%` : 0 }} />
         </div>
-        <div className="mt-2 flex justify-between text-xs text-zinc-600">
+        <div className="mt-2 flex justify-between text-xs text-white/70">
           <span>{t("รับแล้ว {amount}", { amount: baht(received) })}</span>
           <span>{t("ใช้ลูก {n} ลูก", { n: shuttlesUsed })}</span>
         </div>
@@ -353,7 +353,7 @@ export function BillingTab() {
           <button
             key={id}
             onClick={() => setView(id)}
-            className={`min-h-11 rounded-xl text-sm font-semibold transition ${view === id ? "bg-lime text-ink" : "text-zinc-500"}`}
+            className={`min-h-11 rounded-xl text-sm font-semibold transition ${view === id ? "bg-ink text-white" : "text-zinc-500"}`}
           >
             {t(label)}
           </button>

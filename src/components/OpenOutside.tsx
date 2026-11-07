@@ -14,7 +14,7 @@ export function OpenOutside({ menu }: { menu: string }) {
           : t("แอพนี้โหลดไฟล์ไม่ได้ กดเมนู ⋯ มุมจอ เลือกเปิดในเบราว์เซอร์ แล้วเข้าสู่ระบบด้วย LINE ไปที่เมนู {menu} แล้วกดอีกครั้ง", { menu })}
       </p>
       {line && (
-        <a href={externalAppUrl()} className="block min-h-11 w-full rounded-2xl bg-lime px-4 py-3 text-center font-semibold text-ink">
+        <a href={externalAppUrl()} className="block min-h-11 w-full rounded-2xl bg-ink px-4 py-3 text-center font-semibold text-white">
           {t("เปิดใน Chrome / Safari")}
         </a>
       )}
