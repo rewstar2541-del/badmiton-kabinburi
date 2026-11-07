@@ -23,7 +23,7 @@ interface PendingLogin {
   at: number;
   join?: boolean;
 }
-const PENDING_MS = 10 * 60 * 1000;
+const PENDING_MS = 30 * 60 * 1000;
 
 function readPending(): PendingLogin | null {
   try {
@@ -103,14 +103,6 @@ async function applyResult(db: SupabaseClient, r: LineLoginResult): Promise<stri
   return null;
 }
 
-/** เปิดจากไอคอนบนหน้าจอหลัก (Safari กับแอพบนหน้าจอหลักเก็บข้อมูลแยกกัน) */
-function standalone(): boolean {
-  return (
-    (navigator as Navigator & { standalone?: boolean }).standalone === true ||
-    window.matchMedia?.("(display-mode: standalone)").matches === true
-  );
-}
-
 /**
  * ถ้าเพิ่งกลับมาจาก LINE (มี ?code=) จัดการให้เสร็จแล้วโหลดหน้าใหม่แบบไม่มี code
  * คืนข้อความผิดพลาด, "redirect" เมื่อกำลังโหลดหน้าใหม่ หรือ null เมื่อไม่ได้มาจาก LINE
@@ -137,7 +129,7 @@ export async function handleLineCallback(db: SupabaseClient): Promise<string | "
     // หน้านี้ไม่ได้เป็นคนเริ่ม (เช่น เริ่มจากแอพบนหน้าจอหลัก แต่ LINE ส่งกลับมาเปิดใน Safari)
     // ส่งผลต่อให้หน้าที่เริ่มไว้ ไม่เข้าสู่ระบบที่นี่ (กันคนอื่นส่งลิงก์มาให้เข้าบัญชีเขา)
     const h = await lineLogin(db, code, redirectUri(), state);
-    if (h.handoff) return "เข้าสู่ระบบด้วย LINE แล้ว กลับไปที่แอพแบดกบินทร์บนหน้าจอหลักได้เลย";
+    if (h.handoff) return "ถ้าเริ่มเข้าสู่ระบบจากไอคอนแอพบนหน้าจอหลัก กลับไปที่แอพนั้นได้เลย ถ้าไม่ใช่ กดเข้าสู่ระบบด้วย LINE อีกครั้ง";
     return h.error ?? "เข้าสู่ระบบด้วย LINE ไม่สำเร็จ ลองใหม่อีกครั้ง";
   }
   clearPending();
@@ -165,9 +157,12 @@ export async function takeLineHandoff(db: SupabaseClient): Promise<string | "red
   return "redirect";
 }
 
-/** รอรับผลจาก Safari เฉพาะตอนเปิดจากหน้าจอหลักและกดเข้าสู่ระบบค้างไว้ */
+/** กดเข้าสู่ระบบค้างไว้ (ผลอาจไปตกที่อีกเบราว์เซอร์ เช่น เปิดจากหน้าจอหลัก / Chrome แล้ว LINE ส่งกลับไป Safari) */
 export function waitsForLineHandoff(): boolean {
-  return lineLoginEnabled && standalone() && readPending() !== null;
+  const q = new URLSearchParams(window.location.search);
+  // หน้าที่ LINE เพิ่งส่งกลับมา จัดการใน handleLineCallback แล้ว
+  if (q.has("code") || q.has("error")) return false;
+  return lineLoginEnabled && readPending() !== null;
 }
 
 const SYNC_KEY = "badminton-kabinburi:photo-sync";
