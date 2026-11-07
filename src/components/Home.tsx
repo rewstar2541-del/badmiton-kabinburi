@@ -1,5 +1,7 @@
 "use client";
 
+import { PushPrompt } from "./PushAlerts";
+
 import { birthdays } from "@/lib/club";
 import { GamesHistory } from "./GameShuttles";
 
@@ -352,6 +354,7 @@ export function PlayerHome() {
           { icon: Icon.Book, label: t("คู่มือ"), href: guideHref(lang, false) },
         ]}
       />
+      {here && <PushPrompt playerId={player.id} />}
       <SectionTitle>{t("เมนูก๊วน")}</SectionTitle>
       <Tiles
         items={[

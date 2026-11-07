@@ -19,6 +19,7 @@ import { LoginTab } from "./LoginTab";
 import { Button, Card, SectionTitle, inputClass } from "./ui";
 import { courtList } from "@/lib/types";
 import { TourneySetup } from "./Tourney";
+import { PushAdminCard } from "./PushAlerts";
 import { t } from "@/lib/i18n";
 
 const NUMBER_FIELDS: { key: "courtFee" | "firstShuttleFee" | "nextShuttleFee" | "monthlyFee"; label: string }[] = [
@@ -90,6 +91,11 @@ export function SettingsTab() {
             </a>
           </Card>
       </Section>
+      {auth.online && !auth.demo && (
+        <Section id="push" icon="🔔" title={t("แจ้งเตือนเด้งในมือถือ")} hint={t("อีก 1 เกมถึงคิว ส่งฟรี")}>
+          <PushAdminCard />
+        </Section>
+      )}
       <Section id="board" icon="📸" title={t("บอร์ดและรูปกิจกรรม")} hint={t("ของหาย ขายของ รูปภาพ")}>
         <BoardCard />
         <EventPhotos bare />

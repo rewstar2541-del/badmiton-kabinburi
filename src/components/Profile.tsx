@@ -11,6 +11,9 @@ import { Auto } from "@/lib/autoTranslate";
 import { BirthdayEdit } from "./Birthday";
 import { Hero, LangChoices, Rows, guideHref, useSheets } from "./Home";
 import { PlayerLineAlerts } from "./LineCard";
+import { PushToggle } from "./PushAlerts";
+import { disablePush } from "@/lib/push";
+import { supabase } from "@/lib/remote";
 import { useTourney } from "@/lib/tourneyStore";
 import { AnnualInfo } from "./Annual";
 import { lineLoginEnabled, photoFromLine, startLineLogin } from "@/lib/lineLogin";
@@ -115,8 +118,15 @@ export function ProfileTab() {
           { icon: Icon.Book, title: t("คู่มือการใช้งาน"), href: guideHref(lang, false) },
         ]}
       />
+      <PushToggle playerId={player.id} />
       <PlayerLineAlerts playerId={player.id} />
-      <button onClick={() => confirm(t("ออกจากระบบใช่ไหม?")) && setMe(null)} className="flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-red-50 font-semibold text-red-600">
+      <button
+        onClick={() => {
+          if (!confirm(t("ออกจากระบบใช่ไหม?"))) return;
+          // ออกจากระบบ: เครื่องนี้ไม่ต้องรับแจ้งเตือนของคนนี้อีก
+          void disablePush(supabase).catch(() => {});
+          setMe(null);
+        }} className="flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-red-50 font-semibold text-red-600">
         <Icon.LogOut width={20} height={20} /> {t("ออกจากระบบ")}
       </button>
 
