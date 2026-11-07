@@ -1589,4 +1589,5 @@ export const en: Record<string, string> = {
   "ทีม {team} เหนือกว่าเล็กน้อย": "Team {team} is slightly stronger",
   "ทีม {team} เหนือกว่ามาก ลองสลับคน": "Team {team} is much stronger, try swapping players",
   "▲▼ = ฟอร์มวันนี้ ระบบนับรวมตอนจัดคู่": "▲▼ = today's form, counted when pairing.",
+  "(นับฟอร์มวันนี้ด้วย)": "(today's form counted)",
 };
