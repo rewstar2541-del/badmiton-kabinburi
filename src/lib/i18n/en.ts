@@ -1518,4 +1518,6 @@ export const en: Record<string, string> = {
   "เลิกทำ": "Undo",
   "แก้ลูกของเกม = แก้ให้คนที่อยู่ในสนามตอนนี้ คนที่เปลี่ยนตัวออกไปแล้วยอดไม่เปลี่ยน": "Changing a game's shuttles changes it for the players on court now. Players already subbed out keep their amount.",
   "{name} อยู่ในคู่ที่รอสนาม {n} คู่นั้นจะลงไม่ได้จนกว่าจะแก้คิว": "{name} is in a pair waiting for court {n}. That pair can't go on until the queue is fixed.",
+  "เข้าสู่ระบบด้วย LINE แล้ว กลับไปที่แอพแบดกบินทร์บนหน้าจอหลักได้เลย": "Signed in with LINE. Go back to the app on your home screen.",
+  "ยกเลิกการเข้าสู่ระบบด้วย LINE แล้ว": "LINE sign-in cancelled",
 };

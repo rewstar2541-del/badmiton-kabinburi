@@ -1150,11 +1150,25 @@ export type LineLoginResult = {
   name?: string;
   picture?: string | null;
   error?: string;
+  /** ส่งผลต่อให้หน้าที่เริ่มเข้าสู่ระบบแล้ว */
+  handoff?: boolean;
+  /** ยังไม่มีผลรอส่งต่อ */
+  none?: boolean;
 };
 
-export async function lineLogin(db: SupabaseClient, code: string, redirectUri: string): Promise<LineLoginResult> {
-  const { data, error } = await db.functions.invoke("line-login", { body: { code, redirect_uri: redirectUri } });
+/** handoffState: หน้านี้ไม่ได้เป็นคนเริ่ม ให้เก็บผลไว้ให้หน้าที่เริ่ม (ที่รู้ state) มารับ */
+export async function lineLogin(db: SupabaseClient, code: string, redirectUri: string, handoffState?: string): Promise<LineLoginResult> {
+  const { data, error } = await db.functions.invoke("line-login", {
+    body: { code, redirect_uri: redirectUri, ...(handoffState ? { handoff_state: handoffState } : {}) },
+  });
   if (error) return { error: error.message };
+  return data as LineLoginResult;
+}
+
+/** รับผลเข้าสู่ระบบที่อีกหน้า (เช่น Safari) ทำไว้ให้ */
+export async function takeHandoff(db: SupabaseClient, state: string): Promise<LineLoginResult> {
+  const { data, error } = await db.functions.invoke("line-login", { body: { take_handoff: state } });
+  if (error) return { none: true };
   return data as LineLoginResult;
 }
 
