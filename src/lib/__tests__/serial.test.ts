@@ -28,3 +28,11 @@ describe("serial", () => {
     await expect(b).resolves.toBe(2);
   });
 });
+
+describe("serial: คำขอค้าง", () => {
+  it("งานค้างนานเกิน ไม่ขวางงานถัดไปตลอดไป", async () => {
+    const run = serial(20);
+    run(() => new Promise(() => {}));
+    await expect(run(async () => "ok")).resolves.toBe("ok");
+  });
+});

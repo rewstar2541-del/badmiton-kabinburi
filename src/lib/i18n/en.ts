@@ -281,7 +281,7 @@ export const en: Record<string, string> = {
   "{n} บาท": "{n} baht",
   "ส่งสลิปได้เฉพาะเมื่อต่อ Supabase": "Slips can only be sent when online",
   "บันทึกไม่สำเร็จ: {msg}": "Couldn't save: {msg}",
-  "สนามนี้มีเกมเล่นอยู่แล้ว (อีกเครื่องหรือผู้เล่นในสนามเพิ่งลงคู่ต่อไป) หน้าจออัปเดตเป็นล่าสุดแล้ว": "This court already has a game in play (another phone or a player just started the next pair). The screen now shows the latest.",
+  "สนามนี้มีเกมเล่นอยู่แล้ว คู่ต่อไปยังรอคิวอยู่ หน้าจอแสดงข้อมูลล่าสุดแล้ว": "This court already has a game in play. The next pair is still waiting in the queue. The screen now shows the latest.",
   "บันทึกไม่สำเร็จ ข้อมูลถูกย้อนกลับ ลองใหม่อีกครั้ง ({msg})": "Couldn't save. Your change was undone, please try again ({msg})",
   "มือใหม่": "Beginner",
   "เริ่มตีได้": "Basic",

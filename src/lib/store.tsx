@@ -445,7 +445,8 @@ function RemoteProvider({ children }: { children: ReactNode }) {
       saveInOrder(() => persist(db, a, playersRef.current)).then(() => {
         if (QUEUE_MOVES.has(a.type)) pokePush();
       }, (e) => {
-        if (e instanceof CourtTaken) setSaveError(t("สนามนี้มีเกมเล่นอยู่แล้ว (อีกเครื่องหรือผู้เล่นในสนามเพิ่งลงคู่ต่อไป) หน้าจออัปเดตเป็นล่าสุดแล้ว"));
+        // ไม่ทับข้อความของคำขอก่อนหน้าที่พังจริง (เช่นจบเกมไม่ติด แล้วเริ่มเกมใหม่เลยชนสนามเดิม)
+        if (e instanceof CourtTaken) setSaveError((prev) => prev ?? t("สนามนี้มีเกมเล่นอยู่แล้ว คู่ต่อไปยังรอคิวอยู่ หน้าจอแสดงข้อมูลล่าสุดแล้ว"));
         else setSaveError(t("บันทึกไม่สำเร็จ ข้อมูลถูกย้อนกลับ ลองใหม่อีกครั้ง ({msg})", { msg: e instanceof Error ? e.message : String(e) }));
         reload();
       });
