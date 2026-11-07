@@ -35,8 +35,9 @@ type FramePlayer = Pick<Player, "name" | "photo" | "level" | "frame" | "frames" 
 /**
  * รูปโปรไฟล์พร้อมกรอบที่ผู้เล่นเลือก
  * compact = วงแหวนเรืองแสงอย่างเดียว (ใช้ในรายชื่อ) ไม่งั้นมีไอคอนมุมบนและป้ายระดับใต้รูป
+ * levelShown = ข้างๆ มีป้ายระดับมืออยู่แล้ว ไม่ต้องโชว์ป้ายระดับใต้รูปซ้ำ (กรอบเทศกาลยังโชว์ชื่อกรอบตามเดิม)
  */
-export function FramedAvatar({ player, size = 40, compact, ring: plainRing, frame: forced }: { player: FramePlayer; size?: number; compact?: boolean; ring?: boolean; frame?: Frame | null }) {
+export function FramedAvatar({ player, size = 40, compact, ring: plainRing, frame: forced, levelShown }: { player: FramePlayer; size?: number; compact?: boolean; ring?: boolean; frame?: Frame | null; levelShown?: boolean }) {
   const frame = forced === undefined ? frameOf(player) : forced;
   if (!frame) return <Avatar name={player.name} photo={player.photo} size={size} ring={plainRing} />;
   // รูปเล็ก: ป้ายชื่อย่อ และไม่มีวงโคจร/จุดแสง (รายชื่อยาวๆ จะได้ไม่หน่วง)
@@ -69,10 +70,12 @@ export function FramedAvatar({ player, size = 40, compact, ring: plainRing, fram
   const pad = Math.round(size * 0.12);
   const chip = Math.round(size * 0.3);
   const font = Math.max(11, Math.round(size * 0.13));
+  const showLabel = !(levelShown && frame.kind === "level");
+  const below = showLabel ? font * 0.6 : 0;
   return (
-    <span className="relative inline-block shrink-0" style={{ padding: pad, paddingBottom: pad + font * 0.6 }} role="img" aria-label={look.name}>
+    <span className="relative inline-block shrink-0" style={{ padding: pad, paddingBottom: pad + below }} role="img" aria-label={look.name}>
       {look.orbit && (
-        <span className="absolute rounded-full border-[1.5px] border-dashed opacity-65" style={{ inset: pad - size * 0.075, bottom: pad + font * 0.6 - size * 0.075, borderColor: look.colors[0] }} />
+        <span className="absolute rounded-full border-[1.5px] border-dashed opacity-65" style={{ inset: pad - size * 0.075, bottom: pad + below - size * 0.075, borderColor: look.colors[0] }} />
       )}
       {disc}
       {look.dots && (
@@ -99,19 +102,21 @@ export function FramedAvatar({ player, size = 40, compact, ring: plainRing, fram
           {look.icon}
         </span>
       )}
-      <span
-        className="absolute left-1/2 -translate-x-1/2 rounded-full font-extrabold whitespace-nowrap text-[#0b1220]"
-        style={{
-          top: pad + size - font * 0.9,
-          padding: `${font * 0.15}px ${font * 0.8}px`,
-          fontSize: font,
-          lineHeight: 1.25,
-          background: `linear-gradient(90deg, ${look.colors[0]}, ${look.colors[1]})`,
-          boxShadow: `0 0 ${font}px ${glowColor}`,
-        }}
-      >
-        {look.label}
-      </span>
+      {showLabel && (
+        <span
+          className="absolute left-1/2 -translate-x-1/2 rounded-full font-extrabold whitespace-nowrap text-[#0b1220]"
+          style={{
+            top: pad + size - font * 0.9,
+            padding: `${font * 0.15}px ${font * 0.8}px`,
+            fontSize: font,
+            lineHeight: 1.25,
+            background: `linear-gradient(90deg, ${look.colors[0]}, ${look.colors[1]})`,
+            boxShadow: `0 0 ${font}px ${glowColor}`,
+          }}
+        >
+          {look.label}
+        </span>
+      )}
     </span>
   );
 }
