@@ -6,11 +6,12 @@ import { isDemo, demoState } from "./demo";
 import { randomToken, readSession, remember, restoreRemembered, writeSession } from "./session";
 import { clearLineTicket, handleLineCallback, readLineTicket, takeLineHandoff, waitsForLineHandoff } from "./lineLogin";
 import { canSelfCheckIn } from "./social";
-import { boardPhoto, loadHistory, socialRpc, type SocialRequest, addGuest, claimPlayer, signUpDay, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, selfService, setPartnerPrefs, slipImage, submitSlip, addMyDrink, removeMyDrink, reportGame, disputeGame, removeMySlip, setMyHours, setMyPlan, updateMyProfile, type ProfileInput, supabase } from "./remote";
+import { boardPhoto, loadHistory, socialRpc, type SocialRequest, addGuest, claimPlayer, signUpDay, registerPlayerLine, loadPrivate, type LoginResult, type Rows, type TableKey, TABLE_OF, loadRows, rowsToState, persist, CourtTaken, selfService, setPartnerPrefs, slipImage, submitSlip, addMyDrink, removeMyDrink, reportGame, disputeGame, removeMySlip, setMyHours, setMyPlan, updateMyProfile, type ProfileInput, supabase } from "./remote";
 import { EMPTY_STATE, guestCheck, prepare, reducer, resultOf, today, type GameReport, type Intent, type SelfAction, type State } from "./state";
 import { DEFAULT_SETTINGS, inGame, monthOf, type Game, type Level, type Plan, type Player } from "./types";
 import { t } from "@/lib/i18n";
 import { pokePush } from "./push";
+import { serial } from "./serial";
 
 export { today, newId } from "./state";
 export type { State, Intent } from "./state";
@@ -304,6 +305,7 @@ function RemoteProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [noAdmins, setNoAdmins] = useState(false);
   const adminRef = useRef(false);
+  const [saveInOrder] = useState(serial);
 
   // แถวล่าสุดที่โหลดมา เวลามีการเปลี่ยนแปลงจะโหลดใหม่เฉพาะตารางนั้น (คนเยอะจะได้ไม่หนัก)
   const rowsRef = useRef<{ rows: Rows; admin: boolean } | null>(null);
@@ -439,14 +441,17 @@ function RemoteProvider({ children }: { children: ReactNode }) {
       if (!adminRef.current) return;
       const a = prepare(i);
       apply(a);
-      persist(db, a, playersRef.current).then(() => {
+      // ส่งทีละคำขอตามลำดับที่กด (จบเกมต้องถึงก่อนลงคู่ต่อไป)
+      saveInOrder(() => persist(db, a, playersRef.current)).then(() => {
         if (QUEUE_MOVES.has(a.type)) pokePush();
       }, (e) => {
-        setSaveError(t("บันทึกไม่สำเร็จ ข้อมูลถูกย้อนกลับ ลองใหม่อีกครั้ง ({msg})", { msg: e instanceof Error ? e.message : String(e) }));
+        // ไม่ทับข้อความของคำขอก่อนหน้าที่พังจริง (เช่นจบเกมไม่ติด แล้วเริ่มเกมใหม่เลยชนสนามเดิม)
+        if (e instanceof CourtTaken) setSaveError((prev) => prev ?? t("สนามนี้มีเกมเล่นอยู่แล้ว คู่ต่อไปยังรอคิวอยู่ หน้าจอแสดงข้อมูลล่าสุดแล้ว"));
+        else setSaveError(t("บันทึกไม่สำเร็จ ข้อมูลถูกย้อนกลับ ลองใหม่อีกครั้ง ({msg})", { msg: e instanceof Error ? e.message : String(e) }));
         reload();
       });
     },
-    [db, reload],
+    [db, reload, saveInOrder],
   );
 
   const self = useCallback(

@@ -412,6 +412,14 @@ export async function loadRemote(db: SupabaseClient, isAdmin: boolean): Promise<
   return rowsToState(await loadRows(db, isAdmin));
 }
 
+/** เริ่มเกมไม่ได้เพราะสนามนั้นมีเกมเล่นอยู่แล้วในฐานข้อมูล */
+export class CourtTaken extends Error {
+  constructor() {
+    super("court taken");
+    this.name = "CourtTaken";
+  }
+}
+
 function check(res: { error: { message: string } | null }) {
   if (res.error) throw new Error(res.error.message);
 }
@@ -467,13 +475,16 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
     case "undoCheckIn":
       return check(await db.from("checkins").delete().eq("date", a.date).eq("player_id", a.playerId));
     case "startGame":
-      check(
-        await db
-          .from("games")
-          .insert({ id: a._id, date: a.date, court: a.court, player_ids: a.playerIds, started_at: iso(a._at), shuttles: 1 }),
-      );
+    {
+      const res = await db
+        .from("games")
+        .insert({ id: a._id, date: a.date, court: a.court, player_ids: a.playerIds, started_at: iso(a._at), shuttles: 1 });
+      // สนามนี้มีเกมเล่นอยู่แล้ว (อีกเครื่อง หรือผู้เล่นในสนามกดผลแล้วลงคู่ต่อไปก่อน) ไม่ใช่ข้อมูลพัง บอกแอดมินเป็นภาษาคน
+      if (res.error?.message.includes("games_one_active_per_court")) throw new CourtTaken();
+      check(res);
       if (a.queuedId) check(await db.from("court_queue").delete().eq("id", a.queuedId));
       return;
+    }
     case "queueGame":
     {
       const res = await db.from("court_queue").insert({ id: a._id, date: a.date, court: a.court, player_ids: a.playerIds, at: iso(a._at) });
