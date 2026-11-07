@@ -56,7 +56,7 @@ export function AnnouncementBanner({ message, title, fee, date }: { message: str
 /** หน้าแรกผู้เล่น: การ์ดดำใบเดียว สถานะ + ประกาศ + ปุ่มลงชื่อ/เช็คอิน */
 export function HomeCard({ top, children }: { top: ReactNode; children?: ReactNode }) {
   return (
-    <div className="relative space-y-3 overflow-hidden rounded-3xl border border-lime-dark/30 bg-lime/25 p-4 text-ink">
+    <div className="relative space-y-3 overflow-hidden rounded-3xl bg-ink p-4 text-white">
       <div className="pointer-events-none absolute -top-20 -right-12 size-48 rounded-full bg-lime/20 blur-3xl" />
       <div className="relative">{top}</div>
       {children && <div className="relative space-y-3">{children}</div>}
@@ -102,9 +102,9 @@ function NextSession({ dark }: { dark?: boolean }) {
     setError(err ? t(err) : "");
   };
   return (
-    <div className={`space-y-2 rounded-2xl p-3 ${dark ? "bg-black/5" : "bg-white ring-1 ring-zinc-100"}`}>
+    <div className={`space-y-2 rounded-2xl p-3 ${dark ? "bg-white/10" : "bg-white ring-1 ring-zinc-100"}`}>
       <div className="text-sm">
-        <span className={`font-semibold text-ink`}>
+        <span className={`font-semibold ${dark ? "text-lime" : "text-ink"}`}>
           {eventStyle(next.announcementTitle).emoji} {t("{when} มีก๊วน", { when })}
         </span>
         {next.announcementTitle && (
@@ -113,12 +113,12 @@ function NextSession({ dark }: { dark?: boolean }) {
             <Auto text={next.announcementTitle} />
           </>
         )}
-        <span className={dark ? "text-zinc-600" : "text-zinc-500"}>
+        <span className={dark ? "text-white/70" : "text-zinc-500"}>
           {" · "}
           {q.cap ? t("ลงชื่อแล้ว {n}/{cap} คน", { n: Math.min(q.confirmed.length, q.cap), cap: q.cap }) : t("ลงชื่อแล้ว {n} คน", { n: next.signups?.length ?? 0 })}
         </span>
         {next.announcement && (
-          <span className={`mt-0.5 line-clamp-1 block ${dark ? "text-zinc-600" : "text-zinc-500"}`}>
+          <span className={`mt-0.5 line-clamp-1 block ${dark ? "text-white/70" : "text-zinc-500"}`}>
             <Auto text={next.announcement} />
           </span>
         )}
@@ -126,12 +126,12 @@ function NextSession({ dark }: { dark?: boolean }) {
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
       {mine ? (
         <div className="flex items-center gap-2">
-          <span className={`flex-1 text-sm font-semibold text-emerald-700`}>
+          <span className={`flex-1 text-sm font-semibold ${dark ? "text-emerald-300" : "text-emerald-700"}`}>
             ✓ {waitPos > 0 ? t("คุณอยู่รายชื่อสำรองลำดับที่ {n}", { n: waitPos }) : t("ลงชื่อแล้ว")}
           </span>
           <button
             disabled={busy}
-            className={`min-h-11 rounded-xl px-3 text-sm font-semibold text-red-600`}
+            className={`min-h-11 rounded-xl px-3 text-sm font-semibold ${dark ? "text-red-300" : "text-red-600"}`}
             onClick={() => (!full || confirm(t("ยกเลิกลงชื่อ{when}? ก๊วนเต็มแล้ว ถ้าลงใหม่จะต่อคิวสำรอง", { when }))) && go(false)}
           >
             {t("ยกเลิกลงชื่อ")}
@@ -262,14 +262,14 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
 
       <Panel home={home} top={top}>
         {home && announced && (
-          <div className="rounded-2xl bg-black/5 px-3 py-2 text-sm">
-            <span className="font-semibold text-ink">
+          <div className="rounded-2xl bg-white/10 px-3 py-2 text-sm">
+            <span className="font-semibold text-lime">
               {eventStyle(day.announcementTitle).emoji} {day.announcementTitle ? <Auto text={day.announcementTitle} /> : t("วันนี้มีจัดก๊วน")}
             </span>
             {!!day.announcementFee && ` · ${t("ค่าใช้จ่ายคนละ {amount}", { amount: baht(day.announcementFee) })}`}
             {!!q.cap && ` · ${t("รับ {cap} คน · ลงชื่อแล้ว {n}", { cap: q.cap, n: q.confirmed.length })}`}
             {day.announcement && (
-              <span className="mt-0.5 line-clamp-2 block whitespace-pre-line text-zinc-600">
+              <span className="mt-0.5 line-clamp-2 block whitespace-pre-line text-white/80">
                 <Auto text={day.announcement} />
               </span>
             )}
@@ -316,7 +316,7 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
                   {t("เลิกเล่นแล้ว ไปจ่ายเงิน")}
                 </Button>
                 {played ? (
-                  <p className={`text-center text-xs text-zinc-500`}>{t("เล่นแล้ว เช็คอินผิดให้แอดมินยกเลิก")}</p>
+                  <p className={`text-center text-xs ${home ? "text-white/60" : "text-zinc-500"}`}>{t("เล่นแล้ว เช็คอินผิดให้แอดมินยกเลิก")}</p>
                 ) : undo ? (
                   <div className="space-y-2 rounded-2xl bg-red-50 p-3">
                     <p className="text-center text-sm font-medium text-red-700">{t("กดเช็คอินผิดใช่ไหม?")}</p>
@@ -355,7 +355,7 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
             <Button variant="accent" disabled={busy || !selfIn} onClick={() => act("checkIn")} className="flex items-center justify-center gap-1.5">
               <Icon.CheckIn width={18} height={18} /> {t("ถึงสนามแล้ว เช็คอิน")}
             </Button>
-            <Button variant="ghost" disabled={busy} className={home ? "!text-red-600 active:!bg-black/5" : "!text-red-600"} onClick={() => act("cancelSignUp")}>
+            <Button variant="ghost" disabled={busy} className={home ? "!text-red-300 active:!bg-white/10" : "!text-red-600"} onClick={() => act("cancelSignUp")}>
               {t("ยกเลิกลงชื่อ")}
             </Button>
           </div>
@@ -364,10 +364,10 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
             <Button variant={home ? "accent" : "primary"} disabled={busy} onClick={() => act("signUp")}>
               {full ? t("เต็มแล้ว ลงชื่อสำรอง") : day.announcementTitle ? t("ลงชื่อไปร่วม") : t("ลงชื่อว่าจะมา")}
             </Button>
-            <Button variant={home ? "secondary" : "accent"} disabled={busy || !selfIn} onClick={() => act("checkIn")} className={`flex items-center justify-center gap-1.5 ${home ? "!bg-black/10 !text-ink disabled:!text-zinc-400" : ""}`}>
+            <Button variant={home ? "secondary" : "accent"} disabled={busy || !selfIn} onClick={() => act("checkIn")} className={`flex items-center justify-center gap-1.5 ${home ? "!bg-white/10 !text-white disabled:!text-white/40" : ""}`}>
               <Icon.CheckIn width={18} height={18} /> {t("ถึงสนามแล้ว เช็คอิน")}
             </Button>
-            {!selfIn && <p className={`text-center text-xs text-zinc-500`}>{notOpen ? t("วันนี้ยังไม่ได้ประกาศจัดก๊วน เช็คอินเองไม่ได้") : t("เต็มแล้ว ลงชื่อสำรองได้")}</p>}
+            {!selfIn && <p className={`text-center text-xs ${home ? "text-white/60" : "text-zinc-500"}`}>{notOpen ? t("วันนี้ยังไม่ได้ประกาศจัดก๊วน เช็คอินเองไม่ได้") : t("เต็มแล้ว ลงชื่อสำรองได้")}</p>}
           </div>
         )}
       </Panel>

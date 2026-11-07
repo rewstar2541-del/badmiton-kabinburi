@@ -229,7 +229,7 @@ export function BadgesCard({ player }: { player: Player }) {
           >
             <span
               className={`grid size-10 shrink-0 place-items-center rounded-full ${
-                b.earned ? "bg-lime text-ink" : "bg-zinc-200 text-zinc-400"
+                b.earned ? "bg-ink text-lime" : "bg-zinc-200 text-zinc-400"
               }`}
             >
               <Icon.Trophy width={20} height={20} />

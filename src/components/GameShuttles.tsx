@@ -129,7 +129,7 @@ export function GameShuttleRow({ game, byId, day, me, open, onToggle, past = fal
               {t("ยอดเงินไม่เปลี่ยน (จ่ายแล้วหรือแอดมินแก้ยอดไว้): {names}", { names: fixed.map((id) => byId.get(id)?.name ?? "?").join(", ") })}
             </p>
           )}
-          <button className="min-h-11 w-full rounded-2xl bg-lime text-sm font-semibold text-ink" onClick={() => setOpen(false)}>
+          <button className="min-h-11 w-full rounded-2xl bg-ink text-sm font-semibold text-white" onClick={() => setOpen(false)}>
             {t("เสร็จ")}
           </button>
           {/* เกมที่ยังเล่นอยู่ ใช้ปุ่มยกเลิกเกมที่หน้าสนาม (คู่ในคิวจะได้ลงต่อถูก) */}

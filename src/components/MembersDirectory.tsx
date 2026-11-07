@@ -30,8 +30,8 @@ export function MembersDirectory() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-3xl border border-lime-dark/30 bg-lime/25 p-4 text-ink">
-        <div className="text-sm text-zinc-600">{t("สมาชิกก๊วนทั้งหมด")}</div>
+      <div className="rounded-3xl bg-ink p-4 text-white">
+        <div className="text-sm text-white/70">{t("สมาชิกก๊วนทั้งหมด")}</div>
         <div className="font-display text-4xl font-semibold tabular-nums">
           {t("{n} คน", { n: members.length })}
         </div>
@@ -52,12 +52,12 @@ export function MembersDirectory() {
             key={c.value}
             onClick={() => setLevel(level === c.value ? null : c.value)}
             aria-pressed={level === c.value}
-            className={`flex items-center gap-2 rounded-2xl px-2.5 py-2 text-left ${level === c.value ? "bg-lime text-ink" : "bg-zinc-100"}`}
+            className={`flex items-center gap-2 rounded-2xl px-2.5 py-2 text-left ${level === c.value ? "bg-ink text-white" : "bg-zinc-100"}`}
           >
             <span className={`size-3 shrink-0 rounded-full ${barOf(c.value)}`} />
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-bold">{c.code}</span>
-              <span className={`block text-xs leading-tight ${level === c.value ? "text-zinc-600" : "text-zinc-500"}`}>{t(c.label)}</span>
+              <span className={`block text-xs leading-tight ${level === c.value ? "text-white/70" : "text-zinc-500"}`}>{t(c.label)}</span>
             </span>
             <span className="font-display text-lg font-semibold tabular-nums">{c.n}</span>
           </button>

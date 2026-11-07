@@ -157,7 +157,7 @@ export function BoardCard() {
             key={k ?? "all"}
             aria-pressed={filter === k}
             onClick={() => setFilter(k)}
-            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${filter === k ? "bg-lime text-ink" : "bg-zinc-100 text-zinc-600"}`}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${filter === k ? "bg-ink text-white" : "bg-zinc-100 text-zinc-600"}`}
           >
             {k ? t(kindOf(k).label) : t("ทั้งหมด")}
           </button>
@@ -180,7 +180,7 @@ export function BoardCard() {
                   key={k.value}
                   aria-pressed={kind === k.value}
                   onClick={() => setKind(k.value)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-semibold ${kind === k.value ? "bg-lime text-ink" : "bg-zinc-100 text-zinc-600"}`}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold ${kind === k.value ? "bg-ink text-white" : "bg-zinc-100 text-zinc-600"}`}
                 >
                   {t(k.label)}
                 </button>

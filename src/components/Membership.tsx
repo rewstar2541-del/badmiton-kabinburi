@@ -152,7 +152,7 @@ export function PlanSwitch({ player, bare }: { player: Player; bare?: boolean })
               key={p}
               disabled={busy}
               onClick={() => player.plan !== p && choose(p)}
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${player.plan === p ? "bg-lime text-ink" : "text-zinc-500"}`}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${player.plan === p ? "bg-ink text-white" : "text-zinc-500"}`}
             >
               {p === "daily" ? t("รายวัน") : t("รายเดือน")}
             </button>

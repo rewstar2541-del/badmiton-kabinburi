@@ -142,7 +142,7 @@ export function FrameGrant() {
             key={f.id}
             aria-pressed={f.id === fid}
             onClick={() => (setFid(f.id), setMsg(""), setPrice(""))}
-            className={`min-h-11 rounded-full px-3.5 text-sm font-semibold ${f.id === fid ? "bg-lime text-ink" : "bg-zinc-100"}`}
+            className={`min-h-11 rounded-full px-3.5 text-sm font-semibold ${f.id === fid ? "bg-ink text-white" : "bg-zinc-100"}`}
           >
             {f.emoji} {t(f.name)}
           </button>
@@ -192,7 +192,7 @@ export function FrameGrant() {
                   </button>
                 ) : (
                   <button
-                    className={`min-h-11 rounded-xl px-4 text-sm font-semibold active:scale-95 ${amount > 0 ? "bg-amber-400 text-ink" : "bg-lime text-ink"}`}
+                    className={`min-h-11 rounded-xl px-4 text-sm font-semibold active:scale-95 ${amount > 0 ? "bg-amber-400 text-ink" : "bg-ink text-white"}`}
                     onClick={() => give(p)}
                   >
                     {amount > 0 ? t("ขาย {amount}", { amount: baht(amount) }) : t("แจก")}

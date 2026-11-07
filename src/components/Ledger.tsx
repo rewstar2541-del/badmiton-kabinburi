@@ -93,7 +93,7 @@ export function Ledger({ month }: { month: string }) {
                 key={c.value}
                 onClick={() => setCategory(c.value)}
                 aria-pressed={category === c.value}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold ${category === c.value ? "bg-lime text-ink" : "bg-zinc-100 text-zinc-600"}`}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold ${category === c.value ? "bg-ink text-white" : "bg-zinc-100 text-zinc-600"}`}
               >
                 {t(c.label)}
               </button>

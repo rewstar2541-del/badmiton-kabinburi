@@ -38,12 +38,12 @@ export function Segmented<T extends string | number>({
           key={o.value}
           onClick={() => onChange(o.value)}
           className={`rounded-xl px-1 py-2 text-sm font-semibold transition ${
-            value === o.value ? "bg-lime text-ink shadow-sm" : "text-zinc-600"
+            value === o.value ? "bg-ink text-white shadow-sm" : "text-zinc-600"
           }`}
         >
           {t(o.label)}
           {o.sub && (
-            <div className={`truncate text-[10px] font-normal ${value === o.value ? "text-zinc-700" : "text-zinc-400"}`}>{t(o.sub)}</div>
+            <div className={`truncate text-[10px] font-normal ${value === o.value ? "text-white/70" : "text-zinc-400"}`}>{t(o.sub)}</div>
           )}
         </button>
       ))}
