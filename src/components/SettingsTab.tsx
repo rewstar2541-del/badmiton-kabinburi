@@ -219,7 +219,6 @@ export function SettingsTab() {
           <LoginTab bare />
         </Section>
       )}
-      <div className="px-1 pt-2 text-sm font-semibold text-zinc-500">{t("ระวัง")}</div>
       <Section id="data" icon="🗂️" title={t("ข้อมูลและล้างประวัติ")} hint={t("สำรองไฟล์ ล้างข้อมูล")} danger>
           <Card className="space-y-3">
             <h2 className="font-display font-semibold">{t("สำรองข้อมูล")}</h2>
