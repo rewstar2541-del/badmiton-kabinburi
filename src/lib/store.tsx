@@ -601,11 +601,14 @@ function RemoteProvider({ children }: { children: ReactNode }) {
 
   const updateProfileRemote = useCallback(
     async (playerId: string, pin: string, v: ProfileInput) => {
+      const before = state.players.find((p) => p.id === playerId);
       const err = await updateMyProfile(db, playerId, pin, v);
       if (!err) await reload();
+      // ขอเปลี่ยนระดับมือ (ใหม่หรือเปลี่ยนคำขอ): เด้งแจ้งแอดมินให้เข้าไปอนุมัติ
+      if (!err && before && v.level !== before.level && v.level !== before.levelRequest) pokePush();
       return err;
     },
-    [db, reload],
+    [db, reload, state.players],
   );
 
   const auth: Auth = {

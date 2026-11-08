@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 import { rowsToState, type Rows } from "./remote";
 import { bangkokDate, turnSoon } from "./pushQueue";
+import { LEVELS } from "./types";
 
 /**
  * ค่าที่ต้องตั้งใน Vercel (Settings > Environment Variables) ห้ามใส่ในโค้ด:
@@ -105,6 +106,43 @@ interface Msg {
   tag: string;
   /** ถึงคิว (play) / อีก 1 เกมถึงคิว (soon): ให้มือถือสั่นและมีเสียง (ถ้าผู้เล่นเปิดไว้) */
   alert?: "play" | "soon";
+  /** แตะแจ้งเตือนแล้วเปิดหน้าไหน (ไม่ใส่ = หน้าสนาม) */
+  tab?: string;
+}
+
+/**
+ * ผู้เล่นที่เป็นแอดมิน: แอดมินเข้าระบบด้วย LINE ได้อีเมล u<line id>@line.kabinburi.app
+ * จับคู่กับผู้เล่นที่ผูก LINE เดียวกันไว้ (แอดมินที่เข้าด้วยอีเมลอื่นจะไม่ได้แจ้งเตือนนี้)
+ */
+async function adminPlayerIds(d: SupabaseClient): Promise<string[]> {
+  const [admins, auth] = await Promise.all([
+    rows<{ email: string }>(d.from("admins").select("email")),
+    rows<{ player_id: string; line_user_id: string | null }>(d.from("player_auth").select("player_id,line_user_id")),
+  ]);
+  const emails = new Set(admins.map((a) => a.email.toLowerCase()));
+  return auth.filter((a) => a.line_user_id && emails.has(`${a.line_user_id.toLowerCase()}@line.kabinburi.app`)).map((a) => a.player_id);
+}
+
+/** ผู้เล่นขอเปลี่ยนระดับมือ: แจ้งแอดมินให้เข้าไปอนุมัติ (คำขอเดิมที่ยังค้าง เตือนซ้ำได้วันละครั้ง) */
+async function levelRequests(d: SupabaseClient, subscribers: string[]): Promise<Msg[]> {
+  const reqs = (await rows<{ id: string; name: string; level: number; level_request: number | null }>(d.from("players").select("id,name,level,level_request"))).filter(
+    (p) => p.level_request && p.level_request !== p.level,
+  );
+  if (!reqs.length) return [];
+  const admins = (await adminPlayerIds(d)).filter((id) => subscribers.includes(id));
+  const code = (l: number) => LEVELS.find((x) => x.value === l)?.code ?? String(l);
+  return reqs.flatMap((p) =>
+    admins
+      .filter((a) => a !== p.id)
+      .map((a) => ({
+        playerId: a,
+        key: `level:${p.id}:${p.level_request}`,
+        title: "🎚️ ขอเปลี่ยนระดับมือ",
+        body: `${p.name} ขอเปลี่ยนจาก ${code(p.level)} เป็น ${code(p.level_request!)} แตะเพื่ออนุมัติ`,
+        tag: `level-${p.id}`,
+        tab: "players",
+      })),
+  );
 }
 
 function setVapid() {
@@ -112,7 +150,7 @@ function setVapid() {
   webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:admin@badmiton-kabinburi.vercel.app", c.publicKey, c.privateKey);
 }
 
-/** รวมเรื่องที่ต้องแจ้งตอนนี้: อีก 1 เกมถึงคิว, ถึงคิวลงสนามแล้ว, เปิดลงชื่อ/อีเว้นใหม่ */
+/** รวมเรื่องที่ต้องแจ้งตอนนี้: อีก 1 เกมถึงคิว, ถึงคิวลงสนามแล้ว, เปิดลงชื่อ/อีเว้นใหม่, คำขอเปลี่ยนระดับมือ (แอดมิน) */
 async function collect(d: SupabaseClient, date: string, subscribers: string[]): Promise<Msg[]> {
   const out: Msg[] = [];
   const { state, day } = await loadDay(d, date);
@@ -137,6 +175,8 @@ async function collect(d: SupabaseClient, date: string, subscribers: string[]): 
     for (const id of subscribers)
       out.push({ playerId: id, key: `announce:${a.date}:${Date.parse(a.created_at)}`, title: `${text} ${label}`, body: a.message?.trim() ? a.message.trim().slice(0, 120) : "ลงชื่อได้ในแอพ", tag: `announce-${a.date}` });
   }
+  // ฟีเจอร์เสริม: อ่านข้อมูลไม่ได้ต้องไม่ทำให้แจ้งเตือนคิวหลักล้มไปด้วย
+  out.push(...(await levelRequests(d, subscribers).catch((e) => (console.error("push level requests", e), []))));
   // คนเดียวกัน เรื่องเดียวกันซ้ำ (เช่นอยู่ทั้งในเกมและคิว) เอาอันแรก
   const seen = new Set<string>();
   return out.filter((m) => !seen.has(m.playerId + "|" + m.key) && seen.add(m.playerId + "|" + m.key));
@@ -180,7 +220,7 @@ export async function notifyTurns(): Promise<NotifyResult> {
       allSubs
         .filter((s) => s.player_id === m.playerId)
         .map(async (s) => {
-          const r = await deliver(s, { title: m.title, body: m.body, tag: m.tag, url: "/", alert: m.alert });
+          const r = await deliver(s, { title: m.title, body: m.body, tag: m.tag, url: "/", alert: m.alert, tab: m.tab });
           if (r.ok) {
             sent++;
             reached.add(`${m.playerId}|${m.key}`);
@@ -205,7 +245,7 @@ interface DeliverResult {
   detail?: string;
 }
 
-async function deliver(s: { endpoint: string; p256dh: string; auth: string }, payload: { title: string; body: string; tag: string; url: string; alert?: "play" | "soon" }): Promise<DeliverResult> {
+async function deliver(s: { endpoint: string; p256dh: string; auth: string }, payload: { title: string; body: string; tag: string; url: string; alert?: "play" | "soon"; tab?: string }): Promise<DeliverResult> {
   const host = new URL(s.endpoint).host;
   try {
     const r = await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(payload), { TTL: 15 * 60, urgency: "high" });

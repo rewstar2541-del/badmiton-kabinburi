@@ -413,6 +413,7 @@ export function AdminHome() {
   // ค้างจ่าย: เลิกเล่นแล้ว (พัก ไม่ได้อยู่ในสนาม) แต่ยังไม่จ่าย ไม่นับคนที่ยังเล่นหรือรอคิว
   const unpaid = day.checkIns.filter((c) => !c.paidAt && presence(day, c.playerId) === "resting").map((c) => c.playerId);
   const pending = state.players.filter((p) => p.pending);
+  const levelReqs = state.players.filter((p) => p.levelRequest && p.levelRequest !== p.level);
   const playing = day.games.filter((g) => !g.endedAt).length * 4;
   const waiting = waitingQueue(day, state.players).length;
   const announced = day.announcement !== undefined;
@@ -469,6 +470,9 @@ export function AdminHome() {
       : []),
     ...(pending.length
       ? [{ icon: Icon.User, title: t("สมัครใหม่รออนุมัติ"), sub: names(pending.map((p) => p.id)), right: <CountBadge n={pending.length} tone="bg-sky-50 text-sky-700" />, onClick: () => goToTab("players") }]
+      : []),
+    ...(levelReqs.length
+      ? [{ icon: Icon.Chart, title: t("ขอเปลี่ยนระดับมือ"), sub: names(levelReqs.map((p) => p.id)), right: <CountBadge n={levelReqs.length} tone="bg-violet-50 text-violet-700" />, onClick: () => goToTab("players") }]
       : []),
   ];
 
