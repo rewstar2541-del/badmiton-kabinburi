@@ -23,8 +23,10 @@ async function alertOn() {
 }
 
 async function show(data) {
+  // บรรทัดบนสุด = ชื่อแอพ ตามด้วยหัวข้อเดิมและเนื้อหาอยู่ข้างล่าง
+  const lines = [data.title, data.body].filter(Boolean).join("\n");
   const opts = {
-    body: data.body || "",
+    body: lines,
     tag: data.tag,
     renotify: !!data.tag,
     icon: "/icon-192.png",
@@ -41,7 +43,7 @@ async function show(data) {
       if (data.alert === "play") opts.requireInteraction = true;
     }
   }
-  return self.registration.showNotification(data.title || "แบดกบินทร์", opts);
+  return self.registration.showNotification("แบดกบินทร์", opts);
 }
 
 // แตะแจ้งเตือน: เปิดแอพ (หรือสลับไปหน้าที่เปิดอยู่) แล้วไปที่หน้าสนาม
