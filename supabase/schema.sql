@@ -280,6 +280,7 @@ create table if not exists public.settings (
   promptpay_on boolean default true not null,
   bank_on boolean default true not null,
   court_numbers smallint[] check (court_numbers is null or (cardinality(court_numbers) between 1 and 30 and 1 <= all(court_numbers) and 99 >= all(court_numbers))),
+  auto_assign boolean default true not null,
   constraint settings_pkey PRIMARY KEY (id)
 );
 
