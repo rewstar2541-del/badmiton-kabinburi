@@ -85,7 +85,7 @@ export function LevelGroups({
           aria-expanded={open}
         >
           <LevelBadge level={level.value} />
-          <span className="min-w-0 flex-1 truncate font-semibold">{t(level.label)}</span>
+          <span className="flex-1" />
           <span className="shrink-0 text-xs text-zinc-500">{summary(list)}</span>
           <span className="shrink-0 text-sm text-zinc-400">{open ? "▲" : "▼"}</span>
         </button>

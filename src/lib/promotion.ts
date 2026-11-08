@@ -111,5 +111,5 @@ export function clubMembers(players: Player[]): Player[] {
 
 /** จำนวนสมาชิกแต่ละระดับมือ เรียงจากอ่อนไปเก่ง */
 export function levelCounts(players: Player[]) {
-  return LEVELS.map((l) => ({ value: l.value, code: l.code, label: l.label, n: players.filter((p) => p.level === l.value).length }));
+  return LEVELS.map((l) => ({ value: l.value, code: l.code, n: players.filter((p) => p.level === l.value).length }));
 }

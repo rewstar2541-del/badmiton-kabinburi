@@ -14,7 +14,6 @@ import { useMe } from "./PickMe";
 import { useShareImage } from "./ShareImage";
 import { FramedAvatar } from "./AvatarFrame";
 import { Avatar, Button, Card, Icon, LevelBadge, levelCode } from "./ui";
-import { LEVELS, type Level } from "@/lib/types";
 
 /**
  * ประวัติเกมย้อนหลังสำหรับอันดับ/สรุปรายปี
@@ -268,7 +267,6 @@ export function PromotionList({ quarter, data: given, admin: isAdmin }: { quarte
   // คนที่ยืนยันไปแล้ว ระดับปัจจุบันเปลี่ยนแล้ว ไม่ต้องเสนอขั้นถัดไปอีก
   const fresh = list.filter((c) => !done.includes(c.id));
   const doneIds = done.filter((id) => state.players.some((p) => p.id === id));
-  const label = (l: Level) => `${t(LEVELS.find((x) => x.value === l)?.label ?? "")} (${levelCode(l)})`;
   if (!fresh.length && !doneIds.length) return given ? null : <p className="text-sm text-zinc-500">{t("รอบนี้ไม่มีใครเข้าเกณฑ์เลื่อนขั้น")}</p>;
   const byId = new Map(state.players.map((p) => [p.id, p]));
   return (
@@ -292,7 +290,7 @@ export function PromotionList({ quarter, data: given, admin: isAdmin }: { quarte
                   variant="primary"
                   className="min-h-11 shrink-0 !px-3"
                   onClick={() => {
-                    if (!confirm(t("เลื่อน {name} จาก {a} เป็น {b}?", { name: p.name, a: label(c.from), b: label(c.to) }))) return;
+                    if (!confirm(t("เลื่อน {name} จาก {a} เป็น {b}?", { name: p.name, a: levelCode(c.from), b: levelCode(c.to) }))) return;
                     dispatch({ type: "updatePlayer", player: { ...p, level: c.to, levelRequest: undefined } });
                     markDone(p.id);
                   }}

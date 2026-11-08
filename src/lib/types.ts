@@ -3,13 +3,13 @@
 export type Level = 1 | 2 | 3 | 4 | 5 | 6;
 
 /** เรียงจากอ่อนไปเก่ง (strength ใช้ถ่วงฝีมือตอนจัดคู่) */
-export const LEVELS: { value: Level; code: string; label: string; strength: number }[] = [
-  { value: 1, code: "New", label: "มือใหม่", strength: 1 },
-  { value: 2, code: "BG", label: "เริ่มตีได้", strength: 2 },
-  { value: 6, code: "NB", label: "เกือบทั่วไป", strength: 2.5 },
-  { value: 3, code: "N", label: "ทั่วไป", strength: 3 },
-  { value: 4, code: "S", label: "ตีดี", strength: 4 },
-  { value: 5, code: "P", label: "เก่ง", strength: 5 },
+export const LEVELS: { value: Level; code: string; strength: number }[] = [
+  { value: 1, code: "New", strength: 1 },
+  { value: 2, code: "BG", strength: 2 },
+  { value: 6, code: "NB", strength: 2.5 },
+  { value: 3, code: "N", strength: 3 },
+  { value: 4, code: "S", strength: 4 },
+  { value: 5, code: "P", strength: 5 },
 ];
 
 /** ฝีมือเป็นตัวเลขสำหรับเทียบ/รวม (NB อยู่ระหว่าง BG กับ N) */
