@@ -204,6 +204,9 @@ export function nextMatch(
         const four = [head, pool[i].p, pool[j].p, pool[k].p];
         const levels = four.map((p) => skillOf(p, form));
         const spread = Math.max(...levels) - Math.min(...levels);
+        // 4 คนห่างกันเกิน 1 ระดับ = ต้องให้มือหนักไปแบกมือเบาถึงจะสูสี ยิ่งห่างยิ่งเลี่ยงหนัก
+        // (ห่าง 2 ระดับ +20, 3 ระดับ +80, 4 ระดับ +180) หนักกว่าการข้ามคิวไปไม่กี่ลำดับ แต่คนต้นคิวยังได้ลงเสมอ
+        const gapPenalty = spread * 3 + Math.max(0, spread - 1) ** 2 * 20;
         const split = splitTeams(four, partners, pairs, form);
         // ได้ลงพร้อมคู่ที่ขอไว้ = ดีมาก
         const ids = new Set(four.map((p) => p.id));
@@ -216,7 +219,7 @@ export function nextMatch(
         // ชุดที่แนะนำไปแล้ว: ซ้ำคนเดิมมาก = ไม่เอา
         const again = shownSets.reduce((n, set) => n + Math.max(0, four.filter((p) => set.has(p.id)).length - 1) ** 2, 0);
         // คนที่ไม่อยากเจอกัน เลี่ยงให้มากที่สุด แต่ถ้าไม่มีทางเลือกก็ยังจัดได้
-        const score = split.cost + spread * 3 + waitPenalty * 2 + seen * 5 + again * 15 + (hasAvoid(four) ? 1000 : 0) - pairBonus;
+        const score = split.cost + gapPenalty + waitPenalty * 2 + seen * 5 + again * 15 + (hasAvoid(four) ? 1000 : 0) - pairBonus;
         if (!best || score < best.score) best = { teams: split.teams, score };
       }
   return best!.teams;
