@@ -111,6 +111,27 @@ describe("ส่งแจ้งเตือนอีก 1 เกมถึงค�
     expect((await notifyTurns()).sent).toBe(0);
   });
 
+  it("ผู้เล่นขอเปลี่ยนระดับมือ แจ้งแอดมิน (ผูก LINE) ครั้งเดียว และแตะแล้วเปิดหน้าผู้เล่น", async () => {
+    const { notifyTurns } = await import("../pushServer");
+    tables.games = [];
+    tables.court_queue = [];
+    // a เป็นแอดมิน (เข้าด้วย LINE) e ขอเปลี่ยนจาก 3 เป็น 4
+    tables.admins = [{ email: "uabc123@line.kabinburi.app" }, { email: "other@gmail.com" }];
+    tables.player_auth = [
+      { player_id: "a", line_user_id: "Uabc123" },
+      { player_id: "e", line_user_id: "Ueee" },
+    ];
+    (tables.players.find((p) => p.id === "e") as Record<string, unknown>).level_request = 4;
+    const r = await notifyTurns();
+    expect(r.sent).toBe(1);
+    expect(sent[0].endpoint).toBe("https://push/a");
+    const p = JSON.parse(sent[0].payload);
+    expect(p.title).toBe("🎚️ ขอเปลี่ยนระดับมือ");
+    expect(p.body).toContain("e ขอเปลี่ยนจาก");
+    expect(p.tab).toBe("players");
+    expect((await notifyTurns()).sent).toBe(0);
+  });
+
   it("แอดมินปิดไว้ หรือยังไม่ตั้งกุญแจ = ไม่ส่ง", async () => {
     const { notifyTurns } = await import("../pushServer");
     tables.push_settings[0].enabled = false;
