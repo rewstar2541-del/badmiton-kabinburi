@@ -138,7 +138,7 @@ async function levelRequests(d: SupabaseClient, subscribers: string[]): Promise<
         playerId: a,
         key: `level:${p.id}:${p.level_request}`,
         title: "🎚️ ขอเปลี่ยนระดับมือ",
-        body: `${p.name} ขอเปลี่ยนจาก ${code(p.level)} เป็น ${code(p.level_request!)} รอแอดมินอนุมัติ`,
+        body: `${p.name} ขอเปลี่ยนจาก ${code(p.level)} เป็น ${code(p.level_request!)} แตะเพื่ออนุมัติ`,
         tag: `level-${p.id}`,
         tab: "players",
       })),
@@ -175,7 +175,8 @@ async function collect(d: SupabaseClient, date: string, subscribers: string[]): 
     for (const id of subscribers)
       out.push({ playerId: id, key: `announce:${a.date}:${Date.parse(a.created_at)}`, title: `${text} ${label}`, body: a.message?.trim() ? a.message.trim().slice(0, 120) : "ลงชื่อได้ในแอพ", tag: `announce-${a.date}` });
   }
-  out.push(...(await levelRequests(d, subscribers)));
+  // ฟีเจอร์เสริม: อ่านข้อมูลไม่ได้ต้องไม่ทำให้แจ้งเตือนคิวหลักล้มไปด้วย
+  out.push(...(await levelRequests(d, subscribers).catch((e) => (console.error("push level requests", e), []))));
   // คนเดียวกัน เรื่องเดียวกันซ้ำ (เช่นอยู่ทั้งในเกมและคิว) เอาอันแรก
   const seen = new Set<string>();
   return out.filter((m) => !seen.has(m.playerId + "|" + m.key) && seen.add(m.playerId + "|" + m.key));
