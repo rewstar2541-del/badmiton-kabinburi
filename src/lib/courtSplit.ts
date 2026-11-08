@@ -71,3 +71,28 @@ export function clock(h: number): string {
   const m = Math.round(h * 60);
   return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 }
+
+/** เวลาและสนามของก๊วนวันหนึ่ง ให้คนลงชื่อรู้ว่าต้องมากี่โมง สนามไหน
+ *  time: เวลาเช่า (มีเฉพาะวันสนามเช่า) · numbers: เบอร์สนามที่ตั้งไว้ · count: จำนวนคอร์ท (วันเช่าใช้ของวันนั้น) */
+export function sessionFacts(
+  day: { rent?: { start: number; end: number; courts?: number[] } },
+  s: { courtCount: number; courtNumbers?: number[] },
+): { time?: string; numbers?: number[]; count?: string } {
+  const out: { time?: string; numbers?: number[]; count?: string } = {};
+  const r = day.rent;
+  if (r && r.end > r.start) out.time = `${clock(r.start)}-${clock(r.end)}`;
+  const nos = [...new Set(s.courtNumbers ?? [])].sort((a, b) => a - b);
+  const cs = r?.courts?.filter((c) => c > 0) ?? [];
+  if (cs.length) {
+    const lo = Math.min(...cs);
+    const hi = Math.max(...cs);
+    out.count = lo === hi ? String(lo) : `${lo}-${hi}`;
+  } else if (nos.length) out.numbers = nos;
+  else if (s.courtCount > 0) out.count = String(s.courtCount);
+  // วันเช่าที่จำนวนคอร์ทเท่ากับเบอร์ที่ตั้งไว้ บอกเบอร์ดีกว่า
+  if (cs.length && nos.length && Math.max(...cs) === nos.length) {
+    out.numbers = nos;
+    delete out.count;
+  }
+  return out;
+}

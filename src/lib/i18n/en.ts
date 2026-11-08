@@ -178,6 +178,7 @@ export const en: Record<string, string> = {
   "ยกเลิกเกมนี้? (ไม่คิดค่าลูก)": "Cancel this game? Its shuttles won't be charged.",
   "ยกเลิกเกม": "Cancel game",
   "ว่าง {n} สนาม": "{n} free",
+  "สนาม {list}": "Courts {list}",
   "สนาม {n}": "Court {n}",
   "ว่าง": "Free",
   "รอคนครบ 4 (มี {n})": "Need 4 players ({n} waiting)",
