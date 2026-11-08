@@ -6,7 +6,8 @@ import { gameHistory, partnerStats, type GameResult, type HistoryGame, type Mate
 import { useStore } from "@/lib/store";
 import type { Player } from "@/lib/types";
 import { Avatar, Button, Card, Icon } from "./ui";
-import { lockPaid } from "./GameShuttles";
+import { EditGamePlayers, lockPaid } from "./GameShuttles";
+import { canEditPlayers } from "@/lib/state";
 
 type Tab = "mates" | "history";
 
@@ -104,6 +105,7 @@ const dayLabel = (d: string) => new Date(d + "T00:00:00").toLocaleDateString(loc
 function History({ player, admin }: { player: Player; admin: boolean }) {
   const { state, dispatch } = useStore();
   const [shown, setShown] = useState(PAGE);
+  const [editing, setEditing] = useState<HistoryGame | null>(null);
   const all = gameHistory(state, player.id);
   const byId = new Map(state.players.map((p) => [p.id, p]));
   // แอดมินลบเกมที่ไม่ได้เล่นจริง (เฉพาะเกมที่จบแล้ว เกมที่กำลังเล่นยกเลิกที่หน้าสนาม)
@@ -165,7 +167,7 @@ function History({ player, admin }: { player: Player; admin: boolean }) {
         {[t("นับตั้งแต่ {date}", { date: dayLabel(first) }), ...others].join(" · ")}
         {count("unknown") > 0 && <span className="block">{t("ไม่มีผล = แอดมินไม่ได้กดผลแพ้ชนะตอนจบเกม")}</span>}
       </p>
-      {admin && <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">{t("แตะ ✕ เพื่อลบเกมที่ไม่ได้เล่นจริง เกมวันก่อน: คนที่ยังไม่จ่าย ยอดค้างจะเปลี่ยนตาม")}</p>}
+      {admin && <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">{t("แตะ ✎ เพื่อแก้คู่ตีที่บันทึกผิด แตะ ✕ เพื่อลบเกมที่ไม่ได้เล่นจริง เกมวันก่อน: คนที่ยังไม่จ่าย ยอดค้างจะเปลี่ยนตาม")}</p>}
       {recent.length > 0 && (
         <div className="flex flex-wrap items-center gap-1 text-xs text-zinc-600">
           <span className="mr-0.5">{t("{n} เกมล่าสุด", { n: recent.length })}</span>
@@ -207,6 +209,16 @@ function History({ player, admin }: { player: Player; admin: boolean }) {
                     <br />
                     {clock(h.game.startedAt)}
                   </div>
+                  {admin && canEditPlayers(h.game) && (
+                    <button
+                      onClick={() => setEditing(h)}
+                      className="-mr-1.5 grid size-11 shrink-0 place-items-center rounded-full text-zinc-500 active:bg-zinc-100"
+                      aria-label={t("แก้คนในเกม (คู่ตีผิด)")}
+                      title={t("แก้คนในเกม (คู่ตีผิด)")}
+                    >
+                      <Icon.Edit width={18} height={18} />
+                    </button>
+                  )}
                   {admin && h.game.endedAt && (
                     <button
                       onClick={() => remove(h)}
@@ -223,6 +235,10 @@ function History({ player, admin }: { player: Player; admin: boolean }) {
           </ul>
         </section>
       ))}
+      {editing && (() => {
+        const day = state.days.find((d) => d.date === editing.date);
+        return day ? <EditGamePlayers game={editing.game} day={day} onClose={() => setEditing(null)} /> : null;
+      })()}
       {shown < all.length && (
         <Button onClick={() => setShown((n) => n + PAGE)} className="w-full">
           {t("ดูเพิ่ม ({n} เกม)", { n: all.length - shown })}

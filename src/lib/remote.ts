@@ -522,6 +522,14 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       return; // ผู้เล่นแจ้งผ่าน disputeGame() (ฟังก์ชัน dispute_game) ไม่ผ่านตรงนี้
     case "cancelGame":
       return check(await db.from("games").delete().eq("id", a.gameId));
+    case "editGamePlayers":
+    {
+      // แก้ได้เฉพาะเกมที่จบแล้ว (เกมที่ยังเล่นอยู่ใช้เปลี่ยนตัวที่หน้าสนาม)
+      const res = await db.from("games").update({ player_ids: a.playerIds }).eq("id", a.gameId).not("ended_at", "is", null).select("id");
+      check(res);
+      if (!res.data?.length) throw new Error("ไม่พบเกมนี้ หรือเกมยังไม่จบ");
+      return;
+    }
     case "subPlayer":
     {
       // คนลงแทนต้องไม่อยู่ในสนามอื่น (คู่ถัดไปอาจเพิ่งลงสนามจากอีกเครื่อง)
