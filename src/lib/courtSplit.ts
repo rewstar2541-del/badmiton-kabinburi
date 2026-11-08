@@ -73,26 +73,25 @@ export function clock(h: number): string {
 }
 
 /** เวลาและสนามของก๊วนวันหนึ่ง ให้คนลงชื่อรู้ว่าต้องมากี่โมง สนามไหน
- *  time: เวลาเช่า (มีเฉพาะวันสนามเช่า) · numbers: เบอร์สนามที่ตั้งไว้ · count: จำนวนคอร์ท (วันเช่าใช้ของวันนั้น) */
+ *  time: เวลาเช่า (มีเฉพาะวันสนามเช่า) · numbers: เบอร์คอร์ทที่ตั้งไว้ · count: จำนวนคอร์ท (วันเช่าใช้จำนวนมากสุดของวันนั้น) */
 export function sessionFacts(
   day: { rent?: { start: number; end: number; courts?: number[] } },
   s: { courtCount: number; courtNumbers?: number[] },
-): { time?: string; numbers?: number[]; count?: string } {
-  const out: { time?: string; numbers?: number[]; count?: string } = {};
+): { time?: string; numbers?: number[]; count?: number } {
+  const out: { time?: string; numbers?: number[]; count?: number } = {};
   const r = day.rent;
   if (r && r.end > r.start) out.time = `${clock(r.start)}-${clock(r.end)}`;
   const nos = [...new Set(s.courtNumbers ?? [])].sort((a, b) => a - b);
-  const cs = r?.courts?.filter((c) => c > 0) ?? [];
+  // วันเช่า: ไม่มี courts = 1 คอร์ททุกชั่วโมง (normalizeCourts ทิ้งไว้เมื่อเป็น 1 หมด เหมือน courtsAt)
+  const cs = r ? (r.courts?.length ? r.courts.filter((c) => c > 0) : [1]) : [];
   if (cs.length) {
+    // คอร์ทไม่เท่ากันทุกชั่วโมง บอกจำนวนมากที่สุด (ช่วง "4-6 คอร์ท" ผู้เล่นอ่านไม่เข้าใจ)
     const lo = Math.min(...cs);
     const hi = Math.max(...cs);
-    out.count = lo === hi ? String(lo) : `${lo}-${hi}`;
+    // จำนวนเท่ากันทุกชั่วโมงและเท่ากับเบอร์ที่ตั้งไว้ บอกเบอร์ดีกว่า
+    if (nos.length && lo === hi && hi === nos.length) out.numbers = nos;
+    else out.count = hi;
   } else if (nos.length) out.numbers = nos;
-  else if (s.courtCount > 0) out.count = String(s.courtCount);
-  // วันเช่าที่จำนวนคอร์ทเท่ากับเบอร์ที่ตั้งไว้ บอกเบอร์ดีกว่า
-  if (cs.length && nos.length && Math.max(...cs) === nos.length) {
-    out.numbers = nos;
-    delete out.count;
-  }
+  else if (s.courtCount > 0) out.count = s.courtCount;
   return out;
 }

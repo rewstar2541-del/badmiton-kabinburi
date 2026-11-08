@@ -153,7 +153,8 @@ export function EventForm({ date, dates, onDone, onCancel }: { date?: string; da
           </>
         )}
       </div>
-      <textarea className={`${inputClass} min-h-20`} value={message} onChange={(e) => setMessage(e.target.value)} aria-label={t("ข้อความ")} />
+      <textarea className={`${inputClass} min-h-20`} value={message} onChange={(e) => setMessage(e.target.value)} aria-label={t("ข้อความ")} placeholder={t("เช่น สนาม BT 19:00-21:30")} />
+      <p className="-mt-1 text-xs text-zinc-500">{rentOn ? t("เวลาเช่าขึ้นให้ผู้เล่นเห็นเอง บอกแค่ชื่อสนามก็พอ") : t("บอกชื่อสนามและเวลา คนลงชื่อจะได้รู้ว่ามาที่ไหน กี่โมง")}</p>
       <div className="flex gap-2">
         <Button
           variant="accent"

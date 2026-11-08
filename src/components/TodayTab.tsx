@@ -25,7 +25,7 @@ import { AttendeeStrip } from "./Attendees";
 import { sessionFacts } from "@/lib/courtSplit";
 
 /** ประกาศวันนี้ (ใช้ทั้งหน้าผู้เล่นและแอดมิน) สีและไอคอนตามประเภท จัดก๊วน / อีเว้นพิเศษแต่ละแบบ */
-export function AnnouncementBanner({ message, title, fee, date }: { message: string; title?: string; fee?: number; date?: string }) {
+export function AnnouncementBanner({ message, title, fee, date, day }: { message: string; title?: string; fee?: number; date?: string; day?: Pick<Day, "rent"> }) {
   const st = eventStyle(title);
   const when = new Date((date ?? today()) + "T00:00:00").toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" });
   return (
@@ -40,6 +40,7 @@ export function AnnouncementBanner({ message, title, fee, date }: { message: str
             <span className="text-xs font-medium opacity-70">{when}</span>
           </div>
           <div className="font-display text-lg leading-tight font-semibold">{title ? <Auto text={title} /> : t("วันนี้มีจัดก๊วน")}</div>
+          {day && <SessionWhen day={day} />}
           {!!fee && <div className="mt-1 inline-block rounded-full bg-white/70 px-2.5 py-0.5 text-sm font-semibold">{t("ค่าใช้จ่ายคนละ {amount}", { amount: baht(fee) })}</div>}
         </div>
       </div>
@@ -194,14 +195,15 @@ export function SessionWhen({ day, className = "mt-0.5" }: { day: Pick<Day, "ren
   const f = sessionFacts(day, state.settings);
   const parts = [
     f.time,
-    f.numbers ? t("สนาม {list}", { list: f.numbers.join(", ") }) : f.count ? t("{n} คอร์ท", { n: f.count }) : undefined,
+    f.numbers ? t("คอร์ท {list}", { list: f.numbers.join(", ") }) : f.count ? (f.count === 1 ? t("1 คอร์ท") : t("{n} คอร์ท", { n: f.count })) : undefined,
   ].filter(Boolean);
   if (!parts.length) return null;
+  // span (ไม่ใช่ div) เพราะบางที่อยู่ในปุ่ม · ขึ้นบรรทัดใหม่ได้ เบอร์คอร์ทท้ายๆ จะได้ไม่ถูกตัด
   return (
-    <div className={`flex items-center gap-1.5 font-semibold text-ink ${className}`}>
-      <Icon.Clock width={16} height={16} className="shrink-0" aria-hidden />
-      <span className="min-w-0 truncate">{parts.join(" · ")}</span>
-    </div>
+    <span className={`flex items-start gap-1.5 font-semibold text-ink ${className}`}>
+      {f.time ? <Icon.Clock width={16} height={16} className="mt-0.5 shrink-0" aria-hidden /> : <Icon.Court width={16} height={16} className="mt-0.5 shrink-0" aria-hidden />}
+      <span className="min-w-0 break-words">{parts.join(" · ")}</span>
+    </span>
   );
 }
 
@@ -228,7 +230,7 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
       <div className="space-y-4">
         <NoticeBanners />
         <BirthdayBanner />
-        {announced && <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />}
+        {announced && <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} day={day} />}
         <PickMe onPick={setMe} hint={t("เข้าครั้งเดียว เครื่องจะจำไว้")} />
       </div>
     );
@@ -238,7 +240,7 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
       <div className="space-y-4">
         <NoticeBanners />
         <BirthdayBanner />
-        {announced && <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />}
+        {announced && <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} day={day} />}
         <PendingNotice name={player.name} onNotMe={() => setMe(null)} />
       </div>
     );
@@ -316,7 +318,7 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
       {!home && <BirthdayBanner />}
       {!home && <PlanChoice player={player} />}
       {!home && <MonthlyReminder player={player} />}
-      {!home && <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} />}
+      {!home && <AnnouncementBanner message={day.announcement ?? ""} title={day.announcementTitle} fee={day.announcementFee} day={day} />}
       {!home && <CapLine />}
 
       <Panel home={home} top={top}>
