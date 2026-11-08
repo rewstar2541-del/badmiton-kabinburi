@@ -7,6 +7,7 @@ import { PROMOTION_RULE, clubMembers, levelCounts, nextLevel, periodRecord, quar
 import { today, useStore } from "@/lib/store";
 import { LEVELS, type Level, type Player } from "@/lib/types";
 import { quarterLabel, useHistory } from "./Ranking";
+import { GENDER_LABEL } from "./PlayersTab";
 import { useMe } from "./PickMe";
 import { FramedAvatar } from "./AvatarFrame";
 import { LevelBadge, SearchInput, SectionTitle, Sheet, levelCode, levelColor } from "./ui";
@@ -94,6 +95,11 @@ function MemberProfile({ player, month, history }: { player: Player; month: stri
           <div className="text-[15px] text-zinc-700">
             {t(LEVELS.find((l) => l.value === player.level)?.label ?? "")}
           </div>
+          {player.gender && player.gender !== "other" && (
+            <div className="text-[15px] text-zinc-600">
+              {t("เพศ")}: {t(GENDER_LABEL[player.gender])}
+            </div>
+          )}
         </div>
       </div>
       <section className="space-y-1 rounded-2xl bg-zinc-50 px-3 py-2.5">
