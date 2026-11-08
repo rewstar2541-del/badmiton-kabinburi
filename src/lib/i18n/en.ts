@@ -1605,4 +1605,6 @@ export const en: Record<string, string> = {
   "ปิด: แอดมินจัดคู่ลงเอง": "Off: admins put pairs on courts themselves",
   "ปิดจัดคนลงอัตโนมัติ? ระบบจะไม่ดึงคนจากคิวขึ้นสนาม แอดมินกดจัดคู่ลงเองทุกสนาม": "Turn off auto-assign? The system won't pull people from the queue onto courts. Admins set up pairs for every court themselves.",
   "สนามเช่า เบอร์สนาม จัดคนอัตโนมัติ จอทีวี": "Rented court, court numbers, auto-assign, TV",
+  "บันทึกผล: {r}? แอดมินจะจัดคู่ต่อไปเอง": "Record result: {r}? An admin will set up the next pair",
+  "รอแอดมินจัดคู่ลงสนาม": "Waiting for an admin to put you on a court",
 };
