@@ -682,9 +682,10 @@ function SelfReport({ game, playerId, onDone }: { game: Game; playerId: string; 
   const [error, setError] = useState("");
   const label: Record<GameReport, string> = { win: t("ทีมเราชนะ"), draw: t("เสมอ"), lose: t("ทีมเราแพ้") };
   const send = async (r: GameReport) => {
-    if (!confirm(t("บันทึกผล: {r}? คู่ต่อไปจะลงสนามทันที", { r: label[r] }))) return;
-    // คู่ถัดไปของสนามนี้ คิดแบบเดียวกับตอนแอดมินกดจบเกม
+    // คู่ถัดไปของสนามนี้ คิดแบบเดียวกับตอนแอดมินกดจบเกม (ปิดจัดอัตโนมัติ + ไม่มีคู่ที่แอดมินจัดไว้ = ไม่มีคู่ต่อ)
     const next = clubPlan(day, state.players, state.settings, game.court).get(game.court);
+    const ask = next ? t("บันทึกผล: {r}? คู่ต่อไปจะลงสนามทันที", { r: label[r] }) : t("บันทึกผล: {r}? แอดมินจะจัดคู่ต่อไปเอง", { r: label[r] });
+    if (!confirm(ask)) return;
     const ok = next && courtList(state.settings).includes(game.court) && queueBlockers(day, next, game.id).length === 0;
     setBusy(true);
     setError("");
@@ -824,7 +825,7 @@ function PlayerCourts() {
             <>
               <div className="font-display text-4xl font-semibold">{myPos + 1}</div>
               <div className="text-sm text-zinc-500">
-                {myPos < 4 ? t("คิวของคุณ ใกล้ได้ลงแล้ว") : t("คิวของคุณ จากที่รอ {n} คน", { n: queue.length })}
+                {state.settings.autoAssign === false ? t("รอแอดมินจัดคู่ลงสนาม") : myPos < 4 ? t("คิวของคุณ ใกล้ได้ลงแล้ว") : t("คิวของคุณ จากที่รอ {n} คน", { n: queue.length })}
               </div>
             </>
           ) : (

@@ -1601,8 +1601,10 @@ export const en: Record<string, string> = {
   "มีคนย้ายข้ามทีม ตรวจว่าทีมที่ชนะยังถูกอยู่": "Someone moved to the other team. Check the winning team is still right.",
   "จัดคนลงสนามอัตโนมัติ": "Auto-assign players to courts",
   "ใช้ได้หลังรัน SQL auto_assign.sql": "Works after running auto_assign.sql",
-  "เปิด: ระบบจัดคิวขึ้นรอทุกสนาม เกมจบแล้วลงคู่ต่อไปให้ทันที": "On: the queue is lined up for every court, and the next pair goes on as soon as a game ends",
-  "ปิด: แอดมินจัดคู่ลงเอง คนในคิวไม่ถูกย้ายไปสนามอื่น": "Off: admins put pairs on courts themselves, and nobody in the queue gets moved to another court",
+  "เปิด: เกมจบแล้วลงคู่ต่อไปให้ทันที": "On: the next pair goes on as soon as a game ends",
+  "ปิด: แอดมินจัดคู่ลงเอง ไม่ย้ายคิวข้ามสนาม": "Off: admins put pairs on; no moving between courts",
   "ปิดจัดคนลงอัตโนมัติ? ระบบจะไม่ดึงคนจากคิวขึ้นสนาม แอดมินกดจัดคู่ลงเองทุกสนาม": "Turn off auto-assign? The system won't pull people from the queue onto courts. Admins set up pairs for every court themselves.",
   "สนามเช่า เบอร์สนาม จัดคนอัตโนมัติ จอทีวี": "Rented court, court numbers, auto-assign, TV",
+  "บันทึกผล: {r}? แอดมินจะจัดคู่ต่อไปเอง": "Record result: {r}? An admin will set up the next pair",
+  "รอแอดมินจัดคู่ลงสนาม": "Waiting for an admin to put you on a court",
 };
