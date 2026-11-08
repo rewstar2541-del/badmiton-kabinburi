@@ -3,8 +3,8 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { useStore, useToday } from "@/lib/store";
 import { inGame, lineupWith, minShuttles, shuttlesInGame, type Day, type Game, type Player } from "@/lib/types";
-import type { Intent, State } from "@/lib/state";
-import { Card, Icon, SearchInput, SectionTitle, inputClass } from "./ui";
+import { canEditPlayers, validLineup, type Intent, type State } from "@/lib/state";
+import { Avatar, Card, Icon, SearchInput, SectionTitle, Sheet, inputClass } from "./ui";
 import { locale, t } from "@/lib/i18n";
 import { pricesFor, shuttleCountFor, shuttleFee } from "@/lib/billing";
 
@@ -70,6 +70,7 @@ function dateLabel(d: string) {
 export function GameShuttleRow({ game, byId, day, me, open, onToggle, past = false }: { game: Game; byId: Map<string, Player>; day: Day; me?: string | string[]; open: boolean; onToggle: (open: boolean) => void; past?: boolean }) {
   const { dispatch } = useStore();
   const setOpen = onToggle;
+  const [editPlayers, setEditPlayers] = useState(false);
   const lockPaid = useLockPaid(game, day);
   const ci = new Map(day.checkIns.map((c) => [c.playerId, c]));
   const fixed = [...game.playerIds, ...(game.subs ?? []).map((s) => s.out)].filter((id) => ci.get(id)?.paidAt || ci.get(id)?.shuttleFee !== undefined);
@@ -126,6 +127,17 @@ export function GameShuttleRow({ game, byId, day, me, open, onToggle, past = fal
             </div>
           </div>
           {game.endedAt && <ResultEditor game={game} day={day} byId={byId} />}
+          {game.endedAt && (
+            <button
+              className="mt-1 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-zinc-100 text-sm font-semibold text-ink ring-1 ring-zinc-200 active:scale-95 disabled:opacity-50"
+              onClick={() => setEditPlayers(true)}
+              disabled={!canEditPlayers(game)}
+            >
+              <Icon.Edit width={16} height={16} />
+              {t("แก้คนในเกม (คู่ตีผิด)")}
+            </button>
+          )}
+          {game.endedAt && !canEditPlayers(game) && <p className="text-xs text-zinc-500">{t("เกมนี้มีเปลี่ยนตัว แก้คนในเกมไม่ได้ ถ้าบันทึกผิดทั้งเกม ลบเกมนี้")}</p>}
           {past && <p className="text-xs text-amber-800">{t("เกมวันก่อน: คนที่ยังไม่จ่าย ยอดค้างจะเปลี่ยนตาม")}</p>}
           {fixed.length > 0 && (
             <p className="text-xs text-zinc-500">
@@ -143,7 +155,140 @@ export function GameShuttleRow({ game, byId, day, me, open, onToggle, past = fal
           )}
         </div>
       )}
+      {editPlayers && <EditGamePlayers game={game} day={day} onClose={() => setEditPlayers(false)} />}
     </li>
+  );
+}
+
+/**
+ * แอดมินแก้คู่ตีของเกมที่จบแล้ว: แตะช่องแล้วแตะชื่อคนที่เล่นจริง (ชื่อที่อยู่อีกช่องจะสลับกัน)
+ * หรือแตะช่องหนึ่งแล้วแตะอีกช่องเพื่อสลับคน ผลแพ้ชนะคงตามทีม A/B เดิม
+ * ประวัติ สถิติคู่หู อันดับ และค่าลูกของคนที่ยังไม่จ่าย เปลี่ยนตามทันที
+ */
+export function EditGamePlayers({ game, day, onClose }: { game: Game; day: Day; onClose: () => void }) {
+  const { state, dispatch } = useStore();
+  const [slots, setSlots] = useState<string[]>([...game.playerIds]);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [q, setQ] = useState("");
+  const byId = new Map(state.players.map((p) => [p.id, p]));
+  const name = (id: string) => byId.get(id)?.name ?? t("ผู้เล่นที่ออกแล้ว");
+  // คนที่เช็คอินวันนั้น (คิดค่าลูกได้) + คนที่อยู่ในเกมเดิม
+  const ids = [...new Set([...day.checkIns.map((c) => c.playerId), ...game.playerIds])].filter((id) => byId.has(id) || game.playerIds.includes(id));
+  const needle = q.trim().toLowerCase();
+  const list = ids.filter((id) => !needle || name(id).toLowerCase().includes(needle)).sort((a, b) => name(a).localeCompare(name(b), locale()));
+  const [res, setRes] = useState<"A" | "B" | "draw" | "none">(game.draw ? "draw" : (game.winner ?? "none"));
+  const origRes = game.draw ? "draw" : (game.winner ?? "none");
+  const moved = slots.some((id, i) => id !== game.playerIds[i]);
+  const changed = moved || res !== origRes;
+  // มีคนย้ายข้ามทีม: ผลเดิมผูกกับทีม A/B อาจกลับด้าน ให้ตรวจผลด้วย
+  const crossed = slots.some((id, i) => { const j = game.playerIds.indexOf(id); return j >= 0 && (j < 2) !== (i < 2); });
+  const tapSlot = (i: number) => {
+    if (selected === null || selected === i) return setSelected(selected === i ? null : i);
+    const next = [...slots];
+    [next[selected], next[i]] = [next[i], next[selected]];
+    setSlots(next);
+    setSelected(null);
+  };
+  const pick = (id: string) => {
+    if (selected === null) return;
+    const next = [...slots];
+    const at = next.indexOf(id);
+    if (at >= 0) next[at] = next[selected];
+    next[selected] = id;
+    setSlots(next);
+    setSelected(null);
+  };
+  const save = () => {
+    if (!validLineup(slots)) return;
+    const after: Game = { ...game, playerIds: slots };
+    // ล็อกยอดคนที่จ่ายแล้ว (ทั้งคนเดิมและคนใหม่) ก่อนย้ายลูกของเกมนี้
+    lockPaid(game, day, state.settings, dispatch);
+    lockPaid(after, day, state.settings, dispatch);
+    if (moved) dispatch({ type: "editGamePlayers", date: day.date, gameId: game.id, playerIds: slots, prevIds: game.playerIds });
+    if (res !== origRes) dispatch({ type: "setResult", date: day.date, gameId: game.id, winner: res === "A" || res === "B" ? res : undefined, draw: res === "draw" || undefined });
+    onClose();
+  };
+  const slot = (i: number) => {
+    const id = slots[i];
+    const moved = id !== game.playerIds[i];
+    return (
+      <button
+        key={i}
+        onClick={() => tapSlot(i)}
+        aria-pressed={selected === i}
+        className={`flex min-h-12 min-w-0 items-center gap-2 rounded-xl px-2 text-left text-sm font-semibold active:scale-95 ${selected === i ? "bg-lime text-ink ring-2 ring-ink" : moved ? "bg-amber-50 text-amber-900 ring-1 ring-amber-300" : "bg-white text-ink ring-1 ring-zinc-200"}`}
+      >
+        <Avatar name={name(id)} photo={byId.get(id)?.photo} size={26} />
+        <span className="min-w-0 flex-1 truncate">{name(id)}</span>
+      </button>
+    );
+  };
+  return (
+    <Sheet title={<h2 className="text-lg font-bold">{t("แก้คนในเกม")}</h2>} onClose={onClose} keepOpen={changed}>
+      <p className="text-sm text-zinc-600">
+        {dateLabel(day.date)} {clock(game.startedAt)} · {t("สนาม {n}", { n: game.court })}
+      </p>
+      <div className="space-y-2">
+        {(["A", "B"] as const).map((team, k) => (
+          <div key={team} className="rounded-2xl bg-zinc-50 p-2">
+            <div className="mb-1.5 flex items-center gap-1.5 px-1 text-xs font-semibold text-zinc-500">
+              {t("ทีม {team}", { team })}
+              {res === team && <Win />}
+            </div>
+            <div className="grid grid-cols-2 gap-2">{[k * 2, k * 2 + 1].map(slot)}</div>
+          </div>
+        ))}
+      </div>
+      <p className="text-sm text-zinc-600">
+        {selected === null ? t("แตะช่องที่ผิด แล้วแตะชื่อคนที่เล่นจริง หรือแตะอีกช่องเพื่อสลับคน") : t("แตะชื่อคนที่เล่นจริง หรือแตะอีกช่องเพื่อสลับ")}
+      </p>
+      {selected !== null && (
+        <div className="space-y-2">
+          <SearchInput value={q} onChange={setQ} placeholder={t("ค้นหาชื่อ (คนที่มาวันนั้น)")} />
+          <div className="flex flex-wrap gap-1.5">
+            {list.map((id) => {
+              const at = slots.indexOf(id);
+              return (
+                <button
+                  key={id}
+                  onClick={() => pick(id)}
+                  className={`min-h-11 rounded-full px-3 text-sm font-medium active:scale-95 ${at === selected ? "bg-lime text-ink" : at >= 0 ? "bg-zinc-200 text-zinc-700" : "bg-white text-ink ring-1 ring-zinc-200"}`}
+                >
+                  {name(id)}
+                  {at >= 0 && at !== selected && <span className="ml-1 text-xs text-zinc-600">({t("ทีม {team}", { team: at < 2 ? "A" : "B" })})</span>}
+                </button>
+              );
+            })}
+            {list.length === 0 && <p className="px-1 text-sm text-zinc-500">{t("ไม่พบชื่อที่ค้นหา")}</p>}
+          </div>
+        </div>
+      )}
+      <div className="space-y-1.5">
+        <div className="text-sm font-medium">{t("ผลเกม")}</div>
+        {crossed && res !== "none" && res !== "draw" && <p className="text-xs font-semibold text-red-700">{t("มีคนย้ายข้ามทีม ตรวจว่าทีมที่ชนะยังถูกอยู่")}</p>}
+        <div className="grid grid-cols-4 gap-1.5">
+          {(["A", "draw", "B", "none"] as const).map((k) => (
+            <button
+              key={k}
+              aria-pressed={res === k}
+              onClick={() => setRes(k)}
+              className={`min-h-11 rounded-xl px-1 text-xs font-semibold active:scale-95 ${res === k ? "bg-lime text-ink" : "bg-white text-zinc-600 ring-1 ring-zinc-200"}`}
+            >
+              {k === "A" || k === "B" ? t("ทีม {team} ชนะ", { team: k }) : k === "draw" ? t("เสมอ") : t("ไม่นับผล")}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">{t("ผลแพ้ชนะคงตามทีมเดิม ประวัติ สถิติคู่ และค่าลูกของคนที่ยังไม่จ่ายจะเปลี่ยนตาม คนที่จ่ายแล้วยอดไม่เปลี่ยน")}</p>
+      <div className="grid grid-cols-2 gap-2">
+        <button className="min-h-11 rounded-2xl bg-zinc-100 text-sm font-semibold text-zinc-700" onClick={onClose}>
+          {t("ยกเลิก")}
+        </button>
+        <button className="min-h-11 rounded-2xl bg-lime text-sm font-semibold text-ink disabled:opacity-40" onClick={save} disabled={!changed || !validLineup(slots)}>
+          {t("บันทึก")}
+        </button>
+      </div>
+    </Sheet>
   );
 }
 

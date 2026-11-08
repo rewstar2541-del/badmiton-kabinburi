@@ -62,6 +62,8 @@ export type Action =
   /** อีกทีมกด "ไม่ตรง" (โหมดเครื่องเดียว ฐานข้อมูลจริงใช้ฟังก์ชัน dispute_game) */
   | { type: "disputeGame"; date: string; gameId: string; playerId: string }
   | { type: "cancelGame"; date: string; gameId: string }
+  /** แอดมินแก้คน 4 คนของเกมที่จบแล้ว (บันทึกคู่ตีผิด) ลำดับเดียวกับ Game.playerIds ผลแพ้ชนะตามทีม A/B เดิม */
+  | { type: "editGamePlayers"; date: string; gameId: string; playerIds: Game["playerIds"]; /** 4 คนก่อนแก้ (ฐานข้อมูลบันทึกเฉพาะเมื่อยังตรงกัน กันสองเครื่องแก้ทับกัน) */ prevIds: Game["playerIds"] }
   /** เปลี่ยนตัวระหว่างเกม (ส่ง 4 คนในสนามและรายการเปลี่ยนตัวทั้งหมดหลังเปลี่ยน) */
   | {
       type: "subPlayer";
@@ -236,6 +238,13 @@ export function disputable(day: Day, playerId: string, now: number): Game | unde
   );
 }
 
+/** แก้คนในเกมได้เฉพาะเกมที่จบแล้วและไม่มีเปลี่ยนตัว (เกมที่มีเปลี่ยนตัว ลูกของแต่ละคนผูกกับรายการเปลี่ยนตัว) */
+export const canEditPlayers = (g: Pick<Game, "endedAt" | "subs">) => !!g.endedAt && !g.subs?.length;
+
+/** 4 คนไม่ว่างและไม่ซ้ำกัน */
+export const validLineup = (ids: readonly (string | null | undefined)[]): ids is Game["playerIds"] =>
+  ids.length === 4 && ids.every((id) => !!id) && new Set(ids).size === 4;
+
 export function prepare(i: Intent, now = Date.now(), id = newId): Action {
   return { ...i, _id: id(), _at: now } as Action;
 }
@@ -311,6 +320,8 @@ export function reducer(state: State, a: Action): State {
       return updateGame(state, a.date, a.gameId, (g) => ({ ...g, disputedBy: a.playerId }));
     case "cancelGame":
       return withDay(state, a.date, (d) => ({ ...d, games: d.games.filter((g) => g.id !== a.gameId) }));
+    case "editGamePlayers":
+      return updateGame(state, a.date, a.gameId, (g) => (canEditPlayers(g) && validLineup(a.playerIds) ? { ...g, playerIds: a.playerIds } : g));
     case "subPlayer":
     {
       const s = updateGame(state, a.date, a.gameId, (g) => ({ ...g, playerIds: a.playerIds, subs: a.subs.length ? a.subs : undefined }));
