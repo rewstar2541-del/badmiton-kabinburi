@@ -22,6 +22,7 @@ import { Auto } from "@/lib/autoTranslate";
 import { EventPhotos } from "./EventPhotos";
 import { MonthlyReminder, PlanChoice, goToTab } from "./Membership";
 import { AttendeeStrip } from "./Attendees";
+import { sessionFacts } from "@/lib/courtSplit";
 
 /** ประกาศวันนี้ (ใช้ทั้งหน้าผู้เล่นและแอดมิน) สีและไอคอนตามประเภท จัดก๊วน / อีเว้นพิเศษแต่ละแบบ */
 export function AnnouncementBanner({ message, title, fee, date }: { message: string; title?: string; fee?: number; date?: string }) {
@@ -115,6 +116,7 @@ function NextSession({ lead }: { lead?: boolean }) {
               {eventStyle(next.announcementTitle).emoji} <Auto text={next.announcementTitle} />
             </div>
           )}
+          <SessionWhen day={next} className="mt-0.5 text-[15px]" />
           {next.announcement && (
             <p className="mt-0.5 line-clamp-2 text-[15px] leading-snug text-zinc-700">
               <Auto text={next.announcement} />
@@ -156,6 +158,7 @@ function NextSession({ lead }: { lead?: boolean }) {
           {" · "}
           {count}
         </span>
+        <SessionWhen day={next} />
         {next.announcement && (
           <span className="mt-0.5 line-clamp-1 block text-zinc-700">
             <Auto text={next.announcement} />
@@ -181,6 +184,23 @@ function NextSession({ lead }: { lead?: boolean }) {
           {full ? t("เต็มแล้ว ลงชื่อสำรอง") : t("ลงชื่อล่วงหน้า{when}", { when })}
         </Button>
       )}
+    </div>
+  );
+}
+
+/** เวลาเริ่ม-เลิก และสนามของก๊วน (คนลงชื่อจะได้รู้ว่ามากี่โมง สนามไหน) ไม่มีข้อมูล = ไม่แสดง */
+export function SessionWhen({ day, className = "mt-0.5" }: { day: Pick<Day, "rent">; className?: string }) {
+  const { state } = useStore();
+  const f = sessionFacts(day, state.settings);
+  const parts = [
+    f.time,
+    f.numbers ? t("สนาม {list}", { list: f.numbers.join(", ") }) : f.count ? t("{n} คอร์ท", { n: f.count }) : undefined,
+  ].filter(Boolean);
+  if (!parts.length) return null;
+  return (
+    <div className={`flex items-center gap-1.5 font-semibold text-ink ${className}`}>
+      <Icon.Clock width={16} height={16} className="shrink-0" aria-hidden />
+      <span className="min-w-0 truncate">{parts.join(" · ")}</span>
     </div>
   );
 }
@@ -301,9 +321,17 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
 
       <Panel home={home} top={top}>
         {home && announced && (
-          <div className="truncate rounded-2xl border border-zinc-200 bg-zinc-100 px-3 py-2 text-sm font-semibold text-ink">
-            {eventStyle(day.announcementTitle).emoji} {day.announcementTitle ? <Auto text={day.announcementTitle} /> : t("วันนี้มีจัดก๊วน")}
-            {!!day.announcementFee && <span className="font-normal text-zinc-700"> · {baht(day.announcementFee)}</span>}
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-100 px-3 py-2 text-sm">
+            <div className="truncate font-semibold text-ink">
+              {eventStyle(day.announcementTitle).emoji} {day.announcementTitle ? <Auto text={day.announcementTitle} /> : t("วันนี้มีจัดก๊วน")}
+              {!!day.announcementFee && <span className="font-normal text-zinc-700"> · {baht(day.announcementFee)}</span>}
+            </div>
+            <SessionWhen day={day} />
+            {day.announcement && (
+              <span className="mt-0.5 line-clamp-2 block whitespace-pre-line text-zinc-700">
+                <Auto text={day.announcement} />
+              </span>
+            )}
           </div>
         )}
         <AttendeeStrip day={day} dark={home} />
