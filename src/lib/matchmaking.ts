@@ -176,7 +176,7 @@ function metCounts(day: Day): Map<string, number> {
 export function nextMatch(
   day: Day,
   players: Player[],
-  window = 8,
+  window = 12,
   shown: string[][] = [],
 ): [string, string, string, string] | null {
   const queue = waitingQueue(day, players);

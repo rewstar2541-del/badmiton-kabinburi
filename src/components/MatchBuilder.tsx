@@ -53,7 +53,7 @@ export function MatchBuilder({
   const [shown, setShown] = useState<string[][]>(() => (initial ? [initial] : []));
   const suggest = (seen: string[][] = []): Slots =>
     // ครั้งแรกเลี่ยงคนที่ระบบจัดให้สนามอื่นแล้ว กดแนะนำใหม่ดึงจากคิวรวมทั้งหมด จะได้มีคนใหม่ให้หมุน
-    (seen.length ? null : nextMatch(forSuggest, state.players)) ?? nextMatch(day, state.players, 8, seen) ?? [0, 1, 2, 3].map((i) => queue[i]?.player.id ?? null);
+    (seen.length ? null : nextMatch(forSuggest, state.players)) ?? nextMatch(day, state.players, 12, seen) ?? [0, 1, 2, 3].map((i) => queue[i]?.player.id ?? null);
   const [picked, setSlots] = useState<Slots>(() => initial ?? suggest());
   const [selected, setSelected] = useState<number | null>(null);
   // แอดมินอีกเครื่องอาจส่งคนในช่องลงสนามอื่นไปแล้ว หรือใช้สนามนี้ไปแล้ว: เอาคนนั้นออกจากช่องเสมอ
