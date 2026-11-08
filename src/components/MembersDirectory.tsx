@@ -91,9 +91,6 @@ function MemberProfile({ player, month, history }: { player: Player; month: stri
             <span className="truncate font-display text-2xl font-semibold">{player.name}</span>
             <LevelBadge level={player.level} />
           </div>
-          <div className="text-[15px] text-zinc-700">
-            {t(LEVELS.find((l) => l.value === player.level)?.label ?? "")}
-          </div>
         </div>
       </div>
       <section className="space-y-1 rounded-2xl bg-zinc-50 px-3 py-2.5">

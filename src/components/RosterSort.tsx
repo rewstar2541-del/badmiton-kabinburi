@@ -80,13 +80,12 @@ export function LevelGroups({
     return (
       <section key={level.value} className="space-y-2.5">
         <button
-          className="flex w-full items-center gap-2 rounded-2xl bg-zinc-100 px-3 py-2.5 text-left"
+          className="flex min-h-11 w-full items-center gap-2 rounded-2xl bg-zinc-100 px-3 py-2.5 text-left"
           onClick={() => toggle(level.value)}
           aria-expanded={open}
         >
           <LevelBadge level={level.value} />
-          <span className="min-w-0 flex-1 truncate font-semibold">{t(level.label)}</span>
-          <span className="shrink-0 text-xs text-zinc-500">{summary(list)}</span>
+          <span className="ml-auto shrink-0 text-xs text-zinc-500">{summary(list)}</span>
           <span className="shrink-0 text-sm text-zinc-400">{open ? "▲" : "▼"}</span>
         </button>
         {open && children(list)}
