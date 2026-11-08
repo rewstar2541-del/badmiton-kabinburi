@@ -1,10 +1,10 @@
 "use client";
 
-import { courtList, inGame } from "@/lib/types";
+import { inGame } from "@/lib/types";
 import { useMemo, useState, type ReactNode } from "react";
 import { carriedOver, guestsOf } from "@/lib/billing";
 import { t } from "@/lib/i18n";
-import { courtPlan, plannedCourt, presence, queuedSpot, waitingQueue } from "@/lib/matchmaking";
+import { clubPlan, plannedCourt, presence, queuedSpot, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
 import { goToTab } from "./Membership";
 import { savedPin, useMe } from "./PickMe";
@@ -107,7 +107,7 @@ function useNotes(meId: string | null) {
   if (status === "playing" && game)
     notes.push({ id: `court:${game.id}`, tone: "court", title: t("ถึงคิวแล้ว ลงสนาม {n}", { n: game.court }), sub: t("ไปที่สนามได้เลย"), at: game.startedAt, onTap: () => goToTab("courts") });
   const locked = status === "waiting" ? queuedSpot(day, player.id) : null;
-  const planned = status === "waiting" && !locked ? plannedCourt(courtPlan(day, state.players, courtList(state.settings)), player.id) : null;
+  const planned = status === "waiting" && !locked ? plannedCourt(clubPlan(day, state.players, state.settings), player.id) : null;
   // เวลา = ตอนที่เกมล่าสุดจบ (คิวขยับ) หรือตอนเช็คอิน
   const movedAt = Math.max(day.checkIns.find((c) => c.playerId === player.id)?.at ?? 0, ...day.games.map((g) => g.endedAt ?? 0));
   const spot = locked

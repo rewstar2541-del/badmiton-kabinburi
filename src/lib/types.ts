@@ -146,6 +146,12 @@ export interface Settings {
   bankOn?: boolean;
   /** ธีมเทศกาล (ไม่มี = ยังไม่ได้รัน SQL ใช้อัตโนมัติตามวันที่) */
   festival?: import("./festival").FestivalSetting;
+  /**
+   * จัดคนลงสนามอัตโนมัติ: เปิด = ระบบแบ่งคิวรวมขึ้นรอทุกสนาม และลงคู่ต่อไปให้ทันทีที่เกมจบ
+   * ปิด = แอดมินจัดเอง ระบบไม่ดึงคนจากคิวรวม (คู่ที่แอดมินจัดคิวสนามไว้เองยังลงต่อให้)
+   * ไม่มี = ยังไม่รัน SQL auto_assign.sql ถือว่าเปิด
+   */
+  autoAssign?: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {

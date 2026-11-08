@@ -1,5 +1,5 @@
 import { activePairs } from "./social";
-import { DEFAULT_LEVEL, strength, type Day, type Player, type QueuedGame } from "./types";
+import { DEFAULT_LEVEL, courtList, strength, type Day, type Player, type QueuedGame, type Settings } from "./types";
 
 export interface QueueEntry {
   player: Player;
@@ -238,8 +238,9 @@ export interface CourtNext {
  * ลำดับสนาม = สนามว่างก่อน (เลขน้อยก่อน) แล้วสนามที่เริ่มเกมก่อน (น่าจะจบก่อน)
  * first: สนามที่กำลังจะจบเกม ให้ได้คู่แรก (คนที่รอนานสุดได้ลงก่อน ไม่ถูกแซง)
  * สนามที่แอดมินจัดคิวไว้เองใช้คู่นั้น ไม่เอาคนจากคิวรวม
+ * auto = false (แอดมินปิดโหมดจัดคนลงอัตโนมัติ): มีแค่คู่ที่แอดมินจัดคิวสนามไว้เอง ไม่ดึงคนจากคิวรวมขึ้นรอสนามไหน
  */
-export function courtPlan(day: Day, players: Player[], courts: number | number[], first?: number): Map<number, CourtNext> {
+export function courtPlan(day: Day, players: Player[], courts: number | number[], first?: number, auto = true): Map<number, CourtNext> {
   const started = new Map(day.games.filter((g) => !g.endedAt).map((g) => [g.court, g.startedAt]));
   // courts = จำนวนสนาม (1..n) หรือเบอร์สนามที่ตั้งไว้ + สนามที่แอดมินจัดคิวค้างไว้ (เผื่อเปลี่ยนเบอร์ระหว่างวัน)
   const list = typeof courts === "number" ? Array.from({ length: courts }, (_, i) => i + 1) : courts;
@@ -254,6 +255,7 @@ export function courtPlan(day: Day, players: Player[], courts: number | number[]
       plan.set(c, { court: c, playerIds: own.playerIds, queuedId: own.id });
       continue;
     }
+    if (!auto) continue;
     const m = nextMatch(d, players);
     if (!m) continue;
     plan.set(c, { court: c, playerIds: m });
@@ -261,6 +263,11 @@ export function courtPlan(day: Day, players: Player[], courts: number | number[]
     d = { ...d, queued: [...(d.queued ?? []), { id: `plan-${c}`, court: c, playerIds: m, at: Infinity }] };
   }
   return plan;
+}
+
+/** courtPlan ตามที่ตั้งค่าไว้: เบอร์สนาม และโหมดจัดคนลงอัตโนมัติ (ปิด = มีแค่คู่ที่แอดมินจัดเอง) */
+export function clubPlan(day: Day, players: Player[], settings: Pick<Settings, "courtCount" | "courtNumbers" | "autoAssign">, first?: number): Map<number, CourtNext> {
+  return courtPlan(day, players, courtList(settings), first, settings.autoAssign !== false);
 }
 
 /** ผู้เล่นคนนี้รอลงสนามไหน (แอดมินจัดไว้ หรือระบบจัดอัตโนมัติ) */
@@ -285,8 +292,8 @@ export function queueByCourt(queue: QueueEntry[], plan: Map<number, CourtNext>):
  * คู่ที่จะลงสนามต่อทันทีหลังเกมนี้จบ (null = ไม่ลงต่อ)
  * lastRound: แอดมินกำลังจะจบก๊วน กดผลได้เลยโดยไม่ลงคู่ถัดไป (ไม่สร้างเกมใหม่ ไม่เพิ่มค่าลูก)
  */
-export function autoNext(day: Day, players: Player[], courts: number[], game: { id: string; court: number }, lastRound = false): CourtNext | null {
+export function autoNext(day: Day, players: Player[], courts: number[], game: { id: string; court: number }, lastRound = false, auto = true): CourtNext | null {
   if (lastRound || !courts.includes(game.court)) return null;
-  const next = courtPlan(day, players, courts, game.court).get(game.court);
+  const next = courtPlan(day, players, courts, game.court, auto).get(game.court);
   return next && queueBlockers(day, next, game.id).length === 0 ? next : null;
 }

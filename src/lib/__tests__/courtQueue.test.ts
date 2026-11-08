@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoNext, courtPlan, courtQueue, nextMatch, plannedCourt, queueBlockers, queuedSpot, waitingQueue } from "../matchmaking";
+import { autoNext, clubPlan, courtPlan, courtQueue, nextMatch, plannedCourt, queueBlockers, queuedSpot, waitingQueue } from "../matchmaking";
 import { reducer, type State, EMPTY_STATE } from "../state";
 import type { Day, Player } from "../types";
 
@@ -114,5 +114,35 @@ describe("รอบสุดท้าย ไม่ลงคู่ต่อไป
     expect(autoNext(d, players, [1, 2], g, true)).toBeNull();
     const q = { id: "q1", court: 1, playerIds: ["e", "f", "g", "h"] as [string, string, string, string], at: 20 };
     expect(autoNext(day({ games: [g], queued: [q] }), players, [1, 2], g, true)).toBeNull();
+  });
+});
+
+describe("โหมดจัดคนลงอัตโนมัติ ปิด", () => {
+  const playing = { id: "g1", court: 1, playerIds: ["a", "b", "c", "d"] as [string, string, string, string], startedAt: 10, shuttles: 1 };
+  const q2 = { id: "q2", court: 2, playerIds: ["e", "f", "g", "h"] as [string, string, string, string], at: 20 };
+
+  it("ไม่ดึงคนจากคิวรวมขึ้นรอสนามไหน มีแค่คู่ที่แอดมินจัดไว้เอง", () => {
+    const d = day({ games: [playing], queued: [q2] });
+    const plan = courtPlan(d, players, [1, 2], undefined, false);
+    expect([...plan.keys()]).toEqual([2]);
+    expect(plan.get(2)?.queuedId).toBe("q2");
+    // ปิด + ไม่มีคิวที่แอดมินจัด = ไม่มีคู่รอสนามไหนเลย (เปิดอยู่จะได้ 1 คู่จากคนรอ 6 คน)
+    const free = day({ games: [playing] });
+    expect(courtPlan(free, players, [1, 2], undefined, false).size).toBe(0);
+    expect(courtPlan(free, players, [1, 2]).size).toBe(1);
+  });
+
+  it("เกมจบแล้วไม่ลงคู่จากคิวรวมให้ แต่คู่ที่แอดมินจัดคิวสนามนั้นไว้ยังลงต่อ", () => {
+    const d = day({ games: [playing] });
+    expect(autoNext(d, players, [1, 2], playing, false, false)).toBeNull();
+    expect(autoNext(d, players, [1, 2], playing)).not.toBeNull();
+    const q1 = { ...q2, id: "q1", court: 1 };
+    expect(autoNext(day({ games: [playing], queued: [q1] }), players, [1, 2], playing, false, false)?.queuedId).toBe("q1");
+  });
+
+  it("clubPlan อ่านโหมดจากตั้งค่า (ไม่มีค่า = เปิด)", () => {
+    const d = day({ games: [playing] });
+    expect(clubPlan(d, players, { courtCount: 2, autoAssign: false }).size).toBe(0);
+    expect(clubPlan(d, players, { courtCount: 2 }).size).toBe(1);
   });
 });
