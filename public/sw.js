@@ -30,7 +30,7 @@ async function show(data) {
     tag: data.tag,
     renotify: !!data.tag,
     icon: "/icon-192.png",
-    data: { url: data.url || "/" },
+    data: { url: data.url || "/", tab: data.tab || "courts" },
   };
   if (data.alert) {
     // ผู้เล่นปิดไว้: ยังเด้งบอก แต่เงียบ
@@ -46,19 +46,20 @@ async function show(data) {
   return self.registration.showNotification("แบดกบินทร์", opts);
 }
 
-// แตะแจ้งเตือน: เปิดแอพ (หรือสลับไปหน้าที่เปิดอยู่) แล้วไปที่หน้าสนาม
+// แตะแจ้งเตือน: เปิดแอพ (หรือสลับไปหน้าที่เปิดอยู่) แล้วไปที่หน้าสนาม (คำขอเปลี่ยนมือ = หน้าผู้เล่น)
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();
   const url = (e.notification.data && e.notification.data.url) || "/";
+  const tab = (e.notification.data && e.notification.data.tab) || "courts";
   e.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
       // หน้าแอพหลัก (ไม่ใช่หน้าคู่มือ) ที่เปิดอยู่
       const app = list.find((c) => new URL(c.url).pathname === "/" && "focus" in c);
       if (app) {
-        app.postMessage({ type: "goto-tab", tab: "courts" });
+        app.postMessage({ type: "goto-tab", tab });
         return app.focus();
       }
-      return self.clients.openWindow(url + (url.includes("?") ? "&" : "?") + "go=courts");
+      return self.clients.openWindow(url + (url.includes("?") ? "&" : "?") + "go=" + encodeURIComponent(tab));
     }),
   );
 });

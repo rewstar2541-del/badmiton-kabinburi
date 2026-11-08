@@ -38,7 +38,7 @@ export function Segmented<T extends string | number>({
           type="button"
           key={o.value}
           onClick={() => onChange(o.value)}
-          className={`rounded-xl px-1 py-2 text-sm font-semibold transition ${
+          className={`min-h-11 rounded-xl px-1 py-2 text-sm font-semibold transition ${
             value === o.value ? "bg-lime text-ink shadow-sm" : "text-zinc-600"
           }`}
         >
@@ -159,7 +159,7 @@ export function PlayerForm({
         {t("ระดับมือ")}
         {self && <p className="text-xs font-normal text-zinc-500">{t("เปลี่ยนระดับมือต้องรออนุมัติ")}</p>}
         <Segmented
-          options={LEVELS.map((l) => ({ value: l.value, label: l.code, sub: l.label }))}
+          options={LEVELS.map((l) => ({ value: l.value, label: l.code }))}
           value={level}
           onChange={setLevel}
           cols={3}
@@ -408,7 +408,7 @@ function PendingList({ players }: { players: Player[] }) {
                 <div className="space-y-1.5 text-sm font-medium">
                   {t("ระดับมือ (ปรับได้ก่อนอนุมัติ)")}
                   <Segmented
-                    options={LEVELS.map((l) => ({ value: l.value, label: l.code, sub: l.label }))}
+                    options={LEVELS.map((l) => ({ value: l.value, label: l.code }))}
                     value={level}
                     onChange={(v) => setLevels({ ...levels, [p.id]: v })}
                     cols={3}

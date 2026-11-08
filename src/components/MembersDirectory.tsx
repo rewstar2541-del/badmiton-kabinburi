@@ -92,9 +92,6 @@ function MemberProfile({ player, month, history }: { player: Player; month: stri
             <span className="truncate font-display text-2xl font-semibold">{player.name}</span>
             <LevelBadge level={player.level} />
           </div>
-          <div className="text-[15px] text-zinc-700">
-            {t(LEVELS.find((l) => l.value === player.level)?.label ?? "")}
-          </div>
           {player.gender && player.gender !== "other" && (
             <div className="text-[15px] text-zinc-600">
               {t("เพศ")}: {t(GENDER_LABEL[player.gender])}
