@@ -38,7 +38,7 @@ export function Segmented<T extends string | number>({
           type="button"
           key={o.value}
           onClick={() => onChange(o.value)}
-          className={`rounded-xl px-1 py-2 text-sm font-semibold transition ${
+          className={`min-h-11 rounded-xl px-1 py-2 text-sm font-semibold transition ${
             value === o.value ? "bg-lime text-ink shadow-sm" : "text-zinc-600"
           }`}
         >
