@@ -129,7 +129,7 @@ export function GameShuttleRow({ game, byId, day, me, open, onToggle, past = fal
           {game.endedAt && <ResultEditor game={game} day={day} byId={byId} />}
           {game.endedAt && (
             <button
-              className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white text-sm font-semibold text-ink ring-1 ring-zinc-200 active:scale-95 disabled:opacity-50"
+              className="mt-1 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-zinc-100 text-sm font-semibold text-ink ring-1 ring-zinc-200 active:scale-95 disabled:opacity-50"
               onClick={() => setEditPlayers(true)}
               disabled={!canEditPlayers(game)}
             >
@@ -168,7 +168,7 @@ export function GameShuttleRow({ game, byId, day, me, open, onToggle, past = fal
 export function EditGamePlayers({ game, day, onClose }: { game: Game; day: Day; onClose: () => void }) {
   const { state, dispatch } = useStore();
   const [slots, setSlots] = useState<string[]>([...game.playerIds]);
-  const [selected, setSelected] = useState<number | null>(0);
+  const [selected, setSelected] = useState<number | null>(null);
   const [q, setQ] = useState("");
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const name = (id: string) => byId.get(id)?.name ?? t("ผู้เล่นที่ออกแล้ว");
@@ -176,7 +176,12 @@ export function EditGamePlayers({ game, day, onClose }: { game: Game; day: Day; 
   const ids = [...new Set([...day.checkIns.map((c) => c.playerId), ...game.playerIds])].filter((id) => byId.has(id) || game.playerIds.includes(id));
   const needle = q.trim().toLowerCase();
   const list = ids.filter((id) => !needle || name(id).toLowerCase().includes(needle)).sort((a, b) => name(a).localeCompare(name(b), locale()));
-  const changed = slots.some((id, i) => id !== game.playerIds[i]);
+  const [res, setRes] = useState<"A" | "B" | "draw" | "none">(game.draw ? "draw" : (game.winner ?? "none"));
+  const origRes = game.draw ? "draw" : (game.winner ?? "none");
+  const moved = slots.some((id, i) => id !== game.playerIds[i]);
+  const changed = moved || res !== origRes;
+  // มีคนย้ายข้ามทีม: ผลเดิมผูกกับทีม A/B อาจกลับด้าน ให้ตรวจผลด้วย
+  const crossed = slots.some((id, i) => { const j = game.playerIds.indexOf(id); return j >= 0 && (j < 2) !== (i < 2); });
   const tapSlot = (i: number) => {
     if (selected === null || selected === i) return setSelected(selected === i ? null : i);
     const next = [...slots];
@@ -199,10 +204,10 @@ export function EditGamePlayers({ game, day, onClose }: { game: Game; day: Day; 
     // ล็อกยอดคนที่จ่ายแล้ว (ทั้งคนเดิมและคนใหม่) ก่อนย้ายลูกของเกมนี้
     lockPaid(game, day, state.settings, dispatch);
     lockPaid(after, day, state.settings, dispatch);
-    dispatch({ type: "editGamePlayers", date: day.date, gameId: game.id, playerIds: slots });
+    if (moved) dispatch({ type: "editGamePlayers", date: day.date, gameId: game.id, playerIds: slots, prevIds: game.playerIds });
+    if (res !== origRes) dispatch({ type: "setResult", date: day.date, gameId: game.id, winner: res === "A" || res === "B" ? res : undefined, draw: res === "draw" || undefined });
     onClose();
   };
-  const result = game.draw ? t("เสมอ") : game.winner ? t("ทีม {team} ชนะ", { team: game.winner }) : t("ไม่นับผล");
   const slot = (i: number) => {
     const id = slots[i];
     const moved = id !== game.playerIds[i];
@@ -221,20 +226,20 @@ export function EditGamePlayers({ game, day, onClose }: { game: Game; day: Day; 
   return (
     <Sheet title={<h2 className="text-lg font-bold">{t("แก้คนในเกม")}</h2>} onClose={onClose} keepOpen={changed}>
       <p className="text-sm text-zinc-600">
-        {dateLabel(day.date)} {clock(game.startedAt)} · {t("สนาม {n}", { n: game.court })} · {result}
+        {dateLabel(day.date)} {clock(game.startedAt)} · {t("สนาม {n}", { n: game.court })}
       </p>
       <div className="space-y-2">
         {(["A", "B"] as const).map((team, k) => (
           <div key={team} className="rounded-2xl bg-zinc-50 p-2">
             <div className="mb-1.5 flex items-center gap-1.5 px-1 text-xs font-semibold text-zinc-500">
               {t("ทีม {team}", { team })}
-              {game.winner === team && <Win />}
+              {res === team && <Win />}
             </div>
             <div className="grid grid-cols-2 gap-2">{[k * 2, k * 2 + 1].map(slot)}</div>
           </div>
         ))}
       </div>
-      <p className="text-xs text-zinc-500">
+      <p className="text-sm text-zinc-600">
         {selected === null ? t("แตะช่องที่ผิด แล้วแตะชื่อคนที่เล่นจริง หรือแตะอีกช่องเพื่อสลับคน") : t("แตะชื่อคนที่เล่นจริง หรือแตะอีกช่องเพื่อสลับ")}
       </p>
       {selected !== null && (
@@ -250,7 +255,7 @@ export function EditGamePlayers({ game, day, onClose }: { game: Game; day: Day; 
                   className={`min-h-11 rounded-full px-3 text-sm font-medium active:scale-95 ${at === selected ? "bg-lime text-ink" : at >= 0 ? "bg-zinc-200 text-zinc-700" : "bg-white text-ink ring-1 ring-zinc-200"}`}
                 >
                   {name(id)}
-                  {at >= 0 && at !== selected && <span className="ml-1 text-xs text-zinc-500">({t("ทีม {team}", { team: at < 2 ? "A" : "B" })})</span>}
+                  {at >= 0 && at !== selected && <span className="ml-1 text-xs text-zinc-600">({t("ทีม {team}", { team: at < 2 ? "A" : "B" })})</span>}
                 </button>
               );
             })}
@@ -258,6 +263,22 @@ export function EditGamePlayers({ game, day, onClose }: { game: Game; day: Day; 
           </div>
         </div>
       )}
+      <div className="space-y-1.5">
+        <div className="text-sm font-medium">{t("ผลเกม")}</div>
+        {crossed && res !== "none" && res !== "draw" && <p className="text-xs font-semibold text-red-700">{t("มีคนย้ายข้ามทีม ตรวจว่าทีมที่ชนะยังถูกอยู่")}</p>}
+        <div className="grid grid-cols-4 gap-1.5">
+          {(["A", "draw", "B", "none"] as const).map((k) => (
+            <button
+              key={k}
+              aria-pressed={res === k}
+              onClick={() => setRes(k)}
+              className={`min-h-11 rounded-xl px-1 text-xs font-semibold active:scale-95 ${res === k ? "bg-lime text-ink" : "bg-white text-zinc-600 ring-1 ring-zinc-200"}`}
+            >
+              {k === "A" || k === "B" ? t("ทีม {team} ชนะ", { team: k }) : k === "draw" ? t("เสมอ") : t("ไม่นับผล")}
+            </button>
+          ))}
+        </div>
+      </div>
       <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">{t("ผลแพ้ชนะคงตามทีมเดิม ประวัติ สถิติคู่ และค่าลูกของคนที่ยังไม่จ่ายจะเปลี่ยนตาม คนที่จ่ายแล้วยอดไม่เปลี่ยน")}</p>
       <div className="grid grid-cols-2 gap-2">
         <button className="min-h-11 rounded-2xl bg-zinc-100 text-sm font-semibold text-zinc-700" onClick={onClose}>

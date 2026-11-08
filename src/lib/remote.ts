@@ -525,9 +525,16 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
     case "editGamePlayers":
     {
       // แก้ได้เฉพาะเกมที่จบแล้ว (เกมที่ยังเล่นอยู่ใช้เปลี่ยนตัวที่หน้าสนาม)
-      const res = await db.from("games").update({ player_ids: a.playerIds }).eq("id", a.gameId).not("ended_at", "is", null).select("id");
+      // บันทึกเฉพาะเมื่อ 4 คนยังเป็นชุดเดิม (แอดมินอีกเครื่องอาจแก้/ลบเกมนี้ไปก่อน)
+      const res = await db
+        .from("games")
+        .update({ player_ids: a.playerIds })
+        .eq("id", a.gameId)
+        .not("ended_at", "is", null)
+        .filter("player_ids", "eq", `{${a.prevIds.map((id) => `"${id}"`).join(",")}}`)
+        .select("id");
       check(res);
-      if (!res.data?.length) throw new Error("ไม่พบเกมนี้ หรือเกมยังไม่จบ");
+      if (!res.data?.length) throw new Error("เกมนี้ถูกแก้หรือลบจากเครื่องอื่นไปแล้ว ลองเปิดใหม่อีกครั้ง");
       return;
     }
     case "subPlayer":

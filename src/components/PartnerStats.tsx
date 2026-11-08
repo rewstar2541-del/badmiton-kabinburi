@@ -209,25 +209,27 @@ function History({ player, admin }: { player: Player; admin: boolean }) {
                     <br />
                     {clock(h.game.startedAt)}
                   </div>
-                  {admin && canEditPlayers(h.game) && (
+                  {admin && h.game.endedAt && (
+                  <div className="-mr-1.5 flex shrink-0 flex-col">
+                  {canEditPlayers(h.game) && (
                     <button
                       onClick={() => setEditing(h)}
-                      className="-mr-1.5 grid size-11 shrink-0 place-items-center rounded-full text-zinc-500 active:bg-zinc-100"
+                      className="grid size-11 place-items-center rounded-full text-zinc-500 active:bg-zinc-100"
                       aria-label={t("แก้คนในเกม (คู่ตีผิด)")}
                       title={t("แก้คนในเกม (คู่ตีผิด)")}
                     >
                       <Icon.Edit width={18} height={18} />
                     </button>
                   )}
-                  {admin && h.game.endedAt && (
                     <button
                       onClick={() => remove(h)}
-                      className="-mr-1.5 grid size-11 shrink-0 place-items-center rounded-full text-red-500 active:bg-red-50"
+                      className="grid size-11 place-items-center rounded-full text-red-500 active:bg-red-50"
                       aria-label={t("ลบเกมนี้ (ไม่ได้เล่นจริง)")}
                       title={t("ลบเกมนี้ (ไม่ได้เล่นจริง)")}
                     >
                       <Icon.X width={18} height={18} />
                     </button>
+                  </div>
                   )}
                 </li>
               );
@@ -237,7 +239,9 @@ function History({ player, admin }: { player: Player; admin: boolean }) {
       ))}
       {editing && (() => {
         const day = state.days.find((d) => d.date === editing.date);
-        return day ? <EditGamePlayers game={editing.game} day={day} onClose={() => setEditing(null)} /> : null;
+        // ใช้เกมล่าสุดในข้อมูล (อีกเครื่องอาจแก้/ลบไปแล้ว)
+        const game = day?.games.find((g) => g.id === editing.game.id);
+        return day && game && canEditPlayers(game) ? <EditGamePlayers key={game.playerIds.join()} game={game} day={day} onClose={() => setEditing(null)} /> : null;
       })()}
       {shown < all.length && (
         <Button onClick={() => setShown((n) => n + PAGE)} className="w-full">

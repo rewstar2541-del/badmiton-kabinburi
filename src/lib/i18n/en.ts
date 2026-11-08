@@ -1598,4 +1598,5 @@ export const en: Record<string, string> = {
   "ค้นหาชื่อ (คนที่มาวันนั้น)": "Search name (people there that day)",
   "ผลแพ้ชนะคงตามทีมเดิม ประวัติ สถิติคู่ และค่าลูกของคนที่ยังไม่จ่ายจะเปลี่ยนตาม คนที่จ่ายแล้วยอดไม่เปลี่ยน": "The result stays with the same team. History, partner stats and shuttle fees of unpaid players update; paid amounts don't change.",
   "แตะ ✎ เพื่อแก้คู่ตีที่บันทึกผิด แตะ ✕ เพื่อลบเกมที่ไม่ได้เล่นจริง เกมวันก่อน: คนที่ยังไม่จ่าย ยอดค้างจะเปลี่ยนตาม": "Tap ✎ to fix a wrongly recorded pairing, tap ✕ to delete a game that didn't really happen. For past days, unpaid balances will change.",
+  "มีคนย้ายข้ามทีม ตรวจว่าทีมที่ชนะยังถูกอยู่": "Someone moved to the other team. Check the winning team is still right.",
 };

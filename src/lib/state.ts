@@ -63,7 +63,7 @@ export type Action =
   | { type: "disputeGame"; date: string; gameId: string; playerId: string }
   | { type: "cancelGame"; date: string; gameId: string }
   /** แอดมินแก้คน 4 คนของเกมที่จบแล้ว (บันทึกคู่ตีผิด) ลำดับเดียวกับ Game.playerIds ผลแพ้ชนะตามทีม A/B เดิม */
-  | { type: "editGamePlayers"; date: string; gameId: string; playerIds: Game["playerIds"] }
+  | { type: "editGamePlayers"; date: string; gameId: string; playerIds: Game["playerIds"]; /** 4 คนก่อนแก้ (ฐานข้อมูลบันทึกเฉพาะเมื่อยังตรงกัน กันสองเครื่องแก้ทับกัน) */ prevIds: Game["playerIds"] }
   /** เปลี่ยนตัวระหว่างเกม (ส่ง 4 คนในสนามและรายการเปลี่ยนตัวทั้งหมดหลังเปลี่ยน) */
   | {
       type: "subPlayer";

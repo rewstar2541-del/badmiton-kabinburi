@@ -13,7 +13,7 @@ const base = (g: Game = game): State => ({
 
 describe("แก้คนในเกม (คู่ตีผิด)", () => {
   it("แทนคนผิดด้วยคนที่เล่นจริง ค่าลูกและประวัติย้ายตาม ผลยังเป็นของทีมเดิม", () => {
-    const s = reducer(base(), { type: "editGamePlayers", date: "2026-11-01", gameId: "g", playerIds: ["a", "e", "c", "d"] });
+    const s = reducer(base(), { type: "editGamePlayers", date: "2026-11-01", gameId: "g", playerIds: ["a", "e", "c", "d"], prevIds: game.playerIds });
     const day = s.days[0];
     expect(day.games[0].playerIds).toEqual(["a", "e", "c", "d"]);
     expect(day.games[0].winner).toBe("A");
@@ -26,13 +26,13 @@ describe("แก้คนในเกม (คู่ตีผิด)", () => {
   });
 
   it("สลับคู่ระหว่างทีม", () => {
-    const s = reducer(base(), { type: "editGamePlayers", date: "2026-11-01", gameId: "g", playerIds: ["a", "c", "b", "d"] });
+    const s = reducer(base(), { type: "editGamePlayers", date: "2026-11-01", gameId: "g", playerIds: ["a", "c", "b", "d"], prevIds: game.playerIds });
     expect(gameHistory(s, "a")[0].mate).toBe("c");
     expect(gameHistory(s, "b")[0].result).toBe("loss");
   });
 
   it("ไม่แก้เกมที่ยังเล่นอยู่ เกมที่มีเปลี่ยนตัว หรือ 4 คนซ้ำกัน", () => {
-    const edit = (g: Game, ids: Game["playerIds"]) => reducer(base(g), { type: "editGamePlayers", date: "2026-11-01", gameId: "g", playerIds: ids }).days[0].games[0].playerIds;
+    const edit = (g: Game, ids: Game["playerIds"]) => reducer(base(g), { type: "editGamePlayers", date: "2026-11-01", gameId: "g", playerIds: ids, prevIds: g.playerIds }).days[0].games[0].playerIds;
     expect(edit({ ...game, endedAt: undefined }, ["a", "e", "c", "d"])).toEqual(["a", "b", "c", "d"]);
     expect(edit({ ...game, subs: [{ out: "x", in: "b", at: 1, shuttles: 1 }] }, ["a", "e", "c", "d"])).toEqual(["a", "b", "c", "d"]);
     expect(edit(game, ["a", "a", "c", "d"])).toEqual(["a", "b", "c", "d"]);
