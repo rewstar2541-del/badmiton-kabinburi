@@ -1588,4 +1588,11 @@ export const en: Record<string, string> = {
   "iPhone: มีเสียงตอนเปิดแอพค้างไว้ (ต้องไม่เปิดโหมดเงียบ) ถ้าปิดแอพ แจ้งเตือนใช้เสียงของมือถือ": "iPhone: chimes while the app is open (not in silent mode). With the app closed, alerts use the phone's own sound.",
   "แจ้งเตือนถึงคิว": "Turn alerts",
   "ปิดอยู่ แจ้งเตือนจะเด้งแบบเงียบ": "Off: phone alerts arrive silently",
+  "ฟอร์มดีวันนี้": "On form today",
+  "ฟอร์มตกวันนี้": "Off form today",
+  "เกมสูสี ฝีมือสองทีมใกล้กัน": "Close game: both teams are evenly matched",
+  "ทีม {team} เหนือกว่าเล็กน้อย": "Team {team} is slightly stronger",
+  "ทีม {team} เหนือกว่ามาก ลองสลับคน": "Team {team} is much stronger, try swapping players",
+  "▲▼ = ฟอร์มวันนี้ ระบบนับรวมตอนจัดคู่": "▲▼ = today's form, counted when pairing.",
+  "(นับฟอร์มวันนี้ด้วย)": "(today's form counted)",
 };

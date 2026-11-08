@@ -1,5 +1,5 @@
 import { activePairs } from "./social";
-import { strength, type Day, type Player, type QueuedGame } from "./types";
+import { DEFAULT_LEVEL, strength, type Day, type Player, type QueuedGame } from "./types";
 
 export interface QueueEntry {
   player: Player;
@@ -94,11 +94,45 @@ export function hasAvoid(four: Player[]): boolean {
   return four.some((a, i) => four.slice(i + 1).some((b) => avoids(a, b)));
 }
 
+/** ฟอร์มวันนี้ปรับฝีมือได้มากสุดเท่านี้ (ครึ่งระดับมือ) ระดับมือที่แอดมินตั้งยังเป็นหลัก */
+export const FORM_CAP = 0.5;
+/** ฟอร์มถึงเท่านี้ขึ้นเครื่องหมาย ▲▼ ในหน้าจัดคู่ */
+export const FORM_MARK = 0.25;
+
+/**
+ * ฟอร์มวันนี้ของแต่ละคน (-0.5 ถึง +0.5 ระดับ) จากผลแพ้ชนะของเกมที่จบแล้ววันนี้
+ * ชนะทีมที่เก่งกว่า = ขึ้นมาก ชนะทีมที่อ่อนกว่า = ขึ้นนิดเดียว (แพ้ก็กลับกัน) เสมอ/ไม่กดผลไม่นับ
+ * ใช้ให้คนที่ชนะติดๆ กันได้เจอทีมที่แข็งขึ้น เกมจะได้สูสีทั้งสองฝั่ง
+ */
+export function formToday(day: Day, players: Player[]): Map<string, number> {
+  const byId = new Map(players.map((p) => [p.id, p]));
+  const lv = (id: string) => strength(byId.get(id)?.level ?? DEFAULT_LEVEL);
+  const delta = new Map<string, number>();
+  for (const g of day.games) {
+    if (!g.endedAt || !g.winner || g.draw) continue;
+    const [a1, a2, b1, b2] = g.playerIds;
+    // โอกาสที่ทีม A ชนะ ตามระดับมือรวม (ห่าง 2 ระดับ ≈ 76%)
+    const expA = 1 / (1 + 10 ** ((lv(b1) + lv(b2) - lv(a1) - lv(a2)) / 4));
+    const scoreA = g.winner === "A" ? 1 : 0;
+    for (const [id, d] of [[a1, scoreA - expA], [a2, scoreA - expA], [b1, expA - scoreA], [b2, expA - scoreA]] as [string, number][])
+      delta.set(id, (delta.get(id) ?? 0) + d);
+  }
+  const form = new Map<string, number>();
+  for (const [id, d] of delta) form.set(id, Math.max(-FORM_CAP, Math.min(FORM_CAP, d * 0.25)));
+  return form;
+}
+
+/** ฝีมือที่ใช้จัดคู่ = ระดับมือ + ฟอร์มวันนี้ */
+export function skillOf(p: Player, form?: Map<string, number>): number {
+  return strength(p.level) + (form?.get(p.id) ?? 0);
+}
+
 /** แบ่ง 4 คนเป็น 2 ทีมให้ฝีมือรวมใกล้กันที่สุด ไม่ซ้ำคู่เดิม และให้คนที่ขอคู่กันได้อยู่ทีมเดียวกัน */
 export function splitTeams(
   four: Player[],
   partners: Map<string, number> = new Map(),
   pairs: [string, string][] = [],
+  form?: Map<string, number>,
 ): { teams: [string, string, string, string]; cost: number } {
   const paired = (a: Player, b: Player) => pairs.some(([x, y]) => (x === a.id && y === b.id) || (x === b.id && y === a.id));
   const [p0, p1, p2, p3] = four;
@@ -109,7 +143,8 @@ export function splitTeams(
   ];
   let best = { teams: options[0].map((p) => p.id) as [string, string, string, string], cost: Infinity };
   for (const [a1, a2, b1, b2] of options) {
-    const gap = Math.abs(strength(a1.level) + strength(a2.level) - (strength(b1.level) + strength(b2.level)));
+    const sk = (p: Player) => skillOf(p, form);
+    const gap = Math.abs(sk(a1) + sk(a2) - (sk(b1) + sk(b2)));
     const repeat =
       (partners.get(pairKey(a1.id, a2.id)) ?? 0) + (partners.get(pairKey(b1.id, b2.id)) ?? 0);
     const liked = Number(wants(a1, a2)) + Number(wants(b1, b2));
@@ -159,6 +194,7 @@ export function nextMatch(
     .filter((x) => x.rank < reach || mates.has(x.p.id));
   const partners = partnerCounts(day);
   const met = metCounts(day);
+  const form = formToday(day, players);
   const shownSets = shown.map((ids) => new Set(ids));
 
   let best: { teams: [string, string, string, string]; score: number } | null = null;
@@ -166,9 +202,9 @@ export function nextMatch(
     for (let j = i + 1; j < pool.length; j++)
       for (let k = j + 1; k < pool.length; k++) {
         const four = [head, pool[i].p, pool[j].p, pool[k].p];
-        const levels = four.map((p) => strength(p.level));
+        const levels = four.map((p) => skillOf(p, form));
         const spread = Math.max(...levels) - Math.min(...levels);
-        const split = splitTeams(four, partners, pairs);
+        const split = splitTeams(four, partners, pairs, form);
         // ได้ลงพร้อมคู่ที่ขอไว้ = ดีมาก
         const ids = new Set(four.map((p) => p.id));
         const pairBonus = pairs.filter(([a, b]) => ids.has(a) && ids.has(b)).length * 40;

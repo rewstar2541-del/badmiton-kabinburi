@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { hasAvoid, nextMatch, waitingQueue } from "@/lib/matchmaking";
+import { FORM_MARK, formToday, hasAvoid, nextMatch, skillOf, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
 import { strength, type Game, type Player } from "@/lib/types";
 import { Avatar, Button, Icon, LevelBadge, Sheet } from "./ui";
@@ -95,10 +95,20 @@ export function MatchBuilder({
   const full = slots.every(Boolean);
   const chosen = slots.map((id) => (id ? byId.get(id) : undefined)).filter((p) => p !== undefined);
   const clash = hasAvoid(chosen);
+  // ฟอร์มวันนี้ (ชนะ/แพ้ติดๆ กัน) ระบบนับรวมตอนจัดคู่ด้วย
+  const form = formToday(day, state.players);
+  const skillSum = (ids: Slots) => ids.reduce((n, id) => {
+      const p = id ? byId.get(id) : undefined;
+      return n + (p ? skillOf(p, form) : 0);
+    }, 0);
+  const edge = skillSum(slots.slice(0, 2)) - skillSum(slots.slice(2, 4));
   const teamSum = (ids: Slots) => ids.reduce((n, id) => {
       const p = id ? byId.get(id) : undefined;
       return n + (p ? strength(p.level) : 0);
     }, 0);
+  // ตัวเลขข้างทีมเป็นระดับมือล้วน ถ้าฟอร์มทำให้ผลต่างเปลี่ยน บอกไว้ จะได้ไม่งงว่าทำไมไม่ตรงกับตัวเลข
+  const formCounts = Math.abs(edge - (teamSum(slots.slice(0, 2)) - teamSum(slots.slice(2, 4)))) >= 0.25;
+  const marked = slots.some((id) => id && Math.abs(form.get(id) ?? 0) >= FORM_MARK);
 
   const slot = (i: number) => {
     const p: Player | undefined = slots[i] ? byId.get(slots[i]!) : undefined;
@@ -115,6 +125,7 @@ export function MatchBuilder({
             <>
               <Avatar name={p.name} photo={p.photo} size={28} ring />
               <span className="min-w-0 flex-1 truncate text-sm font-semibold">{p.name}</span>
+              {!on && <FormMark value={form.get(p.id)} />}
               {on ? <span className="w-8" /> : <LevelBadge level={p.level} />}
             </>
           ) : (
@@ -151,7 +162,19 @@ export function MatchBuilder({
       </div>
       <p className="text-xs text-zinc-500">
         {t("แตะชื่อในสนาม แล้วแตะอีกช่องเพื่อสลับ หรือแตะชื่อจากคิวเพื่อเปลี่ยนคน ตัวเลขข้างทีม = ผลรวมระดับมือ")}
+        {marked && <> {t("▲▼ = ฟอร์มวันนี้ ระบบนับรวมตอนจัดคู่")}</>}
       </p>
+
+      {full && (
+        <p role="status" className={`rounded-xl px-3 py-2 text-sm font-medium ${Math.abs(edge) <= 0.5 ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
+          {Math.abs(edge) <= 0.5
+            ? t("เกมสูสี ฝีมือสองทีมใกล้กัน")
+            : Math.abs(edge) <= 1.5
+              ? t("ทีม {team} เหนือกว่าเล็กน้อย", { team: edge > 0 ? "A" : "B" })
+              : t("ทีม {team} เหนือกว่ามาก ลองสลับคน", { team: edge > 0 ? "A" : "B" })}
+          {formCounts && <> {t("(นับฟอร์มวันนี้ด้วย)")}</>}
+        </p>
+      )}
 
       {clash && (
         <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">{t("มีคู่ที่ไม่อยากเจอกันในเกมนี้")}</p>
@@ -170,6 +193,7 @@ export function MatchBuilder({
               >
                 <span className="w-4 text-center text-[11px] text-zinc-400">{i + 1}</span>
                 <span className="min-w-0 flex-1 truncate font-medium">{e.player.name}</span>
+                <FormMark value={form.get(e.player.id)} dark={false} />
                 <LevelBadge level={e.player.level} />
                 <span className="text-right text-[10px] leading-tight text-zinc-500">
                   {t("{n} เกม", { n: e.gamesPlayed })}
@@ -211,5 +235,18 @@ export function MatchBuilder({
         </Button>
       </div>
     </Sheet>
+  );
+}
+
+/** ▲ ฟอร์มดี / ▼ ฟอร์มตก วันนี้ (ไม่ขึ้นถ้าฟอร์มใกล้ศูนย์) */
+function FormMark({ value = 0, dark = true }: { value?: number; dark?: boolean }) {
+  if (Math.abs(value) < FORM_MARK) return null;
+  const up = value > 0;
+  const label = up ? t("ฟอร์มดีวันนี้") : t("ฟอร์มตกวันนี้");
+  return (
+    <span className={`text-sm font-bold ${up ? (dark ? "text-lime" : "text-emerald-600") : dark ? "text-amber-300" : "text-amber-600"}`}>
+      <span aria-hidden>{up ? "▲" : "▼"}</span>
+      <span className="sr-only">{label}</span>
+    </span>
   );
 }
