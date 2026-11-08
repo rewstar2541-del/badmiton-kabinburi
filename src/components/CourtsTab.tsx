@@ -494,14 +494,12 @@ export function CourtsTab() {
             role="switch"
             aria-checked={lastRound}
             onClick={() => setLastRound(!lastRound)}
-            className={`flex min-h-12 w-full items-center gap-3 border-t border-zinc-200 px-4 py-2 text-left text-sm transition ${
-              lastRound ? "bg-amber-50" : "active:opacity-70"
-            }`}
+            className={`flex min-h-14 w-full items-center gap-3 border-t border-zinc-200 px-4 py-2 text-left text-sm transition active:opacity-70 ${lastRound ? "bg-amber-50" : ""}`}
           >
             <span className="min-w-0 flex-1">
               <span className={`block font-semibold ${lastRound ? "text-amber-900" : "text-ink"}`}>{t("รอบสุดท้าย")}</span>
               {lastRound && (
-                <span className="block text-xs text-amber-800">{t("กดผลแล้วไม่ลงคู่ต่อไป ไม่เพิ่มค่าลูก")}</span>
+                <span className="block text-xs text-amber-800">{t("ไม่ลงคู่ใหม่ จึงไม่มีค่าลูกเพิ่ม")}</span>
               )}
             </span>
             <SwitchKnob on={lastRound} tone="amber" />

@@ -13,7 +13,7 @@ export function SwitchKnob({ on, tone = "emerald", dim = false }: { on: boolean;
   const bg = on ? (tone === "amber" ? "bg-amber-500" : "bg-emerald-600") : "bg-zinc-300";
   return (
     <span aria-hidden className={`relative h-7 w-12 shrink-0 rounded-full transition ${dim ? "opacity-40" : ""} ${bg}`}>
-      <span className={`absolute top-0.5 size-6 rounded-full bg-white shadow transition-all ${on ? "left-[1.375rem]" : "left-0.5"}`} />
+      <span className={`absolute top-0.5 size-6 rounded-full bg-[#fff] shadow transition-all ${on ? "left-[1.375rem]" : "left-0.5"}`} />
     </span>
   );
 }
@@ -38,7 +38,7 @@ export function AutoAssignSwitch({ row = false }: { row?: boolean }) {
         aria-checked={on}
         disabled={!ready}
         onClick={toggle}
-        className="flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left text-sm transition active:opacity-70"
+        className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left text-sm transition active:opacity-70"
       >
         <span className="min-w-0 flex-1">
           <span className={`block font-semibold ${ready ? "text-ink" : "text-zinc-500"}`}>{t("จัดคนลงอัตโนมัติ")}</span>
