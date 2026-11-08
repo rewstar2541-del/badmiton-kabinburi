@@ -19,32 +19,33 @@ export function AutoAssignSwitch({ compact = false }: { compact?: boolean }) {
       return;
     dispatch({ type: "updateSettings", settings: { ...state.settings, autoAssign: !on } });
   };
-  // ทั้งแถวกดได้ (ไม่ต้องเล็งตัวสวิตช์เล็กๆ) สีแบบเดียวกับสวิตช์ช่องทางรับเงิน: เขียว = เปิด เทา = ปิด/ยังใช้ไม่ได้
-  const tone = !ready ? "bg-zinc-50 text-zinc-500" : on ? "bg-emerald-50 text-emerald-900" : "bg-zinc-100 text-zinc-800";
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      disabled={!ready}
-      onClick={toggle}
-      className={`flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left text-sm transition active:scale-[0.99] ${tone} ${
-        compact ? "rounded-2xl" : "rounded-3xl border border-zinc-200"
+    <div
+      className={`flex min-h-11 items-center gap-3 rounded-2xl px-4 py-2 text-sm ${
+        on ? (compact ? "bg-emerald-50 text-emerald-900" : "border border-zinc-200 bg-white !rounded-3xl !py-3") : `bg-sky-50 text-sky-900 ring-1 ring-sky-200 ${compact ? "" : "!rounded-3xl !py-3"}`
       }`}
     >
       <span className="min-w-0 flex-1">
-        <span className={`block font-semibold ${compact ? "" : "font-display text-base"}`}>{t("จัดคนลงสนามอัตโนมัติ")}</span>
+        <span className="block font-semibold">{t("จัดคนลงสนามอัตโนมัติ")}</span>
         <span className="block text-xs">
           {!ready
             ? t("ใช้ได้หลังรัน SQL auto_assign.sql")
             : on
-              ? t("เปิด: เกมจบแล้วลงคู่ต่อไปให้ทันที")
-              : t("ปิด: แอดมินจัดคู่ลงเอง ไม่ย้ายคิวข้ามสนาม")}
+              ? t("เปิด: ระบบจัดคิวขึ้นรอทุกสนาม เกมจบแล้วลงคู่ต่อไปให้ทันที")
+              : t("ปิด: แอดมินจัดคู่ลงเอง คนในคิวไม่ถูกย้ายไปสนามอื่น")}
         </span>
       </span>
-      <span aria-hidden className={`relative h-7 w-12 shrink-0 rounded-full transition ${!ready ? "opacity-40" : ""} ${on ? "bg-emerald-600" : "bg-zinc-300"}`}>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label={t("จัดคนลงสนามอัตโนมัติ")}
+        disabled={!ready}
+        onClick={toggle}
+        className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-40 ${on ? "bg-emerald-600" : "bg-zinc-300"}`}
+      >
         <span className={`absolute top-0.5 size-6 rounded-full bg-white shadow transition-all ${on ? "left-[1.375rem]" : "left-0.5"}`} />
-      </span>
-    </button>
+      </button>
+    </div>
   );
 }
