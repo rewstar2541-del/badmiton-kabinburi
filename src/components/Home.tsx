@@ -301,7 +301,7 @@ export function PlayerHome() {
       : status === "waiting" && spot
         ? { big: t("สนาม {n}", { n: spot.court }), sub: spot.pos === 0 ? t("ระบบจัดให้รอสนามนี้ ถ้าสนามอื่นว่างก่อนอาจย้ายไปสนามนั้น") : spot.pos === 1 ? t("คุณได้ลงต่อจากเกมที่เล่นอยู่ เตรียมตัวได้เลย") : t("คิวรอลงสนามนี้ คู่ที่ {n}", { n: spot.pos }) }
       : status === "waiting"
-        ? { big: t("คิวที่ {n}", { n: pos }), sub: state.settings.autoAssign === false ? t("รอแอดมินจัดคู่ลงสนาม") : pos <= 4 ? t("ใกล้ถึงคิวแล้ว เตรียมตัวได้เลย") : t("รอคิวอยู่ {n} คน", { n: queue.length }) }
+        ? { big: t("คิวที่ {n}", { n: pos }), sub: pos <= 4 ? t("ใกล้ถึงคิวแล้ว เตรียมตัวได้เลย") : t("รอคิวอยู่ {n} คน", { n: queue.length }) }
         : status === "resting"
           ? { big: t("พักอยู่"), sub: t("ระบบข้ามคิวให้") }
           : status === "home"
