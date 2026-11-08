@@ -1406,7 +1406,7 @@ export const en: Record<string, string> = {
   "รอสนาม {n}": "Waiting for court {n}",
   "เอาคู่นี้ออกจากคิว?": "Remove this match from the queue?",
   "สนาม {n} ยังเริ่มเกมต่อไม่ได้ มีคนในคู่ที่จัดไว้ไม่พร้อม (ชื่อขีดฆ่า) กดแก้หรือเอาคู่นั้นออก": "Court {n} can't start the next game: someone in the queued match isn't ready (crossed out). Edit or remove that match.",
-  "ระบบจัดให้รอสนามนี้ อาจเปลี่ยนได้ถ้าคิวขยับ": "Auto-assigned to this court. May change as the queue moves.",
+  "ระบบจัดให้รอสนามนี้ ถ้าสนามอื่นว่างก่อนอาจย้ายไปสนามนั้น": "Auto-assigned to this court. If another court frees up first, you may be moved there.",
   "จบก๊วนแล้ว": "Session ended",
   "รอบสุดท้าย: กดผลแล้วไม่ลงคู่ต่อไป": "Last round: recording a result won't start the next pair",
   "ไม่สร้างเกมใหม่ ไม่เพิ่มค่าลูก": "No new games, no extra shuttle cost",

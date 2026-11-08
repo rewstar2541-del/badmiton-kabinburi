@@ -46,6 +46,13 @@ describe("matchmaking", () => {
     expect(nextMatch(dayWith(ps.slice(0, 3)), ps)).toBeNull();
   });
 
+  it("เลือกคนระดับใกล้กัน ไม่ให้มือหนักแบกมือเบา แม้คนระดับเดียวกันอยู่ท้ายคิวกว่า", () => {
+    // คิว: P, New, New, BG, P, P, S  -> ควรได้ P,P,P,S ไม่ใช่ P,New,New,BG
+    const ps = [p("a", 5), p("b", 1), p("c", 1), p("d", 2), p("e", 5), p("f", 5), p("g", 4)];
+    const m = nextMatch(dayWith(ps), ps)!;
+    expect([...m].sort()).toEqual(["a", "e", "f", "g"]);
+  });
+
   it("50 คนจัดได้เร็ว", () => {
     const ps = Array.from({ length: 50 }, (_, i) => p(`p${i}`, ((i % 5) + 1) as Level));
     const t = performance.now();
