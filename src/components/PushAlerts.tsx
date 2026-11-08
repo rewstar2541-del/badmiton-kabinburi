@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/remote";
-import { useStore } from "@/lib/store";
+import { useStore, useToday } from "@/lib/store";
+import { myTurn } from "@/lib/pushQueue";
+import { buzz, playChime, setTurnAlertOn, syncTurnAlertPref, turnAlertOn, unlockTurnSound } from "@/lib/turnAlert";
 import { t } from "@/lib/i18n";
 import {
   currentSubscription,
@@ -140,7 +142,14 @@ const Denied = () => (
 /** หน้าโปรไฟล์: เปิด/ปิดแจ้งเตือนเด้งบนเครื่องนี้ */
 export function PushToggle({ playerId }: { playerId: string }) {
   const { s, busy, error, turnOn, turnOff } = usePush(playerId);
-  if (!s?.ready) return null;
+  // ยังไม่ได้ตั้งแจ้งเตือนเด้ง: ยังเปิด/ปิดเสียงในแอพได้
+  if (!s?.ready)
+    return (
+      <Card className="space-y-3">
+        <h3 className="font-display font-semibold">{t("แจ้งเตือนถึงคิว")}</h3>
+        <SoundToggle />
+      </Card>
+    );
   const can = s.support === "ok" && s.adminOn;
   return (
     <Card className="space-y-3">
@@ -162,9 +171,77 @@ export function PushToggle({ playerId }: { playerId: string }) {
       {s.support !== "ok" && <NotSupported support={s.support} />}
       {s.support === "ok" && s.denied && !s.on && <Denied />}
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+      <div className="border-t border-zinc-100 pt-3">
+        <SoundToggle />
+      </div>
       {s.on && s.adminOn && s.support === "ok" && <TestPush />}
     </Card>
   );
+}
+
+/** เปิด/ปิด เสียงและสั่นตอนถึงคิว (เครื่องนี้) */
+function SoundToggle() {
+  const [on, setOn] = useState(turnAlertOn);
+  return (
+    <label className="flex items-center justify-between gap-3 text-sm">
+      <span className="min-w-0">
+        <span className="block font-medium">{t("เสียงและสั่นเมื่อถึงคิว")}</span>
+        <span className="block text-sm text-zinc-500">
+          {!on ? t("ปิดอยู่ แจ้งเตือนจะเด้งแบบเงียบ") : isIos() ? t("iPhone: มีเสียงตอนเปิดแอพค้างไว้ (ต้องไม่เปิดโหมดเงียบ) ถ้าปิดแอพ แจ้งเตือนใช้เสียงของมือถือ") : t("สั่นและมีเสียงตอนถึงคิว และตอนอีก 1 เกมถึงคิว")}
+        </span>
+      </span>
+      <input
+        type="checkbox"
+        className="size-5 shrink-0 accent-lime"
+        checked={on}
+        onChange={() => {
+          setTurnAlertOn(!on);
+          setOn(!on);
+          // ลองให้ได้ยิน/รู้สึกทันทีตอนเปิด
+          if (!on) {
+            playChime("soon");
+            buzz();
+          }
+        }}
+      />
+    </label>
+  );
+}
+
+/**
+ * ตอนเปิดแอพอยู่: ถึงคิวลงสนาม / อีก 1 เกมถึงคิว ให้มีเสียงสั้นๆ และสั่น (ครั้งเดียวต่อเรื่อง)
+ * ตอนปิดแอพ แจ้งเตือนเด้ง (sw.js) สั่นแทน ไม่เตือนเรื่องที่ค้างอยู่ตั้งแต่ก่อนเปิดแอพ
+ * แจ้งเตือนเด้งอาจดังซ้ำตอนเปิดแอพอยู่: ตั้งใจ ดีกว่าพลาดคิวเพราะแอพเล่นเสียงไม่ได้
+ */
+export function TurnAlert() {
+  const [me] = useMe();
+  const { state, auth } = useStore();
+  const { day } = useToday();
+  const seen = useRef<{ who: string | null; keys: Set<string> } | null>(null);
+
+  useEffect(() => {
+    syncTurnAlertPref();
+    return unlockTurnSound();
+  }, []);
+
+  const mine = me && !auth.isAdmin ? myTurn(day, state.players, state.settings, me) : null;
+  // เปลี่ยนคน หรือสลับโหมดแอดมิน/ผู้เล่น = เริ่มนับใหม่
+  const who = me && !auth.isAdmin ? me : null;
+  const key = mine?.key ?? null;
+  const kind = mine?.kind;
+  useEffect(() => {
+    if (!seen.current || seen.current.who !== who) {
+      // เปิดแอพ / เปลี่ยนคน / สลับโหมด: เรื่องที่มีอยู่แล้วไม่ต้องเตือน
+      seen.current = { who, keys: new Set(key ? [key] : []) };
+      return;
+    }
+    if (!key || !kind || seen.current.keys.has(key)) return;
+    seen.current.keys.add(key);
+    if (!turnAlertOn() || document.visibilityState !== "visible") return;
+    playChime(kind);
+    buzz();
+  }, [who, key, kind]);
+  return null;
 }
 
 /** ปุ่มส่งแจ้งเตือนทดสอบ: ส่งใน 6 วินาที ให้สลับไปหน้าจอโฮมรอดู */

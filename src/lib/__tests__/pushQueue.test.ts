@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bangkokDate, turnSoon } from "../pushQueue";
+import { bangkokDate, myTurn, turnSoon } from "../pushQueue";
 import type { Day, Player } from "../types";
 
 const players: Player[] = "abcdefghijkl".split("").map((id) => ({ id, name: id, level: 3 }));
@@ -43,5 +43,22 @@ describe("แจ้งเตือนอีก 1 เกมถึงคิว", (
   it("วันที่ตามเวลาไทย", () => {
     expect(bangkokDate(Date.parse("2026-11-06T18:30:00Z"))).toBe("2026-11-07");
     expect(bangkokDate(Date.parse("2026-11-06T16:30:00Z"))).toBe("2026-11-06");
+  });
+});
+
+describe("เสียง+สั่นในแอพ: เรื่องของฉันตอนนี้", () => {
+  it("อีก 1 เกมถึงคิว ใช้คีย์เดียวกับแจ้งเตือนเด้ง", () => {
+    const d = day({ games: [g1], queued: [{ id: "q1", court: 1, playerIds: ["i", "j", "k", "l"], at: 1 }] });
+    expect(myTurn(d, players, settings, "i", 100)).toEqual({ kind: "soon", court: 1, key: "turn:0:1" });
+  });
+
+  it("ลงสนามแล้ว: เตือนเฉพาะเกมที่เพิ่งเริ่มไม่เกิน 3 นาที", () => {
+    const d = day({ games: [g1] });
+    expect(myTurn(d, players, settings, "a", 10 + 60_000)).toEqual({ kind: "play", court: 1, key: "play:g1" });
+    expect(myTurn(d, players, settings, "a", 10 + 4 * 60_000)).toBeNull();
+  });
+
+  it("ยังไม่ถึง = ไม่เตือน", () => {
+    expect(myTurn(day(), players, settings, "a", 100)).toBeNull();
   });
 });

@@ -30,7 +30,7 @@ import { setTheme, useTheme } from "@/lib/theme";
 import { activeFestival, festivalInfo } from "@/lib/festival";
 import { FestivalFalling } from "./FestivalDecor";
 import { registerPushWorker } from "@/lib/push";
-import { PushAuto } from "./PushAlerts";
+import { PushAuto, TurnAlert } from "./PushAlerts";
 
 type TabId = "event" | "home" | "today" | "checkin" | "courts" | "billing" | "players" | "settings" | "mybill" | "profile";
 type Tab = { id: TabId; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> };
@@ -281,6 +281,7 @@ function Shell() {
     <Fragment key={lang}>
       <DemoBar />
       <PushAuto />
+      <TurnAlert />
       {festivalOn && <FestivalFalling f={festivalOn} />}
       <Header />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-1 pb-32">

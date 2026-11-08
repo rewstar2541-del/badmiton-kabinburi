@@ -9,16 +9,40 @@ self.addEventListener("push", (e) => {
   } catch {
     data = { title: e.data ? e.data.text() : "แบดกบินทร์" };
   }
-  e.waitUntil(
-    self.registration.showNotification(data.title || "แบดกบินทร์", {
-      body: data.body || "",
-      tag: data.tag,
-      renotify: !!data.tag,
-      icon: "/icon-192.png",
-      data: { url: data.url || "/" },
-    }),
-  );
+  e.waitUntil(show(data));
 });
+
+// เสียง+สั่นตอนถึงคิว: ผู้เล่นเปิด/ปิดได้ที่โปรไฟล์ (แอพเขียนค่าไว้ใน Cache Storage ค่าเริ่มต้น = เปิด)
+async function alertOn() {
+  try {
+    const r = await (await caches.open("bk-prefs")).match("/__bk/turn-alert");
+    return !r || (await r.text()) !== "0";
+  } catch {
+    return true;
+  }
+}
+
+async function show(data) {
+  const opts = {
+    body: data.body || "",
+    tag: data.tag,
+    renotify: !!data.tag,
+    icon: "/icon-192.png",
+    data: { url: data.url || "/" },
+  };
+  if (data.alert) {
+    // ผู้เล่นปิดไว้: ยังเด้งบอก แต่เงียบ
+    // (ไม่เงียบตอนแอพเปิดอยู่ เพราะแอพเล่นเสียงเองไม่ได้ทุกกรณี เช่น iPhone ปิดเสียงเครื่อง หรือยังไม่ได้แตะจอ: ยอมดังซ้ำดีกว่าพลาดคิว)
+    if (!(await alertOn())) opts.silent = true;
+    else {
+      // ขอให้สั่น และให้ "ถึงคิวแล้ว" ค้างบนจอจนกว่าจะปัดทิ้ง
+      // ทั้งสองอย่างเป็นแค่คำขอ: Android รุ่นใหม่ใช้การตั้งค่าแจ้งเตือนของเว็บในเครื่อง iPhone ใช้เสียง/สั่นของเครื่องเอง
+      opts.vibrate = [200, 100, 200, 100, 400];
+      if (data.alert === "play") opts.requireInteraction = true;
+    }
+  }
+  return self.registration.showNotification(data.title || "แบดกบินทร์", opts);
+}
 
 // แตะแจ้งเตือน: เปิดแอพ (หรือสลับไปหน้าที่เปิดอยู่) แล้วไปที่หน้าสนาม
 self.addEventListener("notificationclick", (e) => {

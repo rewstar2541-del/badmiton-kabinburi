@@ -27,6 +27,22 @@ export function turnSoon(day: Day, players: Player[], settings: Pick<Settings, "
   return out;
 }
 
+/** เรื่องที่ต้องเตือนผู้เล่นคนนี้ตอนนี้ (ใช้ในแอพตอนเปิดอยู่ เสียง+สั่น) กติกาเดียวกับแจ้งเตือนเด้งฝั่งเซิร์ฟเวอร์ */
+export interface MyTurn {
+  kind: "play" | "soon";
+  court: number;
+  /** เตือนครั้งเดียวต่อคีย์ */
+  key: string;
+}
+
+export function myTurn(day: Day, players: Player[], settings: Pick<Settings, "courtCount" | "courtNumbers">, playerId: string, now = Date.now()): MyTurn | null {
+  // ถึงคิวลงสนามแล้ว: เกมที่เพิ่งเริ่ม (ไม่เกิน 3 นาที)
+  const g = day.games.find((x) => !x.endedAt && x.playerIds.includes(playerId));
+  if (g) return now - g.startedAt < 3 * 60 * 1000 ? { kind: "play", court: g.court, key: `play:${g.id}` } : null;
+  const soon = turnSoon(day, players, settings).find((x) => x.playerId === playerId);
+  return soon ? { kind: "soon", court: soon.court, key: soon.key } : null;
+}
+
 /** วันนี้ตามเวลาไทย (YYYY-MM-DD) ใช้ฝั่งเซิร์ฟเวอร์ที่อยู่คนละเขตเวลา */
 export function bangkokDate(now = Date.now()): string {
   return new Date(now + 7 * 3600 * 1000).toISOString().slice(0, 10);
