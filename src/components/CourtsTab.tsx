@@ -8,7 +8,7 @@ import { courtList, courtsOfDay, minShuttles, undoLastSub, type Game, type Playe
 import { MatchBuilder } from "./MatchBuilder";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, Sheet } from "./ui";
 import { t } from "@/lib/i18n";
-import { AutoAssignSwitch } from "./AutoAssign";
+import { AutoAssignSwitch, SwitchKnob } from "./AutoAssign";
 import { MyRestCard } from "./RestButton";
 import { PendingNotice, PickMe, savedPin, useMe } from "./PickMe";
 import { DISPUTE_MS, disputable, teamOf, type GameReport } from "@/lib/state";
@@ -334,7 +334,7 @@ function CourtQueue({
       {auth.isAdmin && waiting >= 4 && rows[0].queuedId && (
         <button
           onClick={onAdd}
-          className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-zinc-300 py-2 text-sm font-semibold text-zinc-600 active:bg-zinc-50"
+          className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-zinc-300 py-2 text-sm font-semibold text-zinc-600 active:opacity-70"
         >
           <Icon.Plus width={16} height={16} /> {t("จัดคิวต่ออีกคู่")}
         </button>
@@ -486,26 +486,36 @@ export function CourtsTab() {
           </button>
         </Card>
       ) : started && (
-      <Button
-        className="w-full !rounded-3xl !bg-red-600 !py-4 !text-base !text-white active:scale-[0.98]"
-        onClick={() => {
-          // ยังมีเกมเล่นอยู่: ให้กดผลเกมสุดท้ายก่อน
-          if (active.size) return setEnding(true);
-          if (confirm(t("จบก๊วน? ล้างคิว แล้วไปหน้าคิดเงิน"))) finish(new Map());
-        }}
-      >
-        🏁 {t("จบก๊วน")}
-      </Button>
-      )}
-      {started && !ended && <AutoAssignSwitch compact />}
-      {started && !ended && (
-        <label className="flex min-h-11 items-center gap-3 rounded-2xl bg-amber-50 px-4 text-sm font-semibold text-amber-900">
-          <input type="checkbox" className="size-5" checked={lastRound} onChange={(e) => setLastRound(e.target.checked)} />
-          <span className="min-w-0 flex-1">
-            {t("รอบสุดท้าย: กดผลแล้วไม่ลงคู่ต่อไป")}
-            <span className="block text-xs font-normal text-amber-800">{t("ไม่สร้างเกมใหม่ ไม่เพิ่มค่าลูก")}</span>
-          </span>
-        </label>
+        // แผงควบคุมแอดมินแบบกระชับ: สวิตช์ 2 แถวบางในการ์ดเดียว + ปุ่มจบก๊วนขนาดปกติ
+        <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white">
+          <AutoAssignSwitch row />
+          <button
+            type="button"
+            role="switch"
+            aria-checked={lastRound}
+            onClick={() => setLastRound(!lastRound)}
+            className={`flex min-h-14 w-full items-center gap-3 border-t border-zinc-200 px-4 py-2 text-left text-sm transition active:opacity-70 ${lastRound ? "bg-amber-50" : ""}`}
+          >
+            <span className="min-w-0 flex-1">
+              <span className={`block font-semibold ${lastRound ? "text-amber-900" : "text-ink"}`}>{t("รอบสุดท้าย")}</span>
+              {lastRound && (
+                <span className="block text-xs text-amber-800">{t("ไม่ลงคู่ใหม่ จึงไม่มีค่าลูกเพิ่ม")}</span>
+              )}
+            </span>
+            <SwitchKnob on={lastRound} tone="amber" />
+          </button>
+          <button
+            type="button"
+            className="flex min-h-12 w-full items-center justify-center gap-2 border-t border-zinc-200 px-4 text-sm font-semibold text-red-600 transition active:opacity-70"
+            onClick={() => {
+              // ยังมีเกมเล่นอยู่: ให้กดผลเกมสุดท้ายก่อน
+              if (active.size) return setEnding(true);
+              if (confirm(t("จบก๊วน? ล้างคิว แล้วไปหน้าคิดเงิน"))) finish(new Map());
+            }}
+          >
+            🏁 {t("จบก๊วน")}
+          </button>
+        </div>
       )}
       <div className="grid gap-3 sm:grid-cols-2">
         {courts.map((c) => {
