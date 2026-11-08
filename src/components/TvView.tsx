@@ -6,9 +6,9 @@ import { BirthdayBanner } from "./Birthday";
 import { useEffect, useRef, useState } from "react";
 import { appName } from "@/lib/brand";
 import { locale, t, useLang } from "@/lib/i18n";
-import { courtPlan, courtQueue, presence, waitingQueue } from "@/lib/matchmaking";
+import { clubPlan, courtQueue, presence, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
-import { courtList, courtsOfDay, type Player } from "@/lib/types";
+import { courtsOfDay, type Player } from "@/lib/types";
 import { Avatar, Icon, LevelBadge } from "./ui";
 import { Auto } from "@/lib/autoTranslate";
 
@@ -60,7 +60,7 @@ export function TvView() {
   useLang();
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const queue = waitingQueue(day, state.players);
-  const plan = courtPlan(day, state.players, courtList(state.settings));
+  const plan = clubPlan(day, state.players, state.settings);
   const games = new Map(day.games.filter((g) => !g.endedAt).map((g) => [g.court, g]));
   const courts = courtsOfDay(state.settings, day);
   const resting = day.checkIns.filter((c) => presence(day, c.playerId) === "resting").length;

@@ -39,7 +39,8 @@ async function loadDay(d: SupabaseClient, date: string) {
     rows(d.from("games").select("*").eq("date", date).order("id")),
     rows(d.from("court_queue").select("id,date,court,player_ids,at").eq("date", date).order("at")),
     rows(d.from("pair_requests").select("id,date,from_id,to_id,status,at").eq("date", date).order("at")),
-    rows(d.from("settings").select("court_count,court_fee,first_shuttle_fee,next_shuttle_fee,monthly_fee,promptpay_id,bank_name,bank_account,bank_holder,court_numbers").eq("id", 1)),
+    // * = รวมคอลัมน์ที่มาทีหลัง (เช่น auto_assign) ถ้ารัน SQL แล้ว
+    rows(d.from("settings").select("*").eq("id", 1)),
   ]);
   const r = {
     players,

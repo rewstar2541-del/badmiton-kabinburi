@@ -1599,4 +1599,10 @@ export const en: Record<string, string> = {
   "ผลแพ้ชนะคงตามทีมเดิม ประวัติ สถิติคู่ และค่าลูกของคนที่ยังไม่จ่ายจะเปลี่ยนตาม คนที่จ่ายแล้วยอดไม่เปลี่ยน": "The result stays with the same team. History, partner stats and shuttle fees of unpaid players update; paid amounts don't change.",
   "แตะ ✎ เพื่อแก้คู่ตีที่บันทึกผิด แตะ ✕ เพื่อลบเกมที่ไม่ได้เล่นจริง เกมวันก่อน: คนที่ยังไม่จ่าย ยอดค้างจะเปลี่ยนตาม": "Tap ✎ to fix a wrongly recorded pairing, tap ✕ to delete a game that didn't really happen. For past days, unpaid balances will change.",
   "มีคนย้ายข้ามทีม ตรวจว่าทีมที่ชนะยังถูกอยู่": "Someone moved to the other team. Check the winning team is still right.",
+  "จัดคนลงสนามอัตโนมัติ": "Auto-assign players to courts",
+  "ใช้ได้หลังรัน SQL auto_assign.sql": "Works after running auto_assign.sql",
+  "เปิด: ระบบจัดคิวขึ้นรอทุกสนาม เกมจบแล้วลงคู่ต่อไปให้ทันที": "On: the queue is lined up for every court, and the next pair goes on as soon as a game ends",
+  "ปิด: แอดมินจัดคู่ลงเอง คนในคิวไม่ถูกย้ายไปสนามอื่น": "Off: admins put pairs on courts themselves, and nobody in the queue gets moved to another court",
+  "ปิดจัดคนลงอัตโนมัติ? ระบบจะไม่ดึงคนจากคิวขึ้นสนาม แอดมินกดจัดคู่ลงเองทุกสนาม": "Turn off auto-assign? The system won't pull people from the queue onto courts. Admins set up pairs for every court themselves.",
+  "สนามเช่า เบอร์สนาม จัดคนอัตโนมัติ จอทีวี": "Rented court, court numbers, auto-assign, TV",
 };

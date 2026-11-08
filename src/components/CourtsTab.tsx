@@ -2,12 +2,13 @@
 
 import { PairRequests } from "./Pairs";
 import { useEffect, useMemo, useState } from "react";
-import { autoNext, courtPlan, courtQueue, plannedCourt, queueByCourt, presence, queueBlockers, queuedSpot, waitingQueue, type CourtNext } from "@/lib/matchmaking";
+import { autoNext, clubPlan, courtPlan, courtQueue, plannedCourt, queueByCourt, presence, queueBlockers, queuedSpot, waitingQueue, type CourtNext } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
 import { courtList, courtsOfDay, minShuttles, undoLastSub, type Game, type Player, type QueuedGame, type Team } from "@/lib/types";
 import { MatchBuilder } from "./MatchBuilder";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, Sheet } from "./ui";
 import { t } from "@/lib/i18n";
+import { AutoAssignSwitch } from "./AutoAssign";
 import { MyRestCard } from "./RestButton";
 import { PendingNotice, PickMe, savedPin, useMe } from "./PickMe";
 import { DISPUTE_MS, disputable, teamOf, type GameReport } from "@/lib/state";
@@ -91,8 +92,9 @@ function ActiveCourt({ game, byId, date, now, lastRound = false }: { game: Game;
     // สนามนี้ได้คู่แรกของคิวรวม (คนรอนานสุดไม่ถูกแซง) ถ้าแอดมินจัดคิวสนามนี้ไว้เองใช้คู่นั้น
     // รอบสุดท้าย (กำลังจะจบก๊วน): กดผลอย่างเดียว ไม่ลงคู่ต่อไป
     const courts = courtList(state.settings);
-    const next = autoNext(day, state.players, courts, game, lastRound);
-    const planned = !lastRound && courts.includes(game.court) ? courtPlan(day, state.players, courts, game.court).get(game.court) : undefined;
+    const auto = state.settings.autoAssign !== false;
+    const next = autoNext(day, state.players, courts, game, lastRound, auto);
+    const planned = !lastRound && courts.includes(game.court) ? courtPlan(day, state.players, courts, game.court, auto).get(game.court) : undefined;
     dispatch({ type: "endGame", date, gameId: game.id, winner, draw });
     if (next) dispatch({ type: "startGame", date, court: game.court, playerIds: next.playerIds, queuedId: next.queuedId });
     else if (planned) alert(t("สนาม {n} ยังเริ่มเกมต่อไม่ได้ มีคนในคู่ที่จัดไว้ไม่พร้อม (ชื่อขีดฆ่า) กดแก้หรือเอาคู่นั้นออก", { n: game.court }));
@@ -416,7 +418,7 @@ export function CourtsTab() {
   const queue = waitingQueue(day, state.players);
   const courts = courtsOfDay(state.settings, day);
   // คำนวณใหม่เฉพาะตอนข้อมูลเปลี่ยน (นาฬิกาเดินทุก 15 วินาทีไม่ต้องคำนวณ)
-  const plan = useMemo(() => courtPlan(day, state.players, courtList(state.settings)), [day, state.players, state.settings]);
+  const plan = useMemo(() => clubPlan(day, state.players, state.settings), [day, state.players, state.settings]);
   const courtOf = new Map([...plan.values()].filter((n) => !n.queuedId).flatMap((n) => n.playerIds.map((id) => [id, n.court] as const)));
   // คนในคิวรวมที่ระบบจัดให้สนามอื่นแล้ว (แนะนำใหม่จะไม่ดึงมา)
   const reservedFor = (court: number) => [...plan.values()].filter((n) => n.court !== court && !n.queuedId).flatMap((n) => n.playerIds);
@@ -495,6 +497,7 @@ export function CourtsTab() {
         🏁 {t("จบก๊วน")}
       </Button>
       )}
+      {started && !ended && <AutoAssignSwitch compact />}
       {started && !ended && (
         <label className="flex min-h-11 items-center gap-3 rounded-2xl bg-amber-50 px-4 text-sm font-semibold text-amber-900">
           <input type="checkbox" className="size-5" checked={lastRound} onChange={(e) => setLastRound(e.target.checked)} />
@@ -681,7 +684,7 @@ function SelfReport({ game, playerId, onDone }: { game: Game; playerId: string; 
   const send = async (r: GameReport) => {
     if (!confirm(t("บันทึกผล: {r}? คู่ต่อไปจะลงสนามทันที", { r: label[r] }))) return;
     // คู่ถัดไปของสนามนี้ คิดแบบเดียวกับตอนแอดมินกดจบเกม
-    const next = courtPlan(day, state.players, courtList(state.settings), game.court).get(game.court);
+    const next = clubPlan(day, state.players, state.settings, game.court).get(game.court);
     const ok = next && courtList(state.settings).includes(game.court) && queueBlockers(day, next, game.id).length === 0;
     setBusy(true);
     setError("");
@@ -773,7 +776,7 @@ function PlayerCourts() {
   const courts = courtsOfDay(state.settings, day);
   const active = new Map(day.games.filter((g) => !g.endedAt).map((g) => [g.court, g]));
   const myGame = day.games.find((g) => !g.endedAt && g.playerIds.includes(player.id));
-  const plan = courtPlan(day, state.players, courtList(state.settings));
+  const plan = clubPlan(day, state.players, state.settings);
   const courtOf = new Map([...plan.values()].filter((n) => !n.queuedId).flatMap((n) => n.playerIds.map((id) => [id, n.court] as const)));
   // อยู่คิวสนามไหน: คู่ที่แอดมินจัดไว้ก่อน ไม่งั้นดูจากที่ระบบจัดอัตโนมัติ
   const planned = plannedCourt(plan, player.id);

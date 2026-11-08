@@ -6,6 +6,7 @@ import { BoardCard } from "./Board";
 import { ClearData } from "./ClearData";
 import { PackageAdmin } from "./Packages";
 import { FestivalPicker } from "./FestivalPicker";
+import { AutoAssignSwitch } from "./AutoAssign";
 import { PollAdmin } from "./Polls";
 import { useState, type ReactNode } from "react";
 import { isValidPromptPayId } from "@/lib/promptpay";
@@ -73,9 +74,10 @@ export function SettingsTab() {
         <ClubCalendar bare />
         <PollAdmin />
       </Section>
-      <Section id="court" icon="🏸" title={t("สนามวันนี้")} hint={t("สนามเช่า เบอร์สนาม จอทีวี")}>
+      <Section id="court" icon="🏸" title={t("สนามวันนี้")} hint={t("สนามเช่า เบอร์สนาม จัดคนอัตโนมัติ จอทีวี")}>
           <RentTodayCard />
           <CourtCountCard />
+          <AutoAssignSwitch />
           <Card className="flex items-center gap-3">
             <div className="min-w-0 flex-1">
               <h2 className="font-display font-semibold">{t("จอสนาม")}</h2>
@@ -112,7 +114,7 @@ export function SettingsTab() {
                 if (!ppOk && s.promptPayOn !== false) return;
                 const old = state.settings;
                 // ค่ารายเดือนและค่าสนามรายวันมาจากแพ็กเกจ ไม่ทับด้วยค่าในฟอร์มนี้
-                const next = { ...(packagesReady ? { ...s, monthlyFee: old.monthlyFee, courtFee: old.courtFee } : s), festival: old.festival, courtCount: old.courtCount, courtNumbers: old.courtNumbers };
+                const next = { ...(packagesReady ? { ...s, monthlyFee: old.monthlyFee, courtFee: old.courtFee } : s), festival: old.festival, courtCount: old.courtCount, courtNumbers: old.courtNumbers, autoAssign: old.autoAssign };
                 const changed =
                   old.courtFee !== next.courtFee || old.firstShuttleFee !== next.firstShuttleFee || old.nextShuttleFee !== next.nextShuttleFee;
                 // ราคาใหม่ใช้ตั้งแต่วันนี้ เก็บราคาเดิมไว้กับวันก่อนๆ บิลเก่าจะได้ไม่เปลี่ยน

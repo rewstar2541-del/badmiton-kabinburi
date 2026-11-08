@@ -11,7 +11,7 @@ import { NewsCarousel } from "./NewsCarousel";
 import { activeFestival, festivalInfo } from "@/lib/festival";
 
 import { useMemo, useState, type ComponentType, type ReactNode, type SVGProps } from "react";
-import { courtPlan, plannedCourt, presence, queuedSpot, waitingQueue } from "@/lib/matchmaking";
+import { clubPlan, plannedCourt, presence, queuedSpot, waitingQueue } from "@/lib/matchmaking";
 import { signupQueue } from "@/lib/social";
 import { useStore, useToday } from "@/lib/store";
 import { LANGS, locale, setLang, t, useLang } from "@/lib/i18n";
@@ -30,7 +30,7 @@ import { goToTab } from "./Membership";
 import { SlipHistory, slipStatus } from "./SlipHistory";
 import { OwedList } from "./Owed";
 import { owedBefore } from "@/lib/billing";
-import { courtList, inGame, monthOf } from "@/lib/types";
+import { inGame, monthOf } from "@/lib/types";
 import { shiftMonth } from "./Members";
 import { NoticeBanners, NoticeComposer } from "./Notices";
 import { PairCard } from "./Pairs";
@@ -289,7 +289,7 @@ export function PlayerHome() {
   const played = day.games.filter((g) => g.endedAt && inGame(g, player.id)).length;
   const queue = waitingQueue(day, state.players);
   const pos = queue.findIndex((e) => e.player.id === player.id) + 1;
-  const planned = plannedCourt(courtPlan(day, state.players, courtList(state.settings)), player.id);
+  const planned = plannedCourt(clubPlan(day, state.players, state.settings), player.id);
   const spot = queuedSpot(day, player.id) ?? (planned ? { court: planned.court, pos: 0 } : null);
   const court = day.games.find((g) => !g.endedAt && g.playerIds.includes(player.id))?.court;
   const closed = state.closed[date];
