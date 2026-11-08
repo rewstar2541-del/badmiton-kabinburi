@@ -814,7 +814,7 @@ function PlayerCourts() {
             <>
               <div className="font-display text-4xl font-semibold">{t("สนาม {n}", { n: mySpot.court })}</div>
               <div className="text-sm text-zinc-500">
-                {mySpot.pos === 0 ? t("ระบบจัดให้รอสนามนี้ อาจเปลี่ยนได้ถ้าคิวขยับ") : mySpot.pos === 1 ? t("คุณได้ลงต่อจากเกมที่เล่นอยู่ เตรียมตัวได้เลย") : t("คิวรอลงสนามนี้ คู่ที่ {n}", { n: mySpot.pos })}
+                {mySpot.pos === 0 ? t("ระบบจัดให้รอสนามนี้ ถ้าสนามอื่นว่างก่อนอาจย้ายไปสนามนั้น") : mySpot.pos === 1 ? t("คุณได้ลงต่อจากเกมที่เล่นอยู่ เตรียมตัวได้เลย") : t("คิวรอลงสนามนี้ คู่ที่ {n}", { n: mySpot.pos })}
               </div>
             </>
           ) : status === "waiting" && myPos >= 0 ? (
