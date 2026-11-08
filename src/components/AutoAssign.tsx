@@ -32,7 +32,7 @@ export function AutoAssignSwitch({ compact = false }: { compact?: boolean }) {
             ? t("ใช้ได้หลังรัน SQL auto_assign.sql")
             : on
               ? t("เปิด: ระบบจัดคิวขึ้นรอทุกสนาม เกมจบแล้วลงคู่ต่อไปให้ทันที")
-              : t("ปิด: แอดมินจัดคู่ลงเอง คนในคิวไม่ถูกย้ายไปสนามอื่น")}
+              : t("ปิด: แอดมินจัดคู่ลงเอง")}
         </span>
       </span>
       <button

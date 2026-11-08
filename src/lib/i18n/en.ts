@@ -1602,7 +1602,7 @@ export const en: Record<string, string> = {
   "จัดคนลงสนามอัตโนมัติ": "Auto-assign players to courts",
   "ใช้ได้หลังรัน SQL auto_assign.sql": "Works after running auto_assign.sql",
   "เปิด: ระบบจัดคิวขึ้นรอทุกสนาม เกมจบแล้วลงคู่ต่อไปให้ทันที": "On: the queue is lined up for every court, and the next pair goes on as soon as a game ends",
-  "ปิด: แอดมินจัดคู่ลงเอง คนในคิวไม่ถูกย้ายไปสนามอื่น": "Off: admins put pairs on courts themselves, and nobody in the queue gets moved to another court",
+  "ปิด: แอดมินจัดคู่ลงเอง": "Off: admins put pairs on courts themselves",
   "ปิดจัดคนลงอัตโนมัติ? ระบบจะไม่ดึงคนจากคิวขึ้นสนาม แอดมินกดจัดคู่ลงเองทุกสนาม": "Turn off auto-assign? The system won't pull people from the queue onto courts. Admins set up pairs for every court themselves.",
   "สนามเช่า เบอร์สนาม จัดคนอัตโนมัติ จอทีวี": "Rented court, court numbers, auto-assign, TV",
 };
