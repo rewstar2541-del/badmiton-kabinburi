@@ -1,6 +1,6 @@
 // แจ้งเตือนผ่าน LINE Official Account (Messaging API)
 // เรียกได้หลายแบบ:
-//  1. จากฐานข้อมูล (ถึงคิว / เปิดประกาศ) ส่ง x-hook-secret มาด้วย
+//  1. จากฐานข้อมูล (ถึงคิว / เปิดประกาศ / เตือนสมาชิกรายปี) ส่ง x-hook-secret มาด้วย
 //  2. webhook จาก LINE (มี x-line-signature) ใช้จำ id กลุ่มเมื่อบอทถูกเชิญเข้ากลุ่ม
 //  3. แอดมิน: ดูสถานะ/โควตา หรือกดทดสอบ (ส่ง token ของแอดมินมา)
 //  4. ผู้เล่น: เช็คว่าเพิ่มเพื่อน LINE ของก๊วนแล้วหรือยัง
@@ -49,18 +49,21 @@ async function linePost(path: string, body: unknown) {
 
 async function usage() {
   const m = month();
-  const { data } = await db.from("line_usage").select("sent,turn,announce,skipped").eq("month", m).maybeSingle();
-  return { month: m, sent: 0, turn: 0, announce: 0, skipped: 0, ...(data ?? {}) };
+  const { data } = await db.from("line_usage").select("*").eq("month", m).maybeSingle();
+  // คอลัมน์ annual มีหลังรัน annual_reminders.sql ถ้ายังไม่มีก็ไม่ใส่ตอนบันทึก
+  return { month: m, sent: 0, turn: 0, announce: 0, skipped: 0, ...(data ?? {}) } as Usage;
 }
 
-async function addUsage(kind: "turn" | "announce" | "skipped", n: number) {
+type Kind = "turn" | "announce" | "annual";
+type Usage = { month: string; sent: number; turn: number; announce: number; annual?: number; skipped: number };
+
+async function addUsage(kind: Kind | "skipped", n: number) {
   if (!n) return;
-  const u = await usage();
-  const row = { month: u.month, sent: u.sent, turn: u.turn, announce: u.announce, skipped: u.skipped };
+  const row = await usage();
   if (kind === "skipped") row.skipped += n;
   else {
     row.sent += n;
-    row[kind] += n;
+    row[kind] = (row[kind] ?? 0) + n;
   }
   await db.from("line_usage").upsert(row);
 }
@@ -123,12 +126,12 @@ Deno.serve(async (req) => {
   const s = await settings();
   if (!s) return json({ error: "no settings" }, 500);
 
-  // 1. จากฐานข้อมูล: ถึงคิว (ส่งก่อนเสมอจนโควตาหมด) / เปิดประกาศ (ต้องเหลือโควตาสำรองไว้ให้ถึงคิว)
+  // 1. จากฐานข้อมูล: ถึงคิว และเตือนสมาชิกรายปี (ส่งก่อนเสมอจนโควตาหมด) / เปิดประกาศ (ต้องเหลือโควตาสำรองไว้ให้ถึงคิว)
   const hook = req.headers.get("x-hook-secret");
   if (hook) {
     if (hook !== s.hook_secret) return json({ error: "forbidden" }, 403);
-    const b = JSON.parse(body) as { kind?: "turn" | "announce"; messages?: Msg[] };
-    const kind = b.kind === "announce" ? "announce" : "turn";
+    const b = JSON.parse(body) as { kind?: Kind; messages?: Msg[] };
+    const kind: Kind = b.kind === "announce" || b.kind === "annual" ? b.kind : "turn";
     const list = (b.messages ?? []).slice(0, 10);
     let left = s.monthly_limit - (await used());
     let sent = 0;
