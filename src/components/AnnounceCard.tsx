@@ -73,7 +73,7 @@ export function EventForm({ date, dates, onDone, onCancel }: { date?: string; da
   const [title, setTitle] = useState<string | null>(day?.announcementTitle ?? null);
   const [fee, setFee] = useState(day?.announcementFee ? String(day.announcementFee) : "");
   const [cap, setCap] = useState(day?.announcementCap ? String(day.announcementCap) : "");
-  // สนามเช่า: หารค่าเช่าตามชั่วโมงที่แต่ละคนอยู่
+  // สนามเช่า: หารค่าเช่ารวมเท่ากันทุกคนที่เช็คอิน
   const [rentOn, setRentOn] = useState(Boolean(day?.rent));
   const [rent, setRent] = useState(() => rentDraft(day?.rent ?? lastRent(state.days)));
   const rentOk = !rentOn || rentDraftOk(rent);
@@ -143,7 +143,7 @@ export function EventForm({ date, dates, onDone, onCancel }: { date?: string; da
       <div className="space-y-2 rounded-2xl bg-zinc-50 p-3">
         <label className="flex items-center gap-2 text-sm font-semibold">
           <input type="checkbox" className="size-5 accent-ink" checked={rentOn} onChange={(e) => setRentOn(e.target.checked)} />
-          {t("สนามเช่า (หารค่าเช่าตามชั่วโมงที่อยู่)")}
+          {t("สนามเช่า (หารค่าเช่าเท่ากันทุกคน)")}
         </label>
         {rentOn && (
           <>

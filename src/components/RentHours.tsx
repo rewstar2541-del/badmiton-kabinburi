@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { t } from "@/lib/i18n";
-import { clock, courtsAt, normalizeCourts, rentAt, rentShares, rentSpan, rentTotal } from "@/lib/courtSplit";
+import { clock, courtsAt, normalizeCourts, rentAt, rentSharesFor, rentSpan, rentSplitsEqually, rentTotal } from "@/lib/courtSplit";
 import { dayAmount } from "@/lib/billing";
 import { useStore, useToday } from "@/lib/store";
 import type { Day, DayRent, Player } from "@/lib/types";
@@ -58,22 +58,30 @@ export function MyRentHours({ player, day, rent }: { player: Player; day: Day; r
   if (!ci) return null;
   const span = rentSpan(rent, ci.at, ci.hours);
   const share = dayAmount(day, player, state.settings, state.monthly).courtFee;
+  const equal = rentSplitsEqually(day.date);
+  const sharing = day.checkIns.filter((c) => c.courtFee === undefined).length;
   return (
     <Card className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <h2 className="font-display font-semibold">{t("สนามเช่า")}</h2>
         <span className="rounded-2xl bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">{rentLabel(rent)}</span>
       </div>
-      <div className="flex justify-between text-sm">
-        <span>{t("เวลาของฉัน")}</span>
-        <span className="font-semibold">{`${hh(span.from)}-${hh(span.to)}`}</span>
-      </div>
-      <HourTable rent={rent} day={day} />
+      {equal ? (
+        <p className="text-sm">{t("ค่าเช่ารวม {rent} หาร {n} คน", { rent: baht(rentTotal(rent)), n: sharing })}</p>
+      ) : (
+        <>
+          <div className="flex justify-between text-sm">
+            <span>{t("เวลาของฉัน")}</span>
+            <span className="font-semibold">{`${hh(span.from)}-${hh(span.to)}`}</span>
+          </div>
+          <HourTable rent={rent} day={day} />
+        </>
+      )}
       <div className="flex justify-between font-semibold">
         <span>{t("ค่าสนามของฉันตอนนี้")}</span>
         <span>{baht(share)}</span>
       </div>
-      <p className="text-xs text-zinc-500">{t("หารตามคนที่อยู่แต่ละชั่วโมง เวลาไม่ตรงแจ้งแอดมินให้แก้")}</p>
+      <p className="text-xs text-zinc-500">{equal ? t("หารเท่ากันทุกคนที่เช็คอินวันนี้ ยอดอาจเปลี่ยนถ้ามีคนเช็คอินเพิ่ม") : t("หารตามคนที่อยู่แต่ละชั่วโมง เวลาไม่ตรงแจ้งแอดมินให้แก้")}</p>
     </Card>
   );
 }
@@ -228,7 +236,7 @@ export function RentTodayCard() {
   return (
     <Card className="space-y-2">
       <h2 className="font-display font-semibold">{t("สนามเช่าวันนี้")}</h2>
-      <p className="text-xs text-zinc-500">{t("ตั้งเวลา ราคาต่อคอร์ท และจำนวนคอร์ทแต่ละชั่วโมง แต่ละชั่วโมงหารให้คนที่อยู่ วันใหม่จะดึงค่าครั้งล่าสุดมาให้")}</p>
+      <p className="text-xs text-zinc-500">{t("ตั้งเวลา ราคาต่อคอร์ท และจำนวนคอร์ทแต่ละชั่วโมง ค่าเช่ารวมหารเท่ากันทุกคนที่เช็คอิน วันใหม่จะดึงค่าครั้งล่าสุดมาให้")}</p>
       {day.announcement !== undefined ? <RentEdit rent={day.rent} day={day} /> : <p className="rounded-2xl bg-zinc-50 p-3 text-sm">{t("วันนี้ยังไม่ได้ประกาศจัดก๊วน ประกาศก่อนแล้วตั้งสนามเช่าได้")}</p>}
     </Card>
   );
@@ -239,7 +247,8 @@ export function RentHoursSheet({ rent, onClose }: { rent: DayRent; onClose: () =
   const { state, dispatch } = useStore();
   const { day } = useToday();
   const byId = new Map(state.players.map((p) => [p.id, p]));
-  const shares = rentShares(rent, day.checkIns);
+  const equal = rentSplitsEqually(day.date);
+  const shares = rentSharesFor(day.date, rent, day.checkIns);
   // ยอดจริงของแต่ละคน (คนจ่ายแล้วยอดคงที่)
   const feeOf = (id: string) => {
     const p = byId.get(id);
@@ -247,12 +256,13 @@ export function RentHoursSheet({ rent, onClose }: { rent: DayRent; onClose: () =
   };
   const collected = day.checkIns.reduce((sum, c) => sum + feeOf(c.playerId), 0);
   return (
-    <Sheet title={t("สนามเช่า: เวลามา-กลับ")} onClose={onClose}>
+    <Sheet title={equal ? t("สนามเช่า: หารเท่ากัน") : t("สนามเช่า: เวลามา-กลับ")} onClose={onClose}>
       <RentEdit rent={rent} day={day} />
       <div className="rounded-2xl bg-zinc-50 p-3 text-sm">
         {t("ค่าเช่ารวม {rent} · หารได้ {got}", { rent: baht(rentTotal(rent)), got: baht(collected) })}
+        {equal && <span className="block text-xs text-zinc-500">{t("หารเท่ากันทุกคนที่เช็คอิน ไม่ดูเวลามา-กลับ")}</span>}
       </div>
-      <HourTable rent={rent} day={day} />
+      {!equal && <HourTable rent={rent} day={day} />}
       {day.checkIns.some((c) => c.courtFee !== undefined && !c.paidAt) && (
         <Button
           className="w-full"
@@ -282,6 +292,9 @@ export function RentHoursSheet({ rent, onClose }: { rent: DayRent; onClose: () =
                   <span className="shrink-0 font-display text-lg font-semibold">{baht(feeOf(c.playerId))}</span>
                 )}
               </div>
+              {equal ? (
+                c.paidAt && <span className="text-xs font-semibold text-emerald-700">{t("จ่ายแล้ว")}</span>
+              ) : (
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 {/* จ่ายแล้วล็อกเวลา ยอดที่จ่ายจะได้ไม่เปลี่ยน */}
                 <HourSelect label={t("มา")} disabled={Boolean(c.paidAt)} value={s.from} from={rent.start} to={rent.end} onChange={(h) => set({ from: h, to: Math.max(s.to, h) })} />
@@ -289,6 +302,7 @@ export function RentHoursSheet({ rent, onClose }: { rent: DayRent; onClose: () =
                 <HourSelect label={t("เวลากลับ")} disabled={Boolean(c.paidAt)} value={s.to} from={s.from} to={rent.end} onChange={(h) => set({ ...s, to: h })} />
                 {c.paidAt && <span className="text-xs font-semibold text-emerald-700">{t("จ่ายแล้ว")}</span>}
               </div>
+              )}
             </li>
           );
         })}

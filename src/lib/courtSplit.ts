@@ -43,6 +43,31 @@ export function rentShares(
   return splitByHour(spans, rent.start, rent.end, (h) => rentAt(rent, h));
 }
 
+/** วันสนามเช่าตั้งแต่วันนี้ หารค่าเช่าเท่ากันทุกคนที่เช็คอิน ไม่ดูเวลามา-กลับ
+ *  (วันก่อนหน้ายังหารตามชั่วโมงแบบเดิม ยอดที่เก็บไปแล้วจะได้ไม่เปลี่ยน) */
+export const EQUAL_RENT_FROM = "2026-11-16";
+
+export const rentSplitsEqually = (date: string) => date >= EQUAL_RENT_FROM;
+
+/** หารค่าเช่าทั้งวันเท่ากันทุกคนที่เช็คอิน (คนที่แอดมินแก้ยอดเองไม่นับ) ปัดเป็นบาท */
+export function rentSharesEqual(
+  rent: { start: number; end: number; perHour: number; courts?: number[] },
+  checkIns: { playerId: string; courtFee?: number }[],
+): Map<string, number> {
+  const ids = [...new Set(checkIns.filter((c) => c.courtFee === undefined).map((c) => c.playerId))];
+  const each = ids.length ? Math.round(rentTotal(rent) / ids.length) : 0;
+  return new Map(ids.map((id) => [id, each]));
+}
+
+/** ค่าสนามของแต่ละคนในวันสนามเช่า ตามวิธีหารของวันนั้น */
+export function rentSharesFor(
+  date: string,
+  rent: { start: number; end: number; perHour: number; courts?: number[] },
+  checkIns: { playerId: string; at: number; hours?: { from: number; to: number }; courtFee?: number }[],
+): Map<string, number> {
+  return rentSplitsEqually(date) ? rentSharesEqual(rent, checkIns) : rentShares(rent, checkIns);
+}
+
 /** จำนวนคอร์ทของชั่วโมง h (ไม่ได้ตั้งแยก = 1) */
 export function courtsAt(rent: { start: number; courts?: number[] }, h: number): number {
   return rent.courts?.[Math.floor(h + 1e-9) - Math.floor(rent.start + 1e-9)] ?? 1;
