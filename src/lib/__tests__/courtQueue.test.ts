@@ -146,3 +146,34 @@ describe("โหมดจัดคนลงอัตโนมัติ ปิด
     expect(clubPlan(d, players, { courtCount: 2 }).size).toBe(1);
   });
 });
+
+describe("โหมดรอสนามเดิม (ไม่โยกสนาม)", () => {
+  const many: Player[] = "abcdefghijklmnop".split("").map((id) => ({ id, name: id, level: 3 }));
+  const g = (id: string, court: number, ids: string[], at: number, endedAt?: number) => ({ id, court, playerIds: ids as [string, string, string, string], startedAt: at, shuttles: 1, ...(endedAt ? { endedAt } : {}) });
+  // สนาม 2 เริ่มก่อน (น่าจะจบก่อน) คิว 1-4 จึงรอสนาม 2, คิว 5-8 รอสนาม 1
+  const playing = [g("g1", 1, ["i", "j", "k", "l"], 20), g("g2", 2, ["m", "n", "o", "p"], 10)];
+  const d: Day = { date, checkIns: many.map((p, i) => ({ playerId: p.id, at: i })), drinks: [], games: playing };
+
+  it("ปิด (ค่าเดิม): สนาม 1 จบก่อน ดึงคู่ที่รอสนาม 2 มาลง", () => {
+    const shown = courtPlan(d, many, [1, 2]);
+    expect(shown.get(2)!.playerIds).toContain("a");
+    expect(autoNext(d, many, [1, 2], playing[0])!.playerIds).toContain("a");
+  });
+
+  it("เปิด: สนาม 1 จบก่อน ได้คู่ที่รอสนาม 1 อยู่ คู่ของสนาม 2 ยังรอสนาม 2", () => {
+    const shown = courtPlan(d, many, [1, 2], undefined, true, true);
+    const next = autoNext(d, many, [1, 2], playing[0], false, true, true)!;
+    expect(next.playerIds).toEqual(shown.get(1)!.playerIds);
+    expect(next.playerIds).not.toContain("a");
+    expect(clubPlan(d, many, { courtCount: 2, fixedCourt: true }, 1).get(1)!.playerIds).toEqual(shown.get(1)!.playerIds);
+  });
+
+  it("เปิด: สนามที่ว่างแล้วไม่แย่งคู่ที่รอสนามอื่นอยู่", () => {
+    // สนาม 1 จบแล้ว (ไม่มีคู่ต่อ) คนรอ 6 คนพอแค่ 1 คู่ ซึ่งรอสนาม 2 อยู่
+    const few: Player[] = "abcdefmnop".split("").map((id) => ({ id, name: id, level: 3 }));
+    const d2: Day = { date, checkIns: few.map((p, i) => ({ playerId: p.id, at: i })), drinks: [], games: [g("g0", 1, ["a", "b", "c", "d"], 20, 30), playing[1]] };
+    expect([...courtPlan(d2, few, [1, 2], undefined, true, true).keys()]).toEqual([2]);
+    // ปิด: คู่นั้นย้ายไปสนาม 1 ที่ว่าง
+    expect([...courtPlan(d2, few, [1, 2]).keys()]).toEqual([1]);
+  });
+});

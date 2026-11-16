@@ -96,6 +96,7 @@ export interface Rows {
         bank_on?: boolean | null;
         court_numbers?: number[] | null;
         auto_assign?: boolean | null;
+        fixed_court?: boolean | null;
       }
     | null;
 }
@@ -209,6 +210,8 @@ export function rowsToState(r: Rows): State {
         ...(s.court_numbers !== undefined ? { courtNumbers: s.court_numbers ?? [] } : {}),
         // ไม่มีคอลัมน์ = ยังไม่รัน SQL auto_assign.sql (undefined) ระบบจัดคนลงอัตโนมัติเหมือนเดิม
         ...(s.auto_assign !== undefined ? { autoAssign: s.auto_assign !== false } : {}),
+        // ไม่มีคอลัมน์ = ยังไม่รัน SQL fixed_court.sql (undefined) สนามที่จบก่อนได้คู่แรกเหมือนเดิม
+        ...(s.fixed_court !== undefined ? { fixedCourt: s.fixed_court === true } : {}),
       }
     : DEFAULT_SETTINGS;
 
@@ -354,8 +357,9 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
       // คอลัมน์ธีมเทศกาลยังไม่มี (ยังไม่รัน SQL) ให้โหลดแบบเดิม
       // สวิตช์ช่องทางรับเงินมาหลังรัน SQL payment_switches.sql ยังไม่รันให้โหลดแบบเดิม
       // เบอร์สนามมาหลังรัน SQL court_numbers.sql ยังไม่รันให้โหลดแบบเดิม
-      // โหมดจัดคนลงอัตโนมัติมาหลังรัน SQL auto_assign.sql
-      const r = await all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign`).eq("id", 1))
+      // โหมดจัดคนลงอัตโนมัติมาหลังรัน SQL auto_assign.sql, โหมดรอสนามเดิมมาหลังรัน SQL fixed_court.sql
+      const r = await all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign,fixed_court`).eq("id", 1))
+        .catch(() => all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign`).eq("id", 1)))
         .catch(() => all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers`).eq("id", 1)))
         .catch(() => all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on`).eq("id", 1)))
         .catch(() => all(() => db.from("settings").select(`${cols},festival`).eq("id", 1)))
@@ -683,14 +687,15 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
           ...(s.festival !== undefined ? { festival: s.festival === "auto" ? null : s.festival } : {}),
           ...(s.promptPayOn !== undefined ? { promptpay_on: s.promptPayOn, bank_on: s.bankOn !== false } : {}),
       };
-      // คอลัมน์ที่มาทีหลัง (court_numbers, auto_assign) ยังไม่รัน SQL (เช่น นำเข้าข้อมูลสำรองจากเครื่องที่รันแล้ว) ตัดออกแล้วบันทึกค่าอื่นไปก่อน
+      // คอลัมน์ที่มาทีหลัง (court_numbers, auto_assign, fixed_court) ยังไม่รัน SQL (เช่น นำเข้าข้อมูลสำรองจากเครื่องที่รันแล้ว) ตัดออกแล้วบันทึกค่าอื่นไปก่อน
       let full: Record<string, unknown> = {
         ...row,
         ...(s.courtNumbers !== undefined ? { court_numbers: s.courtNumbers.length ? s.courtNumbers : null } : {}),
         ...(s.autoAssign !== undefined ? { auto_assign: s.autoAssign } : {}),
+        ...(s.fixedCourt !== undefined ? { fixed_court: s.fixedCourt } : {}),
       };
       let res = await db.from("settings").upsert(full);
-      for (const col of ["auto_assign", "court_numbers"]) {
+      for (const col of ["fixed_court", "auto_assign", "court_numbers"]) {
         if (!res.error || !(col in full) || !res.error.message.includes(col)) continue;
         full = Object.fromEntries(Object.entries(full).filter(([k]) => k !== col));
         res = await db.from("settings").upsert(full);

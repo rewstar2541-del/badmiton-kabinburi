@@ -8,7 +8,7 @@ import { courtList, courtsOfDay, minShuttles, undoLastSub, type Game, type Playe
 import { MatchBuilder } from "./MatchBuilder";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, Sheet } from "./ui";
 import { t } from "@/lib/i18n";
-import { AutoAssignSwitch, SwitchKnob } from "./AutoAssign";
+import { AutoAssignSwitch, FixedCourtSwitch, SwitchKnob } from "./AutoAssign";
 import { MyRestCard } from "./RestButton";
 import { PendingNotice, PickMe, savedPin, useMe } from "./PickMe";
 import { DISPUTE_MS, disputable, teamOf, type GameReport } from "@/lib/state";
@@ -93,8 +93,10 @@ function ActiveCourt({ game, byId, date, now, lastRound = false }: { game: Game;
     // รอบสุดท้าย (กำลังจะจบก๊วน): กดผลอย่างเดียว ไม่ลงคู่ต่อไป
     const courts = courtList(state.settings);
     const auto = state.settings.autoAssign !== false;
-    const next = autoNext(day, state.players, courts, game, lastRound, auto);
-    const planned = !lastRound && courts.includes(game.court) ? courtPlan(day, state.players, courts, game.court, auto).get(game.court) : undefined;
+    // รอสนามเดิม: สนามนี้ได้คู่ที่รอสนามนี้อยู่ ไม่ดึงคู่ที่รอสนามอื่นมา
+    const fixed = state.settings.fixedCourt === true;
+    const next = autoNext(day, state.players, courts, game, lastRound, auto, fixed);
+    const planned = !lastRound && courts.includes(game.court) ? courtPlan(day, state.players, courts, game.court, auto, fixed).get(game.court) : undefined;
     dispatch({ type: "endGame", date, gameId: game.id, winner, draw });
     if (next) dispatch({ type: "startGame", date, court: game.court, playerIds: next.playerIds, queuedId: next.queuedId });
     else if (planned) alert(t("สนาม {n} ยังเริ่มเกมต่อไม่ได้ มีคนในคู่ที่จัดไว้ไม่พร้อม (ชื่อขีดฆ่า) กดแก้หรือเอาคู่นั้นออก", { n: game.court }));
@@ -489,6 +491,7 @@ export function CourtsTab() {
         // แผงควบคุมแอดมินแบบกระชับ: สวิตช์ 2 แถวบางในการ์ดเดียว + ปุ่มจบก๊วนขนาดปกติ
         <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white">
           <AutoAssignSwitch row />
+          <FixedCourtSwitch row />
           <button
             type="button"
             role="switch"
