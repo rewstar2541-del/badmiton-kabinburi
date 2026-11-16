@@ -165,3 +165,13 @@ describe("จัดคู่ไม่ให้ซ้ำกลุ่มเดิ�
     expect(nextMatch(d2, more)).toContain("n");
   });
 });
+
+describe("วางแผนหลายสนามพร้อมกัน", () => {
+  it("การข้ามมือใหม่ไม่ถูกนับจากคู่ชั่วคราวในแผนเดียวกัน", async () => {
+    const { courtPlan } = await import("../matchmaking");
+    const ps = [p("n", 1), p("a", 5), p("b", 5), p("c", 4), p("d", 4), p("e", 5), p("f", 5), p("g", 4), p("h", 4)];
+    const plan = courtPlan(dayWith(ps), ps, 2);
+    // ไม่มีสนามไหนจับมือใหม่ลงกับมือหนักเพียงเพราะสนามแรกข้ามไปแล้ว
+    for (const m of plan.values()) expect(m.playerIds).not.toContain("n");
+  });
+});

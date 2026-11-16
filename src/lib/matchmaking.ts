@@ -178,7 +178,8 @@ function waitStartAt(day: Day, id: string, t: number): number {
 function bypassCount(day: Day, head: QueueEntry): number {
   const later = (ids: string[], t: number) => ids.some((id) => waitStartAt(day, id, t) > head.waitingSince);
   const games = day.games.filter((g) => g.startedAt > head.waitingSince && later(g.playerIds, g.startedAt)).length;
-  const queued = (day.queued ?? []).filter((q) => later(q.playerIds, Infinity)).length;
+  // คิวที่แอดมินจัดไว้จริงเท่านั้น (ไม่นับคู่ชั่วคราวที่ courtPlan ใช้วางแผนหลายสนามพร้อมกัน)
+  const queued = (day.queued ?? []).filter((q) => !q.id.startsWith("plan-") && later(q.playerIds, Infinity)).length;
   return games + queued;
 }
 
