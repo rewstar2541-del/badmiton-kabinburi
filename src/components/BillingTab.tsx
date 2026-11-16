@@ -292,7 +292,7 @@ function DailyView() {
 
       {rows.length > 0 && (
         <Button className="w-full" onClick={() => setSplit(true)}>
-          {day.rent ? (rentSplitsEqually(day.date) ? t("⏱ สนามเช่า: หารเท่ากัน") : t("⏱ สนามเช่า: เวลามา-กลับของแต่ละคน")) : t("⏱ หารค่าสนามตามชั่วโมง (สนามเช่า)")}
+          {day.rent ? (rentSplitsEqually(day.date) ? t("สนามเช่า: หารเท่ากัน") : t("⏱ สนามเช่า: เวลามา-กลับของแต่ละคน")) : t("⏱ หารค่าสนามตามชั่วโมง (สนามเช่า)")}
         </Button>
       )}
 

@@ -149,7 +149,7 @@ export function EventForm({ date, dates, onDone, onCancel }: { date?: string; da
           <>
             <RentFields value={rent} onChange={setRent} />
             {!rentOk && <p className="text-xs font-semibold text-amber-800">{t("ใส่ค่าเช่าต่อคอร์ทก่อน")}</p>}
-            <p className="text-xs text-zinc-500">{t("ผู้เล่นเลือกเวลาที่มาเองได้ ค่าเริ่มต้นตามเวลาเช็คอิน สมาชิกก็หารด้วย")}</p>
+            <p className="text-xs text-zinc-500">{t("หารเท่ากันทุกคนที่เช็คอิน ไม่ว่ามากี่โมง สมาชิกก็หารด้วย")}</p>
           </>
         )}
       </div>

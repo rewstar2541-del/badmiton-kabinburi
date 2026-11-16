@@ -49,13 +49,13 @@ export const EQUAL_RENT_FROM = "2026-11-16";
 
 export const rentSplitsEqually = (date: string) => date >= EQUAL_RENT_FROM;
 
-/** หารค่าเช่าทั้งวันเท่ากันทุกคนที่เช็คอิน (คนที่แอดมินแก้ยอดเองไม่นับ) ปัดเป็นบาท */
+/** หารค่าเช่าทั้งวันเท่ากันทุกคนที่เช็คอิน (คนที่แอดมินแก้ยอดเองไม่นับ) ปัดขึ้นเป็นบาท ค่าเช่าไม่ขาด */
 export function rentSharesEqual(
   rent: { start: number; end: number; perHour: number; courts?: number[] },
   checkIns: { playerId: string; courtFee?: number }[],
 ): Map<string, number> {
   const ids = [...new Set(checkIns.filter((c) => c.courtFee === undefined).map((c) => c.playerId))];
-  const each = ids.length ? Math.round(rentTotal(rent) / ids.length) : 0;
+  const each = ids.length ? Math.ceil(rentTotal(rent) / ids.length) : 0;
   return new Map(ids.map((id) => [id, each]));
 }
 
