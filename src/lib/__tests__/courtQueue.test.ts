@@ -169,11 +169,23 @@ describe("โหมดรอสนามเดิม (ไม่โยกสน�
   });
 
   it("เปิด: สนามที่ว่างแล้วไม่แย่งคู่ที่รอสนามอื่นอยู่", () => {
-    // สนาม 1 จบแล้ว (ไม่มีคู่ต่อ) คนรอ 6 คนพอแค่ 1 คู่ ซึ่งรอสนาม 2 อยู่
-    const few: Player[] = "abcdefmnop".split("").map((id) => ({ id, name: id, level: 3 }));
+    // e f g h รอสนาม 2 อยู่ก่อนสนาม 1 จบ พอสนาม 1 ว่าง คู่นี้ยังรอสนาม 2
+    const few: Player[] = "abcdefghmnop".split("").map((id) => ({ id, name: id, level: 3 }));
     const d2: Day = { date, checkIns: few.map((p, i) => ({ playerId: p.id, at: i })), drinks: [], games: [g("g0", 1, ["a", "b", "c", "d"], 20, 30), playing[1]] };
-    expect([...courtPlan(d2, few, [1, 2], undefined, true, true).keys()]).toEqual([2]);
+    expect(courtPlan(d2, few, [1, 2], undefined, true, true).get(2)!.playerIds.sort()).toEqual(["e", "f", "g", "h"]);
     // ปิด: คู่นั้นย้ายไปสนาม 1 ที่ว่าง
-    expect([...courtPlan(d2, few, [1, 2]).keys()]).toEqual([1]);
+    expect(courtPlan(d2, few, [1, 2]).get(1)!.playerIds.sort()).toEqual(["e", "f", "g", "h"]);
+  });
+
+  it("เปิด: สนามว่างที่ไม่มีคู่ไหนรอตอนว่าง ยังได้คู่ใหม่ก่อน (ไม่ให้คนใหม่ไปรอสนามที่ยังเล่นอยู่)", () => {
+    // สนาม 2 จบตอน 30 ไม่มีคนรอ คนใหม่ 4 คนมาตอน 40 ต้องได้สนาม 2 ที่ว่าง ไม่ใช่รอสนาม 1
+    const ppl: Player[] = "abcdijklmnop".split("").map((id) => ({ id, name: id, level: 3 }));
+    const d3: Day = {
+      date,
+      checkIns: ppl.map((p) => ({ playerId: p.id, at: "abcd".includes(p.id) ? 40 : 0, ...("mnop".includes(p.id) ? { resting: true } : {}) })),
+      drinks: [],
+      games: [g("g1", 1, ["i", "j", "k", "l"], 10), g("g2", 2, ["m", "n", "o", "p"], 20, 30)],
+    };
+    expect([...courtPlan(d3, ppl, [1, 2], undefined, true, true).keys()]).toEqual([2]);
   });
 });

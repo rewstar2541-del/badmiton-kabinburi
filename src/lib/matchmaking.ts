@@ -291,13 +291,18 @@ export interface CourtNext {
  *   (ไม่กระโดดขึ้นหน้า) ลำดับสนามจึงเหมือนตอนที่คู่นั้นเห็นว่ารอสนามไหน
  */
 export function courtPlan(day: Day, players: Player[], courts: number | number[], first?: number, auto = true, fixed = false): Map<number, CourtNext> {
-  const started = new Map<number, number>();
-  for (const g of day.games) {
-    // ปกติ: นับเฉพาะเกมที่ยังเล่นอยู่ (สนามว่างได้คู่ก่อน) / รอสนามเดิม: นับเกมล่าสุดของสนาม แม้จบแล้ว
-    if (g.endedAt && !fixed) continue;
-    started.set(g.court, Math.max(started.get(g.court) ?? -Infinity, g.startedAt));
+  const started = new Map(day.games.filter((g) => !g.endedAt).map((g) => [g.court, g.startedAt]));
+  if (fixed) {
+    first = undefined;
+    // รอสนามเดิม: สนามที่เพิ่งว่างไม่แย่งคู่ที่รอสนามอื่นอยู่แล้ว
+    // ถ้าตอนสนามนี้ว่าง มีคนรอครบ 4 อยู่แล้ว (มีคู่ที่รอสนามอื่นอยู่) ให้สนามนี้เรียงตามเวลาเริ่มเกมล่าสุดของสนาม
+    // ถ้าคนรอครบ 4 ทีหลัง (ตอนว่างยังไม่มีคู่รอ) ไม่มีใครถูกโยก สนามว่างได้คู่ก่อนตามปกติ
+    const since = waitingQueue(day, players).map((e) => e.waitingSince).sort((a, b) => a - b);
+    const readyAt = since.length >= 4 ? since[3] : Infinity;
+    const last = new Map<number, { startedAt: number; endedAt: number }>();
+    for (const g of day.games) if (g.endedAt && !started.has(g.court) && g.startedAt >= (last.get(g.court)?.startedAt ?? -Infinity)) last.set(g.court, { startedAt: g.startedAt, endedAt: g.endedAt });
+    for (const [c, g] of last) if (readyAt < g.endedAt) started.set(c, g.startedAt);
   }
-  if (fixed) first = undefined;
   // courts = จำนวนสนาม (1..n) หรือเบอร์สนามที่ตั้งไว้ + สนามที่แอดมินจัดคิวค้างไว้ (เผื่อเปลี่ยนเบอร์ระหว่างวัน)
   const list = typeof courts === "number" ? Array.from({ length: courts }, (_, i) => i + 1) : courts;
   const order = [...new Set([...list, ...(day.queued ?? []).map((q) => q.court)])].sort(

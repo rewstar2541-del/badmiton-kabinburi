@@ -1613,6 +1613,7 @@ export const en: Record<string, string> = {
   "รอสนามเดิม": "Keep pairs on their court",
   "คู่ที่รอสนามไหน รอสนามนั้น": "Pairs wait for their own court",
   "รอสนามเดิม (ไม่โยกสนาม)": "Keep pairs on their court (no court switching)",
+  "โหมดรอสนามเดิมเปิดอยู่: สนามนี้ไม่ดึงคู่ที่รอสนามอื่นมา": "Keep-pairs-on-their-court is on: this court won't take pairs waiting for other courts",
   "เปิด: ระบบจัดคิวขึ้นรอทุกสนาม เกมจบแล้วลงคู่ต่อไปให้ทันที": "On: the queue is lined up for every court, and the next pair goes on as soon as a game ends",
   "ปิด: แอดมินจัดคู่ลงเอง": "Off: admins put pairs on courts themselves",
   "ปิดจัดคนลงอัตโนมัติ? ระบบจะไม่ดึงคนจากคิวขึ้นสนาม แอดมินกดจัดคู่ลงเองทุกสนาม": "Turn off auto-assign? The system won't pull people from the queue onto courts. Admins set up pairs for every court themselves.",

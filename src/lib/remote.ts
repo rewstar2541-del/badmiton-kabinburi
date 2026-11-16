@@ -695,8 +695,9 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
         ...(s.fixedCourt !== undefined ? { fixed_court: s.fixedCourt } : {}),
       };
       let res = await db.from("settings").upsert(full);
-      for (const col of ["fixed_court", "auto_assign", "court_numbers"]) {
-        if (!res.error || !(col in full) || !res.error.message.includes(col)) continue;
+      // ขาดหลายคอลัมน์ได้ (error บอกทีละคอลัมน์) ตัดคอลัมน์ที่ error พูดถึงออกไปเรื่อยๆ จนบันทึกได้
+      const late = ["fixed_court", "auto_assign", "court_numbers"];
+      for (let col; res.error && (col = late.find((c) => c in full && res.error!.message.includes(c))); ) {
         full = Object.fromEntries(Object.entries(full).filter(([k]) => k !== col));
         res = await db.from("settings").upsert(full);
       }

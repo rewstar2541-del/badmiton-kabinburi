@@ -52,7 +52,7 @@ export function AutoAssignSwitch({ row = false }: { row?: boolean }) {
       </button>
     );
   // ทั้งแถวกดได้ (ไม่ต้องเล็งตัวสวิตช์เล็กๆ) สีแบบเดียวกับสวิตช์ช่องทางรับเงิน: เขียว = เปิด เทา = ปิด/ยังใช้ไม่ได้
-  const tone = !ready ? "bg-zinc-50 text-zinc-500" : on ? "bg-emerald-50 text-emerald-900" : "bg-zinc-100 text-zinc-800";
+  const tone = !ready ? "bg-zinc-50 text-zinc-500" : on ? "bg-emerald-50 text-emerald-900" : "bg-zinc-100 text-zinc-700";
   return (
     <button
       type="button"
@@ -105,12 +105,12 @@ export function FixedCourtSwitch({ row = false }: { row?: boolean }) {
       >
         <span className="min-w-0 flex-1">
           <span className={`block font-semibold ${ready ? "text-ink" : "text-zinc-500"}`}>{t("รอสนามเดิม")}</span>
-          {(!ready || on) && <span className="block text-xs text-zinc-500">{!ready ? t("ใช้ได้หลังรัน SQL fixed_court.sql") : t("คู่ที่รอสนามไหน รอสนามนั้น")}</span>}
+          <span className="block text-xs text-zinc-500">{!ready ? t("ใช้ได้หลังรัน SQL fixed_court.sql") : on ? t("คู่ที่รอสนามไหน รอสนามนั้น") : t("ปิด: สนามไหนจบก่อน ได้คู่แรกของคิว")}</span>
         </span>
         <SwitchKnob on={on} dim={!ready} />
       </button>
     );
-  const tone = !ready ? "bg-zinc-50 text-zinc-500" : on ? "bg-emerald-50 text-emerald-900" : "bg-zinc-100 text-zinc-800";
+  const tone = !ready ? "bg-zinc-50 text-zinc-500" : on ? "bg-emerald-50 text-emerald-900" : "bg-zinc-100 text-zinc-700";
   return (
     <button
       type="button"

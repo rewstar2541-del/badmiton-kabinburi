@@ -99,7 +99,11 @@ function ActiveCourt({ game, byId, date, now, lastRound = false }: { game: Game;
     const planned = !lastRound && courts.includes(game.court) ? courtPlan(day, state.players, courts, game.court, auto, fixed).get(game.court) : undefined;
     dispatch({ type: "endGame", date, gameId: game.id, winner, draw });
     if (next) dispatch({ type: "startGame", date, court: game.court, playerIds: next.playerIds, queuedId: next.queuedId });
-    else if (planned) alert(t("สนาม {n} ยังเริ่มเกมต่อไม่ได้ มีคนในคู่ที่จัดไว้ไม่พร้อม (ชื่อขีดฆ่า) กดแก้หรือเอาคู่นั้นออก", { n: game.court }));
+    else if (planned)
+      alert(
+        t("สนาม {n} ยังเริ่มเกมต่อไม่ได้ มีคนในคู่ที่จัดไว้ไม่พร้อม (ชื่อขีดฆ่า) กดแก้หรือเอาคู่นั้นออก", { n: game.court }) +
+          (fixed && !planned.queuedId ? `\n${t("โหมดรอสนามเดิมเปิดอยู่: สนามนี้ไม่ดึงคู่ที่รอสนามอื่นมา")}` : ""),
+      );
   };
   // ไม่ลดลูกต่ำกว่าตอนเปลี่ยนตัวครั้งล่าสุด (คนที่ออกไปแล้วจ่ายถึงลูกนั้น)
   const setShuttles = (n: number) => n >= minShuttles(game) && dispatch({ type: "setShuttles", date, gameId: game.id, shuttles: n });
