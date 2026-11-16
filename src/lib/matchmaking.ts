@@ -168,6 +168,32 @@ function metCounts(day: Day): Map<string, number> {
   return m;
 }
 
+/** เวลาที่คนนี้เริ่มรอ ณ เวลา t (จบเกมล่าสุดก่อน t หรือเวลาเช็คอิน) */
+function waitStartAt(day: Day, id: string, t: number): number {
+  const at = day.checkIns.find((c) => c.playerId === id)?.at ?? 0;
+  return Math.max(at, ...day.games.filter((g) => g.endedAt && g.endedAt <= t && g.playerIds.includes(id)).map((g) => g.endedAt!));
+}
+
+/** กี่เกม/คิวที่ลงไปแล้วโดยมีคนที่เริ่มรอทีหลังคนต้นคิว (= คนต้นคิวถูกข้ามมาแล้วกี่ครั้ง) */
+function bypassCount(day: Day, head: QueueEntry): number {
+  const later = (ids: string[], t: number) => ids.some((id) => waitStartAt(day, id, t) > head.waitingSince);
+  const games = day.games.filter((g) => g.startedAt > head.waitingSince && later(g.playerIds, g.startedAt)).length;
+  const queued = (day.queued ?? []).filter((q) => later(q.playerIds, Infinity)).length;
+  return games + queued;
+}
+
+/** คนที่เล่นเกมล่าสุด (ที่จบแล้ว) ด้วยกัน: คู่ในเกมเดียวกันนั้นไม่ควรมาเจอกันอีกทันที */
+function lastGameMates(day: Day): Set<string> {
+  const last = new Map<string, string[]>();
+  for (const g of [...day.games].filter((x) => x.endedAt).sort((a, b) => a.endedAt! - b.endedAt!)) for (const id of g.playerIds) last.set(id, g.playerIds);
+  const out = new Set<string>();
+  for (const [id, ids] of last) for (const o of ids) if (o !== id && last.get(o) === ids) out.add(pairKey(id, o));
+  return out;
+}
+
+/** 4 คนในชุดเดียวกันห่างกันเกินนี้ (ระดับ) ถือว่าไม่เหมาะ คนต้นคิวยอมรอได้อีก 1 เกม */
+const WIDE_SPREAD = 2;
+
 /**
  * เลือก 4 คนลงสนามถัดไป
  * คนแรกของคิวได้ลงแน่นอน อีก 3 คนเลือกจากคนต้นคิว (window) ให้ฝีมือใกล้กันและไม่เจอคนเดิมซ้ำ
@@ -182,47 +208,67 @@ export function nextMatch(
   const queue = waitingQueue(day, players);
   if (queue.length < 4) return null;
 
-  const head = queue[0].player;
   const pairs = activePairs(day).map((r) => [r.from, r.to] as [string, string]);
-  // คู่ที่ขอไว้ของคนต้นคิว ดึงเข้ามาพิจารณาด้วยแม้อยู่ท้ายคิว
-  const mates = new Set(pairs.flatMap(([a, b]) => (a === head.id ? [b] : b === head.id ? [a] : [])));
-  // กดแนะนำใหม่หลายครั้ง ขยายวงให้มีคนใหม่ให้เลือก
-  const reach = Math.max(4, window + shown.length * 3);
-  const pool = queue
-    .slice(1)
-    .map((e, i) => ({ p: e.player, rank: i + 1 }))
-    .filter((x) => x.rank < reach || mates.has(x.p.id));
   const partners = partnerCounts(day);
   const met = metCounts(day);
   const form = formToday(day, players);
   const shownSets = shown.map((ids) => new Set(ids));
+  const recent = lastGameMates(day);
 
-  let best: { teams: [string, string, string, string]; score: number } | null = null;
-  for (let i = 0; i < pool.length; i++)
-    for (let j = i + 1; j < pool.length; j++)
-      for (let k = j + 1; k < pool.length; k++) {
-        const four = [head, pool[i].p, pool[j].p, pool[k].p];
-        const levels = four.map((p) => skillOf(p, form));
-        const spread = Math.max(...levels) - Math.min(...levels);
-        // 4 คนห่างกันเกิน 1 ระดับ = ต้องให้มือหนักไปแบกมือเบาถึงจะสูสี ยิ่งห่างยิ่งเลี่ยงหนัก
-        // (ห่าง 2 ระดับ +20, 3 ระดับ +80, 4 ระดับ +180) หนักกว่าการข้ามคิวไปไม่กี่ลำดับ แต่คนต้นคิวยังได้ลงเสมอ
-        const gapPenalty = spread * 3 + Math.max(0, spread - 1) ** 2 * 20;
-        const split = splitTeams(four, partners, pairs, form);
-        // ได้ลงพร้อมคู่ที่ขอไว้ = ดีมาก
-        const ids = new Set(four.map((p) => p.id));
-        const pairBonus = pairs.filter(([a, b]) => ids.has(a) && ids.has(b)).length * 40;
-        // ให้น้ำหนักกับลำดับคิว เพื่อไม่ให้คนรอนานถูกข้าม
-        const waitPenalty = pool[i].rank + pool[j].rank + pool[k].rank;
-        // เคยเจอกันในเกมวันนี้แล้ว (ทั้งคู่หูและคู่แข่ง) ยิ่งเจอบ่อยยิ่งเลี่ยง
-        let seen = 0;
-        for (let x = 0; x < 4; x++) for (let y = x + 1; y < 4; y++) seen += met.get(pairKey(four[x].id, four[y].id)) ?? 0;
-        // ชุดที่แนะนำไปแล้ว: ซ้ำคนเดิมมาก = ไม่เอา
-        const again = shownSets.reduce((n, set) => n + Math.max(0, four.filter((p) => set.has(p.id)).length - 1) ** 2, 0);
-        // คนที่ไม่อยากเจอกัน เลี่ยงให้มากที่สุด แต่ถ้าไม่มีทางเลือกก็ยังจัดได้
-        const score = split.cost + gapPenalty + waitPenalty * 2 + seen * 5 + again * 15 + (hasAvoid(four) ? 1000 : 0) - pairBonus;
-        if (!best || score < best.score) best = { teams: split.teams, score };
-      }
-  return best!.teams;
+  const search = (q: QueueEntry[]) => {
+    const head = q[0].player;
+    // คู่ที่ขอไว้ของคนต้นคิว ดึงเข้ามาพิจารณาด้วยแม้อยู่ท้ายคิว
+    const mates = new Set(pairs.flatMap(([a, b]) => (a === head.id ? [b] : b === head.id ? [a] : [])));
+    // กดแนะนำใหม่หลายครั้ง ขยายวงให้มีคนใหม่ให้เลือก
+    const reach = Math.max(4, window + shown.length * 3);
+    const pool = q
+      .slice(1)
+      .map((e, i) => ({ p: e.player, rank: i + 1 }))
+      .filter((x) => x.rank < reach || mates.has(x.p.id));
+
+    let best: { teams: [string, string, string, string]; score: number; spread: number } | null = null;
+    for (let i = 0; i < pool.length; i++)
+      for (let j = i + 1; j < pool.length; j++)
+        for (let k = j + 1; k < pool.length; k++) {
+          const four = [head, pool[i].p, pool[j].p, pool[k].p];
+          const levels = four.map((p) => skillOf(p, form));
+          const spread = Math.max(...levels) - Math.min(...levels);
+          // 4 คนห่างกันเกิน 1 ระดับ = ต้องให้มือหนักไปแบกมือเบาถึงจะสูสี ยิ่งห่างยิ่งเลี่ยงหนัก
+          // (ห่าง 2 ระดับ +20, 3 ระดับ +80, 4 ระดับ +180) หนักกว่าการข้ามคิวไปไม่กี่ลำดับ แต่คนต้นคิวยังได้ลงเสมอ
+          const gapPenalty = spread * 3 + Math.max(0, spread - 1) ** 2 * 20;
+          const split = splitTeams(four, partners, pairs, form);
+          // ได้ลงพร้อมคู่ที่ขอไว้ = ดีมาก
+          const ids = new Set(four.map((p) => p.id));
+          const pairBonus = pairs.filter(([a, b]) => ids.has(a) && ids.has(b)).length * 40;
+          // ให้น้ำหนักกับลำดับคิว เพื่อไม่ให้คนรอนานถูกข้าม
+          const waitPenalty = pool[i].rank + pool[j].rank + pool[k].rank;
+          // เคยเจอกันในเกมวันนี้แล้ว (ทั้งคู่หูและคู่แข่ง) ยิ่งเจอบ่อยยิ่งเลี่ยง
+          let seen = 0;
+          // เพิ่งเล่นเกมล่าสุดด้วยกัน (เกมที่เพิ่งจบ) เลี่ยงแรงกว่า ไม่ให้กลุ่มเดิมได้เล่นกันติด ๆ
+          let justPlayed = 0;
+          for (let x = 0; x < 4; x++)
+            for (let y = x + 1; y < 4; y++) {
+              const key = pairKey(four[x].id, four[y].id);
+              seen += met.get(key) ?? 0;
+              if (recent.has(key)) justPlayed++;
+            }
+          // ชุดที่แนะนำไปแล้ว: ซ้ำคนเดิมมาก = ไม่เอา
+          const again = shownSets.reduce((n, set) => n + Math.max(0, four.filter((p) => set.has(p.id)).length - 1) ** 2, 0);
+          // คนที่ไม่อยากเจอกัน เลี่ยงให้มากที่สุด แต่ถ้าไม่มีทางเลือกก็ยังจัดได้
+          const score = split.cost + gapPenalty + waitPenalty * 2 + seen * 5 + justPlayed * 25 + again * 15 + (hasAvoid(four) ? 1000 : 0) - pairBonus;
+          if (!best || score < best.score) best = { teams: split.teams, score, spread };
+        }
+    return best;
+  };
+
+  let result = search(queue);
+  // ไม่มีใครระดับใกล้คนต้นคิวเลย (ต้องให้มือเก่งมาแบก): ให้ข้ามไปก่อนได้ครั้งเดียว
+  // รอบหน้าถ้ายังไม่มีคนใกล้เคียงก็ลงตามเดิม ไม่ถูกข้ามซ้ำ (นับจากเกมที่คนมาทีหลังได้ลงไปแล้ว)
+  if (result && result.spread > WIDE_SPREAD && queue.length >= 5 && bypassCount(day, queue[0]) < 1) {
+    const alt = search(queue.slice(1));
+    if (alt && alt.spread <= WIDE_SPREAD) result = alt;
+  }
+  return result!.teams;
 }
 
 /** คู่ถัดไปของแต่ละสนาม: คู่ที่แอดมินจัดไว้ (queuedId) หรือคู่ที่ระบบจัดให้อัตโนมัติจากคิวรวม */

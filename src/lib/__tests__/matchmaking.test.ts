@@ -132,3 +132,36 @@ describe("ฟอร์มวันนี้", () => {
     expect(teamOf("a")).not.toBe(teamOf("b"));
   });
 });
+
+describe("จัดคู่ไม่ให้ซ้ำกลุ่มเดิม / ไม่ให้มือใหม่ถูกแบก", () => {
+  const g = (id: string, ids: string[], start: number, end?: number) => ({
+    id, court: 1, playerIds: ids as [string, string, string, string], startedAt: start, endedAt: end, shuttles: 1,
+  });
+
+  it("เกมที่เพิ่งจบ คนในเกมเดียวกันไม่ถูกจับมาเล่นด้วยกันอีก ถ้ามีคนระดับใกล้กันให้สลับ", () => {
+    const ps = [p("a", 5), p("b", 4), p("c", 5), p("d", 4), p("e", 5), p("f", 4), p("x", 5), p("y", 4)];
+    // a,b,c,d เพิ่งจบ (รอใหม่) e,f,x,y รออยู่ก่อน แต่เช็คอินทีหลังสุดเลยอยู่ท้ายคิวถ้าจบเกมเร็วกว่า
+    const d = dayWith(ps, [g("g1", ["a", "b", "c", "d"], 5, 10)]);
+    d.checkIns = ps.map((pl, i) => ({ playerId: pl.id, at: i < 4 ? 0 : 11 + i }));
+    const m = nextMatch(d, ps)!;
+    // คนต้นคิวคือ a/b/c/d คนหนึ่ง (จบ 10) ก่อน e,f,x,y ที่เช็คอิน 15+ ... ต้องมีคนจากนอกกลุ่มเดิมอย่างน้อย 1 คน
+    expect(m.filter((id) => ["a", "b", "c", "d"].includes(id)).length).toBeLessThan(4);
+  });
+
+  it("ไม่มีใครระดับใกล้มือใหม่ ให้มือใหม่ข้ามไปก่อน 1 ครั้ง แล้วลงเมื่อมีคนใกล้เคียง", () => {
+    // n = New รอก่อนใคร ที่เหลือ P/S ถ้าให้ n ลงตอนนี้ต้องมีมือ P มาแบก
+    const ps = [p("n", 1), p("a", 5), p("b", 5), p("c", 4), p("d", 4), p("e", 5)];
+    const d = dayWith(ps);
+    const first = nextMatch(d, ps)!;
+    expect(first).not.toContain("n");
+    // ต่อมาเกมของคนที่มาทีหลังลงไปแล้ว n ถูกข้ามมา 1 ครั้ง รอบหน้าต้องได้ลง
+    const played = dayWith(ps, [g("g1", [...first], 20)]);
+    const rest = ps.filter((x) => !first.includes(x.id));
+    // เพิ่มคนมาให้ครบ 4 ขึ้นไปในคิว
+    const more = [...ps, p("f", 5), p("g", 4)];
+    const d2 = dayWith(more, [g("g1", [...first], 20)]);
+    d2.checkIns = d2.checkIns.map((c) => (c.playerId === "n" ? { ...c, at: 0 } : { ...c, at: 1 }));
+    void played; void rest;
+    expect(nextMatch(d2, more)).toContain("n");
+  });
+});
