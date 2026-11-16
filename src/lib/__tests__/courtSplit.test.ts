@@ -111,3 +111,45 @@ d2("เวลาระดับนาที", () => {
     e2(clk(19 + 1 / 60)).toBe("19:01");
   });
 });
+
+describe("สนามเช่าหารเท่ากัน (ตั้งแต่ 16 พ.ย. 2026)", () => {
+  // 16 พ.ย.: 19-22 น. คอร์ทละ 200 (4,4,5 คอร์ท) = 2,600 บาท · 5 คนเช็คอิน 19:5x อีก 20 คนเช็คอินหลัง 20:00
+  const rent = { start: 19, end: 22, perHour: 200, courts: [4, 4, 5] };
+  const at = (m: number) => Date.parse("2026-11-16T19:00:00+07:00") + m * 60_000;
+  const mins = [50, 51, 51, 52, 52, ...Array.from({ length: 20 }, (_, i) => 62 + i)];
+  const checkIns = mins.map((m, i) => ({ playerId: `p${i}`, at: at(m) }));
+
+  it("ทุกคนจ่ายเท่ากัน ไม่ว่าเช็คอินกี่โมง", async () => {
+    const { rentSharesFor } = await import("../courtSplit");
+    const out = rentSharesFor("2026-11-16", rent, checkIns);
+    expect(new Set(out.values())).toEqual(new Set([104]));
+    expect(out.size).toBe(25);
+  });
+
+  it("เวลามา-กลับที่ตั้งไว้ไม่มีผล คนแก้ยอดเองไม่นับ", async () => {
+    const { rentSharesFor } = await import("../courtSplit");
+    const out = rentSharesFor("2026-11-20", { start: 19, end: 21, perHour: 300 }, [
+      { playerId: "a", at: at(0), hours: { from: 19, to: 20 } },
+      { playerId: "b", at: at(90) },
+      { playerId: "coach", at: at(0), courtFee: 0 },
+    ]);
+    expect(out.get("a")).toBe(300);
+    expect(out.get("b")).toBe(300);
+    expect(out.has("coach")).toBe(false);
+  });
+
+  it("วันก่อนหน้ายังหารตามชั่วโมงแบบเดิม ยอดที่เก็บไปแล้วไม่เปลี่ยน", async () => {
+    const { rentSharesFor } = await import("../courtSplit");
+    const out = rentSharesFor("2026-11-08", rent, checkIns);
+    expect(out.get("p0")).toBe(232);
+    expect(out.get("p5")).toBe(72);
+  });
+
+  it("บิลวันนี้ใช้ยอดหารเท่ากัน", async () => {
+    const { dayAmount } = await import("../billing");
+    const day = { date: "2026-11-16", rent, checkIns, games: [], drinks: [] };
+    const player = { id: "p0", name: "A" } as unknown as Parameters<typeof dayAmount>[1];
+    const s = { courtFee: 50, firstShuttleFee: 0, nextShuttleFee: 0 } as unknown as Parameters<typeof dayAmount>[2];
+    expect(dayAmount(day as unknown as Parameters<typeof dayAmount>[0], player, s, {} as Parameters<typeof dayAmount>[3]).courtFee).toBe(104);
+  });
+});

@@ -73,7 +73,7 @@ export function EventForm({ date, dates, onDone, onCancel }: { date?: string; da
   const [title, setTitle] = useState<string | null>(day?.announcementTitle ?? null);
   const [fee, setFee] = useState(day?.announcementFee ? String(day.announcementFee) : "");
   const [cap, setCap] = useState(day?.announcementCap ? String(day.announcementCap) : "");
-  // สนามเช่า: หารค่าเช่าตามชั่วโมงที่แต่ละคนอยู่
+  // สนามเช่า: หารค่าเช่ารวมเท่ากันทุกคนที่เช็คอิน
   const [rentOn, setRentOn] = useState(Boolean(day?.rent));
   const [rent, setRent] = useState(() => rentDraft(day?.rent ?? lastRent(state.days)));
   const rentOk = !rentOn || rentDraftOk(rent);
@@ -143,13 +143,13 @@ export function EventForm({ date, dates, onDone, onCancel }: { date?: string; da
       <div className="space-y-2 rounded-2xl bg-zinc-50 p-3">
         <label className="flex items-center gap-2 text-sm font-semibold">
           <input type="checkbox" className="size-5 accent-ink" checked={rentOn} onChange={(e) => setRentOn(e.target.checked)} />
-          {t("สนามเช่า (หารค่าเช่าตามชั่วโมงที่อยู่)")}
+          {t("สนามเช่า (หารค่าเช่าเท่ากันทุกคน)")}
         </label>
         {rentOn && (
           <>
             <RentFields value={rent} onChange={setRent} />
             {!rentOk && <p className="text-xs font-semibold text-amber-800">{t("ใส่ค่าเช่าต่อคอร์ทก่อน")}</p>}
-            <p className="text-xs text-zinc-500">{t("ผู้เล่นเลือกเวลาที่มาเองได้ ค่าเริ่มต้นตามเวลาเช็คอิน สมาชิกก็หารด้วย")}</p>
+            <p className="text-xs text-zinc-500">{t("หารเท่ากันทุกคนที่เช็คอิน ไม่ว่ามากี่โมง สมาชิกก็หารด้วย")}</p>
           </>
         )}
       </div>

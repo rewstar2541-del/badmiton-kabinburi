@@ -1,5 +1,5 @@
 import { isAnnualMember, isMonthlyPaid, shuttlesInGame, type Day, type DayPrices, type MonthlyPayments, type Player, type Settings } from "./types";
-import { rentShares } from "./courtSplit";
+import { rentSharesFor } from "./courtSplit";
 
 export interface Bill {
   playerId: string;
@@ -64,7 +64,7 @@ function rentFeeOf(day: Day, ci: Day["checkIns"][number]): number {
   let byKey = rentCache.get(day);
   if (!byKey) rentCache.set(day, (byKey = new Map()));
   let shares = byKey.get(key);
-  if (!shares) byKey.set(key, (shares = rentShares(day.rent!, day.checkIns.filter((c) => c.at <= key))));
+  if (!shares) byKey.set(key, (shares = rentSharesFor(day.date, day.rent!, day.checkIns.filter((c) => c.at <= key))));
   return shares.get(ci.playerId) ?? 0;
 }
 
@@ -79,7 +79,7 @@ export function dayAmount(
   const p = pricesFor(day, s);
   const ci = day.checkIns.find((c) => c.playerId === player.id);
   // ยังไม่เช็คอิน = ยังไม่ได้มาเล่นวันนี้ ไม่คิดค่าสนาม
-  // สนามเช่า: ทุกคนหารค่าเช่าตามชั่วโมงที่อยู่ (สมาชิกก็หาร เพราะเป็นค่าเช่าแยก) แอดมินแก้รายคนได้
+  // สนามเช่า: ทุกคนหารค่าเช่าเท่ากัน (วันก่อน 16 พ.ย. 2026 หารตามชั่วโมงที่อยู่) (สมาชิกก็หาร เพราะเป็นค่าเช่าแยก) แอดมินแก้รายคนได้
   const courtFee = !ci
     ? 0
     : (ci.courtFee ?? (day.rent ? rentFeeOf(day, ci) : monthlyMember || annualMember ? 0 : p.courtFee));

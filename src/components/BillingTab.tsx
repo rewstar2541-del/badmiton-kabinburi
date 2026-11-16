@@ -11,6 +11,7 @@ import { OwedList } from "./Owed";
 import { SlipHistory } from "./SlipHistory";
 import { CourtSplit } from "./CourtSplit";
 import { RentHoursSheet } from "./RentHours";
+import { rentSplitsEqually } from "@/lib/courtSplit";
 import { SlipReview } from "./Slips";
 import { Avatar, Button, Card, Icon, SectionTitle, Sheet, baht, inputClass } from "./ui";
 import { Auto } from "@/lib/autoTranslate";
@@ -291,7 +292,7 @@ function DailyView() {
 
       {rows.length > 0 && (
         <Button className="w-full" onClick={() => setSplit(true)}>
-          {day.rent ? t("⏱ สนามเช่า: เวลามา-กลับของแต่ละคน") : t("⏱ หารค่าสนามตามชั่วโมง (สนามเช่า)")}
+          {day.rent ? (rentSplitsEqually(day.date) ? t("สนามเช่า: หารเท่ากัน") : t("⏱ สนามเช่า: เวลามา-กลับของแต่ละคน")) : t("⏱ หารค่าสนามตามชั่วโมง (สนามเช่า)")}
         </Button>
       )}
 
