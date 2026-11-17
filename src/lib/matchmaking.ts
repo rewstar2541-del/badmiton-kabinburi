@@ -286,9 +286,23 @@ export interface CourtNext {
  * first: สนามที่กำลังจะจบเกม ให้ได้คู่แรก (คนที่รอนานสุดได้ลงก่อน ไม่ถูกแซง)
  * สนามที่แอดมินจัดคิวไว้เองใช้คู่นั้น ไม่เอาคนจากคิวรวม
  * auto = false (แอดมินปิดโหมดจัดคนลงอัตโนมัติ): มีแค่คู่ที่แอดมินจัดคิวสนามไว้เอง ไม่ดึงคนจากคิวรวมขึ้นรอสนามไหน
+ * fixed = true (โหมดรอสนามเดิม): คู่ที่ขึ้นรอสนามไหนแล้วรอสนามนั้น ไม่โยกไปสนามอื่นที่ว่างก่อน
+ *   ไม่ให้สนามที่กำลังจบแย่งคู่แรก (ไม่ใช้ first) และสนามที่เพิ่งว่างเรียงตามเวลาเริ่มเกมล่าสุดของสนามนั้น
+ *   (ไม่กระโดดขึ้นหน้า) ลำดับสนามจึงเหมือนตอนที่คู่นั้นเห็นว่ารอสนามไหน
  */
-export function courtPlan(day: Day, players: Player[], courts: number | number[], first?: number, auto = true): Map<number, CourtNext> {
+export function courtPlan(day: Day, players: Player[], courts: number | number[], first?: number, auto = true, fixed = false): Map<number, CourtNext> {
   const started = new Map(day.games.filter((g) => !g.endedAt).map((g) => [g.court, g.startedAt]));
+  if (fixed) {
+    first = undefined;
+    // รอสนามเดิม: สนามที่เพิ่งว่างไม่แย่งคู่ที่รอสนามอื่นอยู่แล้ว
+    // ถ้าตอนสนามนี้ว่าง มีคนรอครบ 4 อยู่แล้ว (มีคู่ที่รอสนามอื่นอยู่) ให้สนามนี้เรียงตามเวลาเริ่มเกมล่าสุดของสนาม
+    // ถ้าคนรอครบ 4 ทีหลัง (ตอนว่างยังไม่มีคู่รอ) ไม่มีใครถูกโยก สนามว่างได้คู่ก่อนตามปกติ
+    const since = waitingQueue(day, players).map((e) => e.waitingSince).sort((a, b) => a - b);
+    const readyAt = since.length >= 4 ? since[3] : Infinity;
+    const last = new Map<number, { startedAt: number; endedAt: number }>();
+    for (const g of day.games) if (g.endedAt && !started.has(g.court) && g.startedAt >= (last.get(g.court)?.startedAt ?? -Infinity)) last.set(g.court, { startedAt: g.startedAt, endedAt: g.endedAt });
+    for (const [c, g] of last) if (readyAt < g.endedAt) started.set(c, g.startedAt);
+  }
   // courts = จำนวนสนาม (1..n) หรือเบอร์สนามที่ตั้งไว้ + สนามที่แอดมินจัดคิวค้างไว้ (เผื่อเปลี่ยนเบอร์ระหว่างวัน)
   const list = typeof courts === "number" ? Array.from({ length: courts }, (_, i) => i + 1) : courts;
   const order = [...new Set([...list, ...(day.queued ?? []).map((q) => q.court)])].sort(
@@ -312,9 +326,9 @@ export function courtPlan(day: Day, players: Player[], courts: number | number[]
   return plan;
 }
 
-/** courtPlan ตามที่ตั้งค่าไว้: เบอร์สนาม และโหมดจัดคนลงอัตโนมัติ (ปิด = มีแค่คู่ที่แอดมินจัดเอง) */
-export function clubPlan(day: Day, players: Player[], settings: Pick<Settings, "courtCount" | "courtNumbers" | "autoAssign">, first?: number): Map<number, CourtNext> {
-  return courtPlan(day, players, courtList(settings), first, settings.autoAssign !== false);
+/** courtPlan ตามที่ตั้งค่าไว้: เบอร์สนาม โหมดจัดคนลงอัตโนมัติ (ปิด = มีแค่คู่ที่แอดมินจัดเอง) และโหมดรอสนามเดิม */
+export function clubPlan(day: Day, players: Player[], settings: Pick<Settings, "courtCount" | "courtNumbers" | "autoAssign" | "fixedCourt">, first?: number): Map<number, CourtNext> {
+  return courtPlan(day, players, courtList(settings), first, settings.autoAssign !== false, settings.fixedCourt === true);
 }
 
 /** ผู้เล่นคนนี้รอลงสนามไหน (แอดมินจัดไว้ หรือระบบจัดอัตโนมัติ) */
@@ -339,8 +353,8 @@ export function queueByCourt(queue: QueueEntry[], plan: Map<number, CourtNext>):
  * คู่ที่จะลงสนามต่อทันทีหลังเกมนี้จบ (null = ไม่ลงต่อ)
  * lastRound: แอดมินกำลังจะจบก๊วน กดผลได้เลยโดยไม่ลงคู่ถัดไป (ไม่สร้างเกมใหม่ ไม่เพิ่มค่าลูก)
  */
-export function autoNext(day: Day, players: Player[], courts: number[], game: { id: string; court: number }, lastRound = false, auto = true): CourtNext | null {
+export function autoNext(day: Day, players: Player[], courts: number[], game: { id: string; court: number }, lastRound = false, auto = true, fixed = false): CourtNext | null {
   if (lastRound || !courts.includes(game.court)) return null;
-  const next = courtPlan(day, players, courts, game.court, auto).get(game.court);
+  const next = courtPlan(day, players, courts, game.court, auto, fixed).get(game.court);
   return next && queueBlockers(day, next, game.id).length === 0 ? next : null;
 }

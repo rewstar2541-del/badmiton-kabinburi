@@ -52,7 +52,7 @@ export function AutoAssignSwitch({ row = false }: { row?: boolean }) {
       </button>
     );
   // ทั้งแถวกดได้ (ไม่ต้องเล็งตัวสวิตช์เล็กๆ) สีแบบเดียวกับสวิตช์ช่องทางรับเงิน: เขียว = เปิด เทา = ปิด/ยังใช้ไม่ได้
-  const tone = !ready ? "bg-zinc-50 text-zinc-500" : on ? "bg-emerald-50 text-emerald-900" : "bg-zinc-100 text-zinc-800";
+  const tone = !ready ? "bg-zinc-50 text-zinc-500" : on ? "bg-emerald-50 text-emerald-900" : "bg-zinc-100 text-zinc-700";
   return (
     <button
       type="button"
@@ -71,6 +71,58 @@ export function AutoAssignSwitch({ row = false }: { row?: boolean }) {
               ? t("เปิด: ระบบจัดคิวขึ้นรอทุกสนาม เกมจบแล้วลงคู่ต่อไปให้ทันที")
               : t("ปิด: แอดมินจัดคู่ลงเอง")}
         </span>
+      </span>
+      <SwitchKnob on={on} dim={!ready} />
+    </button>
+  );
+}
+
+/**
+ * สวิตช์โหมดรอสนามเดิม (แอดมิน): เปิด = คู่ที่ขึ้นรอสนามไหนแล้วรอสนามนั้น ไม่โยกไปสนามอื่นที่จบก่อน
+ * ปิด (ค่าเดิม) = สนามไหนจบก่อนได้คู่แรกของคิว
+ * มีผลเฉพาะตอนเปิดจัดคนลงอัตโนมัติ (คู่ที่แอดมินจัดคิวสนามเองรอสนามนั้นอยู่แล้ว) จึงซ่อนแถวนี้ตอนปิดจัดอัตโนมัติ
+ */
+export function FixedCourtSwitch({ row = false }: { row?: boolean }) {
+  const { state, dispatch, auth } = useStore();
+  const on = state.settings.fixedCourt === true;
+  // ออนไลน์: ใช้ได้หลังรัน SQL fixed_court.sql (โหลดมาแล้วมีค่า) ออฟไลน์เก็บในเครื่องได้เลย
+  const ready = !auth.online || state.settings.fixedCourt !== undefined;
+  if (state.settings.autoAssign === false) return null;
+  const toggle = () => {
+    if (!ready) return;
+    dispatch({ type: "updateSettings", settings: { ...state.settings, fixedCourt: !on } });
+  };
+  const hint = !ready ? t("ใช้ได้หลังรัน SQL fixed_court.sql") : on ? t("เปิด: คู่ที่รอสนามไหน รอสนามนั้น ไม่โยกสนาม") : t("ปิด: สนามไหนจบก่อน ได้คู่แรกของคิว");
+  if (row)
+    return (
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        disabled={!ready}
+        onClick={toggle}
+        className="flex min-h-14 w-full items-center gap-3 border-t border-zinc-200 px-4 py-2 text-left text-sm transition active:opacity-70"
+      >
+        <span className="min-w-0 flex-1">
+          <span className={`block font-semibold ${ready ? "text-ink" : "text-zinc-500"}`}>{t("รอสนามเดิม")}</span>
+          <span className="block text-xs text-zinc-500">{!ready ? t("ใช้ได้หลังรัน SQL fixed_court.sql") : on ? t("คู่ที่รอสนามไหน รอสนามนั้น") : t("ปิด: สนามไหนจบก่อน ได้คู่แรกของคิว")}</span>
+        </span>
+        <SwitchKnob on={on} dim={!ready} />
+      </button>
+    );
+  const tone = !ready ? "bg-zinc-50 text-zinc-500" : on ? "bg-emerald-50 text-emerald-900" : "bg-zinc-100 text-zinc-700";
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      disabled={!ready}
+      onClick={toggle}
+      className={`flex min-h-14 w-full items-center gap-3 rounded-3xl border border-zinc-200 px-4 py-3 text-left text-sm transition active:scale-[0.99] ${tone}`}
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block font-display text-base font-semibold">{t("รอสนามเดิม (ไม่โยกสนาม)")}</span>
+        <span className="block text-xs">{hint}</span>
       </span>
       <SwitchKnob on={on} dim={!ready} />
     </button>

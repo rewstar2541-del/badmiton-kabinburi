@@ -152,6 +152,12 @@ export interface Settings {
    * ไม่มี = ยังไม่รัน SQL auto_assign.sql ถือว่าเปิด
    */
   autoAssign?: boolean;
+  /**
+   * รอสนามเดิม: คู่ที่ระบบจัดขึ้นรอสนามไหนแล้ว รอสนามนั้น ไม่โยกไปสนามอื่นที่จบก่อน
+   * ปิด (ค่าเดิม) = สนามไหนจบก่อนได้คู่แรกของคิว
+   * ไม่มี = ยังไม่รัน SQL fixed_court.sql ถือว่าปิด
+   */
+  fixedCourt?: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
