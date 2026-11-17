@@ -27,6 +27,8 @@ const DEMO_META_KEY = "badminton-kabinburi:demo-meta";
 function freshDemo(): State {
   const s = demoState();
   try {
+    // บันทึกข้อมูลก่อน แล้วค่อยบอกว่าเป็นรุ่นนี้ของวันนี้ (แท็บอื่นที่เปิดพร้อมกันจะไม่อ่านข้อมูลเก่าที่ถูกบอกว่าใหม่)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
     localStorage.setItem(DEMO_META_KEY, JSON.stringify({ version: DEMO_VERSION, date: today() }));
   } catch {}
   return s;
