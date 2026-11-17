@@ -126,10 +126,15 @@ function ActiveCourt({ game, byId, date, now, lastRound = false }: { game: Game;
 
   return (
     <div className="space-y-3">
-      <div className="court-surface flex gap-1 rounded-2xl px-2">
+      {/* แอดมินแตะพื้นสนามเพื่อสลับฝั่ง/เปลี่ยนตัว (แผ่นเดียวจบ) */}
+      <div
+        className={`court-surface flex gap-1 rounded-2xl px-2 ${auth.isAdmin ? "cursor-pointer transition active:scale-[0.99]" : ""}`}
+        {...(auth.isAdmin ? { role: "button", tabIndex: 0, "aria-label": t("แตะเพื่อเปลี่ยนคน / สลับฝั่ง"), onClick: () => setSubbing(true), onKeyDown: (e: React.KeyboardEvent) => (e.key === "Enter" || e.key === " ") && setSubbing(true) } : {})}
+      >
         <CourtSide ids={game.playerIds.slice(0, 2)} byId={byId} team="A" />
         <CourtSide ids={game.playerIds.slice(2)} byId={byId} team="B" />
       </div>
+      {auth.isAdmin && <p className="-mt-1 text-center text-xs text-zinc-500">{t("แตะที่สนามเพื่อเปลี่ยนคน / สลับฝั่ง")}</p>}
       {game.subs?.length ? (
         <div className="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-1">
           <div className="min-w-0 flex-1">
@@ -190,12 +195,6 @@ function ActiveCourt({ game, byId, date, now, lastRound = false }: { game: Game;
           <Icon.Trophy width={16} height={16} /> {t("ทีม {team} ชนะ", { team: "B" })}
         </Button>
       </div>
-      <button
-        onClick={() => setSubbing(true)}
-        className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-2xl bg-white text-sm font-semibold text-zinc-700 border border-zinc-300 active:scale-[0.99]"
-      >
-        <Icon.Swap width={16} height={16} /> {t("เปลี่ยนคน / สลับฝั่ง")}
-      </button>
       {subbing && <SubPlayer game={game} onClose={() => setSubbing(false)} />}
       <div className="flex justify-center gap-4 text-xs text-zinc-400">
         <button className="underline-offset-2 active:underline" onClick={() => end()}>

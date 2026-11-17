@@ -1641,4 +1641,9 @@ export const en: Record<string, string> = {
   "บันทึกการสลับ": "Save swap",
   "ยังไม่ได้สลับ": "Nothing swapped yet",
   "แตะคนแรก แล้วแตะอีกคน สลับทันที ไม่กระทบค่าลูก ผลแพ้ชนะนับตามทีมใหม่": "Tap one player, then another to swap right away. Shuttle fees are unchanged; the result counts for the new teams",
+  "แตะคนในสนามเพื่อสลับฝั่ง หรือเลือกคนรอด้านล่างเพื่อลงแทน {name}": "Tap another player on court to swap sides, or pick someone waiting below to replace {name}",
+  "แตะคนในสนามที่จะสลับหรือเปลี่ยน": "Tap the player you want to swap or replace",
+  "คนรอ (เปลี่ยนตัวลงแทน)": "Waiting (to substitute in)",
+  "แตะเพื่อเปลี่ยนคน / สลับฝั่ง": "Tap to change players / swap sides",
+  "แตะที่สนามเพื่อเปลี่ยนคน / สลับฝั่ง": "Tap the court to change players / swap sides",
 };
