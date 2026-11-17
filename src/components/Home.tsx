@@ -30,7 +30,7 @@ import { goToTab } from "./Membership";
 import { SlipHistory, slipStatus } from "./SlipHistory";
 import { OwedList } from "./Owed";
 import { owedBefore } from "@/lib/billing";
-import { inGame, monthOf } from "@/lib/types";
+import { inGame, lastRoundOf, monthOf } from "@/lib/types";
 import { shiftMonth } from "./Members";
 import { NoticeBanners, NoticeComposer } from "./Notices";
 import { PairCard } from "./Pairs";
@@ -290,7 +290,8 @@ export function PlayerHome() {
   const queue = waitingQueue(day, state.players);
   const pos = queue.findIndex((e) => e.player.id === player.id) + 1;
   const planned = plannedCourt(clubPlan(day, state.players, state.settings), player.id);
-  const spot = queuedSpot(day, player.id) ?? (planned ? { court: planned.court, pos: 0 } : null);
+  // รอบสุดท้าย: ไม่มีคู่ใหม่ลงสนาม ไม่บอกว่าจะได้ลงสนามไหน
+  const spot = lastRoundOf(state.settings, date) ? null : (queuedSpot(day, player.id) ?? (planned ? { court: planned.court, pos: 0 } : null));
   const court = day.games.find((g) => !g.endedAt && g.playerIds.includes(player.id))?.court;
   const closed = state.closed[date];
   const fest = festivalInfo(activeFestival(state.settings.festival, date, birthdays(state.players, date).length > 0));

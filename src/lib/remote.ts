@@ -98,6 +98,7 @@ export interface Rows {
         auto_assign?: boolean | null;
         fixed_court?: boolean | null;
         start_delay?: number | null;
+        last_round_date?: string | null;
       }
     | null;
 }
@@ -215,6 +216,8 @@ export function rowsToState(r: Rows): State {
         ...(s.fixed_court !== undefined ? { fixedCourt: s.fixed_court === true } : {}),
         // ไม่มีคอลัมน์ = ยังไม่รัน SQL start_delay.sql (undefined) คู่ต่อไปลงทันทีเหมือนเดิม
         ...(s.start_delay !== undefined ? { startDelay: s.start_delay ?? 0 } : {}),
+        // ไม่มีคอลัมน์ = ยังไม่รัน SQL last_round.sql (undefined) สวิตช์รอบสุดท้ายเก็บในเครื่องแบบเดิม
+        ...(s.last_round_date !== undefined ? { lastRoundDate: s.last_round_date ?? null } : {}),
       }
     : DEFAULT_SETTINGS;
 
@@ -361,7 +364,9 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
       // สวิตช์ช่องทางรับเงินมาหลังรัน SQL payment_switches.sql ยังไม่รันให้โหลดแบบเดิม
       // เบอร์สนามมาหลังรัน SQL court_numbers.sql ยังไม่รันให้โหลดแบบเดิม
       // โหมดจัดคนลงอัตโนมัติมาหลังรัน SQL auto_assign.sql, โหมดรอสนามเดิมมาหลังรัน SQL fixed_court.sql, เวลาก่อนลงสนามมาหลังรัน SQL start_delay.sql
-      const r = await all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign,fixed_court,start_delay`).eq("id", 1))
+      // รอบสุดท้ายมาหลังรัน SQL last_round.sql
+      const r = await all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign,fixed_court,start_delay,last_round_date`).eq("id", 1))
+        .catch(() => all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign,fixed_court,start_delay`).eq("id", 1)))
         .catch(() => all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign,fixed_court`).eq("id", 1)))
         .catch(() => all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign`).eq("id", 1)))
         .catch(() => all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers`).eq("id", 1)))
@@ -712,6 +717,9 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       }
       return check(res);
     }
+    case "setLastRound":
+      // คอลัมน์เดียว: ไม่ทับค่าตั้งค่าอื่นที่เครื่องอื่นเพิ่งเปลี่ยน
+      return check(await db.from("settings").update({ last_round_date: a.on ? a.date : null }).eq("id", 1));
     case "setClosed":
       return a.reason === null
         ? check(await db.from("closed_days").delete().eq("date", a.date))

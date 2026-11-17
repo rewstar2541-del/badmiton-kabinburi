@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { billFor } from "../billing";
-import { mergePrivate, rowsToState } from "../remote";
+import { mergePrivate, rowsToState, type Rows } from "../remote";
 import { prepare, reducer, EMPTY_STATE } from "../state";
-import { DEFAULT_SETTINGS } from "../types";
+import { DEFAULT_SETTINGS, lastRoundOf } from "../types";
 
 describe("rowsToState", () => {
   const state = rowsToState({
@@ -115,5 +115,21 @@ describe("mergePrivate", () => {
     expect(s.days[0].drinks).toHaveLength(1);
     expect(s.days[1].slips).toHaveLength(1);
     expect(s.monthly["2026-10"].a).toBe(Date.parse("2026-10-01T00:00:00Z"));
+  });
+});
+
+describe("รอบสุดท้ายเก็บในฐานข้อมูล", () => {
+  const base = { court_count: 2, court_fee: 40, first_shuttle_fee: 30, next_shuttle_fee: 25, monthly_fee: 150, promptpay_id: "" };
+  const load = (settings: Record<string, unknown>) => rowsToState({ players: [], checkins: [], games: [], drinks: [], monthly: [], announcements: [], closed: [], prices: [], slips: [], signups: [], settings: { ...base, ...settings } } as unknown as Rows).settings;
+  it("อ่านวันที่เปิดรอบสุดท้าย ว่าง = ปิด ไม่มีคอลัมน์ = ยังไม่รัน SQL", () => {
+    expect(load({ last_round_date: "2026-11-17" }).lastRoundDate).toBe("2026-11-17");
+    expect(load({ last_round_date: null }).lastRoundDate).toBeNull();
+    expect(load({}).lastRoundDate).toBeUndefined();
+  });
+  it("เปิด/ปิดสวิตช์ เก็บเฉพาะวันนั้น ข้ามวันถือว่าปิด", () => {
+    const on = reducer(EMPTY_STATE, { type: "setLastRound", date: "2026-11-17", on: true });
+    expect(lastRoundOf(on.settings, "2026-11-17")).toBe(true);
+    expect(lastRoundOf(on.settings, "2026-11-18")).toBe(false);
+    expect(reducer(on, { type: "setLastRound", date: "2026-11-17", on: false }).settings.lastRoundDate).toBeNull();
   });
 });

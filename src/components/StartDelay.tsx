@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { t } from "@/lib/i18n";
 import { pendingStart, queueBlockers, START_GRACE_MS } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
-import { courtsOfDay } from "@/lib/types";
+import { courtsOfDay, lastRoundOf, type Settings } from "@/lib/types";
 
 /** ตัวเลือกเวลาก่อนลงสนาม (วินาที) 0 = ลงทันที -1 = รอแอดมินกด */
 export const START_DELAYS = [0, 15, 20, 30, 60, -1] as const;
@@ -49,13 +49,37 @@ export function useHolds() {
   return isHeld;
 }
 
-/** รอบสุดท้ายเปิดอยู่ในเครื่องนี้ไหม (สวิตช์ในหน้าสนาม เก็บแยกตามวัน) */
-export function lastRoundOn(date: string) {
+/**
+ * รอบสุดท้าย (เปิดเฉพาะวันนั้น): เก็บในฐานข้อมูล ทุกเครื่องแอดมินและผู้เล่นที่กดผลเองเห็นตรงกัน
+ * ยังไม่รัน SQL last_round.sql (ออนไลน์แต่ไม่มีค่า) ใช้สวิตช์ในเครื่องแบบเดิมไปก่อน
+ */
+const legacyKey = (date: string) => `lastRound:${date}`;
+const synced = (settings: Settings, online: boolean) => !online || settings.lastRoundDate !== undefined;
+export function isLastRound(settings: Settings, online: boolean, date: string) {
+  if (synced(settings, online)) return lastRoundOf(settings, date);
   try {
-    return localStorage.getItem(`lastRound:${date}`) === "1";
+    return localStorage.getItem(legacyKey(date)) === "1";
   } catch {
     return false;
   }
+}
+
+/** สวิตช์รอบสุดท้ายของวันนี้ [เปิดอยู่ไหม, ตั้งค่า] */
+export function useLastRound(date: string) {
+  const { state, dispatch, auth } = useStore();
+  const [local, setLocal] = useState(() => isLastRound(state.settings, auth.online, date));
+  if (synced(state.settings, auth.online)) {
+    const on = lastRoundOf(state.settings, date);
+    return [on, (v: boolean) => v !== on && dispatch({ type: "setLastRound", date, on: v })] as const;
+  }
+  const set = (v: boolean) => {
+    setLocal(v);
+    try {
+      if (v) localStorage.setItem(legacyKey(date), "1");
+      else localStorage.removeItem(legacyKey(date));
+    } catch {}
+  };
+  return [local, set] as const;
 }
 
 /** นาฬิกาเดินทุกวินาที เฉพาะตอนที่ต้องนับถอยหลัง */
@@ -79,7 +103,7 @@ export function useTick(on: boolean) {
  * แอดมินหลายเครื่อง: ฐานข้อมูลรับเกมเดียวต่อสนาม เครื่องที่ช้ากว่าแค่โหลดข้อมูลใหม่
  */
 export function AutoStarter() {
-  const { state, dispatch } = useStore();
+  const { state, dispatch, auth } = useStore();
   const { date, day } = useToday();
   const delay = state.settings.startDelay ?? 0;
   const pending = delay > 0 ? courtsOfDay(state.settings, day).map((c) => pendingStart(day, c, state.settings)).filter((p) => p !== null) : [];
@@ -87,7 +111,7 @@ export function AutoStarter() {
   const fired = useRef(new Set<string>());
   useHolds();
   useEffect(() => {
-    if (lastRoundOn(date)) return;
+    if (isLastRound(state.settings, auth.online, date)) return;
     for (const p of pending) {
       const q = p.queued;
       if (p.startAt === null || now < p.startAt || now > p.startAt + START_GRACE_MS) continue;

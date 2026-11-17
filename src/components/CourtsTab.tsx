@@ -15,7 +15,7 @@ import { DISPUTE_MS, disputable, teamOf, type GameReport } from "@/lib/state";
 import { goToTab } from "./Membership";
 import { FinishedGames, SubNotes } from "./GameShuttles";
 import { SubPlayer } from "./SubPlayer";
-import { holdStart, StartDelayPicker, useHolds, useTick } from "./StartDelay";
+import { holdStart, isLastRound, StartDelayPicker, useHolds, useLastRound, useTick } from "./StartDelay";
 
 function useNow(intervalMs = 15000) {
   const [now, setNow] = useState(() => Date.now());
@@ -63,26 +63,6 @@ function CourtSide({ ids, byId, team, compact, blocked }: { ids: string[]; byId:
       })}
     </div>
   );
-}
-
-/** รอบสุดท้าย: กดผลแล้วไม่ลงคู่ต่อไป (เก็บในเครื่องแอดมิน แยกตามวัน) */
-function useLastRound(date: string) {
-  const key = `lastRound:${date}`;
-  const [on, setOn] = useState(() => {
-    try {
-      return localStorage.getItem(key) === "1";
-    } catch {
-      return false;
-    }
-  });
-  const set = (v: boolean) => {
-    setOn(v);
-    try {
-      if (v) localStorage.setItem(key, "1");
-      else localStorage.removeItem(key);
-    } catch {}
-  };
-  return [on, set] as const;
 }
 
 function ActiveCourt({ game, byId, date, now, lastRound = false }: { game: Game; byId: Map<string, Player>; date: string; now: number; lastRound?: boolean }) {
@@ -481,6 +461,8 @@ export function CourtsTab() {
   // จบก๊วนแล้ว: ไม่มีเกม ไม่มีคนรอ ไม่มีคิวสนาม เหลือแต่คนพักที่ยังไม่จ่าย
   const [ending, setEnding] = useState(false);
   const [lastRound, setLastRound] = useLastRound(date);
+  // แตะสวิตช์รอบสุดท้ายแล้ว: คงแถวไว้ (ปิดแล้วแถวไม่หายใต้นิ้ว ปุ่มจบก๊วนไม่เลื่อนขึ้นมาแทน)
+  const [touchedLastRound, setTouchedLastRound] = useState(false);
   // เกมจบหมดจากอีกเครื่องตอนเปิดหน้าต่างค้าง: ปิดไป ไม่ให้เด้งขึ้นเองตอนเริ่มเกมใหม่
   if (ending && active.size === 0) setEnding(false);
   const finish = (results: Map<string, Result>) => {
@@ -539,21 +521,27 @@ export function CourtsTab() {
           <AutoAssignSwitch row />
           <FixedCourtSwitch row />
           <StartDelayPicker row />
-          <button
-            type="button"
-            role="switch"
-            aria-checked={lastRound}
-            onClick={() => setLastRound(!lastRound)}
-            className={`flex min-h-14 w-full items-center gap-3 border-t border-zinc-200 px-4 py-2 text-left text-sm transition active:opacity-70 ${lastRound ? "bg-amber-50" : ""}`}
-          >
-            <span className="min-w-0 flex-1">
-              <span className={`block font-semibold ${lastRound ? "text-amber-900" : "text-ink"}`}>{t("รอบสุดท้าย")}</span>
-              {lastRound && (
-                <span className="block text-xs text-amber-800">{t("ไม่ลงคู่ใหม่ จึงไม่มีค่าลูกเพิ่ม")}</span>
-              )}
-            </span>
-            <SwitchKnob on={lastRound} tone="amber" />
-          </button>
+          {/* ปิดจัดอัตโนมัติและไม่มีคู่ที่จัดคิวไว้: ไม่มีคู่ต่อไปให้หยุดอยู่แล้ว ซ่อนสวิตช์ (เปิดค้างไว้ยังเห็นเพื่อปิดได้) */}
+          {(state.settings.autoAssign !== false || (day.queued ?? []).length > 0 || lastRound || touchedLastRound) && (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={lastRound}
+              onClick={() => {
+                setTouchedLastRound(true);
+                setLastRound(!lastRound);
+              }}
+              className={`flex min-h-14 w-full items-center gap-3 border-t border-zinc-200 px-4 py-2 text-left text-sm transition active:opacity-70 ${lastRound ? "bg-amber-50" : ""}`}
+            >
+              <span className="min-w-0 flex-1">
+                <span className={`block font-semibold ${lastRound ? "text-amber-900" : "text-ink"}`}>{t("รอบสุดท้าย")}</span>
+                {lastRound && (
+                  <span className="block text-xs text-amber-800">{t("ไม่ลงคู่ใหม่ จึงไม่มีค่าลูกเพิ่ม")}</span>
+                )}
+              </span>
+              <SwitchKnob on={lastRound} tone="amber" />
+            </button>
+          )}
           <button
             type="button"
             className="flex min-h-12 w-full items-center justify-center gap-2 border-t border-zinc-200 px-4 text-sm font-semibold text-red-600 transition active:opacity-70"
@@ -736,16 +724,18 @@ function NoSession({ admin = false }: { admin?: boolean }) {
 
 /** ผู้เล่นในสนามกดผลเอง (ตอนแอดมินลงเล่นหมด) คนเดียวใน 4 คนกดก็พอ คู่ถัดไปลงต่อทันที */
 function SelfReport({ game, playerId, onDone }: { game: Game; playerId: string; onDone: (msg: string) => void }) {
-  const { state, report } = useStore();
-  const { day } = useToday();
+  const { state, report, auth } = useStore();
+  const { date, day } = useToday();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const label: Record<GameReport, string> = { win: t("ทีมเราชนะ"), draw: t("เสมอ"), lose: t("ทีมเราแพ้") };
   const send = async (r: GameReport) => {
     // คู่ถัดไปของสนามนี้ คิดแบบเดียวกับตอนแอดมินกดจบเกม (ปิดจัดอัตโนมัติ + ไม่มีคู่ที่แอดมินจัดไว้ = ไม่มีคู่ต่อ)
-    const next = clubPlan(day, state.players, state.settings, game.court).get(game.court);
+    // รอบสุดท้าย (แอดมินเปิดไว้): ไม่ส่งคู่ต่อไป ฐานข้อมูลก็เช็คซ้ำอีกชั้น
+    const last = isLastRound(state.settings, auth.online, date);
+    const next = last ? undefined : clubPlan(day, state.players, state.settings, game.court).get(game.court);
     const delayed = (state.settings.startDelay ?? 0) !== 0;
-    const ask = next ? t(delayed ? "บันทึกผล: {r}? คู่ต่อไปจะขึ้นเตรียมลงสนามก่อน" : "บันทึกผล: {r}? คู่ต่อไปจะลงสนามทันที", { r: label[r] }) : t("บันทึกผล: {r}? แอดมินจะจัดคู่ต่อไปเอง", { r: label[r] });
+    const ask = last ? t("บันทึกผล: {r}?", { r: label[r] }) : next ? t(delayed ? "บันทึกผล: {r}? คู่ต่อไปจะขึ้นเตรียมลงสนามก่อน" : "บันทึกผล: {r}? คู่ต่อไปจะลงสนามทันที", { r: label[r] }) : t("บันทึกผล: {r}? แอดมินจะจัดคู่ต่อไปเอง", { r: label[r] });
     if (!confirm(ask)) return;
     const ok = next && courtList(state.settings).includes(game.court) && queueBlockers(day, next, game.id).length === 0;
     setBusy(true);
@@ -753,6 +743,7 @@ function SelfReport({ game, playerId, onDone }: { game: Game; playerId: string; 
     const err = await report(playerId, savedPin.get(), game, r, ok ? { playerIds: next.playerIds, queuedId: next.queuedId, hold: delayed } : undefined);
     setBusy(false);
     if (err) setError(t(err));
+    else if (last) onDone(t("บันทึกผลแล้ว: {r}", { r: label[r] }));
     else onDone(`${t("บันทึกผลแล้ว: {r}", { r: label[r] })} · ${ok ? (delayed ? ((state.settings.startDelay ?? 0) < 0 ? t("คู่ต่อไปเตรียมลงสนาม รอแอดมินกดลงสนาม") : t("คู่ต่อไปเตรียมลงสนาม เริ่มเองใน {n} วินาที", { n: state.settings.startDelay ?? 0 })) : t("คู่ต่อไปลงสนามแล้ว")) : t("คู่ต่อไปยังลงไม่ได้ รอแอดมินจัด")}`);
   };
   return (
@@ -819,8 +810,10 @@ function DisputeBanner({ playerId }: { playerId: string }) {
 
 /** หน้าสนามของผู้เล่น: สนามและคิวของตัวเองด้านบน แล้วทุกสนามและคิวแบบเดียวกับแอดมิน (ดูอย่างเดียว เหมือนจอทีวี) */
 function PlayerCourts() {
-  const { state } = useStore();
-  const { day } = useToday();
+  const { state, auth } = useStore();
+  const { date, day } = useToday();
+  // รอบสุดท้าย: ไม่มีคู่ใหม่ลงสนาม ไม่บอกผู้เล่นว่าใกล้ถึงคิว (ไม่ประกาศอะไรเพิ่ม)
+  const last = isLastRound(state.settings, auth.online, date);
   const [me, setMe] = useMe();
   const now = useNow();
   const [reported, setReported] = useState("");
@@ -843,7 +836,7 @@ function PlayerCourts() {
   // อยู่คิวสนามไหน: คู่ที่แอดมินจัดไว้ก่อน ไม่งั้นดูจากที่ระบบจัดอัตโนมัติ
   const planned = plannedCourt(plan, player.id);
   const myPos = queueByCourt(queue, plan).findIndex((e) => e.player.id === player.id);
-  const mySpot = queuedSpot(day, player.id) ?? (planned ? { court: planned.court, pos: 0 } : null);
+  const mySpot = last ? null : (queuedSpot(day, player.id) ?? (planned ? { court: planned.court, pos: 0 } : null));
   const status = presence(day, player.id);
   if (day.announcement === undefined && day.checkIns.length === 0 && active.size === 0)
     return (
@@ -886,7 +879,7 @@ function PlayerCourts() {
             <>
               <div className="font-display text-4xl font-semibold">{myPos + 1}</div>
               <div className="text-sm text-zinc-500">
-                {state.settings.autoAssign === false ? t("รอแอดมินจัดคู่ลงสนาม") : myPos < 4 ? t("คิวของคุณ ใกล้ได้ลงแล้ว") : t("คิวของคุณ จากที่รอ {n} คน", { n: queue.length })}
+                {state.settings.autoAssign === false || last ? t("รอแอดมินจัดคู่ลงสนาม") : myPos < 4 ? t("คิวของคุณ ใกล้ได้ลงแล้ว") : t("คิวของคุณ จากที่รอ {n} คน", { n: queue.length })}
               </div>
             </>
           ) : (
