@@ -164,7 +164,16 @@ export interface Settings {
    * ไม่มี = ยังไม่รัน SQL start_delay.sql ถือว่าลงทันที
    */
   startDelay?: number;
+  /**
+   * รอบสุดท้าย: วันที่ที่แอดมินเปิดสวิตช์ (เปิดเฉพาะวันนั้น ข้ามวันแล้วปิดเอง) ว่าง = ปิด
+   * เก็บในฐานข้อมูล ทุกเครื่องแอดมินและผู้เล่นที่กดผลเองเห็นตรงกัน
+   * ไม่มี = ยังไม่รัน SQL last_round.sql (ใช้สวิตช์ในเครื่องแบบเดิม)
+   */
+  lastRoundDate?: string | null;
 }
+
+/** รอบสุดท้ายเปิดอยู่สำหรับวันนี้ไหม (ตามค่าในฐานข้อมูล) */
+export const lastRoundOf = (s: Pick<Settings, "lastRoundDate">, date: string) => s.lastRoundDate === date;
 
 export const DEFAULT_SETTINGS: Settings = {
   courtCount: 4,

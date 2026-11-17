@@ -15,7 +15,7 @@ import { DISPUTE_MS, disputable, teamOf, type GameReport } from "@/lib/state";
 import { goToTab } from "./Membership";
 import { FinishedGames, SubNotes } from "./GameShuttles";
 import { SubPlayer } from "./SubPlayer";
-import { holdStart, StartDelayPicker, useHolds, useTick } from "./StartDelay";
+import { holdStart, isLastRound, StartDelayPicker, useHolds, useLastRound, useTick } from "./StartDelay";
 
 function useNow(intervalMs = 15000) {
   const [now, setNow] = useState(() => Date.now());
@@ -63,26 +63,6 @@ function CourtSide({ ids, byId, team, compact, blocked }: { ids: string[]; byId:
       })}
     </div>
   );
-}
-
-/** รอบสุดท้าย: กดผลแล้วไม่ลงคู่ต่อไป (เก็บในเครื่องแอดมิน แยกตามวัน) */
-function useLastRound(date: string) {
-  const key = `lastRound:${date}`;
-  const [on, setOn] = useState(() => {
-    try {
-      return localStorage.getItem(key) === "1";
-    } catch {
-      return false;
-    }
-  });
-  const set = (v: boolean) => {
-    setOn(v);
-    try {
-      if (v) localStorage.setItem(key, "1");
-      else localStorage.removeItem(key);
-    } catch {}
-  };
-  return [on, set] as const;
 }
 
 function ActiveCourt({ game, byId, date, now, lastRound = false }: { game: Game; byId: Map<string, Player>; date: string; now: number; lastRound?: boolean }) {
@@ -539,21 +519,24 @@ export function CourtsTab() {
           <AutoAssignSwitch row />
           <FixedCourtSwitch row />
           <StartDelayPicker row />
-          <button
-            type="button"
-            role="switch"
-            aria-checked={lastRound}
-            onClick={() => setLastRound(!lastRound)}
-            className={`flex min-h-14 w-full items-center gap-3 border-t border-zinc-200 px-4 py-2 text-left text-sm transition active:opacity-70 ${lastRound ? "bg-amber-50" : ""}`}
-          >
-            <span className="min-w-0 flex-1">
-              <span className={`block font-semibold ${lastRound ? "text-amber-900" : "text-ink"}`}>{t("รอบสุดท้าย")}</span>
-              {lastRound && (
-                <span className="block text-xs text-amber-800">{t("ไม่ลงคู่ใหม่ จึงไม่มีค่าลูกเพิ่ม")}</span>
-              )}
-            </span>
-            <SwitchKnob on={lastRound} tone="amber" />
-          </button>
+          {/* ปิดจัดอัตโนมัติและไม่มีคู่ที่จัดคิวไว้: ไม่มีคู่ต่อไปให้หยุดอยู่แล้ว ซ่อนสวิตช์ (เปิดค้างไว้ยังเห็นเพื่อปิดได้) */}
+          {(state.settings.autoAssign !== false || (day.queued ?? []).length > 0 || lastRound) && (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={lastRound}
+              onClick={() => setLastRound(!lastRound)}
+              className={`flex min-h-14 w-full items-center gap-3 border-t border-zinc-200 px-4 py-2 text-left text-sm transition active:opacity-70 ${lastRound ? "bg-amber-50" : ""}`}
+            >
+              <span className="min-w-0 flex-1">
+                <span className={`block font-semibold ${lastRound ? "text-amber-900" : "text-ink"}`}>{t("รอบสุดท้าย")}</span>
+                {lastRound && (
+                  <span className="block text-xs text-amber-800">{t("ไม่ลงคู่ใหม่ จึงไม่มีค่าลูกเพิ่ม")}</span>
+                )}
+              </span>
+              <SwitchKnob on={lastRound} tone="amber" />
+            </button>
+          )}
           <button
             type="button"
             className="flex min-h-12 w-full items-center justify-center gap-2 border-t border-zinc-200 px-4 text-sm font-semibold text-red-600 transition active:opacity-70"
@@ -736,14 +719,15 @@ function NoSession({ admin = false }: { admin?: boolean }) {
 
 /** ผู้เล่นในสนามกดผลเอง (ตอนแอดมินลงเล่นหมด) คนเดียวใน 4 คนกดก็พอ คู่ถัดไปลงต่อทันที */
 function SelfReport({ game, playerId, onDone }: { game: Game; playerId: string; onDone: (msg: string) => void }) {
-  const { state, report } = useStore();
-  const { day } = useToday();
+  const { state, report, auth } = useStore();
+  const { date, day } = useToday();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const label: Record<GameReport, string> = { win: t("ทีมเราชนะ"), draw: t("เสมอ"), lose: t("ทีมเราแพ้") };
   const send = async (r: GameReport) => {
     // คู่ถัดไปของสนามนี้ คิดแบบเดียวกับตอนแอดมินกดจบเกม (ปิดจัดอัตโนมัติ + ไม่มีคู่ที่แอดมินจัดไว้ = ไม่มีคู่ต่อ)
-    const next = clubPlan(day, state.players, state.settings, game.court).get(game.court);
+    // รอบสุดท้าย (แอดมินเปิดไว้): ไม่ส่งคู่ต่อไป ฐานข้อมูลก็เช็คซ้ำอีกชั้น
+    const next = isLastRound(state.settings, auth.online, date) ? undefined : clubPlan(day, state.players, state.settings, game.court).get(game.court);
     const delayed = (state.settings.startDelay ?? 0) !== 0;
     const ask = next ? t(delayed ? "บันทึกผล: {r}? คู่ต่อไปจะขึ้นเตรียมลงสนามก่อน" : "บันทึกผล: {r}? คู่ต่อไปจะลงสนามทันที", { r: label[r] }) : t("บันทึกผล: {r}? แอดมินจะจัดคู่ต่อไปเอง", { r: label[r] });
     if (!confirm(ask)) return;

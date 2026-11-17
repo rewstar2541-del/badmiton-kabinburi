@@ -40,6 +40,12 @@ describe("แจ้งเตือนอีก 1 เกมถึงคิว", (
     expect(turnSoon(day({ games: [g1], queued: [{ id: "q1", court: 1, playerIds: ["i", "j", "k", "l"], at: 1 }] }), players, settings)[0].key).toBe("turn:0:1");
   });
 
+  it("รอบสุดท้ายเปิดวันนี้: ไม่แจ้งใครว่าใกล้ถึงคิว (วันอื่นยังแจ้งปกติ)", () => {
+    const d = day({ games: [g1] });
+    expect(turnSoon(d, players, { ...settings, lastRoundDate: date })).toEqual([]);
+    expect(turnSoon(d, players, { ...settings, lastRoundDate: "2026-11-06" }).length).toBeGreaterThan(0);
+  });
+
   it("วันที่ตามเวลาไทย", () => {
     expect(bangkokDate(Date.parse("2026-11-06T18:30:00Z"))).toBe("2026-11-07");
     expect(bangkokDate(Date.parse("2026-11-06T16:30:00Z"))).toBe("2026-11-06");

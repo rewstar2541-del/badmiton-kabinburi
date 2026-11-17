@@ -283,6 +283,7 @@ create table if not exists public.settings (
   auto_assign boolean default true not null,
   fixed_court boolean default false not null,
   start_delay smallint default 20 not null check (start_delay between -1 and 600),
+  last_round_date date,
   constraint settings_pkey PRIMARY KEY (id)
 );
 
