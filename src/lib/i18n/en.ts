@@ -1640,4 +1640,5 @@ export const en: Record<string, string> = {
   "สลับฝั่งไม่กระทบค่าลูก เกมเล่นต่อ ผลแพ้ชนะนับตามทีมใหม่": "Swapping doesn't change shuttle fees. The game continues; the result counts for the new teams",
   "บันทึกการสลับ": "Save swap",
   "ยังไม่ได้สลับ": "Nothing swapped yet",
+  "แตะคนแรก แล้วแตะอีกคน สลับทันที ไม่กระทบค่าลูก ผลแพ้ชนะนับตามทีมใหม่": "Tap one player, then another to swap right away. Shuttle fees are unchanged; the result counts for the new teams",
 };

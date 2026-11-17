@@ -21,26 +21,22 @@ export function SubPlayer({ game, onClose }: { game: Game; onClose: () => void }
   const [inId, setIn] = useState<string | null>(null);
   const [restOut, setRestOut] = useState(true);
   // โหมดสลับฝั่ง: แตะคน 2 คนในสนามเพื่อสลับตำแหน่ง/ทีมกัน (เกมเล่นต่อ ไม่นับเป็นเปลี่ยนตัว ค่าลูกไม่เปลี่ยน)
-  const [swapMode, setSwapMode] = useState(false);
-  const [order, setOrder] = useState<Game["playerIds"]>(game.playerIds);
+  const [swapMode, setSwapMode] = useState(true);
   const [pick, setPick] = useState<number | null>(null);
+  // เกมสดจากข้อมูลล่าสุด (อีกเครื่องอาจเปลี่ยนตัว/จบเกมไปแล้ว)
+  const liveGame = day.games.find((g) => g.id === game.id && !g.endedAt) ?? game;
+  const order = liveGame.playerIds;
+  // แตะคนหนึ่ง แล้วแตะอีกคน สลับที่กันทันที (ไม่ต้องกดบันทึก) เกมเล่นต่อ ค่าลูกไม่เปลี่ยน
   const tapSwap = (i: number) => {
     if (pick === null) return setPick(i);
     if (pick !== i) {
-      const next = [...order] as Game["playerIds"];
+      const live = day.games.find((g) => g.id === game.id && !g.endedAt);
+      if (!live) return onClose();
+      const next = [...live.playerIds] as Game["playerIds"];
       [next[pick], next[i]] = [next[i], next[pick]];
-      setOrder(next);
+      dispatch({ type: "subPlayer", date, gameId: game.id, prevIds: live.playerIds, playerIds: next, subs: live.subs ?? [] });
     }
     setPick(null);
-  };
-  const changed = order.some((id, i) => id !== game.playerIds[i]);
-  const applySwap = () => {
-    const live = day.games.find((g) => g.id === game.id && !g.endedAt);
-    if (!live || !changed) return onClose();
-    // ชุดคนต้องยังเหมือนตอนเปิดแผ่น (อีกเครื่องอาจเปลี่ยนตัวไปก่อน)
-    if (live.playerIds.join() !== game.playerIds.join()) return onClose();
-    dispatch({ type: "subPlayer", date, gameId: game.id, prevIds: live.playerIds, playerIds: order, subs: live.subs ?? [] });
-    onClose();
   };
 
   // คนที่ลงแทนได้: คิวรอก่อน (ตามลำดับคิว) ตามด้วยคนที่จัดคู่รอสนามไว้ แล้วคนที่พักอยู่
@@ -80,8 +76,8 @@ export function SubPlayer({ game, onClose }: { game: Game; onClose: () => void }
   return (
     <Sheet keepOpen onClose={onClose} title={<h3 className="font-display text-lg font-semibold">{t("เปลี่ยนคน สนาม {n}", { n: game.court })}</h3>}>
       <div className="grid grid-cols-2 gap-1 rounded-full bg-zinc-100 p-1 text-sm font-semibold">
-        {([false, true] as const).map((m) => (
-          <button key={String(m)} onClick={() => { setSwapMode(m); setPick(null); setOut(null); setOrder(game.playerIds); }} aria-pressed={swapMode === m}
+        {([true, false] as const).map((m) => (
+          <button key={String(m)} onClick={() => { setSwapMode(m); setPick(null); setOut(null); }} aria-pressed={swapMode === m}
             className={`min-h-11 rounded-full ${swapMode === m ? "bg-white shadow-sm" : "text-zinc-700"}`}>
             {m ? t("สลับฝั่ง") : t("เปลี่ยนตัว")}
           </button>
@@ -109,11 +105,8 @@ export function SubPlayer({ game, onClose }: { game: Game; onClose: () => void }
               </div>
             ))}
           </div>
-          <p className="rounded-2xl bg-zinc-50 px-3 py-2 text-sm text-zinc-600">{t("สลับฝั่งไม่กระทบค่าลูก เกมเล่นต่อ ผลแพ้ชนะนับตามทีมใหม่")}</p>
-          <div className="sticky -bottom-5 -mx-5 bg-white px-5 pt-2 pb-1"><Button variant="primary" className="w-full disabled:!bg-zinc-200 disabled:!text-zinc-600" disabled={!changed} onClick={applySwap}>
-            {changed ? t("บันทึกการสลับ") : t("ยังไม่ได้สลับ")}
-          </Button></div>
-        </div>
+          <p className="rounded-2xl bg-zinc-50 px-3 py-2 text-sm text-zinc-600">{t("แตะคนแรก แล้วแตะอีกคน สลับทันที ไม่กระทบค่าลูก ผลแพ้ชนะนับตามทีมใหม่")}</p>
+                  </div>
       ) : (<>
       <div className="space-y-2">
         <div className="text-sm font-semibold text-zinc-700">{t("1. ใครออก")}</div>
