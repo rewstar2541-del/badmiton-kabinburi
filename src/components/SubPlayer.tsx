@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { presence, queuedSpot, waitingQueue } from "@/lib/matchmaking";
+import { formToday, FORM_MARK, presence, queuedSpot, skillOf, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
-import { shuttlesInGame, withSub, type Game, type Player } from "@/lib/types";
+import { shuttlesInGame, strength, withSub, type Game, type Player } from "@/lib/types";
 import { Avatar, Button, LevelBadge, Sheet } from "./ui";
+import { FormMark } from "./MatchBuilder";
 import { t } from "@/lib/i18n";
 
 /**
@@ -17,26 +18,33 @@ export function SubPlayer({ game, onClose }: { game: Game; onClose: () => void }
   const { state, dispatch } = useStore();
   const { date, day } = useToday();
   const byId = new Map(state.players.map((p) => [p.id, p]));
-  const [out, setOut] = useState<string | null>(null);
+  // เก็บเป็น id คน (ไม่ใช่ตำแหน่ง) อีกเครื่องเปลี่ยนตัวระหว่างเปิดแผ่นจะได้ไม่ชี้ผิดคน
+  const [pickId, setPickId] = useState<string | null>(null);
+  const [lastSwap, setLastSwap] = useState<[string, string] | null>(null);
   const [inId, setIn] = useState<string | null>(null);
   const [restOut, setRestOut] = useState(true);
-  // โหมดสลับฝั่ง: แตะคน 2 คนในสนามเพื่อสลับตำแหน่ง/ทีมกัน (เกมเล่นต่อ ไม่นับเป็นเปลี่ยนตัว ค่าลูกไม่เปลี่ยน)
-  const [swapMode, setSwapMode] = useState(true);
-  const [pick, setPick] = useState<number | null>(null);
   // เกมสดจากข้อมูลล่าสุด (อีกเครื่องอาจเปลี่ยนตัว/จบเกมไปแล้ว)
   const liveGame = day.games.find((g) => g.id === game.id && !g.endedAt) ?? game;
   const order = liveGame.playerIds;
-  // แตะคนหนึ่ง แล้วแตะอีกคน สลับที่กันทันที (ไม่ต้องกดบันทึก) เกมเล่นต่อ ค่าลูกไม่เปลี่ยน
-  const tapSwap = (i: number) => {
-    if (pick === null) return setPick(i);
-    if (pick !== i) {
-      const live = day.games.find((g) => g.id === game.id && !g.endedAt);
-      if (!live) return onClose();
-      const next = [...live.playerIds] as Game["playerIds"];
-      [next[pick], next[i]] = [next[i], next[pick]];
-      dispatch({ type: "subPlayer", date, gameId: game.id, prevIds: live.playerIds, playerIds: next, subs: live.subs ?? [] });
-    }
-    setPick(null);
+  const out = pickId && order.includes(pickId) ? pickId : null;
+  // แตะคนในสนามหนึ่งคน แล้วแตะอีกคนในสนาม = สลับที่กันทันที (เกมเล่นต่อ ค่าลูกไม่เปลี่ยน)
+  // หรือเลือกคนจากรายชื่อรอ = เปลี่ยนตัว (ยืนยันด้านล่าง)
+  const swap = (a: string, b: string) => {
+    const live = day.games.find((g) => g.id === game.id && !g.endedAt);
+    if (!live) return onClose();
+    const i = live.playerIds.indexOf(a);
+    const j = live.playerIds.indexOf(b);
+    if (i < 0 || j < 0) return;
+    const next = [...live.playerIds] as Game["playerIds"];
+    [next[i], next[j]] = [next[j], next[i]];
+    dispatch({ type: "subPlayer", date, gameId: game.id, prevIds: live.playerIds, playerIds: next, subs: live.subs ?? [] });
+  };
+  const tapCourt = (id: string) => {
+    setIn(null);
+    if (!out || out === id) return setPickId(out === id ? null : id);
+    swap(out, id);
+    setLastSwap([out, id]);
+    setPickId(null);
   };
 
   // คนที่ลงแทนได้: คิวรอก่อน (ตามลำดับคิว) ตามด้วยคนที่จัดคู่รอสนามไว้ แล้วคนที่พักอยู่
@@ -47,23 +55,30 @@ export function SubPlayer({ game, onClose }: { game: Game; onClose: () => void }
     .map((c) => ({ p: byId.get(c.playerId), status: presence(day, c.playerId) }))
     .filter((x): x is { p: Player; status: "waiting" | "resting" } => !!x.p && (x.status === "waiting" || x.status === "resting"))
     .sort((a, b) => (a.status === b.status ? 0 : a.status === "waiting" ? -1 : 1));
-  const candidates: { p: Player; note?: string }[] = [
-    ...queued.map((p) => ({ p })),
+  const games = new Map(waitingQueue(day, state.players).map((e) => [e.player.id, e.gamesPlayed]));
+  const candidates: { p: Player; note?: string; games?: number }[] = [
+    ...queued.map((p) => ({ p, games: games.get(p.id) })),
     ...others.map(({ p, status }) => {
       const spot = queuedSpot(day, p.id);
-      return { p, note: status === "resting" ? t("พักอยู่") : spot ? t("จัดคิวสนาม {n} ไว้", { n: spot.court }) : undefined };
+      return { p, note: status === "resting" ? t("พักอยู่") : spot ? t("รอสนาม {n}", { n: spot.court }) : undefined };
     }),
   ];
+  const form = formToday(day, state.players);
+  const teamSum = (ids: string[]) => ids.reduce((n, id) => n + (byId.get(id) ? strength(byId.get(id)!.level) : 0), 0);
+  const skillSum = (ids: string[]) => ids.reduce((n, id) => n + (byId.get(id) ? skillOf(byId.get(id)!, form) : 0), 0);
+  const edge = skillSum(order.slice(0, 2)) - skillSum(order.slice(2));
+  const marked = order.some((id) => Math.abs(form.get(id) ?? 0) >= FORM_MARK);
   const name = (id: string | null) => (id ? byId.get(id)?.name ?? "?" : "");
   // ลูกที่คนออกต้องจ่ายในเกมนี้ (คนที่เพิ่งลงแทนมาก่อนหน้า นับเฉพาะช่วงของตัวเอง)
-  const outPays = out && inId ? shuttlesInGame({ ...game, ...withSub(game, out, inId, 0) }, out) : 0;
+  const outPays = out && inId ? shuttlesInGame({ ...liveGame, ...withSub(liveGame, out, inId, 0) }, out) : 0;
   const inSpot = inId ? queuedSpot(day, inId) : null;
 
   const apply = () => {
     if (!out || !inId) return;
     // แอดมินอีกเครื่องอาจจบเกม/เปลี่ยนตัวคนนี้ไปแล้ว
     const live = day.games.find((g) => g.id === game.id && !g.endedAt);
-    if (!live || !live.playerIds.includes(out)) return onClose();
+    // เกมจบแล้ว คนออกไม่อยู่แล้ว หรือคนลงแทนเพิ่งลงเกมนี้/สนามอื่นไปแล้ว (อีกเครื่องทำไปก่อน)
+    if (!live || !live.playerIds.includes(out) || live.playerIds.includes(inId) || !candidates.some((c) => c.p.id === inId)) return onClose();
     // พัก/เลิกพักบันทึกไปพร้อมการเปลี่ยนตัว ถ้าเปลี่ยนตัวไม่สำเร็จจะย้อนกลับทั้งหมด
     const rest = [
       ...(presence(day, inId) === "resting" ? [{ playerId: inId, resting: false }] : []),
@@ -75,124 +90,114 @@ export function SubPlayer({ game, onClose }: { game: Game; onClose: () => void }
 
   return (
     <Sheet keepOpen onClose={onClose} title={<h3 className="font-display text-lg font-semibold">{t("เปลี่ยนคน สนาม {n}", { n: game.court })}</h3>}>
-      <div className="grid grid-cols-2 gap-1 rounded-full bg-zinc-100 p-1 text-sm font-semibold">
-        {([true, false] as const).map((m) => (
-          <button key={String(m)} onClick={() => { setSwapMode(m); setPick(null); setOut(null); }} aria-pressed={swapMode === m}
-            className={`min-h-11 rounded-full ${swapMode === m ? "bg-white shadow-sm" : "text-zinc-700"}`}>
-            {m ? t("สลับฝั่ง") : t("เปลี่ยนตัว")}
-          </button>
-        ))}
-      </div>
-      {swapMode ? (
-        <div className="space-y-2">
-          <div className="text-sm font-semibold text-zinc-700">{t("แตะคน 2 คนเพื่อสลับที่กัน")}</div>
-          <div className="court-surface flex gap-1 rounded-2xl px-2 py-3">
-            {(["A", "B"] as const).map((team, ti) => (
-              <div key={team} className="flex min-w-0 flex-1 basis-0 flex-col items-center gap-2">
-                <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${team === "A" ? "bg-lime text-ink" : "bg-sky-300 text-ink"}`}>{t("ทีม {team}", { team })}</span>
-                {order.slice(ti * 2, ti * 2 + 2).map((id, k) => {
-                  const idx = ti * 2 + k;
-                  const p = byId.get(id);
-                  const on = pick === idx;
-                  return (
-                    <button key={id} onClick={() => tapSwap(idx)} aria-pressed={on}
-                      className={`flex min-h-11 w-full items-center gap-2 rounded-2xl px-2 py-1.5 text-left active:scale-[0.98] ${on ? "bg-amber-700 text-white ring-2 ring-white" : "bg-black/20 text-white"}`}>
-                      <Avatar name={p?.name ?? "?"} photo={p?.photo} size={28} ring />
-                      <span className="line-clamp-2 min-w-0 flex-1 text-sm leading-tight font-semibold [overflow-wrap:anywhere]">{on ? `${p?.name ?? "?"} ↕` : (p?.name ?? "?")}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-          <p className="rounded-2xl bg-zinc-50 px-3 py-2 text-sm text-zinc-600">{t("แตะคนแรก แล้วแตะอีกคน สลับทันที ไม่กระทบค่าลูก ผลแพ้ชนะนับตามทีมใหม่")}</p>
-                  </div>
-      ) : (<>
-      <div className="space-y-2">
-        <div className="text-sm font-semibold text-zinc-700">{t("1. ใครออก")}</div>
-        <div className="court-surface flex gap-1 rounded-2xl px-2 py-3">
-          {(["A", "B"] as const).map((team, ti) => (
-            <div key={team} className="flex min-w-0 flex-1 basis-0 flex-col items-center gap-2">
-              <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${team === "A" ? "bg-lime text-ink" : "bg-sky-300 text-ink"}`}>
-                {t("ทีม {team}", { team })}
-              </span>
-              {game.playerIds.slice(ti * 2, ti * 2 + 2).map((id) => {
-                const p = byId.get(id);
-                const on = out === id;
-                return (
-                  <button
-                    key={id}
-                    onClick={() => setOut(on ? null : id)}
-                    aria-pressed={on}
-                    className={`flex min-h-11 w-full items-center gap-2 rounded-2xl px-2 py-1.5 text-left transition active:scale-[0.98] ${
-                      on ? "bg-red-500 text-white ring-2 ring-white" : "bg-black/20 text-white"
-                    }`}
-                  >
-                    <Avatar name={p?.name ?? "?"} photo={p?.photo} size={28} ring />
-                    <span className="line-clamp-2 min-w-0 flex-1 text-sm leading-tight font-semibold [overflow-wrap:anywhere]">
-                      {on ? `${p?.name ?? "?"} ↓` : (p?.name ?? "?")}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <div className="text-sm font-semibold text-zinc-700">{t("2. ใครลงแทน")}</div>
-        {candidates.length === 0 ? (
-          <p className="rounded-2xl bg-zinc-50 px-3 py-4 text-center text-sm text-zinc-500">{t("ไม่มีคนรอ ให้คนเช็คอินก่อน")}</p>
-        ) : (
-          <ul className="space-y-1 rounded-2xl bg-zinc-50 p-1">
-            {candidates.map(({ p, note }) => {
-              const on = inId === p.id;
+      {!day.games.some((g) => g.id === game.id && !g.endedAt) && (
+        <p className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">{t("เกมนี้จบไปแล้ว ปิดแผ่นนี้ได้เลย")}</p>
+      )}
+      <div className="court-surface flex gap-1 rounded-2xl px-2 py-3">
+        {(["A", "B"] as const).map((team, ti) => (
+          <div key={team} className="flex min-w-0 flex-1 basis-0 flex-col items-center gap-2">
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${team === "A" ? "bg-lime text-ink" : "bg-sky-300 text-ink"}`}>
+              {t("ทีม {team}", { team })} · {teamSum(order.slice(ti * 2, ti * 2 + 2))}
+            </span>
+            {order.slice(ti * 2, ti * 2 + 2).map((id) => {
+              const p = byId.get(id);
+              const on = out === id;
               return (
-                <li key={p.id}>
-                  <button
-                    onClick={() => setIn(on ? null : p.id)}
-                    aria-pressed={on}
-                    className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-2 py-1.5 text-left active:scale-[0.99] ${on ? "bg-lime text-ink" : "bg-white"}`}
-                  >
-                    <Avatar name={p.name} photo={p.photo} size={32} />
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate font-medium">{p.name}</span>
-                      {note && <span className="text-xs text-zinc-500">{note}</span>}
-                    </span>
-                    <LevelBadge level={p.level} />
-                    {on && <span className="font-bold" aria-hidden>✓</span>}
-                  </button>
-                </li>
+                <button
+                  key={id}
+                  onClick={() => tapCourt(id)}
+                  aria-pressed={on}
+                  className={`flex w-full items-center gap-2 rounded-2xl px-2 py-1.5 text-left transition ${
+                    on ? "bg-white text-ink ring-2 ring-lime" : out ? "bg-black/30 text-white ring-1 ring-white/60" : "bg-black/20 text-white backdrop-blur-sm"
+                  }`}
+                >
+                  <Avatar name={p?.name ?? "?"} photo={p?.photo} size={28} ring />
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold">{p?.name ?? "?"}</span>
+                  {!on && <FormMark value={form.get(id)} />}
+                  {p && (on ? <span className="font-bold" aria-hidden>↕</span> : <LevelBadge level={p.level} />)}
+                </button>
               );
             })}
-          </ul>
-        )}
+          </div>
+        ))}
       </div>
+      <p className="text-xs text-zinc-500">
+        {t("แตะชื่อในสนาม แล้วแตะอีกคนในสนามเพื่อสลับฝั่ง หรือแตะชื่อจากคิวเพื่อเปลี่ยนตัว ตัวเลขข้างทีม = ผลรวมระดับมือ")}
+        {marked && <> {t("▲▼ = ฟอร์มวันนี้ ระบบนับรวมตอนจัดคู่")}</>}
+      </p>
+      <p role="status" className={`rounded-xl px-3 py-2 text-sm font-medium ${Math.abs(edge) <= 0.5 ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
+        {Math.abs(edge) <= 0.5
+          ? t("เกมสูสี ฝีมือสองทีมใกล้กัน")
+          : Math.abs(edge) <= 1.5
+            ? t("ทีม {team} เหนือกว่าเล็กน้อย", { team: edge > 0 ? "A" : "B" })
+            : t("ทีม {team} เหนือกว่ามาก ลองสลับคน", { team: edge > 0 ? "A" : "B" })}
+      </p>
+      {lastSwap && !out && (
+        <div className="flex items-center gap-2 rounded-2xl bg-emerald-50 px-3 py-2 text-sm text-emerald-900" role="status">
+          <span className="min-w-0 flex-1">{t("สลับ {a} กับ {b} แล้ว", { a: name(lastSwap[0]), b: name(lastSwap[1]) })}</span>
+          <button
+            className="min-h-11 shrink-0 rounded-full bg-white px-3 font-semibold ring-1 ring-emerald-300 active:scale-95"
+            onClick={() => {
+              swap(lastSwap[0], lastSwap[1]);
+              setLastSwap(null);
+            }}
+          >
+            {t("ย้อนกลับ")}
+          </button>
+        </div>
+      )}
 
-      <label className="flex min-h-11 items-center gap-3 rounded-2xl bg-zinc-50 px-3 text-sm">
-        <input type="checkbox" className="size-5 accent-ink" checked={restOut} onChange={(e) => setRestOut(e.target.checked)} />
-        {t("ให้คนออกพักก่อน (ไม่ขึ้นคิว)")}
-      </label>
+      {candidates.length === 0 ? (
+        <p className="rounded-2xl bg-zinc-50 px-3 py-4 text-center text-sm text-zinc-500">{t("ไม่มีคนรอให้เปลี่ยนตัว (สลับฝั่งยังทำได้)")}</p>
+      ) : (
+        <ul className="grid grid-cols-2 gap-1.5">
+          {candidates.map(({ p, note, games: gp }, i) => {
+            const on = inId === p.id;
+            return (
+              <li key={p.id}>
+                <button
+                  disabled={!out}
+                  onClick={() => setIn(on ? null : p.id)}
+                  aria-pressed={on}
+                  className={`flex w-full items-center gap-2 rounded-2xl px-2 py-1.5 text-left text-sm ${on ? "bg-lime/50 ring-2 ring-lime" : "bg-zinc-100 active:bg-zinc-200"} ${out ? "" : "opacity-70"}`}
+                >
+                  <span className="w-4 text-center text-[11px] text-zinc-400">{i + 1}</span>
+                  <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
+                  <FormMark value={form.get(p.id)} dark={false} />
+                  <LevelBadge level={p.level} />
+                  <span className="text-right text-[10px] leading-tight text-zinc-500">
+                    {gp !== undefined && t("{n} เกม", { n: gp })}
+                    {note && <span className="block font-semibold text-emerald-700">{note}</span>}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
-      {/* ติดล่างแผ่น: จอเตี้ยก็กดยืนยันได้โดยไม่ต้องเลื่อน */}
-      <div className="sticky -bottom-5 -mx-5 space-y-2 bg-white px-5 pt-2 pb-1">
       {out && inId && (
-        <p className="rounded-2xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          {t("{out} จ่าย {n} ลูกที่ใช้ไปแล้ว {in} เริ่มนับจากลูกถัดไป ผลแพ้ชนะเป็นของคนที่เล่นจนจบ", { out: name(out), in: name(inId), n: outPays })}
-        </p>
+        <>
+          <label className="flex min-h-11 items-center gap-3 rounded-2xl bg-zinc-50 px-3 text-sm">
+            <input type="checkbox" className="size-5 accent-ink" checked={restOut} onChange={(e) => setRestOut(e.target.checked)} />
+            {t("ให้คนออกพักก่อน (ไม่ขึ้นคิว)")}
+          </label>
+          {/* ติดล่างแผ่น: จอเตี้ยก็กดยืนยันได้โดยไม่ต้องเลื่อน */}
+          <div className="sticky -bottom-5 -mx-5 space-y-2 bg-white px-5 pt-2 pb-1">
+            <p className="rounded-2xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              {t("{out} จ่าย {n} ลูกที่ใช้ไปแล้ว {in} เริ่มนับจากลูกถัดไป ผลแพ้ชนะเป็นของคนที่เล่นจนจบ", { out: name(out), in: name(inId), n: outPays })}
+            </p>
+            {inSpot && (
+              <p className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-800">
+                {t("{name} อยู่ในคู่ที่รอสนาม {n} คู่นั้นจะลงไม่ได้จนกว่าจะแก้คิว", { name: name(inId), n: inSpot.court })}
+              </p>
+            )}
+            <Button variant="accent" className="w-full" onClick={apply}>
+              {t("เปลี่ยน {out} เป็น {in}", { out: name(out), in: name(inId) })}
+            </Button>
+          </div>
+        </>
       )}
-      {inSpot && (
-        <p className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-800">
-          {t("{name} อยู่ในคู่ที่รอสนาม {n} คู่นั้นจะลงไม่ได้จนกว่าจะแก้คิว", { name: name(inId), n: inSpot.court })}
-        </p>
-      )}
-
-      <Button variant="primary" className="w-full disabled:!bg-zinc-200 disabled:!text-zinc-600" disabled={!out || !inId} onClick={apply}>
-        {out && inId ? t("เปลี่ยน {out} เป็น {in}", { out: name(out), in: name(inId) }) : t("เลือกคนออกและคนลงแทน")}
-      </Button>
-      </div>
-    </>)}
     </Sheet>
   );
 }

@@ -239,7 +239,7 @@ export function MatchBuilder({
 }
 
 /** ▲ ฟอร์มดี / ▼ ฟอร์มตก วันนี้ (ไม่ขึ้นถ้าฟอร์มใกล้ศูนย์) */
-function FormMark({ value = 0, dark = true }: { value?: number; dark?: boolean }) {
+export function FormMark({ value = 0, dark = true }: { value?: number; dark?: boolean }) {
   if (Math.abs(value) < FORM_MARK) return null;
   const up = value > 0;
   const label = up ? t("ฟอร์มดีวันนี้") : t("ฟอร์มตกวันนี้");
