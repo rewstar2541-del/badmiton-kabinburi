@@ -43,7 +43,7 @@ export function demoState(): State {
   const now = Date.now();
   let s: State = {
     players: [],
-    settings: { ...DEFAULT_SETTINGS, promptPayId: "0812345678", promptPayOn: true, bankOn: true, courtNumbers: [], autoAssign: true, fixedCourt: false, startDelay: 20 },
+    settings: { ...DEFAULT_SETTINGS, promptPayId: "0812345678", promptPayOn: true, bankOn: true, courtCount: 2, courtNumbers: [], autoAssign: true, fixedCourt: false, startDelay: 20 },
     days: [],
     monthly: {},
     closed: {},
@@ -87,7 +87,7 @@ export function demoState(): State {
   start(date, 1, min(13));
   end(date, 2, "B", 2, min(8));
   start(date, 2, min(7));
-  // คิวรอสนาม 1 ที่แอดมินจัดไว้ (ใช้คู่ที่ระบบแนะนำ) ส่วนสนาม 2 ระบบจัดให้เองจากคนที่เหลือ
+  // คิวรอสนาม 1 ที่แอดมินจัดไว้ (ใช้คู่ที่ระบบแนะนำ) ส่วนสนาม 2 ระบบจัดให้เองจากคนที่เหลือ (เดโมใช้ 2 สนาม)
   const q = nextMatch(dayOf(date), s.players);
   if (q) run({ type: "queueGame", date, court: 1, playerIds: q }, now);
   // ค่าน้ำและสลิปโอนเงินตัวอย่างวันนี้
@@ -101,7 +101,7 @@ export function demoState(): State {
     const at = now - back * 86400000;
     ids.slice(k * 6, k * 6 + 12).forEach((id) => run({ type: "signUp", date: day, playerId: id }, at - 3600000));
     ids.slice(k * 6, k * 6 + 12).forEach((id, i) => run({ type: "checkIn", date: day, playerId: id }, at - 3000000 + i * 60000));
-    const t = (m: number) => at - 2400000 + m * 60000;
+    const t = (m: number) => at - 2280000 + m * 60000;
     start(day, 1, t(0));
     start(day, 2, t(1));
     end(day, 1, "A", 1, t(12));
