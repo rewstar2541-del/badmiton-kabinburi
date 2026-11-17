@@ -168,21 +168,6 @@ function metCounts(day: Day): Map<string, number> {
   return m;
 }
 
-/** เวลาที่คนนี้เริ่มรอ ณ เวลา t (จบเกมล่าสุดก่อน t หรือเวลาเช็คอิน) */
-function waitStartAt(day: Day, id: string, t: number): number {
-  const at = day.checkIns.find((c) => c.playerId === id)?.at ?? 0;
-  return Math.max(at, ...day.games.filter((g) => g.endedAt && g.endedAt <= t && g.playerIds.includes(id)).map((g) => g.endedAt!));
-}
-
-/** กี่เกม/คิวที่ลงไปแล้วโดยมีคนที่เริ่มรอทีหลังคนต้นคิว (= คนต้นคิวถูกข้ามมาแล้วกี่ครั้ง) */
-function bypassCount(day: Day, head: QueueEntry): number {
-  const later = (ids: string[], t: number) => ids.some((id) => waitStartAt(day, id, t) > head.waitingSince);
-  const games = day.games.filter((g) => g.startedAt > head.waitingSince && later(g.playerIds, g.startedAt)).length;
-  // คิวที่แอดมินจัดไว้จริงเท่านั้น (ไม่นับคู่ชั่วคราวที่ courtPlan ใช้วางแผนหลายสนามพร้อมกัน)
-  const queued = (day.queued ?? []).filter((q) => !q.id.startsWith("plan-") && later(q.playerIds, Infinity)).length;
-  return games + queued;
-}
-
 /** คนที่เล่นเกมล่าสุด (ที่จบแล้ว) ด้วยกัน: คู่ในเกมเดียวกันนั้นไม่ควรมาเจอกันอีกทันที */
 function lastGameMates(day: Day): Set<string> {
   const last = new Map<string, string[]>();
@@ -192,12 +177,16 @@ function lastGameMates(day: Day): Set<string> {
   return out;
 }
 
-/** 4 คนในชุดเดียวกันห่างกันเกินนี้ (ระดับ) ถือว่าไม่เหมาะ คนต้นคิวยอมรอได้อีก 1 เกม */
-const WIDE_SPREAD = 2;
+/**
+ * 4 คนในเกมเดียวกันห่างกันได้ไม่เกินนี้ (ระดับมือ ไม่รวมฟอร์มวันนี้)
+ * 1 = ลง/ขึ้นได้ขั้นเดียว เช่น BG กับ N, N กับ S แต่ New กับ P หรือ BG กับ S ไม่ได้
+ * ไม่มีชุดที่เข้าเงื่อนไข = ไม่จัด รอคนเพิ่ม (คนต้นคิวที่หาคนระดับใกล้กันไม่ได้ ให้คนถัดไปลงก่อน)
+ */
+export const MAX_LEVEL_GAP = 1;
 
 /**
  * เลือก 4 คนลงสนามถัดไป
- * คนแรกของคิวได้ลงแน่นอน อีก 3 คนเลือกจากคนต้นคิว (window) ให้ฝีมือใกล้กันและไม่เจอคนเดิมซ้ำ
+ * คนแรกของคิวได้ลงก่อน อีก 3 คนเลือกจากคนต้นคิว (window) ให้ฝีมือใกล้กัน (ห่างไม่เกิน MAX_LEVEL_GAP) และไม่เจอคนเดิมซ้ำ
  * shown: ชุดที่เคยแนะนำไปแล้ว (กด "แนะนำใหม่") จะได้คนชุดใหม่ ไม่วนกลับมาชุดเดิม
  */
 export function nextMatch(
@@ -232,6 +221,8 @@ export function nextMatch(
       for (let j = i + 1; j < pool.length; j++)
         for (let k = j + 1; k < pool.length; k++) {
           const four = [head, pool[i].p, pool[j].p, pool[k].p];
+          const base = four.map((p) => strength(p.level));
+          if (Math.max(...base) - Math.min(...base) > MAX_LEVEL_GAP + 1e-9) continue;
           const levels = four.map((p) => skillOf(p, form));
           const spread = Math.max(...levels) - Math.min(...levels);
           // 4 คนห่างกันเกิน 1 ระดับ = ต้องให้มือหนักไปแบกมือเบาถึงจะสูสี ยิ่งห่างยิ่งเลี่ยงหนัก
@@ -262,14 +253,12 @@ export function nextMatch(
     return best;
   };
 
-  let result = search(queue);
-  // ไม่มีใครระดับใกล้คนต้นคิวเลย (ต้องให้มือเก่งมาแบก): ให้ข้ามไปก่อนได้ครั้งเดียว
-  // รอบหน้าถ้ายังไม่มีคนใกล้เคียงก็ลงตามเดิม ไม่ถูกข้ามซ้ำ (นับจากเกมที่คนมาทีหลังได้ลงไปแล้ว)
-  if (result && result.spread > WIDE_SPREAD && queue.length >= 5 && bypassCount(day, queue[0]) < 1) {
-    const alt = search(queue.slice(1));
-    if (alt && alt.spread <= WIDE_SPREAD) result = alt;
+  // คนต้นคิวได้ลงก่อนถ้ามีชุดที่ห่างไม่เกิน MAX_LEVEL_GAP ถ้าไม่มี ให้คนถัดไปเป็นหัวชุดแทน
+  for (let i = 0; i + 4 <= queue.length; i++) {
+    const result = search(queue.slice(i));
+    if (result) return result.teams;
   }
-  return result!.teams;
+  return null;
 }
 
 /** คู่ถัดไปของแต่ละสนาม: คู่ที่แอดมินจัดไว้ (queuedId) หรือคู่ที่ระบบจัดให้อัตโนมัติจากคิวรวม */

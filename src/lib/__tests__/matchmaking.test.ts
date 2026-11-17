@@ -148,21 +148,28 @@ describe("จัดคู่ไม่ให้ซ้ำกลุ่มเดิ�
     expect(m.filter((id) => ["a", "b", "c", "d"].includes(id)).length).toBeLessThan(4);
   });
 
-  it("ไม่มีใครระดับใกล้มือใหม่ ให้มือใหม่ข้ามไปก่อน 1 ครั้ง แล้วลงเมื่อมีคนใกล้เคียง", () => {
-    // n = New รอก่อนใคร ที่เหลือ P/S ถ้าให้ n ลงตอนนี้ต้องมีมือ P มาแบก
+  it("ห่างกันเกิน 1 ระดับไม่จัดลงด้วยกัน: มือใหม่ข้ามไปก่อน รอจนมีคนระดับใกล้ (New ไม่เจอ P)", () => {
     const ps = [p("n", 1), p("a", 5), p("b", 5), p("c", 4), p("d", 4), p("e", 5)];
-    const d = dayWith(ps);
-    const first = nextMatch(d, ps)!;
+    const first = nextMatch(dayWith(ps), ps)!;
     expect(first).not.toContain("n");
-    // ต่อมาเกมของคนที่มาทีหลังลงไปแล้ว n ถูกข้ามมา 1 ครั้ง รอบหน้าต้องได้ลง
-    const played = dayWith(ps, [g("g1", [...first], 20)]);
-    const rest = ps.filter((x) => !first.includes(x.id));
-    // เพิ่มคนมาให้ครบ 4 ขึ้นไปในคิว
+    // ไม่มีชุดไหนห่างเกิน 1 ระดับ แม้มือใหม่รอมานาน ก็ไม่ถูกบังคับให้ลง
     const more = [...ps, p("f", 5), p("g", 4)];
     const d2 = dayWith(more, [g("g1", [...first], 20)]);
-    d2.checkIns = d2.checkIns.map((c) => (c.playerId === "n" ? { ...c, at: 0 } : { ...c, at: 1 }));
-    void played; void rest;
-    expect(nextMatch(d2, more)).toContain("n");
+    expect(nextMatch(d2, more)).toBeNull();
+    // พอมีคนระดับ New/BG มารอเพิ่มให้ครบ 4 ถึงจะลงได้
+    const withBg = [...more, p("h", 1), p("i", 2), p("j", 2)];
+    const d3 = dayWith(withBg, [g("g1", [...first], 20)]);
+    const m = nextMatch(d3, withBg)!;
+    expect(m).toContain("n");
+    expect(m.every((id) => ["n", "h", "i", "j"].includes(id))).toBe(true);
+  });
+
+  it("ทุกชุดที่จัดให้ห่างกันไม่เกิน 1 ระดับมือ (BG กับ N ได้ BG กับ S ไม่ได้)", () => {
+    const ps = [p("a", 2), p("b", 3), p("c", 3), p("d", 4), p("e", 2), p("f", 3)];
+    const m = nextMatch(dayWith(ps), ps)!;
+    const lv = m.map((id) => ps.find((x) => x.id === id)!.level);
+    expect(Math.max(...lv) - Math.min(...lv)).toBeLessThanOrEqual(1);
+    expect(nextMatch(dayWith([p("a", 2), p("b", 4), p("c", 3), p("d", 3)]), [p("a", 2), p("b", 4), p("c", 3), p("d", 3)])).toBeNull();
   });
 });
 

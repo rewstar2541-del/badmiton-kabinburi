@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { demoState } from "../demo";
 import { today } from "../state";
+import { MAX_LEVEL_GAP } from "../matchmaking";
+import { strength } from "../types";
 
 describe("demoState", () => {
   it("จัดเกมวันนี้ด้วยระบบจริง: มีเกมจบแล้ว เกมกำลังเล่น 2 สนาม และคิวรอสนาม 1", () => {
@@ -18,5 +20,15 @@ describe("demoState", () => {
     const s = demoState();
     const past = s.days.filter((d) => d.date < today() && d.games.length);
     expect(past.map((d) => d.games.filter((g) => g.endedAt).length)).toEqual([4, 4]);
+  });
+
+  it("ทุกเกมและคิวในเดโมห่างกันไม่เกินเพดานของระบบจัดคู่จริง", () => {
+    const s = demoState();
+    const lv = (id: string) => strength(s.players.find((p) => p.id === id)!.level);
+    for (const day of s.days)
+      for (const g of [...day.games, ...(day.queued ?? [])]) {
+        const v = g.playerIds.map(lv);
+        expect(Math.max(...v) - Math.min(...v)).toBeLessThanOrEqual(MAX_LEVEL_GAP);
+      }
   });
 });
