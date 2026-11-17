@@ -128,13 +128,17 @@ function ActiveCourt({ game, byId, date, now, lastRound = false }: { game: Game;
     <div className="space-y-3">
       {/* แอดมินแตะพื้นสนามเพื่อสลับฝั่ง/เปลี่ยนตัว (แผ่นเดียวจบ) */}
       <div
-        className={`court-surface flex gap-1 rounded-2xl px-2 ${auth.isAdmin ? "cursor-pointer transition active:scale-[0.99]" : ""}`}
-        {...(auth.isAdmin ? { role: "button", tabIndex: 0, "aria-label": t("แตะเพื่อเปลี่ยนคน / สลับฝั่ง"), onClick: () => setSubbing(true), onKeyDown: (e: React.KeyboardEvent) => (e.key === "Enter" || e.key === " ") && setSubbing(true) } : {})}
+        className={`court-surface flex gap-1 rounded-2xl px-2 ${auth.isAdmin ? "cursor-pointer transition active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-ink" : ""}`}
+        {...(auth.isAdmin ? { role: "button", tabIndex: 0, "aria-label": t("แตะเพื่อเปลี่ยนคน / สลับฝั่ง"), onClick: () => setSubbing(true), onKeyDown: (e: React.KeyboardEvent) => {
+            if (e.key !== "Enter" && e.key !== " ") return;
+            e.preventDefault();
+            setSubbing(true);
+          } } : {})}
       >
         <CourtSide ids={game.playerIds.slice(0, 2)} byId={byId} team="A" />
         <CourtSide ids={game.playerIds.slice(2)} byId={byId} team="B" />
       </div>
-      {auth.isAdmin && <p className="-mt-1 text-center text-xs text-zinc-500">{t("แตะที่สนามเพื่อเปลี่ยนคน / สลับฝั่ง")}</p>}
+      {auth.isAdmin && <p className="-mt-1 flex items-center justify-center gap-1.5 text-center text-sm font-medium text-zinc-600"><Icon.Swap width={16} height={16} /> {t("แตะที่สนามเพื่อเปลี่ยนคน / สลับฝั่ง")}</p>}
       {game.subs?.length ? (
         <div className="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-1">
           <div className="min-w-0 flex-1">

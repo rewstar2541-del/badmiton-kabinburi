@@ -1646,4 +1646,10 @@ export const en: Record<string, string> = {
   "คนรอ (เปลี่ยนตัวลงแทน)": "Waiting (to substitute in)",
   "แตะเพื่อเปลี่ยนคน / สลับฝั่ง": "Tap to change players / swap sides",
   "แตะที่สนามเพื่อเปลี่ยนคน / สลับฝั่ง": "Tap the court to change players / swap sides",
+  "เกมนี้จบไปแล้ว ปิดแผ่นนี้ได้เลย": "This game has ended. You can close this sheet",
+  "สลับ {a} กับ {b} แล้ว": "Swapped {a} and {b}",
+  "ย้อนกลับ": "Undo",
+  "คนรอ (เลือกคนในสนามก่อน)": "Waiting (pick a player on court first)",
+  "ไม่มีคนรอให้เปลี่ยนตัว (สลับฝั่งยังทำได้)": "No one waiting to substitute (swapping sides still works)",
+  "แตะชื่อในสนาม แล้วแตะอีกคนในสนามเพื่อสลับฝั่ง หรือแตะชื่อจากคิวเพื่อเปลี่ยนตัว ตัวเลขข้างทีม = ผลรวมระดับมือ": "Tap a player on court, then another on court to swap sides, or a name from the queue to substitute. Number beside team = total skill level",
 };
