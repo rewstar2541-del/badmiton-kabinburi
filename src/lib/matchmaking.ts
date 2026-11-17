@@ -168,6 +168,21 @@ function metCounts(day: Day): Map<string, number> {
   return m;
 }
 
+/** เวลาที่คนนี้เริ่มรอ ณ เวลา t (จบเกมล่าสุดก่อน t หรือเวลาเช็คอิน) */
+function waitStartAt(day: Day, id: string, t: number): number {
+  const at = day.checkIns.find((c) => c.playerId === id)?.at ?? 0;
+  return Math.max(at, ...day.games.filter((g) => g.endedAt && g.endedAt <= t && g.playerIds.includes(id)).map((g) => g.endedAt!));
+}
+
+/** กี่เกม/คิวที่ลงไปแล้วโดยมีคนที่เริ่มรอทีหลังคนต้นคิว (= คนต้นคิวถูกข้ามมาแล้วกี่ครั้ง) */
+function bypassCount(day: Day, head: QueueEntry): number {
+  const later = (ids: string[], t: number) => ids.some((id) => waitStartAt(day, id, t) > head.waitingSince);
+  const games = day.games.filter((g) => g.startedAt > head.waitingSince && later(g.playerIds, g.startedAt)).length;
+  // คิวที่แอดมินจัดไว้จริงเท่านั้น (ไม่นับคู่ชั่วคราวที่ courtPlan ใช้วางแผนหลายสนามพร้อมกัน)
+  const queued = (day.queued ?? []).filter((q) => !q.id.startsWith("plan-") && later(q.playerIds, Infinity)).length;
+  return games + queued;
+}
+
 /** คนที่เล่นเกมล่าสุด (ที่จบแล้ว) ด้วยกัน: คู่ในเกมเดียวกันนั้นไม่ควรมาเจอกันอีกทันที */
 function lastGameMates(day: Day): Set<string> {
   const last = new Map<string, string[]>();
@@ -181,8 +196,12 @@ function lastGameMates(day: Day): Set<string> {
  * 4 คนในเกมเดียวกันห่างกันได้ไม่เกินนี้ (ระดับมือ ไม่รวมฟอร์มวันนี้)
  * 1 = ลง/ขึ้นได้ขั้นเดียว เช่น BG กับ N, N กับ S แต่ New กับ P หรือ BG กับ S ไม่ได้
  * ไม่มีชุดที่เข้าเงื่อนไข = ไม่จัด รอคนเพิ่ม (คนต้นคิวที่หาคนระดับใกล้กันไม่ได้ ให้คนถัดไปลงก่อน)
+ * แต่ถ้าถูกข้ามมาครบ STARVED_AFTER เกมแล้ว ผ่อนเป็น RELAXED_LEVEL_GAP สำหรับชุดที่มีคนนั้น
  */
 export const MAX_LEVEL_GAP = 1;
+/** รอจนคนที่มาทีหลังได้ลงไปแล้วเท่านี้เกม (รวมคิวที่จัดไว้) ผ่อนเพดานให้ชุดที่มีคนนั้นเป็น RELAXED_LEVEL_GAP */
+export const STARVED_AFTER = 2;
+export const RELAXED_LEVEL_GAP = 2;
 
 /**
  * เลือก 4 คนลงสนามถัดไป
@@ -205,6 +224,9 @@ export function nextMatch(
   const shownSets = shown.map((ids) => new Set(ids));
   const recent = lastGameMates(day);
 
+  // คนที่ถูกข้ามมาครบ STARVED_AFTER เกมแล้ว: ชุดที่มีคนนี้ผ่อนเพดานเป็น RELAXED_LEVEL_GAP (ไม่ให้ใครไม่ได้ลงเลย)
+  const starved = new Set(queue.filter((e) => bypassCount(day, e) >= STARVED_AFTER).map((e) => e.player.id));
+
   const search = (q: QueueEntry[]) => {
     const head = q[0].player;
     // คู่ที่ขอไว้ของคนต้นคิว ดึงเข้ามาพิจารณาด้วยแม้อยู่ท้ายคิว
@@ -222,7 +244,8 @@ export function nextMatch(
         for (let k = j + 1; k < pool.length; k++) {
           const four = [head, pool[i].p, pool[j].p, pool[k].p];
           const base = four.map((p) => strength(p.level));
-          if (Math.max(...base) - Math.min(...base) > MAX_LEVEL_GAP + 1e-9) continue;
+          const cap = four.some((p) => starved.has(p.id)) ? RELAXED_LEVEL_GAP : MAX_LEVEL_GAP;
+          if (Math.max(...base) - Math.min(...base) > cap + 1e-9) continue;
           const levels = four.map((p) => skillOf(p, form));
           const spread = Math.max(...levels) - Math.min(...levels);
           // 4 คนห่างกันเกิน 1 ระดับ = ต้องให้มือหนักไปแบกมือเบาถึงจะสูสี ยิ่งห่างยิ่งเลี่ยงหนัก

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { demoState } from "../demo";
 import { today } from "../state";
-import { MAX_LEVEL_GAP } from "../matchmaking";
+import { RELAXED_LEVEL_GAP } from "../matchmaking";
 import { strength } from "../types";
 
 describe("demoState", () => {
@@ -22,13 +22,13 @@ describe("demoState", () => {
     expect(past.map((d) => d.games.filter((g) => g.endedAt).length)).toEqual([4, 4]);
   });
 
-  it("ทุกเกมและคิวในเดโมห่างกันไม่เกินเพดานของระบบจัดคู่จริง", () => {
+  it("ทุกเกมและคิวในเดโมห่างกันไม่เกินเพดานผ่อนของระบบจัดคู่จริง (2 ระดับ)", () => {
     const s = demoState();
     const lv = (id: string) => strength(s.players.find((p) => p.id === id)!.level);
     for (const day of s.days)
       for (const g of [...day.games, ...(day.queued ?? [])]) {
         const v = g.playerIds.map(lv);
-        expect(Math.max(...v) - Math.min(...v)).toBeLessThanOrEqual(MAX_LEVEL_GAP);
+        expect(Math.max(...v) - Math.min(...v)).toBeLessThanOrEqual(RELAXED_LEVEL_GAP);
       }
   });
 });
