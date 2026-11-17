@@ -15,18 +15,18 @@ describe("demoState", () => {
     expect(lastRoundOf(s.settings, today())).toBe(false);
   });
 
-  it("เปิดเดโมแล้วเห็นเตรียมลงสนาม: สนาม 4 เพิ่งจบ คู่ที่จัดไว้นับถอยหลัง 20 วินาที", () => {
+  it("เปิดเดโมแล้วเห็นเตรียมลงสนาม: สนาม 1 (บนสุด) เพิ่งจบ คู่ที่จัดไว้นับถอยหลัง 20 วินาที", () => {
     const before = Date.now();
     const s = demoState();
     const day = s.days.find((d) => d.date === today())!;
-    expect(day.games.filter((g) => !g.endedAt).map((g) => g.court).sort()).toEqual([1, 2, 3]);
-    const p = pendingStart(day, 4, s.settings)!;
+    expect(day.games.filter((g) => !g.endedAt).map((g) => g.court).sort()).toEqual([2, 3, 4]);
+    const p = pendingStart(day, 1, s.settings)!;
     expect(p).not.toBeNull();
     expect(p.startAt! - before).toBeGreaterThanOrEqual(20000);
     expect(p.startAt! - Date.now()).toBeLessThanOrEqual(20000);
-    // สนามอื่นไม่มีนับถอยหลัง (สนาม 1 มีคิวแต่ยังเล่นอยู่)
-    expect([1, 2, 3].map((c) => pendingStart(day, c, s.settings))).toEqual([null, null, null]);
-    expect((day.queued ?? []).map((q) => q.court).sort()).toEqual([1, 4]);
+    // สนามอื่นไม่มีนับถอยหลัง (สนาม 2 มีคิวแต่ยังเล่นอยู่)
+    expect([2, 3, 4].map((c) => pendingStart(day, c, s.settings))).toEqual([null, null, null]);
+    expect((day.queued ?? []).map((q) => q.court).sort()).toEqual([1, 2]);
   });
 
   it("จัดเกมวันนี้ด้วยระบบจริง และไม่มีใครอยู่สองที่พร้อมกัน", () => {
@@ -43,7 +43,7 @@ describe("demoState", () => {
   it("รอบสุดท้ายเปิดแล้วกดผลไม่ลงคู่ต่อไป (ใช้ autoNext ตัวจริง)", () => {
     const s = demoState();
     const day = s.days.find((d) => d.date === today())!;
-    const g = day.games.find((x) => !x.endedAt && x.court === 1)!;
+    const g = day.games.find((x) => !x.endedAt && x.court === 2)!;
     expect(autoNext(day, s.players, [1, 2, 3, 4], g, false, false)).not.toBeNull();
     expect(autoNext(day, s.players, [1, 2, 3, 4], g, true, false)).toBeNull();
   });

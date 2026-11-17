@@ -25,10 +25,11 @@ const DEMO_META_KEY = "badminton-kabinburi:demo-meta";
 
 /** สร้างข้อมูลเดโมชุดใหม่ และจำว่าเป็นรุ่นไหน สร้างวันไหน */
 function freshDemo(): State {
+  const s = demoState();
   try {
     localStorage.setItem(DEMO_META_KEY, JSON.stringify({ version: DEMO_VERSION, date: today() }));
   } catch {}
-  return demoState();
+  return s;
 }
 
 function loadLocal(): State {
