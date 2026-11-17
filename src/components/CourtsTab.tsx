@@ -466,8 +466,9 @@ export function CourtsTab() {
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const queue = waitingQueue(day, state.players);
   const courts = courtsOfDay(state.settings, day);
-  // คำนวณใหม่เฉพาะตอนข้อมูลเปลี่ยน (นาฬิกาเดินทุก 15 วินาทีไม่ต้องคำนวณ)
-  const plan = useMemo(() => clubPlan(day, state.players, state.settings), [day, state.players, state.settings]);
+  // คำนวณใหม่ตอนข้อมูลเปลี่ยน และทุกนาที (มือตึงที่รอครบเวลาลงกับระดับต่ำลงมาได้)
+  const minute = Math.floor(now / 60_000);
+  const plan = useMemo(() => clubPlan(day, state.players, state.settings, undefined, minute * 60_000), [day, state.players, state.settings, minute]);
   const courtOf = new Map([...plan.values()].filter((n) => !n.queuedId).flatMap((n) => n.playerIds.map((id) => [id, n.court] as const)));
   // คนในคิวรวมที่ระบบจัดให้สนามอื่นแล้ว (แนะนำใหม่จะไม่ดึงมา)
   const reservedFor = (court: number) => [...plan.values()].filter((n) => n.court !== court && !n.queuedId).flatMap((n) => n.playerIds);

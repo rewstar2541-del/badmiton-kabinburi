@@ -290,7 +290,9 @@ export function nextMatch(
     const pool = q
       .slice(1)
       .map((e, i) => ({ p: e.player, rank: i + 1 }))
-      .filter((x) => (headGated ? isStrong(x.p) : x.rank < reach || mates.has(x.p.id)));
+      .filter((x) => (headGated ? isStrong(x.p) : x.rank < reach || mates.has(x.p.id)))
+      // มือตึงมาก ๆ ดูแค่ reach คนแรก ไม่ให้คำนวณช้า
+      .filter((x, i) => !headGated || i < reach);
 
     let best: { teams: [string, string, string, string]; score: number; spread: number } | null = null;
     for (let i = 0; i < pool.length; i++)
@@ -400,8 +402,8 @@ export function courtPlan(day: Day, players: Player[], courts: number | number[]
 }
 
 /** courtPlan ตามที่ตั้งค่าไว้: เบอร์สนาม โหมดจัดคนลงอัตโนมัติ (ปิด = มีแค่คู่ที่แอดมินจัดเอง) และโหมดรอสนามเดิม */
-export function clubPlan(day: Day, players: Player[], settings: Pick<Settings, "courtCount" | "courtNumbers" | "autoAssign" | "fixedCourt" | "strongGroup">, first?: number): Map<number, CourtNext> {
-  return courtPlan(day, players, courtList(settings), first, settings.autoAssign !== false, settings.fixedCourt === true, { strong: strongRule(settings) });
+export function clubPlan(day: Day, players: Player[], settings: Pick<Settings, "courtCount" | "courtNumbers" | "autoAssign" | "fixedCourt" | "strongGroup">, first?: number, now?: number): Map<number, CourtNext> {
+  return courtPlan(day, players, courtList(settings), first, settings.autoAssign !== false, settings.fixedCourt === true, { strong: strongRule(settings), now });
 }
 
 /** ผู้เล่นคนนี้รอลงสนามไหน (แอดมินจัดไว้ หรือระบบจัดอัตโนมัติ) */

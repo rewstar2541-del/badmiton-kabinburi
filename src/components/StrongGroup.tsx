@@ -19,10 +19,11 @@ export function StrongGroupCard() {
   const g = state.settings.strongGroup ?? DEFAULT_STRONG_GROUP;
   const set = (patch: Partial<NonNullable<Settings["strongGroup"]>>) =>
     ready && dispatch({ type: "updateSettings", settings: { ...state.settings, strongGroup: { ...g, ...patch } } });
-  const sel = "h-11 min-w-0 rounded-full border border-zinc-300 bg-white px-3 text-base font-semibold text-ink disabled:opacity-40";
-  const strong = LEVELS.filter((l) => strength(l.value) >= 3);
+  const sel = "h-11 min-w-0 max-w-[9rem] shrink-0 rounded-full border border-zinc-300 bg-white px-3 text-base font-semibold text-ink disabled:opacity-40";
+  // S ขึ้นไป (เลือก N = เกือบทั้งก๊วนเป็นมือตึง) ค่าที่ตั้งไว้แล้วแสดงเสมอ
+  const strong = LEVELS.filter((l) => strength(l.value) >= 4 || l.value === g.level);
   return (
-    <div className={`w-full rounded-3xl border border-zinc-200 text-sm ${ready ? "bg-white text-ink" : "bg-zinc-50 text-zinc-500"}`}>
+    <div className={`w-full rounded-3xl border border-zinc-200 text-sm ${!ready ? "bg-zinc-50 text-zinc-500" : g.on ? "bg-emerald-50 text-emerald-900" : "bg-zinc-100 text-zinc-700"}`}>
       <button
         type="button"
         role="switch"
@@ -33,8 +34,8 @@ export function StrongGroupCard() {
       >
         <span className="min-w-0 flex-1">
           <span className="block font-display text-base font-semibold">{t("จับกลุ่มมือตึงล้วน")}</span>
-          <span className="block text-xs text-zinc-500">
-            {!ready ? t("ใช้ได้หลังรัน SQL strong_group.sql") : g.on ? t("จัดหลังบ้าน ผู้เล่นไม่เห็นข้อความ") : t("ปิด: จัดคู่ตามระดับใกล้กันตามปกติ")}
+          <span className="block text-sm">
+            {!ready ? t("เปิดอยู่ ใช้ค่าเริ่มต้น (S ขึ้นไป เกมที่ 2 รอ 10 นาที) ปรับได้หลังรัน SQL strong_group.sql") : g.on ? t("จัดหลังบ้าน ผู้เล่นไม่เห็นข้อความ") : t("ปิด: จัดคู่ตามระดับใกล้กันตามปกติ")}
           </span>
         </span>
         <SwitchKnob on={g.on} dim={!ready} />
