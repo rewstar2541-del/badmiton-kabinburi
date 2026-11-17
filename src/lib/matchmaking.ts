@@ -358,3 +358,30 @@ export function autoNext(day: Day, players: Player[], courts: number[], game: { 
   const next = courtPlan(day, players, courts, game.court, auto, fixed).get(game.court);
   return next && queueBlockers(day, next, game.id).length === 0 ? next : null;
 }
+
+/** หลังครบเวลาเตรียมลงสนามเกินเท่านี้ ไม่เริ่มเกมเอง (เช่น เปิดแอพกลับมาทีหลัง คนอาจไม่อยู่แล้ว) ให้แอดมินกดลงสนามเอง */
+export const START_GRACE_MS = 3 * 60_000;
+
+export interface PendingStart {
+  queued: QueuedGame;
+  /** เวลาที่จะเริ่มเกมเอง (null = รอแอดมินกด "ลงสนาม") */
+  startAt: number | null;
+}
+
+/**
+ * คู่ที่ "เตรียมลงสนาม" ของสนามนี้: สนามว่างเพราะเพิ่งจบเกม และคู่แรกของคิวสนามนี้ขึ้นรอตั้งแต่ก่อน/ตอนจบเกมนั้น
+ * (คู่ที่แอดมินจัดใส่สนามที่ว่างอยู่แล้วทีหลัง ไม่ใช่ ให้กดลงสนามเองเหมือนเดิม)
+ * ใช้เวลาจบเกมจากข้อมูลจริง ทุกเครื่องเห็นเวลานับถอยหลังตรงกัน
+ */
+export function pendingStart(day: Day, court: number, settings: Pick<Settings, "startDelay">): PendingStart | null {
+  const delay = settings.startDelay ?? 0;
+  if (delay === 0) return null;
+  if (day.games.some((g) => !g.endedAt && g.court === court)) return null;
+  const q = courtQueue(day, court)[0];
+  if (!q) return null;
+  let ended = -Infinity;
+  for (const g of day.games) if (g.court === court && g.endedAt && g.endedAt > ended) ended = g.endedAt;
+  // คิวขึ้นหลังจบเกมไม่กี่วินาที = ระบบดึงคู่ต่อไปขึ้นตอนกดผล
+  if (ended === -Infinity || q.at > ended + 5000) return null;
+  return { queued: q, startAt: delay < 0 ? null : ended + delay * 1000 };
+}

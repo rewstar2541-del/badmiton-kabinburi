@@ -158,6 +158,12 @@ export interface Settings {
    * ไม่มี = ยังไม่รัน SQL fixed_court.sql ถือว่าปิด
    */
   fixedCourt?: boolean;
+  /**
+   * เวลาก่อนลงสนาม (วินาที) หลังแอดมินกดผล: คู่ต่อไปขึ้น "เตรียมลงสนาม" ก่อน แอดมินแก้คนได้ในช่วงนี้ ครบเวลาแล้วเริ่มเกมเอง
+   * 0 = ลงทันที (แบบเดิม), -1 = รอแอดมินกด "ลงสนาม" เอง
+   * ไม่มี = ยังไม่รัน SQL start_delay.sql ถือว่าลงทันที
+   */
+  startDelay?: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {

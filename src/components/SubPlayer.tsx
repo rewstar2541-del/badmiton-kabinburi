@@ -20,6 +20,28 @@ export function SubPlayer({ game, onClose }: { game: Game; onClose: () => void }
   const [out, setOut] = useState<string | null>(null);
   const [inId, setIn] = useState<string | null>(null);
   const [restOut, setRestOut] = useState(true);
+  // โหมดสลับฝั่ง: แตะคน 2 คนในสนามเพื่อสลับตำแหน่ง/ทีมกัน (เกมเล่นต่อ ไม่นับเป็นเปลี่ยนตัว ค่าลูกไม่เปลี่ยน)
+  const [swapMode, setSwapMode] = useState(false);
+  const [order, setOrder] = useState<Game["playerIds"]>(game.playerIds);
+  const [pick, setPick] = useState<number | null>(null);
+  const tapSwap = (i: number) => {
+    if (pick === null) return setPick(i);
+    if (pick !== i) {
+      const next = [...order] as Game["playerIds"];
+      [next[pick], next[i]] = [next[i], next[pick]];
+      setOrder(next);
+    }
+    setPick(null);
+  };
+  const changed = order.some((id, i) => id !== game.playerIds[i]);
+  const applySwap = () => {
+    const live = day.games.find((g) => g.id === game.id && !g.endedAt);
+    if (!live || !changed) return onClose();
+    // ชุดคนต้องยังเหมือนตอนเปิดแผ่น (อีกเครื่องอาจเปลี่ยนตัวไปก่อน)
+    if (live.playerIds.join() !== game.playerIds.join()) return onClose();
+    dispatch({ type: "subPlayer", date, gameId: game.id, prevIds: live.playerIds, playerIds: order, subs: live.subs ?? [] });
+    onClose();
+  };
 
   // คนที่ลงแทนได้: คิวรอก่อน (ตามลำดับคิว) ตามด้วยคนที่จัดคู่รอสนามไว้ แล้วคนที่พักอยู่
   const queued = waitingQueue(day, state.players).map((e) => e.player);
@@ -56,7 +78,43 @@ export function SubPlayer({ game, onClose }: { game: Game; onClose: () => void }
   };
 
   return (
-    <Sheet keepOpen onClose={onClose} title={<h3 className="font-display text-lg font-semibold">{t("เปลี่ยนตัว สนาม {n}", { n: game.court })}</h3>}>
+    <Sheet keepOpen onClose={onClose} title={<h3 className="font-display text-lg font-semibold">{t("เปลี่ยนคน สนาม {n}", { n: game.court })}</h3>}>
+      <div className="grid grid-cols-2 gap-1 rounded-full bg-zinc-100 p-1 text-sm font-semibold">
+        {([false, true] as const).map((m) => (
+          <button key={String(m)} onClick={() => { setSwapMode(m); setPick(null); setOut(null); }} aria-pressed={swapMode === m}
+            className={`min-h-11 rounded-full ${swapMode === m ? "bg-white shadow-sm" : "text-zinc-600"}`}>
+            {m ? t("สลับฝั่ง") : t("เปลี่ยนตัว")}
+          </button>
+        ))}
+      </div>
+      {swapMode ? (
+        <div className="space-y-2">
+          <div className="text-sm font-semibold text-zinc-700">{t("แตะคน 2 คนเพื่อสลับที่กัน")}</div>
+          <div className="court-surface flex gap-1 rounded-2xl px-2 py-3">
+            {(["A", "B"] as const).map((team, ti) => (
+              <div key={team} className="flex min-w-0 flex-1 basis-0 flex-col items-center gap-2">
+                <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${team === "A" ? "bg-lime text-ink" : "bg-sky-300 text-ink"}`}>{t("ทีม {team}", { team })}</span>
+                {order.slice(ti * 2, ti * 2 + 2).map((id, k) => {
+                  const idx = ti * 2 + k;
+                  const p = byId.get(id);
+                  const on = pick === idx;
+                  return (
+                    <button key={id} onClick={() => tapSwap(idx)} aria-pressed={on}
+                      className={`flex min-h-11 w-full items-center gap-2 rounded-2xl px-2 py-1.5 text-left active:scale-[0.98] ${on ? "bg-amber-500 text-white ring-2 ring-white" : "bg-black/20 text-white"}`}>
+                      <Avatar name={p?.name ?? "?"} photo={p?.photo} size={28} ring />
+                      <span className="line-clamp-2 min-w-0 flex-1 text-sm leading-tight font-semibold [overflow-wrap:anywhere]">{p?.name ?? "?"}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+          <p className="rounded-2xl bg-zinc-50 px-3 py-2 text-sm text-zinc-600">{t("สลับฝั่งไม่กระทบค่าลูก เกมเล่นต่อ ผลแพ้ชนะนับตามทีมใหม่")}</p>
+          <Button variant="primary" className="w-full disabled:!bg-zinc-200 disabled:!text-zinc-600" disabled={!changed} onClick={applySwap}>
+            {changed ? t("บันทึกการสลับ") : t("ยังไม่ได้สลับ")}
+          </Button>
+        </div>
+      ) : (<>
       <div className="space-y-2">
         <div className="text-sm font-semibold text-zinc-700">{t("1. ใครออก")}</div>
         <div className="court-surface flex gap-1 rounded-2xl px-2 py-3">
@@ -141,6 +199,7 @@ export function SubPlayer({ game, onClose }: { game: Game; onClose: () => void }
         {out && inId ? t("เปลี่ยน {out} เป็น {in}", { out: name(out), in: name(inId) }) : t("เลือกคนออกและคนลงแทน")}
       </Button>
       </div>
+    </>)}
     </Sheet>
   );
 }

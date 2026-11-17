@@ -32,7 +32,7 @@ export function demoState(): State {
   const now = Date.now();
   let s: State = {
     players: [],
-    settings: { ...DEFAULT_SETTINGS, promptPayId: "0812345678", promptPayOn: true, bankOn: true, courtNumbers: [], autoAssign: true, fixedCourt: false },
+    settings: { ...DEFAULT_SETTINGS, promptPayId: "0812345678", promptPayOn: true, bankOn: true, courtNumbers: [], autoAssign: true, fixedCourt: false, startDelay: 20 },
     days: [],
     monthly: {},
     closed: {},

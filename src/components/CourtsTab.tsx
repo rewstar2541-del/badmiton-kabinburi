@@ -2,7 +2,7 @@
 
 import { PairRequests } from "./Pairs";
 import { useEffect, useMemo, useState } from "react";
-import { autoNext, clubPlan, courtPlan, courtQueue, plannedCourt, queueByCourt, presence, queueBlockers, queuedSpot, waitingQueue, type CourtNext } from "@/lib/matchmaking";
+import { autoNext, clubPlan, courtPlan, courtQueue, pendingStart, plannedCourt, queueByCourt, presence, queueBlockers, queuedSpot, START_GRACE_MS, waitingQueue, type CourtNext } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
 import { courtList, courtsOfDay, minShuttles, undoLastSub, type Game, type Player, type QueuedGame, type Team } from "@/lib/types";
 import { MatchBuilder } from "./MatchBuilder";
@@ -15,6 +15,7 @@ import { DISPUTE_MS, disputable, teamOf, type GameReport } from "@/lib/state";
 import { goToTab } from "./Membership";
 import { FinishedGames, SubNotes } from "./GameShuttles";
 import { SubPlayer } from "./SubPlayer";
+import { holdStart, StartDelayPicker, useHolds, useTick } from "./StartDelay";
 
 function useNow(intervalMs = 15000) {
   const [now, setNow] = useState(() => Date.now());
@@ -98,8 +99,13 @@ function ActiveCourt({ game, byId, date, now, lastRound = false }: { game: Game;
     const next = autoNext(day, state.players, courts, game, lastRound, auto, fixed);
     const planned = !lastRound && courts.includes(game.court) ? courtPlan(day, state.players, courts, game.court, auto, fixed).get(game.court) : undefined;
     dispatch({ type: "endGame", date, gameId: game.id, winner, draw });
-    if (next) dispatch({ type: "startGame", date, court: game.court, playerIds: next.playerIds, queuedId: next.queuedId });
-    else if (planned)
+    // ตั้งเวลาก่อนลงสนามไว้: คู่ต่อไปขึ้น "เตรียมลงสนาม" (จองสนามนี้ไว้ในคิว) แอดมินแก้คนได้ ครบเวลาแล้วเริ่มเอง
+    // คู่ที่แอดมินจัดคิวสนามนี้ไว้แล้วรออยู่ในคิวอยู่แล้ว ไม่ต้องทำอะไร
+    const delayed = (state.settings.startDelay ?? 0) !== 0;
+    if (next && !delayed) dispatch({ type: "startGame", date, court: game.court, playerIds: next.playerIds, queuedId: next.queuedId });
+    else if (next) {
+      if (!next.queuedId) dispatch({ type: "queueGame", date, court: game.court, playerIds: next.playerIds });
+    } else if (planned)
       alert(
         t("สนาม {n} ยังเริ่มเกมต่อไม่ได้ มีคนในคู่ที่จัดไว้ไม่พร้อม (ชื่อขีดฆ่า) กดแก้หรือเอาคู่นั้นออก", { n: game.court }) +
           (fixed && !planned.queuedId ? `\n${t("โหมดรอสนามเดิมเปิดอยู่: สนามนี้ไม่ดึงคู่ที่รอสนามอื่นมา")}` : ""),
@@ -188,7 +194,7 @@ function ActiveCourt({ game, byId, date, now, lastRound = false }: { game: Game;
         onClick={() => setSubbing(true)}
         className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-2xl bg-white text-sm font-semibold text-zinc-700 border border-zinc-300 active:scale-[0.99]"
       >
-        <Icon.Swap width={16} height={16} /> {t("เปลี่ยนตัว (บาดเจ็บ / เหนื่อย)")}
+        <Icon.Swap width={16} height={16} /> {t("เปลี่ยนคน / สลับฝั่ง")}
       </button>
       {subbing && <SubPlayer game={game} onClose={() => setSubbing(false)} />}
       <div className="flex justify-center gap-4 text-xs text-zinc-400">
@@ -268,15 +274,42 @@ function CourtQueue({
   onEdit: (e: EditTarget) => void;
   byId: Map<string, Player>;
 }) {
-  const { dispatch, auth } = useStore();
+  const { dispatch, auth, state } = useStore();
   const { date, day } = useToday();
   const locked = courtQueue(day, court);
+  // เตรียมลงสนาม: เพิ่งจบเกม คู่แรกรอเริ่มเอง (นับถอยหลัง) หรือรอแอดมินกด
+  const pending = free ? pendingStart(day, court, state.settings) : null;
+  const held = useHolds();
+  const counting = !!pending && pending.startAt !== null && !held(pending.queued.id);
+  const now = useTick(counting);
+  const left = counting ? Math.ceil((pending.startAt! - now) / 1000) : 0;
+  // เลยเวลามานาน (เช่น เปิดแอพกลับมาทีหลัง) ไม่เริ่มเองแล้ว ขึ้นปุ่มลงสนามแบบปกติ
+  const stale = counting && now > pending.startAt! + START_GRACE_MS;
   // แถวแรก = คู่ถัดไป (อัตโนมัติถ้าแอดมินยังไม่ได้จัดเอง) ตามด้วยคิวที่แอดมินจัดต่อไว้
   const rows: { playerIds: Game["playerIds"]; queuedId?: string }[] = next && !next.queuedId ? [next] : locked.map((q) => ({ playerIds: q.playerIds, queuedId: q.id }));
   if (rows.length === 0) return null;
   const anyBlocked = rows.some((r) => queueBlockers(day, r).length > 0);
   return (
     <div className="mt-3 space-y-1.5 border-t border-zinc-200 pt-3">
+      {pending && !stale && (
+        <div className="flex min-h-11 items-center gap-2 rounded-2xl bg-amber-50 px-3 py-1.5 text-sm text-amber-900" role="status">
+          <Icon.Clock width={16} height={16} className="shrink-0" />
+          <span className="min-w-0 flex-1 font-semibold">
+            {counting
+              ? left > 0
+                ? t("เตรียมลงสนาม เริ่มเองใน {n} วินาที", { n: left })
+                : t("กำลังเริ่มเกม...")
+              : pending.startAt === null
+                ? t("เตรียมลงสนาม รอแอดมินกดลงสนาม")
+                : t("หยุดนับเวลาแล้ว กดลงสนามเมื่อพร้อม")}
+          </span>
+          {auth.isAdmin && counting && left > 0 && (
+            <button onClick={() => holdStart(pending.queued.id)} className="min-h-11 shrink-0 px-1 font-semibold underline underline-offset-2">
+              {t("รอก่อน")}
+            </button>
+          )}
+        </div>
+      )}
       <div className="flex items-center gap-1.5 text-sm font-semibold text-zinc-600">
         {free ? t("พร้อมลงสนามนี้") : t("รอลงต่อสนามนี้")}
         {!rows[0].queuedId && <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600">{t("จัดอัตโนมัติ")}</span>}
@@ -312,7 +345,11 @@ function CourtQueue({
                     </button>
                   )}
                   <button
-                    onClick={() => onEdit({ court, playerIds: q.playerIds, queuedId: q.queuedId })}
+                    onClick={() => {
+                      // แก้คนระหว่างเตรียมลงสนาม: หยุดนับถอยหลังก่อน เกมจะได้ไม่เริ่มเองตอนกำลังแก้
+                      if (q.queuedId) holdStart(q.queuedId);
+                      onEdit({ court, playerIds: q.playerIds, queuedId: q.queuedId });
+                    }}
                     className={`h-11 rounded-full bg-white px-4 text-sm font-semibold text-zinc-700 shadow-sm ring-1 ring-zinc-300 active:scale-95 ${free && i === 0 ? "" : "flex-1"}`}
                   >
                     {t("แก้")}
@@ -496,6 +533,7 @@ export function CourtsTab() {
         <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white">
           <AutoAssignSwitch row />
           <FixedCourtSwitch row />
+          <StartDelayPicker row />
           <button
             type="button"
             role="switch"
