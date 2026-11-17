@@ -753,7 +753,7 @@ function SelfReport({ game, playerId, onDone }: { game: Game; playerId: string; 
     const err = await report(playerId, savedPin.get(), game, r, ok ? { playerIds: next.playerIds, queuedId: next.queuedId, hold: delayed } : undefined);
     setBusy(false);
     if (err) setError(t(err));
-    else onDone(`${t("บันทึกผลแล้ว: {r}", { r: label[r] })} · ${ok ? (delayed ? t("คู่ต่อไปเตรียมลงสนาม") : t("คู่ต่อไปลงสนามแล้ว")) : t("คู่ต่อไปยังลงไม่ได้ รอแอดมินจัด")}`);
+    else onDone(`${t("บันทึกผลแล้ว: {r}", { r: label[r] })} · ${ok ? (delayed ? ((state.settings.startDelay ?? 0) < 0 ? t("คู่ต่อไปเตรียมลงสนาม รอแอดมินกดลงสนาม") : t("คู่ต่อไปเตรียมลงสนาม เริ่มเองใน {n} วินาที", { n: state.settings.startDelay ?? 0 })) : t("คู่ต่อไปลงสนามแล้ว")) : t("คู่ต่อไปยังลงไม่ได้ รอแอดมินจัด")}`);
   };
   return (
     <div className="space-y-2">

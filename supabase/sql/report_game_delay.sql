@@ -8,7 +8,8 @@ declare
   g games%rowtype;
   mine text;
   w text;
-  delay int := coalesce((select start_delay from settings where id = 1), 0);
+  -- ไม่พังถ้ายังไม่ได้รัน start_delay.sql (ไม่มีคอลัมน์ = 0 = ลงทันที)
+  delay int := coalesce((select (to_jsonb(s) ->> 'start_delay')::int from settings s where id = 1), 0);
 begin
   if err is not null then return err; end if;
   if p_result not in ('win', 'draw', 'lose') then return 'ผลไม่ถูกต้อง'; end if;
