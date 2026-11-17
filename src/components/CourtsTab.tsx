@@ -744,15 +744,16 @@ function SelfReport({ game, playerId, onDone }: { game: Game; playerId: string; 
   const send = async (r: GameReport) => {
     // คู่ถัดไปของสนามนี้ คิดแบบเดียวกับตอนแอดมินกดจบเกม (ปิดจัดอัตโนมัติ + ไม่มีคู่ที่แอดมินจัดไว้ = ไม่มีคู่ต่อ)
     const next = clubPlan(day, state.players, state.settings, game.court).get(game.court);
-    const ask = next ? t("บันทึกผล: {r}? คู่ต่อไปจะลงสนามทันที", { r: label[r] }) : t("บันทึกผล: {r}? แอดมินจะจัดคู่ต่อไปเอง", { r: label[r] });
+    const delayed = (state.settings.startDelay ?? 0) !== 0;
+    const ask = next ? t(delayed ? "บันทึกผล: {r}? คู่ต่อไปจะขึ้นเตรียมลงสนามก่อน" : "บันทึกผล: {r}? คู่ต่อไปจะลงสนามทันที", { r: label[r] }) : t("บันทึกผล: {r}? แอดมินจะจัดคู่ต่อไปเอง", { r: label[r] });
     if (!confirm(ask)) return;
     const ok = next && courtList(state.settings).includes(game.court) && queueBlockers(day, next, game.id).length === 0;
     setBusy(true);
     setError("");
-    const err = await report(playerId, savedPin.get(), game, r, ok ? { playerIds: next.playerIds, queuedId: next.queuedId } : undefined);
+    const err = await report(playerId, savedPin.get(), game, r, ok ? { playerIds: next.playerIds, queuedId: next.queuedId, hold: delayed } : undefined);
     setBusy(false);
     if (err) setError(t(err));
-    else onDone(`${t("บันทึกผลแล้ว: {r}", { r: label[r] })} · ${ok ? t("คู่ต่อไปลงสนามแล้ว") : t("คู่ต่อไปยังลงไม่ได้ รอแอดมินจัด")}`);
+    else onDone(`${t("บันทึกผลแล้ว: {r}", { r: label[r] })} · ${ok ? (delayed ? ((state.settings.startDelay ?? 0) < 0 ? t("คู่ต่อไปเตรียมลงสนาม รอแอดมินกดลงสนาม") : t("คู่ต่อไปเตรียมลงสนาม เริ่มเองใน {n} วินาที", { n: state.settings.startDelay ?? 0 })) : t("คู่ต่อไปลงสนามแล้ว")) : t("คู่ต่อไปยังลงไม่ได้ รอแอดมินจัด")}`);
   };
   return (
     <div className="space-y-2">
