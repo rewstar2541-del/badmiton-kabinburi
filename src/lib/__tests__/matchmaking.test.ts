@@ -155,6 +155,7 @@ describe("จัดคู่ไม่ให้ซ้ำกลุ่มเดิ�
     // ไม่มีชุดไหนห่างเกิน 1 ระดับ แม้มือใหม่รอมานาน ก็ไม่ถูกบังคับให้ลง
     const more = [...ps, p("f", 5), p("g", 4)];
     const d2 = dayWith(more, [g("g1", [...first], 20)]);
+    d2.checkIns = d2.checkIns.map((c) => (c.playerId === "n" ? { ...c, at: 0 } : { ...c, at: 1 }));
     expect(nextMatch(d2, more)).toBeNull();
     // พอมีคนระดับ New/BG มารอเพิ่มให้ครบ 4 ถึงจะลงได้
     const withBg = [...more, p("h", 1), p("i", 2), p("j", 2)];
@@ -162,6 +163,22 @@ describe("จัดคู่ไม่ให้ซ้ำกลุ่มเดิ�
     const m = nextMatch(d3, withBg)!;
     expect(m).toContain("n");
     expect(m.every((id) => ["n", "h", "i", "j"].includes(id))).toBe(true);
+  });
+
+  it("รอจนคนที่มาทีหลังลงไป 2 เกม ผ่อนเพดานเป็น 2 ระดับ: New ได้ลงกับ N แต่ไม่ถึง S/P", () => {
+    const ps = [p("n", 1), ...["a", "b", "c", "d", "e", "f", "g", "h"].map((id) => p(id, 3)), p("s", 4), p("t", 4), p("u", 4), p("v", 5)];
+    const base = dayWith(ps);
+    base.checkIns = base.checkIns.map((c) => ({ ...c, at: c.playerId === "n" ? 0 : 1 }));
+    // 0 เกม: New ยังไม่ได้ลง (ทุกชุดที่มี New ห่างเกิน 1)
+    expect(nextMatch(base, ps)).not.toContain("n");
+    // คนที่มาทีหลังได้ลงไปแล้ว 2 เกม
+    const played = dayWith(ps, [g("g1", ["a", "b", "c", "d"], 20), g("g2", ["e", "f", "g", "h"], 30)]);
+    played.checkIns = base.checkIns;
+    played.games = played.games.map((x) => ({ ...x, endedAt: x.startedAt + 10 }));
+    const m = nextMatch(played, ps)!;
+    expect(m).toContain("n");
+    const lv = m.map((id) => ps.find((x) => x.id === id)!.level);
+    expect(Math.max(...lv) - Math.min(...lv)).toBeLessThanOrEqual(2);
   });
 
   it("ทุกชุดที่จัดให้ห่างกันไม่เกิน 1 ระดับมือ (BG กับ N ได้ BG กับ S ไม่ได้)", () => {
