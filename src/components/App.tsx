@@ -304,7 +304,8 @@ function Shell() {
             <FirstAdminCard />
           </div>
         )}
-        {auth.isAdmin && !tourney.mode && <AutoStarter />}
+        {/* เดโมไม่มีเครื่องแอดมินอื่น: สลับเป็นโหมดผู้เล่นแล้วคู่ที่เตรียมลงสนามยังเริ่มเองเหมือนมีแอดมินเปิดแอพอยู่ */}
+        {(auth.isAdmin || !!auth.demo) && !tourney.mode && <AutoStarter />}
         {tab === "event" && (auth.isAdmin ? <TourneyAdmin /> : <TourneyHome />)}
         {tab === "home" && (auth.isAdmin ? <AdminHome /> : <PlayerHome />)}
         {tab === "profile" && <ProfileTab />}
