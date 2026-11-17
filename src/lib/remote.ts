@@ -489,6 +489,10 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       return check(await db.from("checkins").delete().eq("date", a.date).eq("player_id", a.playerId));
     case "startGame":
     {
+      // คนในคู่ต้องไม่ติดเกมอื่นที่ยังเล่นอยู่ (เครื่องที่ข้อมูลเก่าเริ่มเกมอัตโนมัติผิดคู่ได้)
+      const busy = await db.from("games").select("id").eq("date", a.date).is("ended_at", null).overlaps("player_ids", a.playerIds);
+      check(busy);
+      if (busy.data?.length) throw new CourtTaken();
       const res = await db
         .from("games")
         .insert({ id: a._id, date: a.date, court: a.court, player_ids: a.playerIds, started_at: iso(a._at), shuttles: 1 });

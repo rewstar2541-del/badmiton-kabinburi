@@ -298,13 +298,15 @@ function CourtQueue({
             {counting
               ? left > 0
                 ? t("เตรียมลงสนาม เริ่มเองใน {n} วินาที", { n: left })
-                : t("กำลังเริ่มเกม...")
+                : left > -10
+                  ? t("กำลังเริ่มเกม...")
+                  : t("เตรียมลงสนาม รอแอดมินกดลงสนาม")
               : pending.startAt === null
                 ? t("เตรียมลงสนาม รอแอดมินกดลงสนาม")
                 : t("หยุดนับเวลาแล้ว กดลงสนามเมื่อพร้อม")}
           </span>
-          {auth.isAdmin && counting && left > 0 && (
-            <button onClick={() => holdStart(pending.queued.id)} className="min-h-11 shrink-0 px-1 font-semibold underline underline-offset-2">
+          {auth.isAdmin && counting && left > -10 && (
+            <button onClick={() => holdStart(pending.queued.id)} className="min-h-11 min-w-16 shrink-0 rounded-full bg-white px-3 font-semibold ring-1 ring-amber-300 active:scale-95">
               {t("รอก่อน")}
             </button>
           )}

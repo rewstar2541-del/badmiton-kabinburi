@@ -81,8 +81,8 @@ export function SubPlayer({ game, onClose }: { game: Game; onClose: () => void }
     <Sheet keepOpen onClose={onClose} title={<h3 className="font-display text-lg font-semibold">{t("เปลี่ยนคน สนาม {n}", { n: game.court })}</h3>}>
       <div className="grid grid-cols-2 gap-1 rounded-full bg-zinc-100 p-1 text-sm font-semibold">
         {([false, true] as const).map((m) => (
-          <button key={String(m)} onClick={() => { setSwapMode(m); setPick(null); setOut(null); }} aria-pressed={swapMode === m}
-            className={`min-h-11 rounded-full ${swapMode === m ? "bg-white shadow-sm" : "text-zinc-600"}`}>
+          <button key={String(m)} onClick={() => { setSwapMode(m); setPick(null); setOut(null); setOrder(game.playerIds); }} aria-pressed={swapMode === m}
+            className={`min-h-11 rounded-full ${swapMode === m ? "bg-white shadow-sm" : "text-zinc-700"}`}>
             {m ? t("สลับฝั่ง") : t("เปลี่ยนตัว")}
           </button>
         ))}
@@ -100,9 +100,9 @@ export function SubPlayer({ game, onClose }: { game: Game; onClose: () => void }
                   const on = pick === idx;
                   return (
                     <button key={id} onClick={() => tapSwap(idx)} aria-pressed={on}
-                      className={`flex min-h-11 w-full items-center gap-2 rounded-2xl px-2 py-1.5 text-left active:scale-[0.98] ${on ? "bg-amber-500 text-white ring-2 ring-white" : "bg-black/20 text-white"}`}>
+                      className={`flex min-h-11 w-full items-center gap-2 rounded-2xl px-2 py-1.5 text-left active:scale-[0.98] ${on ? "bg-amber-700 text-white ring-2 ring-white" : "bg-black/20 text-white"}`}>
                       <Avatar name={p?.name ?? "?"} photo={p?.photo} size={28} ring />
-                      <span className="line-clamp-2 min-w-0 flex-1 text-sm leading-tight font-semibold [overflow-wrap:anywhere]">{p?.name ?? "?"}</span>
+                      <span className="line-clamp-2 min-w-0 flex-1 text-sm leading-tight font-semibold [overflow-wrap:anywhere]">{on ? `${p?.name ?? "?"} ↕` : (p?.name ?? "?")}</span>
                     </button>
                   );
                 })}
@@ -110,9 +110,9 @@ export function SubPlayer({ game, onClose }: { game: Game; onClose: () => void }
             ))}
           </div>
           <p className="rounded-2xl bg-zinc-50 px-3 py-2 text-sm text-zinc-600">{t("สลับฝั่งไม่กระทบค่าลูก เกมเล่นต่อ ผลแพ้ชนะนับตามทีมใหม่")}</p>
-          <Button variant="primary" className="w-full disabled:!bg-zinc-200 disabled:!text-zinc-600" disabled={!changed} onClick={applySwap}>
+          <div className="sticky -bottom-5 -mx-5 bg-white px-5 pt-2 pb-1"><Button variant="primary" className="w-full disabled:!bg-zinc-200 disabled:!text-zinc-600" disabled={!changed} onClick={applySwap}>
             {changed ? t("บันทึกการสลับ") : t("ยังไม่ได้สลับ")}
-          </Button>
+          </Button></div>
         </div>
       ) : (<>
       <div className="space-y-2">

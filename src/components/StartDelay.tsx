@@ -15,12 +15,24 @@ export const delayLabel = (s: number) => (s === 0 ? t("ลงทันที") :
  * คู่ที่แอดมินแตะ "แก้" หรือ "รอก่อน" ระหว่างเตรียมลงสนาม: หยุดนับถอยหลังในเครื่องนี้ ให้กดลงสนามเอง
  * (กันเกมเริ่มเองตอนกำลังแก้คนอยู่)
  */
-const holds = new Set<string>();
+const HOLD_KEY = "startHolds";
+const readHolds = (): string[] => {
+  try {
+    return JSON.parse(sessionStorage.getItem(HOLD_KEY) ?? "[]");
+  } catch {
+    return [];
+  }
+};
+// เก็บไว้ใน sessionStorage ด้วย โหลดหน้าใหม่แล้วคู่ที่แอดมินกดรอก่อน/แก้ไว้ยังไม่เริ่มเอง
+const holds = new Set<string>(typeof sessionStorage === "undefined" ? [] : readHolds());
 const listeners = new Set<() => void>();
 let version = 0;
 export function holdStart(queuedId: string) {
   if (holds.has(queuedId)) return;
   holds.add(queuedId);
+  try {
+    sessionStorage.setItem(HOLD_KEY, JSON.stringify([...holds].slice(-50)));
+  } catch {}
   version++;
   listeners.forEach((l) => l());
 }
@@ -79,6 +91,8 @@ export function AutoStarter() {
     for (const p of pending) {
       const q = p.queued;
       if (p.startAt === null || now < p.startAt || now > p.startAt + START_GRACE_MS) continue;
+      // สนามนี้มีเกมแล้ว (อีกเครื่องเริ่มไปก่อน) หรือมีคนในคู่ลงไม่ได้ ไม่เริ่ม
+      if (day.games.some((g) => !g.endedAt && g.court === q.court)) continue;
       if (fired.current.has(q.id) || isHeld(q.id) || queueBlockers(day, q).length) continue;
       fired.current.add(q.id);
       dispatch({ type: "startGame", date, court: q.court, playerIds: q.playerIds, queuedId: q.id });
@@ -107,7 +121,7 @@ export function StartDelayPicker({ row = false }: { row?: boolean }) {
       disabled={!ready}
       value={value}
       onChange={(e) => set(Number(e.target.value))}
-      className="h-11 shrink-0 rounded-full border border-zinc-300 bg-white px-3 text-sm font-semibold text-ink disabled:opacity-40"
+      className="h-11 min-w-0 max-w-[9rem] shrink-0 rounded-full border border-zinc-300 bg-white px-3 text-base font-semibold text-ink disabled:opacity-40"
     >
       {[...new Set([...START_DELAYS, value])].map((s) => (
         <option key={s} value={s}>
@@ -130,7 +144,7 @@ export function StartDelayPicker({ row = false }: { row?: boolean }) {
     <div className={`flex min-h-14 w-full items-center gap-3 rounded-3xl border border-zinc-200 px-4 py-3 text-sm ${ready ? "bg-white text-ink" : "bg-zinc-50 text-zinc-500"}`}>
       <span className="min-w-0 flex-1">
         <span className="block font-display text-base font-semibold">{t("เวลาก่อนลงสนาม")}</span>
-        <span className="block text-xs text-zinc-600">{hint}</span>
+        <span className="block text-sm text-zinc-600">{hint}</span>
       </span>
       {select}
     </div>
