@@ -31,10 +31,32 @@ const NAMES: [string, Player["gender"], Level][] = [
   ["เบนซ์", "male", 1],
   ["ฟ้า", "female", 2],
   ["ก้อง", "male", 3],
+  ["ตั้ม", "male", 4],
+  ["แนน", "female", 3],
+  ["บิว", "male", 2],
+  ["เมย์", "female", 4],
+  ["อาร์ม", "male", 3],
+  ["ปุ๊ก", "female", 2],
+  ["ไผ่", "male", 4],
+  ["ขิม", "female", 3],
 ];
 
 /**
- * ข้อมูลตัวอย่าง: ผู้เล่น 18 คน ประกาศจัดก๊วนวันนี้ ลงชื่อครบ เช็คอินแล้ว 17 (เหลือ 1 คนให้ลองกดเช็คอิน)
+ * เวอร์ชันข้อมูลเดโม: เปลี่ยนเลขนี้เมื่อข้อมูลตัวอย่างหรือการตั้งค่าเดโมเปลี่ยน
+ * เครื่องที่เก็บเดโมรุ่นเก่าไว้จะได้ข้อมูลชุดใหม่เองโดยไม่ต้องกด "เริ่มใหม่"
+ */
+export const DEMO_VERSION = 2;
+
+/** ตั้งค่าสนามของเดโม ให้ตรงกับก๊วนจริง: 4 สนาม (เบอร์ 1-4) แอดมินจัดคนลงเอง เตรียมลงสนาม 20 วินาที */
+export const DEMO_COURTS = { courtCount: 4, courtNumbers: [] as number[], autoAssign: false, fixedCourt: false, startDelay: 20, lastRoundDate: null };
+
+/** ข้อมูลเดโมที่เก็บในเครื่องยังใช้ได้ไหม: รุ่นเดียวกันและสร้างวันนี้ (ข้ามวันแล้วสร้างใหม่ ให้มีเกมวันนี้ให้ดูเสมอ) */
+export function demoFresh(meta: { version?: number; date?: string } | null, date = today()): boolean {
+  return !!meta && meta.version === DEMO_VERSION && meta.date === date;
+}
+
+/**
+ * ข้อมูลตัวอย่าง: ผู้เล่น 26 คน ประกาศจัดก๊วนวันนี้ ลงชื่อครบ เช็คอินแล้ว 25 (เหลือ 1 คนให้ลองกดเช็คอิน)
  * เกมวันนี้และวันก่อนจัดด้วย nextMatch ตัวจริง (เหมือนกดจัดคนลงในหน้าสนาม) ไม่ได้เลือกคนเอง
  * หน้าเดโมจะได้จับคู่มือเหมือนของจริง
  */
@@ -43,7 +65,7 @@ export function demoState(): State {
   const now = Date.now();
   let s: State = {
     players: [],
-    settings: { ...DEFAULT_SETTINGS, promptPayId: "0812345678", promptPayOn: true, bankOn: true, courtCount: 2, courtNumbers: [], autoAssign: true, fixedCourt: false, startDelay: 20 },
+    settings: { ...DEFAULT_SETTINGS, promptPayId: "0812345678", promptPayOn: true, bankOn: true, ...DEMO_COURTS },
     days: [],
     monthly: {},
     closed: {},
@@ -52,9 +74,10 @@ export function demoState(): State {
   NAMES.forEach(([name, gender, level]) =>
     run({ type: "addPlayer", player: { name, gender, level } }),
   );
-  run({ type: "setAnnouncement", date, message: "วันนี้ 1 ทุ่ม ถึง 4 ทุ่ม", cap: 20 });
-  s.players.slice(0, 18).forEach((p, i) => run({ type: "signUp", date, playerId: p.id }, now - (90 - i) * 60000));
-  s.players.slice(0, 17).forEach((p, i) => run({ type: "checkIn", date, playerId: p.id }, now - (70 - i) * 60000));
+  run({ type: "setAnnouncement", date, message: "วันนี้ 1 ทุ่ม ถึง 4 ทุ่ม", cap: 30 });
+  const n = s.players.length;
+  s.players.forEach((p, i) => run({ type: "signUp", date, playerId: p.id }, now - (120 - i) * 60000));
+  s.players.slice(0, n - 1).forEach((p, i) => run({ type: "checkIn", date, playerId: p.id }, now - (75 - i) * 60000));
   run({ type: "setMonthlyPaid", month: date.slice(0, 7), playerId: s.players[0].id, paid: true });
   run({ type: "setMonthlyPaid", month: date.slice(0, 7), playerId: s.players[3].id, paid: true });
   const ids = s.players.map((p) => p.id);
@@ -71,25 +94,29 @@ export function demoState(): State {
     run({ type: "setShuttles", date: d, gameId: g.id, shuttles });
     run({ type: "endGame", date: d, gameId: g.id, winner }, at);
   };
+  const queue = (court: number, at: number) => {
+    const four = nextMatch(dayOf(date), s.players, 12, [], { strong: strongRule(s.settings), now: at });
+    if (four) run({ type: "queueGame", date, court, playerIds: four }, at);
+  };
   const min = (m: number) => now - m * 60000;
-  // เกมที่จบแล้ววันนี้ พร้อมผลแพ้ชนะ (ให้เห็นสถิติคู่หู) แล้วเกมที่กำลังเล่นอยู่ 2 สนาม
-  start(date, 1, min(55));
-  start(date, 2, min(54));
-  end(date, 1, "A", 2, min(42));
-  start(date, 1, min(41));
-  end(date, 2, "B", 1, min(39));
-  start(date, 2, min(38));
-  end(date, 1, "B", 2, min(28));
-  start(date, 1, min(27));
-  end(date, 2, "A", 1, min(24));
-  start(date, 2, min(23));
-  end(date, 1, "A", 1, min(14));
-  start(date, 1, min(13));
-  end(date, 2, "B", 2, min(8));
-  start(date, 2, min(7));
-  // คิวรอสนาม 1 ที่แอดมินจัดไว้ (ใช้คู่ที่ระบบแนะนำ) ส่วนสนาม 2 ระบบจัดให้เองจากคนที่เหลือ (เดโมใช้ 2 สนาม)
-  const q = nextMatch(dayOf(date), s.players, 12, [], { strong: strongRule(s.settings), now });
-  if (q) run({ type: "queueGame", date, court: 1, playerIds: q }, now);
+  // วันนี้ 4 สนาม เริ่มห่างกันสนามละ 3 นาที เกมละ 12 นาที (เรียงตามเวลาจริง ระบบจัดคู่เห็นข้อมูลเหมือนตอนกดจริง)
+  // สนาม 1 (อยู่บนสุดของหน้าสนาม) เริ่มทีหลังสุด เกมสุดท้ายเริ่ม 14 นาทีก่อน แล้วจบตอนเปิดเดโม สนามอื่นเกมสุดท้ายยังเล่นอยู่
+  type Ev = { at: number; run: () => void };
+  const evs: Ev[] = [];
+  [53, 62, 59, 56].forEach((first, c) => {
+    const court = c + 1;
+    const last = court === 1 ? 12 : 0;
+    for (let k = 0, t = first; t > last; k++, t -= 13) {
+      const st = t;
+      evs.push({ at: min(st), run: () => start(date, court, min(st)) });
+      if (st - 12 > last) evs.push({ at: min(st - 12), run: () => end(date, court, (k + c) % 2 ? "B" : "A", 1 + ((k + c) % 2), min(st - 12)) });
+    }
+  });
+  evs.sort((a, b) => a.at - b.at).forEach((e) => e.run());
+  // แอดมินจัดคิวไว้สนาม 1 และสนาม 2 แล้วสนาม 1 เพิ่งจบ: คู่ที่จัดไว้ขึ้น "เตรียมลงสนาม" นับถอยหลัง 20 วินาทีตอนเปิดเดโม
+  queue(1, min(2));
+  queue(2, min(1));
+  end(date, 1, "A", 2, now);
   // ค่าน้ำและสลิปโอนเงินตัวอย่างวันนี้
   run({ type: "addDrink", date, playerId: ids[2], amount: 20, note: "น้ำ" });
   run({ type: "addDrink", date, playerId: ids[4], amount: 35, note: "น้ำเกลือแร่" });

@@ -119,7 +119,7 @@ export function SettingsTab() {
                 if (!ppOk && s.promptPayOn !== false) return;
                 const old = state.settings;
                 // ค่ารายเดือนและค่าสนามรายวันมาจากแพ็กเกจ ไม่ทับด้วยค่าในฟอร์มนี้
-                const next = { ...(packagesReady ? { ...s, monthlyFee: old.monthlyFee, courtFee: old.courtFee } : s), festival: old.festival, courtCount: old.courtCount, courtNumbers: old.courtNumbers, autoAssign: old.autoAssign, fixedCourt: old.fixedCourt, startDelay: old.startDelay, strongGroup: old.strongGroup };
+                const next = { ...(packagesReady ? { ...s, monthlyFee: old.monthlyFee, courtFee: old.courtFee } : s), festival: old.festival, courtCount: old.courtCount, courtNumbers: old.courtNumbers, autoAssign: old.autoAssign, fixedCourt: old.fixedCourt, startDelay: old.startDelay, lastRoundDate: old.lastRoundDate, strongGroup: old.strongGroup };
                 const changed =
                   old.courtFee !== next.courtFee || old.firstShuttleFee !== next.firstShuttleFee || old.nextShuttleFee !== next.nextShuttleFee;
                 // ราคาใหม่ใช้ตั้งแต่วันนี้ เก็บราคาเดิมไว้กับวันก่อนๆ บิลเก่าจะได้ไม่เปลี่ยน

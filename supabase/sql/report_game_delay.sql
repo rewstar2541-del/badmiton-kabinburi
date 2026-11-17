@@ -24,6 +24,9 @@ begin
 
   -- คู่ถัดไปลงสนามต่อ (เครื่องผู้เล่นจัดคู่ตามคิวแบบเดียวกับแอดมิน) ลงไม่ได้ก็ข้ามไป แอดมินจัดเองทีหลัง
   if p_next is null or cardinality(p_next) <> 4 then return null; end if;
+  -- รอบสุดท้าย (แอดมินเปิดไว้วันนี้): ไม่ลงคู่ต่อไป ไม่ขึ้นคิวเตรียมลงสนาม
+  -- (ไม่พังถ้ายังไม่ได้รัน last_round.sql: ไม่มีคอลัมน์ = ปิด)
+  if (select to_jsonb(s) ->> 'last_round_date' from settings s where id = 1) = d::text then return null; end if;
   -- ทีละวัน กันสองสนามกดพร้อมกันแล้วได้คู่ถัดไปคู่เดียวกัน
   perform pg_advisory_xact_lock(hashtext('report_game:' || d::text));
   if (select count(distinct x) from unnest(p_next) x) <> 4 then return null; end if;

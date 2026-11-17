@@ -98,6 +98,8 @@ export type Action =
   /** ยกเลิกสมาชิกรายปี (เก็บประวัติการจ่ายไว้) */
   | { type: "clearAnnual"; playerId: string }
   | { type: "updateSettings"; settings: Settings; freeze?: { dates: string[]; prices: DayPrices } }
+  /** รอบสุดท้าย: เปิด = เก็บวันที่ไว้ ปิด = ว่าง (บันทึกคอลัมน์เดียว ไม่ทับการตั้งค่าอื่นของเครื่องอื่น) */
+  | { type: "setLastRound"; date: string; on: boolean }
   /** title: undefined = คงหัวข้อเดิม, null = จัดก๊วน (ค่าเริ่มต้น) */
   | { type: "setAnnouncement"; date: string; message: string | null; title?: string | null; fee?: number | null; cap?: number | null; rent?: DayRent | null }
   /** สนามเช่า: แก้ชั่วโมงที่คนนี้อยู่ (null = ตามเวลาเช็คอิน) */
@@ -405,6 +407,8 @@ export function reducer(state: State, a: Action): State {
       return { ...state, players: state.players.map((p) => (p.id === a.playerId && p.annualUntil ? { ...p, annualUntil: a.until } : p)) };
     case "clearAnnual":
       return { ...state, players: state.players.map((p) => (p.id === a.playerId ? { ...p, annualFrom: undefined, annualUntil: undefined } : p)) };
+    case "setLastRound":
+      return { ...state, settings: { ...state.settings, lastRoundDate: a.on ? a.date : null } };
     case "updateSettings": {
       const f = a.freeze;
       const dates = new Set(f?.dates ?? []);

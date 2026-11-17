@@ -1504,6 +1504,7 @@ export const en: Record<string, string> = {
   "ทีมเดียวกับคนกดผล แจ้งไม่ตรงไม่ได้": "Same team as the reporter, can't dispute",
   "เลยเวลาแจ้งแล้ว บอกแอดมินให้แก้ผล": "Too late to dispute. Ask an admin to fix it",
   "บันทึกผลแล้ว: {r}": "Result saved: {r}",
+  "บันทึกผล: {r}?": "Save result: {r}?",
   "คู่ต่อไปลงสนามแล้ว": "next pair is on court",
   "คู่ต่อไปยังลงไม่ได้ รอแอดมินจัด": "next pair can't start yet, wait for an admin",
   "ทีมคุณชนะ": "Your team won",

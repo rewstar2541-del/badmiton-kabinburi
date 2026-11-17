@@ -2,7 +2,7 @@
 
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
-import { isDemo, demoState } from "./demo";
+import { isDemo, demoState, demoFresh, DEMO_VERSION } from "./demo";
 import { randomToken, readSession, remember, restoreRemembered, writeSession } from "./session";
 import { clearLineTicket, handleLineCallback, readLineTicket, takeLineHandoff, waitsForLineHandoff } from "./lineLogin";
 import { canSelfCheckIn } from "./social";
@@ -18,18 +18,33 @@ export type { State, Intent } from "./state";
 
 const DEMO = typeof window !== "undefined" && isDemo();
 /** การกระทำที่ทำให้คิวลงสนามขยับ: ให้เซิร์ฟเวอร์เช็คว่าต้องส่งแจ้งเตือน "อีก 1 เกมถึงคิว" ให้ใคร */
-const QUEUE_MOVES = new Set<string>(["startGame", "endGame", "cancelGame", "queueGame", "unqueueGame", "editQueued", "checkIn", "undoCheckIn", "setResting", "markPaid", "unmarkPaid", "subPlayer", "removePlayer", "updateSettings", "setAnnouncement"]);
+const QUEUE_MOVES = new Set<string>(["startGame", "endGame", "cancelGame", "queueGame", "unqueueGame", "editQueued", "checkIn", "undoCheckIn", "setResting", "markPaid", "unmarkPaid", "subPlayer", "removePlayer", "updateSettings", "setLastRound", "setAnnouncement"]);
 const STORAGE_KEY = DEMO ? "badminton-kabinburi:demo" : "badminton-kabinburi:v1";
+
+const DEMO_META_KEY = "badminton-kabinburi:demo-meta";
+
+/** สร้างข้อมูลเดโมชุดใหม่ และจำว่าเป็นรุ่นไหน สร้างวันไหน */
+function freshDemo(): State {
+  const s = demoState();
+  try {
+    // บันทึกข้อมูลก่อน แล้วค่อยบอกว่าเป็นรุ่นนี้ของวันนี้ (แท็บอื่นที่เปิดพร้อมกันจะไม่อ่านข้อมูลเก่าที่ถูกบอกว่าใหม่)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+    localStorage.setItem(DEMO_META_KEY, JSON.stringify({ version: DEMO_VERSION, date: today() }));
+  } catch {}
+  return s;
+}
 
 function loadLocal(): State {
   try {
+    // เดโมรุ่นเก่าหรือสร้างไว้วันก่อน: สร้างใหม่เอง ไม่ต้องกด "เริ่มใหม่"
+    if (DEMO && !demoFresh(JSON.parse(localStorage.getItem(DEMO_META_KEY) ?? "null"))) return freshDemo();
     const raw = localStorage.getItem(STORAGE_KEY);
     // เครื่องนี้ไม่มีฐานข้อมูล: ตั้งเบอร์สนามได้เลย (courtNumbers: [] = 1..จำนวนสนาม)
-    if (!raw) return DEMO ? demoState() : { ...EMPTY_STATE, settings: { ...DEFAULT_SETTINGS, courtNumbers: [] } };
+    if (!raw) return DEMO ? freshDemo() : { ...EMPTY_STATE, settings: { ...DEFAULT_SETTINGS, courtNumbers: [] } };
     const s = JSON.parse(raw) as State;
     return { ...EMPTY_STATE, ...s, settings: { ...DEFAULT_SETTINGS, courtNumbers: [], ...s.settings }, monthly: s.monthly ?? {}, closed: s.closed ?? {} };
   } catch {
-    return DEMO ? demoState() : EMPTY_STATE;
+    return DEMO ? freshDemo() : EMPTY_STATE;
   }
 }
 
@@ -281,7 +296,7 @@ function LocalProvider({ children }: { children: ReactNode }) {
     demo: DEMO
       ? {
           setAdmin,
-          reset: () => apply({ type: "replace", state: demoState() }),
+          reset: () => apply({ type: "replace", state: freshDemo() }),
         }
       : undefined,
   };

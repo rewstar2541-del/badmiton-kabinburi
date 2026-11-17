@@ -165,6 +165,12 @@ export interface Settings {
    */
   startDelay?: number;
   /**
+   * รอบสุดท้าย: วันที่ที่แอดมินเปิดสวิตช์ (เปิดเฉพาะวันนั้น ข้ามวันแล้วปิดเอง) ว่าง = ปิด
+   * เก็บในฐานข้อมูล ทุกเครื่องแอดมินและผู้เล่นที่กดผลเองเห็นตรงกัน
+   * ไม่มี = ยังไม่รัน SQL last_round.sql (ใช้สวิตช์ในเครื่องแบบเดิม)
+   */
+  lastRoundDate?: string | null;
+  /**
    * มือตึงล้วน (หลังบ้าน ไม่แจ้งผู้เล่น): ระดับ level ขึ้นไป ตั้งแต่เกมที่ fromGame ลงกับมือตึงด้วยกัน
    * รอเกิน waitMin นาทีลงกับระดับต่ำลงมาได้ตามเพดานปกติ
    * ไม่มี = ยังไม่รัน SQL strong_group.sql ใช้ค่าเริ่มต้น (เปิด, S ขึ้นไป, เกมที่ 2, 10 นาที)
@@ -187,6 +193,9 @@ export function strongGroupOf(raw: { on?: unknown; level?: unknown; fromGame?: u
     waitMin: Math.max(0, num(raw?.waitMin, d.waitMin)),
   };
 }
+
+/** รอบสุดท้ายเปิดอยู่สำหรับวันนี้ไหม (ตามค่าในฐานข้อมูล) */
+export const lastRoundOf = (s: Pick<Settings, "lastRoundDate">, date: string) => s.lastRoundDate === date;
 
 export const DEFAULT_SETTINGS: Settings = {
   courtCount: 4,
