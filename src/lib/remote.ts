@@ -97,6 +97,7 @@ export interface Rows {
         court_numbers?: number[] | null;
         auto_assign?: boolean | null;
         fixed_court?: boolean | null;
+        start_delay?: number | null;
       }
     | null;
 }
@@ -212,6 +213,8 @@ export function rowsToState(r: Rows): State {
         ...(s.auto_assign !== undefined ? { autoAssign: s.auto_assign !== false } : {}),
         // ไม่มีคอลัมน์ = ยังไม่รัน SQL fixed_court.sql (undefined) สนามที่จบก่อนได้คู่แรกเหมือนเดิม
         ...(s.fixed_court !== undefined ? { fixedCourt: s.fixed_court === true } : {}),
+        // ไม่มีคอลัมน์ = ยังไม่รัน SQL start_delay.sql (undefined) คู่ต่อไปลงทันทีเหมือนเดิม
+        ...(s.start_delay !== undefined ? { startDelay: s.start_delay ?? 0 } : {}),
       }
     : DEFAULT_SETTINGS;
 
@@ -357,8 +360,9 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
       // คอลัมน์ธีมเทศกาลยังไม่มี (ยังไม่รัน SQL) ให้โหลดแบบเดิม
       // สวิตช์ช่องทางรับเงินมาหลังรัน SQL payment_switches.sql ยังไม่รันให้โหลดแบบเดิม
       // เบอร์สนามมาหลังรัน SQL court_numbers.sql ยังไม่รันให้โหลดแบบเดิม
-      // โหมดจัดคนลงอัตโนมัติมาหลังรัน SQL auto_assign.sql, โหมดรอสนามเดิมมาหลังรัน SQL fixed_court.sql
-      const r = await all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign,fixed_court`).eq("id", 1))
+      // โหมดจัดคนลงอัตโนมัติมาหลังรัน SQL auto_assign.sql, โหมดรอสนามเดิมมาหลังรัน SQL fixed_court.sql, เวลาก่อนลงสนามมาหลังรัน SQL start_delay.sql
+      const r = await all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign,fixed_court,start_delay`).eq("id", 1))
+        .catch(() => all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign,fixed_court`).eq("id", 1)))
         .catch(() => all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign`).eq("id", 1)))
         .catch(() => all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers`).eq("id", 1)))
         .catch(() => all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on`).eq("id", 1)))
@@ -485,6 +489,10 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
       return check(await db.from("checkins").delete().eq("date", a.date).eq("player_id", a.playerId));
     case "startGame":
     {
+      // คนในคู่ต้องไม่ติดเกมอื่นที่ยังเล่นอยู่ (เครื่องที่ข้อมูลเก่าเริ่มเกมอัตโนมัติผิดคู่ได้)
+      const busy = await db.from("games").select("id").eq("date", a.date).is("ended_at", null).overlaps("player_ids", a.playerIds);
+      check(busy);
+      if (busy.data?.length) throw new CourtTaken();
       const res = await db
         .from("games")
         .insert({ id: a._id, date: a.date, court: a.court, player_ids: a.playerIds, started_at: iso(a._at), shuttles: 1 });
@@ -687,16 +695,17 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
           ...(s.festival !== undefined ? { festival: s.festival === "auto" ? null : s.festival } : {}),
           ...(s.promptPayOn !== undefined ? { promptpay_on: s.promptPayOn, bank_on: s.bankOn !== false } : {}),
       };
-      // คอลัมน์ที่มาทีหลัง (court_numbers, auto_assign, fixed_court) ยังไม่รัน SQL (เช่น นำเข้าข้อมูลสำรองจากเครื่องที่รันแล้ว) ตัดออกแล้วบันทึกค่าอื่นไปก่อน
+      // คอลัมน์ที่มาทีหลัง (court_numbers, auto_assign, fixed_court, start_delay) ยังไม่รัน SQL (เช่น นำเข้าข้อมูลสำรองจากเครื่องที่รันแล้ว) ตัดออกแล้วบันทึกค่าอื่นไปก่อน
       let full: Record<string, unknown> = {
         ...row,
         ...(s.courtNumbers !== undefined ? { court_numbers: s.courtNumbers.length ? s.courtNumbers : null } : {}),
         ...(s.autoAssign !== undefined ? { auto_assign: s.autoAssign } : {}),
         ...(s.fixedCourt !== undefined ? { fixed_court: s.fixedCourt } : {}),
+        ...(s.startDelay !== undefined ? { start_delay: s.startDelay } : {}),
       };
       let res = await db.from("settings").upsert(full);
       // ขาดหลายคอลัมน์ได้ (error บอกทีละคอลัมน์) ตัดคอลัมน์ที่ error พูดถึงออกไปเรื่อยๆ จนบันทึกได้
-      const late = ["fixed_court", "auto_assign", "court_numbers"];
+      const late = ["start_delay", "fixed_court", "auto_assign", "court_numbers"];
       for (let col; res.error && (col = late.find((c) => c in full && res.error!.message.includes(c))); ) {
         full = Object.fromEntries(Object.entries(full).filter(([k]) => k !== col));
         res = await db.from("settings").upsert(full);

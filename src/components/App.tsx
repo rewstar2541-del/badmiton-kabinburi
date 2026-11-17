@@ -1,5 +1,6 @@
 "use client";
 
+import { AutoStarter } from "./StartDelay";
 import { birthdays } from "@/lib/club";
 
 import { Bell } from "./Bell";
@@ -303,6 +304,7 @@ function Shell() {
             <FirstAdminCard />
           </div>
         )}
+        {auth.isAdmin && !tourney.mode && <AutoStarter />}
         {tab === "event" && (auth.isAdmin ? <TourneyAdmin /> : <TourneyHome />)}
         {tab === "home" && (auth.isAdmin ? <AdminHome /> : <PlayerHome />)}
         {tab === "profile" && <ProfileTab />}

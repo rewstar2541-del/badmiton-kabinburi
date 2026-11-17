@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { autoNext, clubPlan, courtPlan, courtQueue, nextMatch, plannedCourt, queueBlockers, queuedSpot, waitingQueue } from "../matchmaking";
+import { autoNext, clubPlan, courtPlan, courtQueue, nextMatch, pendingStart, plannedCourt, queueBlockers, queuedSpot, waitingQueue } from "../matchmaking";
 import { reducer, type State, EMPTY_STATE } from "../state";
-import type { Day, Player } from "../types";
+import { shuttlesInGame, withSub, type Day, type Player } from "../types";
 
 const players: Player[] = "abcdefghij".split("").map((id) => ({ id, name: id, level: 3 }));
 const date = "2026-11-01";
@@ -187,5 +187,50 @@ describe("โหมดรอสนามเดิม (ไม่โยกสน�
       games: [g("g1", 1, ["i", "j", "k", "l"], 10), g("g2", 2, ["m", "n", "o", "p"], 20, 30)],
     };
     expect([...courtPlan(d3, ppl, [1, 2], undefined, true, true).keys()]).toEqual([2]);
+  });
+});
+
+describe("เตรียมลงสนามก่อนเริ่มเกม (หน่วงเวลา)", () => {
+  const ended = { id: "g1", court: 1, playerIds: ["a", "b", "c", "d"] as [string, string, string, string], startedAt: 10, endedAt: 1000, shuttles: 2 };
+  const q = (at: number) => ({ id: "q1", court: 1, playerIds: ["e", "f", "g", "h"] as [string, string, string, string], at });
+
+  it("คู่ที่ขึ้นรอตอนจบเกม: เริ่มเองเมื่อครบเวลา (วินาทีที่ตั้ง)", () => {
+    const d = day({ games: [ended], queued: [q(1001)] });
+    expect(pendingStart(d, 1, { startDelay: 20 })).toMatchObject({ startAt: 21000 });
+  });
+  it("ตั้งรอแอดมินกด: ไม่มีเวลาเริ่มเอง", () => {
+    expect(pendingStart(day({ games: [ended], queued: [q(1001)] }), 1, { startDelay: -1 })?.startAt).toBeNull();
+  });
+  it("ลงทันที (0 หรือยังไม่ตั้ง) ไม่มีช่วงเตรียม", () => {
+    const d = day({ games: [ended], queued: [q(1001)] });
+    expect(pendingStart(d, 1, { startDelay: 0 })).toBeNull();
+    expect(pendingStart(d, 1, {})).toBeNull();
+  });
+  it("คู่ที่แอดมินจัดทีหลัง (ขึ้นคิวนานหลังจบเกม) ไม่ถูกนับถอยหลัง", () => {
+    expect(pendingStart(day({ games: [ended], queued: [q(900000)] }), 1, { startDelay: 20 })).toBeNull();
+  });
+  it("สนามยังมีเกมเล่นอยู่ หรือไม่มีคู่รอ: ไม่มีช่วงเตรียม", () => {
+    expect(pendingStart(day({ games: [{ ...ended, endedAt: undefined }], queued: [q(1001)] }), 1, { startDelay: 20 })).toBeNull();
+    expect(pendingStart(day({ games: [ended] }), 1, { startDelay: 20 })).toBeNull();
+  });
+  it("แก้คนในคู่เตรียมลงสนามได้ แล้วลงสนามจากคิวตามคู่ที่แก้", () => {
+    let s: State = { ...EMPTY_STATE, days: [day({ games: [ended], queued: [q(1001)] })] };
+    s = reducer(s, { type: "editQueued", date, id: "q1", playerIds: ["e", "f", "g", "i"] });
+    s = reducer(s, { type: "startGame", date, court: 1, playerIds: ["e", "f", "g", "i"], queuedId: "q1", _id: "g2", _at: 5000 });
+    expect(s.days[0].queued).toEqual([]);
+    expect(s.days[0].games.find((g) => g.id === "g2")?.playerIds).toEqual(["e", "f", "g", "i"]);
+  });
+});
+
+describe("สลับฝั่งระหว่างเกม", () => {
+  it("ค่าลูกและประวัติเปลี่ยนตัวคงเดิม มีแค่ตำแหน่ง/ทีมที่เปลี่ยน", () => {
+    const g = { id: "g1", court: 1, playerIds: ["a", "b", "c", "d"] as [string, string, string, string], startedAt: 1, shuttles: 3 };
+    const s0: State = { ...EMPTY_STATE, days: [day({ games: [g] })] };
+    const sub = reducer(s0, { type: "subPlayer", date, gameId: "g1", ...withSub(g, "d", "e", 5) });
+    const g2 = sub.days[0].games[0];
+    const swapped = reducer(sub, { type: "subPlayer", date, gameId: "g1", prevIds: g2.playerIds, playerIds: ["a", "c", "b", "e"], subs: g2.subs ?? [] });
+    const g3 = swapped.days[0].games[0];
+    expect(g3.playerIds).toEqual(["a", "c", "b", "e"]);
+    for (const id of "abcde") expect(shuttlesInGame(g3, id)).toBe(shuttlesInGame(g2, id));
   });
 });
