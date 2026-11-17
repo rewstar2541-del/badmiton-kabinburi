@@ -99,8 +99,8 @@ export function demoState(): State {
     const d = new Date(now - back * 86400000);
     const day = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     const at = now - back * 86400000;
-    ids.slice(k, 12 + k).forEach((id) => run({ type: "signUp", date: day, playerId: id }, at - 3600000));
-    ids.slice(k, 12 + k).forEach((id, i) => run({ type: "checkIn", date: day, playerId: id }, at - 3000000 + i * 60000));
+    ids.slice(k * 6, k * 6 + 12).forEach((id) => run({ type: "signUp", date: day, playerId: id }, at - 3600000));
+    ids.slice(k * 6, k * 6 + 12).forEach((id, i) => run({ type: "checkIn", date: day, playerId: id }, at - 3000000 + i * 60000));
     const t = (m: number) => at - 2400000 + m * 60000;
     start(day, 1, t(0));
     start(day, 2, t(1));

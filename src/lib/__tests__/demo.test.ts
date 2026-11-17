@@ -13,4 +13,10 @@ describe("demoState", () => {
     const busy = [...day.games.filter((g) => !g.endedAt), ...(day.queued ?? [])].flatMap((g) => g.playerIds);
     expect(new Set(busy).size).toBe(busy.length);
   });
+
+  it("ประวัติ 2 วันก่อนหน้ามีเกมจบแล้ววันละ 4 เกม", () => {
+    const s = demoState();
+    const past = s.days.filter((d) => d.date < today() && d.games.length);
+    expect(past.map((d) => d.games.filter((g) => g.endedAt).length)).toEqual([4, 4]);
+  });
 });
