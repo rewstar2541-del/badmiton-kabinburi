@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FORM_MARK, formToday, hasAvoid, nextMatch, skillOf, waitingQueue } from "@/lib/matchmaking";
+import { FORM_MARK, formToday, hasAvoid, nextMatch, skillOf, strongRule, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
 import { strength, type Game, type Player } from "@/lib/types";
 import { Avatar, Button, Icon, LevelBadge, Sheet } from "./ui";
@@ -51,9 +51,10 @@ export function MatchBuilder({
     : day;
   // ชุดที่แนะนำไปแล้ว กดแนะนำใหม่จะได้คนชุดใหม่
   const [shown, setShown] = useState<string[][]>(() => (initial ? [initial] : []));
+  const strongOpts = { strong: strongRule(state.settings) };
   const suggest = (seen: string[][] = []): Slots =>
     // ครั้งแรกเลี่ยงคนที่ระบบจัดให้สนามอื่นแล้ว กดแนะนำใหม่ดึงจากคิวรวมทั้งหมด จะได้มีคนใหม่ให้หมุน
-    (seen.length ? null : nextMatch(forSuggest, state.players)) ?? nextMatch(day, state.players, 12, seen) ?? [0, 1, 2, 3].map((i) => queue[i]?.player.id ?? null);
+    (seen.length ? null : nextMatch(forSuggest, state.players, 12, [], strongOpts)) ?? nextMatch(day, state.players, 12, seen, strongOpts) ?? [0, 1, 2, 3].map((i) => queue[i]?.player.id ?? null);
   const [picked, setSlots] = useState<Slots>(() => initial ?? suggest());
   const [selected, setSelected] = useState<number | null>(null);
   // แอดมินอีกเครื่องอาจส่งคนในช่องลงสนามอื่นไปแล้ว หรือใช้สนามนี้ไปแล้ว: เอาคนนั้นออกจากช่องเสมอ

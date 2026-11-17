@@ -1656,4 +1656,11 @@ export const en: Record<string, string> = {
   "คู่ต่อไปเตรียมลงสนาม": "Next group is getting ready",
   "คู่ต่อไปเตรียมลงสนาม รอแอดมินกดลงสนาม": "Next group is getting ready, waiting for the admin to start",
   "คู่ต่อไปเตรียมลงสนาม เริ่มเองใน {n} วินาที": "Next group is getting ready, starts in {n} s",
+  "จับกลุ่มมือตึงล้วน": "Group strong players together",
+  "ใช้ได้หลังรัน SQL strong_group.sql": "Works after running strong_group.sql",
+  "จัดหลังบ้าน ผู้เล่นไม่เห็นข้อความ": "Runs in the background, players see no message",
+  "ปิด: จัดคู่ตามระดับใกล้กันตามปกติ": "Off: normal matching by similar level",
+  "มือตึง = ระดับนี้ขึ้นไป": "Strong = this level and up",
+  "ลงด้วยกันตั้งแต่เกมที่": "Play together from game",
+  "รอเกินนี้ ลงกับระดับต่ำลงมาได้": "After waiting this long, can play one level lower",
 };

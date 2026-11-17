@@ -164,6 +164,28 @@ export interface Settings {
    * ไม่มี = ยังไม่รัน SQL start_delay.sql ถือว่าลงทันที
    */
   startDelay?: number;
+  /**
+   * มือตึงล้วน (หลังบ้าน ไม่แจ้งผู้เล่น): ระดับ level ขึ้นไป ตั้งแต่เกมที่ fromGame ลงกับมือตึงด้วยกัน
+   * รอเกิน waitMin นาทีลงกับระดับต่ำลงมาได้ตามเพดานปกติ
+   * ไม่มี = ยังไม่รัน SQL strong_group.sql ใช้ค่าเริ่มต้น (เปิด, S ขึ้นไป, เกมที่ 2, 10 นาที)
+   */
+  strongGroup?: { on: boolean; level: Level; fromGame: number; waitMin: number };
+}
+
+/** ค่าเริ่มต้นมือตึงล้วน: เปิด, S ขึ้นไป, ตั้งแต่เกมที่ 2, รอเกิน 10 นาทีลงกับระดับต่ำลงมาได้ */
+export const DEFAULT_STRONG_GROUP: NonNullable<Settings["strongGroup"]> = { on: true, level: 4, fromGame: 2, waitMin: 10 };
+
+/** ค่ามือตึงล้วนจากฐานข้อมูล (ช่องที่ไม่มี/ผิด ใช้ค่าเริ่มต้น) */
+export function strongGroupOf(raw: { on?: unknown; level?: unknown; fromGame?: unknown; waitMin?: unknown } | null | undefined): NonNullable<Settings["strongGroup"]> {
+  const d = DEFAULT_STRONG_GROUP;
+  const num = (v: unknown, def: number) => (typeof v === "number" && Number.isFinite(v) ? v : def);
+  const level = LEVELS.some((l) => l.value === raw?.level) ? (raw!.level as Level) : d.level;
+  return {
+    on: typeof raw?.on === "boolean" ? raw.on : d.on,
+    level,
+    fromGame: Math.max(1, Math.round(num(raw?.fromGame, d.fromGame))),
+    waitMin: Math.max(0, num(raw?.waitMin, d.waitMin)),
+  };
 }
 
 export const DEFAULT_SETTINGS: Settings = {

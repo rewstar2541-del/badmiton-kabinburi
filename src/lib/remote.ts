@@ -2,7 +2,7 @@ import { isDemo } from "./demo";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Action, SelfAction, State } from "./state";
 import { endOf, startOf, type ClearKind } from "./clear";
-import { DEFAULT_SETTINGS, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Notice, type Gender, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Package, type Plan, type Player, type Settings, type Sub } from "./types";
+import { DEFAULT_SETTINGS, strongGroupOf, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Notice, type Gender, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Package, type Plan, type Player, type Settings, type Sub } from "./types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -98,6 +98,7 @@ export interface Rows {
         auto_assign?: boolean | null;
         fixed_court?: boolean | null;
         start_delay?: number | null;
+        strong_group?: { on?: boolean; level?: number; fromGame?: number; waitMin?: number } | null;
       }
     | null;
 }
@@ -215,6 +216,8 @@ export function rowsToState(r: Rows): State {
         ...(s.fixed_court !== undefined ? { fixedCourt: s.fixed_court === true } : {}),
         // ไม่มีคอลัมน์ = ยังไม่รัน SQL start_delay.sql (undefined) คู่ต่อไปลงทันทีเหมือนเดิม
         ...(s.start_delay !== undefined ? { startDelay: s.start_delay ?? 0 } : {}),
+        // ไม่มีคอลัมน์ = ยังไม่รัน SQL strong_group.sql (undefined) มือตึงล้วนใช้ค่าเริ่มต้น
+        ...(s.strong_group !== undefined ? { strongGroup: strongGroupOf(s.strong_group) } : {}),
       }
     : DEFAULT_SETTINGS;
 
@@ -361,7 +364,9 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
       // สวิตช์ช่องทางรับเงินมาหลังรัน SQL payment_switches.sql ยังไม่รันให้โหลดแบบเดิม
       // เบอร์สนามมาหลังรัน SQL court_numbers.sql ยังไม่รันให้โหลดแบบเดิม
       // โหมดจัดคนลงอัตโนมัติมาหลังรัน SQL auto_assign.sql, โหมดรอสนามเดิมมาหลังรัน SQL fixed_court.sql, เวลาก่อนลงสนามมาหลังรัน SQL start_delay.sql
-      const r = await all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign,fixed_court,start_delay`).eq("id", 1))
+      // มือตึงล้วนมาหลังรัน SQL strong_group.sql
+      const r = await all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign,fixed_court,start_delay,strong_group`).eq("id", 1))
+        .catch(() => all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign,fixed_court,start_delay`).eq("id", 1)))
         .catch(() => all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign,fixed_court`).eq("id", 1)))
         .catch(() => all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign`).eq("id", 1)))
         .catch(() => all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers`).eq("id", 1)))
@@ -702,10 +707,11 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
         ...(s.autoAssign !== undefined ? { auto_assign: s.autoAssign } : {}),
         ...(s.fixedCourt !== undefined ? { fixed_court: s.fixedCourt } : {}),
         ...(s.startDelay !== undefined ? { start_delay: s.startDelay } : {}),
+        ...(s.strongGroup !== undefined ? { strong_group: s.strongGroup } : {}),
       };
       let res = await db.from("settings").upsert(full);
       // ขาดหลายคอลัมน์ได้ (error บอกทีละคอลัมน์) ตัดคอลัมน์ที่ error พูดถึงออกไปเรื่อยๆ จนบันทึกได้
-      const late = ["start_delay", "fixed_court", "auto_assign", "court_numbers"];
+      const late = ["strong_group", "start_delay", "fixed_court", "auto_assign", "court_numbers"];
       for (let col; res.error && (col = late.find((c) => c in full && res.error!.message.includes(c))); ) {
         full = Object.fromEntries(Object.entries(full).filter(([k]) => k !== col));
         res = await db.from("settings").upsert(full);

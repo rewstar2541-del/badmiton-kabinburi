@@ -1,4 +1,4 @@
-import { nextMatch } from "./matchmaking";
+import { nextMatch, strongRule } from "./matchmaking";
 import { prepare, reducer, today, type State } from "./state";
 import { DEFAULT_SETTINGS, type Level, type Player } from "./types";
 
@@ -62,7 +62,7 @@ export function demoState(): State {
   // จัดคนลงด้วยระบบจริง (nextMatch) ทุกเกม: ลงสนาม / จบเกมพร้อมผล ตามลำดับเวลา
   const dayOf = (d: string) => s.days.find((x) => x.date === d)!;
   const start = (d: string, court: number, at: number) => {
-    const four = nextMatch(dayOf(d), s.players);
+    const four = nextMatch(dayOf(d), s.players, 12, [], { strong: strongRule(s.settings), now: at });
     if (four) run({ type: "startGame", date: d, court, playerIds: four }, at);
   };
   const end = (d: string, court: number, winner: "A" | "B", shuttles: number, at: number) => {
@@ -88,7 +88,7 @@ export function demoState(): State {
   end(date, 2, "B", 2, min(8));
   start(date, 2, min(7));
   // คิวรอสนาม 1 ที่แอดมินจัดไว้ (ใช้คู่ที่ระบบแนะนำ) ส่วนสนาม 2 ระบบจัดให้เองจากคนที่เหลือ (เดโมใช้ 2 สนาม)
-  const q = nextMatch(dayOf(date), s.players);
+  const q = nextMatch(dayOf(date), s.players, 12, [], { strong: strongRule(s.settings), now });
   if (q) run({ type: "queueGame", date, court: 1, playerIds: q }, now);
   // ค่าน้ำและสลิปโอนเงินตัวอย่างวันนี้
   run({ type: "addDrink", date, playerId: ids[2], amount: 20, note: "น้ำ" });
