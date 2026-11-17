@@ -1652,4 +1652,6 @@ export const en: Record<string, string> = {
   "คนรอ (เลือกคนในสนามก่อน)": "Waiting (pick a player on court first)",
   "ไม่มีคนรอให้เปลี่ยนตัว (สลับฝั่งยังทำได้)": "No one waiting to substitute (swapping sides still works)",
   "แตะชื่อในสนาม แล้วแตะอีกคนในสนามเพื่อสลับฝั่ง หรือแตะชื่อจากคิวเพื่อเปลี่ยนตัว ตัวเลขข้างทีม = ผลรวมระดับมือ": "Tap a player on court, then another on court to swap sides, or a name from the queue to substitute. Number beside team = total skill level",
+  "บันทึกผล: {r}? คู่ต่อไปจะขึ้นเตรียมลงสนามก่อน": "Record result: {r}? The next group will show as getting ready first",
+  "คู่ต่อไปเตรียมลงสนาม": "Next group is getting ready",
 };
