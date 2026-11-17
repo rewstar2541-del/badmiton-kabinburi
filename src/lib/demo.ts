@@ -1,5 +1,6 @@
+import { nextMatch } from "./matchmaking";
 import { prepare, reducer, today, type State } from "./state";
-import { DEFAULT_SETTINGS, type Game, type Level, type Player } from "./types";
+import { DEFAULT_SETTINGS, type Level, type Player } from "./types";
 
 /** โหมดทดลอง: เปิดด้วย ?demo หรือ build ด้วย NEXT_PUBLIC_DEMO=1 ข้อมูลอยู่ในเครื่องเท่านั้น */
 export function isDemo(): boolean {
@@ -24,9 +25,19 @@ const NAMES: [string, Player["gender"], Level][] = [
   ["นุ่น", "female", 4],
   ["เจ", "male", 3],
   ["ใบเตย", "female", 2],
+  ["กอล์ฟ", "male", 5],
+  ["ภูมิ", "male", 4],
+  ["มายด์", "female", 3],
+  ["เบนซ์", "male", 1],
+  ["ฟ้า", "female", 2],
+  ["ก้อง", "male", 3],
 ];
 
-/** ข้อมูลตัวอย่าง: ผู้เล่น 12 คน ประกาศจัดก๊วนวันนี้ มีคนลงชื่อและเช็คอินบางส่วน */
+/**
+ * ข้อมูลตัวอย่าง: ผู้เล่น 18 คน ประกาศจัดก๊วนวันนี้ ลงชื่อครบ เช็คอินแล้ว 17 (เหลือ 1 คนให้ลองกดเช็คอิน)
+ * เกมวันนี้และวันก่อนจัดด้วย nextMatch ตัวจริง (เหมือนกดจัดคนลงในหน้าสนาม) ไม่ได้เลือกคนเอง
+ * หน้าเดโมจะได้จับคู่มือเหมือนของจริง
+ */
 export function demoState(): State {
   const date = today();
   const now = Date.now();
@@ -41,49 +52,64 @@ export function demoState(): State {
   NAMES.forEach(([name, gender, level]) =>
     run({ type: "addPlayer", player: { name, gender, level } }),
   );
-  run({ type: "setAnnouncement", date, message: "วันนี้ 1 ทุ่ม ถึง 4 ทุ่ม", cap: 9 });
-  s.players.slice(0, 10).forEach((p, i) => run({ type: "signUp", date, playerId: p.id }, now - (60 - i) * 60000));
-  s.players.slice(0, 8).forEach((p, i) => run({ type: "checkIn", date, playerId: p.id }, now - (40 - i * 3) * 60000));
+  run({ type: "setAnnouncement", date, message: "วันนี้ 1 ทุ่ม ถึง 4 ทุ่ม", cap: 20 });
+  s.players.slice(0, 18).forEach((p, i) => run({ type: "signUp", date, playerId: p.id }, now - (90 - i) * 60000));
+  s.players.slice(0, 17).forEach((p, i) => run({ type: "checkIn", date, playerId: p.id }, now - (70 - i) * 60000));
   run({ type: "setMonthlyPaid", month: date.slice(0, 7), playerId: s.players[0].id, paid: true });
   run({ type: "setMonthlyPaid", month: date.slice(0, 7), playerId: s.players[3].id, paid: true });
-  // เกมที่จบแล้ววันนี้ พร้อมผลแพ้ชนะ (ให้เห็นสถิติคู่หู)
   const ids = s.players.map((p) => p.id);
   const pad = (n: number) => String(n).padStart(2, "0");
-  const played: [number[], "A" | "B", number][] = [
-    [[5, 0, 1, 2], "A", 2],
-    [[5, 6, 3, 4], "A", 1],
-    [[1, 5, 0, 7], "B", 2],
-  ];
-  played.forEach(([four, winner, shuttles], i) => {
-    const start = now - (30 - i * 9) * 60000;
-    run({ type: "startGame", date, court: 1 + (i % 2), playerIds: four.map((n) => ids[n]) as Game["playerIds"] }, start);
-    const g = s.days.find((d) => d.date === date)!.games.at(-1)!;
-    run({ type: "setShuttles", date, gameId: g.id, shuttles });
-    run({ type: "endGame", date, gameId: g.id, winner }, start + 8 * 60000);
-  });
-  // เกมที่กำลังเล่นอยู่ 2 สนาม + คิวรอสนามละ 1 คู่ (ให้ลองเปลี่ยนตัว กดผลเอง และคิว)
-  run({ type: "startGame", date, court: 1, playerIds: [2, 3, 4, 6].map((n) => ids[n]) as Game["playerIds"] }, now - 6 * 60000);
-  run({ type: "startGame", date, court: 2, playerIds: [0, 1, 5, 7].map((n) => ids[n]) as Game["playerIds"] }, now - 3 * 60000);
-  run({ type: "queueGame", date, court: 1, playerIds: [0, 5, 3, 7].map((n) => ids[n]) as Game["playerIds"] }, now);
-  run({ type: "queueGame", date, court: 2, playerIds: [2, 1, 4, 6].map((n) => ids[n]) as Game["playerIds"] }, now);
+  // จัดคนลงด้วยระบบจริง (nextMatch) ทุกเกม: ลงสนาม / จบเกมพร้อมผล ตามลำดับเวลา
+  const dayOf = (d: string) => s.days.find((x) => x.date === d)!;
+  const start = (d: string, court: number, at: number) => {
+    const four = nextMatch(dayOf(d), s.players);
+    if (four) run({ type: "startGame", date: d, court, playerIds: four }, at);
+  };
+  const end = (d: string, court: number, winner: "A" | "B", shuttles: number, at: number) => {
+    const g = dayOf(d).games.find((x) => x.court === court && !x.endedAt);
+    if (!g) return;
+    run({ type: "setShuttles", date: d, gameId: g.id, shuttles });
+    run({ type: "endGame", date: d, gameId: g.id, winner }, at);
+  };
+  const min = (m: number) => now - m * 60000;
+  // เกมที่จบแล้ววันนี้ พร้อมผลแพ้ชนะ (ให้เห็นสถิติคู่หู) แล้วเกมที่กำลังเล่นอยู่ 2 สนาม
+  start(date, 1, min(55));
+  start(date, 2, min(54));
+  end(date, 1, "A", 2, min(42));
+  start(date, 1, min(41));
+  end(date, 2, "B", 1, min(39));
+  start(date, 2, min(38));
+  end(date, 1, "B", 2, min(28));
+  start(date, 1, min(27));
+  end(date, 2, "A", 1, min(24));
+  start(date, 2, min(23));
+  end(date, 1, "A", 1, min(14));
+  start(date, 1, min(13));
+  end(date, 2, "B", 2, min(8));
+  start(date, 2, min(7));
+  // คิวรอสนาม 1 ที่แอดมินจัดไว้ (ใช้คู่ที่ระบบแนะนำ) ส่วนสนาม 2 ระบบจัดให้เองจากคนที่เหลือ
+  const q = nextMatch(dayOf(date), s.players);
+  if (q) run({ type: "queueGame", date, court: 1, playerIds: q }, now);
   // ค่าน้ำและสลิปโอนเงินตัวอย่างวันนี้
   run({ type: "addDrink", date, playerId: ids[2], amount: 20, note: "น้ำ" });
   run({ type: "addDrink", date, playerId: ids[4], amount: 35, note: "น้ำเกลือแร่" });
   run({ type: "addSlip", date, playerId: ids[0], amount: 100 }, now - 5 * 60000);
-  // ประวัติเกม 2 วันก่อนหน้า (ให้เห็นแท็บประวัติเกมและสถิติคู่หู)
+  // ประวัติเกม 2 วันก่อนหน้า (ให้เห็นแท็บประวัติเกมและสถิติคู่หู) จัดด้วยระบบจริงเหมือนกัน
   [2, 5].forEach((back, k) => {
     const d = new Date(now - back * 86400000);
     const day = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     const at = now - back * 86400000;
-    ids.slice(0, 8).forEach((id) => run({ type: "signUp", date: day, playerId: id }, at - 3600000));
-    ids.slice(0, 8).forEach((id) => run({ type: "checkIn", date: day, playerId: id }, at - 3000000));
-    ([[[0, 1, 2, 3], "A"], [[4, 5, 6, 7], "B"], [[0, 4, 1, 5], "A"]] as [number[], "A" | "B"][]).forEach(([four, winner], i) => {
-      const t0 = at - (2400000 - i * 900000);
-      run({ type: "startGame", date: day, court: 1 + ((i + k) % 2), playerIds: four.map((n) => ids[n]) as Game["playerIds"] }, t0);
-      const g = s.days.find((x) => x.date === day)!.games.at(-1)!;
-      run({ type: "setShuttles", date: day, gameId: g.id, shuttles: 1 + (i % 2) });
-      run({ type: "endGame", date: day, gameId: g.id, winner }, t0 + 8 * 60000);
-    });
+    ids.slice(k, 12 + k).forEach((id) => run({ type: "signUp", date: day, playerId: id }, at - 3600000));
+    ids.slice(k, 12 + k).forEach((id, i) => run({ type: "checkIn", date: day, playerId: id }, at - 3000000 + i * 60000));
+    const t = (m: number) => at - 2400000 + m * 60000;
+    start(day, 1, t(0));
+    start(day, 2, t(1));
+    end(day, 1, "A", 1, t(12));
+    start(day, 1, t(13));
+    end(day, 2, "B", 2, t(15));
+    start(day, 2, t(16));
+    end(day, 1, "B", 1, t(26));
+    end(day, 2, "A", 2, t(29));
   });
   // วันเกิดวันนี้ และบอร์ดของหาย / ฝากขาย ตัวอย่าง
   s = { ...s, players: s.players.map((p, i) => (i === 7 ? { ...p, birthday: date.slice(5) } : p)) };
