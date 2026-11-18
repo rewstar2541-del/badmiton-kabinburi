@@ -2,7 +2,7 @@
 
 import { PairRequests } from "./Pairs";
 import { useEffect, useMemo, useState } from "react";
-import { autoNext, clubPlan, courtPlan, courtQueue, pendingStart, plannedCourt, queueByCourt, presence, queueBlockers, queuedSpot, START_GRACE_MS, waitingQueue, type CourtNext } from "@/lib/matchmaking";
+import { autoNext, clubPlan, courtPlan, courtQueue, pendingStart, plannedCourt, queueByCourt, presence, queueBlockers, queuedSpot, START_GRACE_MS, strongRule, waitingQueue, type CourtNext } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
 import { courtList, courtsOfDay, minShuttles, undoLastSub, type Game, type Player, type QueuedGame, type Team } from "@/lib/types";
 import { MatchBuilder } from "./MatchBuilder";
@@ -76,8 +76,9 @@ function ActiveCourt({ game, byId, date, now, lastRound = false }: { game: Game;
     const auto = state.settings.autoAssign !== false;
     // รอสนามเดิม: สนามนี้ได้คู่ที่รอสนามนี้อยู่ ไม่ดึงคู่ที่รอสนามอื่นมา
     const fixed = state.settings.fixedCourt === true;
-    const next = autoNext(day, state.players, courts, game, lastRound, auto, fixed);
-    const planned = !lastRound && courts.includes(game.court) ? courtPlan(day, state.players, courts, game.court, auto, fixed).get(game.court) : undefined;
+    const opts = { strong: strongRule(state.settings) };
+    const next = autoNext(day, state.players, courts, game, lastRound, auto, fixed, opts);
+    const planned = !lastRound && courts.includes(game.court) ? courtPlan(day, state.players, courts, game.court, auto, fixed, opts).get(game.court) : undefined;
     dispatch({ type: "endGame", date, gameId: game.id, winner, draw });
     // ตั้งเวลาก่อนลงสนามไว้: คู่ต่อไปขึ้น "เตรียมลงสนาม" (จองสนามนี้ไว้ในคิว) แอดมินแก้คนได้ ครบเวลาแล้วเริ่มเอง
     // คู่ที่แอดมินจัดคิวสนามนี้ไว้แล้วรออยู่ในคิวอยู่แล้ว ไม่ต้องทำอะไร
@@ -445,8 +446,9 @@ export function CourtsTab() {
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const queue = waitingQueue(day, state.players);
   const courts = courtsOfDay(state.settings, day);
-  // คำนวณใหม่เฉพาะตอนข้อมูลเปลี่ยน (นาฬิกาเดินทุก 15 วินาทีไม่ต้องคำนวณ)
-  const plan = useMemo(() => clubPlan(day, state.players, state.settings), [day, state.players, state.settings]);
+  // คำนวณใหม่ตอนข้อมูลเปลี่ยน และทุกนาที (มือตึงที่รอครบเวลาลงกับระดับต่ำลงมาได้)
+  const minute = Math.floor(now / 60_000);
+  const plan = useMemo(() => clubPlan(day, state.players, state.settings, undefined, minute * 60_000), [day, state.players, state.settings, minute]);
   const courtOf = new Map([...plan.values()].filter((n) => !n.queuedId).flatMap((n) => n.playerIds.map((id) => [id, n.court] as const)));
   // คนในคิวรวมที่ระบบจัดให้สนามอื่นแล้ว (แนะนำใหม่จะไม่ดึงมา)
   const reservedFor = (court: number) => [...plan.values()].filter((n) => n.court !== court && !n.queuedId).flatMap((n) => n.playerIds);

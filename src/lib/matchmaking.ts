@@ -1,5 +1,5 @@
 import { activePairs } from "./social";
-import { DEFAULT_LEVEL, courtList, strength, type Day, type Player, type QueuedGame, type Settings } from "./types";
+import { DEFAULT_LEVEL, DEFAULT_STRONG_GROUP, courtList, strength, type Day, type Level, type Player, type QueuedGame, type Settings } from "./types";
 
 export interface QueueEntry {
   player: Player;
@@ -204,6 +204,34 @@ export const STARVED_AFTER = 2;
 export const RELAXED_LEVEL_GAP = 2;
 
 /**
+ * มือตึงล้วน (กติกาหลังบ้าน ไม่แจ้งผู้เล่น): คนระดับ level ขึ้นไป ตั้งแต่เกมที่ fromGame ของวัน ลงกับมือตึงด้วยกันทั้ง 4 คน
+ * เกมแรก ๆ (ก่อน fromGame) = วอร์ม เลี่ยงไปเจอคนที่เก่งกว่าตัวเอง (ได้คนระดับเดียวกันหรือต่ำลงมาที่ห่างไม่เกินเพดาน)
+ * มือตึงเป็นเลขคี่/เหลือคนเดียว: คนที่ไม่ได้ลงเล่นน้อยกว่า คิวถัดไปได้ก่อนเอง (คิวเรียงเล่นน้อยได้ก่อน) จึงไม่วนเป็นคนเดิม
+ * รอเกิน waitMin นาที: คนนั้นลงกับระดับต่ำลงมาได้ตามเพดานปกติ (ห่างไม่เกิน 1 ระดับ รอนานผ่อนเป็น 2)
+ */
+export interface StrongRule {
+  level: Level;
+  fromGame: number;
+  waitMin: number;
+}
+export const DEFAULT_STRONG: StrongRule = { level: DEFAULT_STRONG_GROUP.level, fromGame: DEFAULT_STRONG_GROUP.fromGame, waitMin: DEFAULT_STRONG_GROUP.waitMin };
+
+/** กติกามือตึงล้วนตามที่ตั้งค่าไว้ (null = ปิด) ไม่มีค่า = ยังไม่รัน SQL strong_group.sql ใช้ค่าเริ่มต้น */
+export function strongRule(settings: Pick<Settings, "strongGroup">): StrongRule | null {
+  const g = settings.strongGroup;
+  if (!g) return DEFAULT_STRONG;
+  if (!g.on) return null;
+  return { level: g.level, fromGame: Math.max(1, g.fromGame), waitMin: Math.max(0, g.waitMin) };
+}
+
+export interface MatchOptions {
+  /** กติกามือตึงล้วน (ไม่ใส่ = ค่าเริ่มต้น, null = ปิด) */
+  strong?: StrongRule | null;
+  /** เวลาปัจจุบัน (ใช้นับเวลารอของมือตึงที่ยังไม่ได้ลง) */
+  now?: number;
+}
+
+/**
  * เลือก 4 คนลงสนามถัดไป
  * คนแรกของคิวได้ลงก่อน อีก 3 คนเลือกจากคนต้นคิว (window) ให้ฝีมือใกล้กัน (ห่างไม่เกิน MAX_LEVEL_GAP) และไม่เจอคนเดิมซ้ำ
  * shown: ชุดที่เคยแนะนำไปแล้ว (กด "แนะนำใหม่") จะได้คนชุดใหม่ ไม่วนกลับมาชุดเดิม
@@ -213,6 +241,7 @@ export function nextMatch(
   players: Player[],
   window = 12,
   shown: string[][] = [],
+  opts: MatchOptions = {},
 ): [string, string, string, string] | null {
   const queue = waitingQueue(day, players);
   if (queue.length < 4) return null;
@@ -227,16 +256,43 @@ export function nextMatch(
   // คนที่ถูกข้ามมาครบ STARVED_AFTER เกมแล้ว: ชุดที่มีคนนี้ผ่อนเพดานเป็น RELAXED_LEVEL_GAP (ไม่ให้ใครไม่ได้ลงเลย)
   const starved = new Set(queue.filter((e) => bypassCount(day, e) >= STARVED_AFTER).map((e) => e.player.id));
 
+  // มือตึงล้วน: gated = ถึงเกมที่ต้องลงกับมือตึงด้วยกันแล้ว (ยังรอไม่เกิน waitMin), warm = เกมวอร์ม
+  const rule = opts.strong === undefined ? DEFAULT_STRONG : opts.strong;
+  const now = opts.now ?? Date.now();
+  const isStrong = (pl: Player) => rule !== null && strength(pl.level) >= strength(rule.level) - 1e-9;
+  const byId = new Map(players.map((pl) => [pl.id, pl]));
+  // ขอจับคู่กับคนที่ไม่ใช่มือตึงไว้ = ให้ลงด้วยกันได้ ไม่บังคับมือตึงล้วน
+  const pairedDown = new Set<string>();
+  for (const [a, b] of pairs) {
+    const pa = byId.get(a);
+    const pb = byId.get(b);
+    if (!pa || !pb) continue;
+    if (!isStrong(pb)) pairedDown.add(a);
+    if (!isStrong(pa)) pairedDown.add(b);
+  }
+  const gated = new Set<string>();
+  const warm = new Map<string, number>();
+  if (rule)
+    for (const e of queue) {
+      if (!isStrong(e.player)) continue;
+      if (e.gamesPlayed + 1 < rule.fromGame) warm.set(e.player.id, strength(e.player.level));
+      else if (now - e.waitingSince < rule.waitMin * 60_000 && !pairedDown.has(e.player.id)) gated.add(e.player.id);
+    }
+
   const search = (q: QueueEntry[]) => {
     const head = q[0].player;
     // คู่ที่ขอไว้ของคนต้นคิว ดึงเข้ามาพิจารณาด้วยแม้อยู่ท้ายคิว
     const mates = new Set(pairs.flatMap(([a, b]) => (a === head.id ? [b] : b === head.id ? [a] : [])));
     // กดแนะนำใหม่หลายครั้ง ขยายวงให้มีคนใหม่ให้เลือก
     const reach = Math.max(4, window + shown.length * 3);
+    // หัวชุดเป็นมือตึงที่ต้องลงมือตึงล้วน: ดูมือตึงทุกคนในคิว (แม้อยู่ท้ายคิว) ไม่ดึงคนอื่นมา
+    const headGated = gated.has(head.id);
     const pool = q
       .slice(1)
       .map((e, i) => ({ p: e.player, rank: i + 1 }))
-      .filter((x) => x.rank < reach || mates.has(x.p.id));
+      .filter((x) => (headGated ? isStrong(x.p) : x.rank < reach || mates.has(x.p.id)))
+      // มือตึงมาก ๆ ดูแค่ reach คนแรก ไม่ให้คำนวณช้า
+      .filter((x, i) => !headGated || i < reach);
 
     let best: { teams: [string, string, string, string]; score: number; spread: number } | null = null;
     for (let i = 0; i < pool.length; i++)
@@ -246,6 +302,13 @@ export function nextMatch(
           const base = four.map((p) => strength(p.level));
           const cap = four.some((p) => starved.has(p.id)) ? RELAXED_LEVEL_GAP : MAX_LEVEL_GAP;
           if (Math.max(...base) - Math.min(...base) > cap + 1e-9) continue;
+          if (gated.size && four.some((p) => gated.has(p.id)) && !four.every(isStrong)) continue;
+          // มือตึงเกมวอร์ม เลี่ยงเจอคนที่เก่งกว่าตัวเอง
+          let warmUp = 0;
+          for (const p of four) {
+            const lv = warm.get(p.id);
+            if (lv !== undefined) warmUp += base.filter((b) => b > lv + 1e-9).length;
+          }
           const levels = four.map((p) => skillOf(p, form));
           const spread = Math.max(...levels) - Math.min(...levels);
           // 4 คนห่างกันเกิน 1 ระดับ = ต้องให้มือหนักไปแบกมือเบาถึงจะสูสี ยิ่งห่างยิ่งเลี่ยงหนัก
@@ -270,7 +333,7 @@ export function nextMatch(
           // ชุดที่แนะนำไปแล้ว: ซ้ำคนเดิมมาก = ไม่เอา
           const again = shownSets.reduce((n, set) => n + Math.max(0, four.filter((p) => set.has(p.id)).length - 1) ** 2, 0);
           // คนที่ไม่อยากเจอกัน เลี่ยงให้มากที่สุด แต่ถ้าไม่มีทางเลือกก็ยังจัดได้
-          const score = split.cost + gapPenalty + waitPenalty * 2 + seen * 5 + justPlayed * 25 + again * 15 + (hasAvoid(four) ? 1000 : 0) - pairBonus;
+          const score = split.cost + gapPenalty + waitPenalty * 2 + seen * 5 + justPlayed * 25 + again * 15 + warmUp * 30 + (hasAvoid(four) ? 1000 : 0) - pairBonus;
           if (!best || score < best.score) best = { teams: split.teams, score, spread };
         }
     return best;
@@ -302,7 +365,7 @@ export interface CourtNext {
  *   ไม่ให้สนามที่กำลังจบแย่งคู่แรก (ไม่ใช้ first) และสนามที่เพิ่งว่างเรียงตามเวลาเริ่มเกมล่าสุดของสนามนั้น
  *   (ไม่กระโดดขึ้นหน้า) ลำดับสนามจึงเหมือนตอนที่คู่นั้นเห็นว่ารอสนามไหน
  */
-export function courtPlan(day: Day, players: Player[], courts: number | number[], first?: number, auto = true, fixed = false): Map<number, CourtNext> {
+export function courtPlan(day: Day, players: Player[], courts: number | number[], first?: number, auto = true, fixed = false, opts: MatchOptions = {}): Map<number, CourtNext> {
   const started = new Map(day.games.filter((g) => !g.endedAt).map((g) => [g.court, g.startedAt]));
   if (fixed) {
     first = undefined;
@@ -329,7 +392,7 @@ export function courtPlan(day: Day, players: Player[], courts: number | number[]
       continue;
     }
     if (!auto) continue;
-    const m = nextMatch(d, players);
+    const m = nextMatch(d, players, 12, [], opts);
     if (!m) continue;
     plan.set(c, { court: c, playerIds: m });
     // คนที่จัดให้สนามนี้แล้ว ไม่อยู่ในคิวรวมสำหรับสนามถัดไป
@@ -339,8 +402,8 @@ export function courtPlan(day: Day, players: Player[], courts: number | number[]
 }
 
 /** courtPlan ตามที่ตั้งค่าไว้: เบอร์สนาม โหมดจัดคนลงอัตโนมัติ (ปิด = มีแค่คู่ที่แอดมินจัดเอง) และโหมดรอสนามเดิม */
-export function clubPlan(day: Day, players: Player[], settings: Pick<Settings, "courtCount" | "courtNumbers" | "autoAssign" | "fixedCourt">, first?: number): Map<number, CourtNext> {
-  return courtPlan(day, players, courtList(settings), first, settings.autoAssign !== false, settings.fixedCourt === true);
+export function clubPlan(day: Day, players: Player[], settings: Pick<Settings, "courtCount" | "courtNumbers" | "autoAssign" | "fixedCourt" | "strongGroup">, first?: number, now?: number): Map<number, CourtNext> {
+  return courtPlan(day, players, courtList(settings), first, settings.autoAssign !== false, settings.fixedCourt === true, { strong: strongRule(settings), now });
 }
 
 /** ผู้เล่นคนนี้รอลงสนามไหน (แอดมินจัดไว้ หรือระบบจัดอัตโนมัติ) */
@@ -365,9 +428,9 @@ export function queueByCourt(queue: QueueEntry[], plan: Map<number, CourtNext>):
  * คู่ที่จะลงสนามต่อทันทีหลังเกมนี้จบ (null = ไม่ลงต่อ)
  * lastRound: แอดมินกำลังจะจบก๊วน กดผลได้เลยโดยไม่ลงคู่ถัดไป (ไม่สร้างเกมใหม่ ไม่เพิ่มค่าลูก)
  */
-export function autoNext(day: Day, players: Player[], courts: number[], game: { id: string; court: number }, lastRound = false, auto = true, fixed = false): CourtNext | null {
+export function autoNext(day: Day, players: Player[], courts: number[], game: { id: string; court: number }, lastRound = false, auto = true, fixed = false, opts: MatchOptions = {}): CourtNext | null {
   if (lastRound || !courts.includes(game.court)) return null;
-  const next = courtPlan(day, players, courts, game.court, auto, fixed).get(game.court);
+  const next = courtPlan(day, players, courts, game.court, auto, fixed, opts).get(game.court);
   return next && queueBlockers(day, next, game.id).length === 0 ? next : null;
 }
 

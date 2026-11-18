@@ -13,7 +13,7 @@ export interface TurnSoon {
  * ใช้ลำดับเดียวกับที่หน้าสนามและกระดิ่งแสดง (courtPlan): คู่แรกในคิวของสนาม หรือคู่ที่ระบบจัดให้รอสนามนั้น
  * แจ้งเฉพาะสนามที่ยังมีเกมเล่นอยู่ (= อีก 1 เกม) และเฉพาะคนที่กำลังรอ (ไม่พัก ไม่กลับบ้าน ไม่อยู่บนสนามอื่น)
  */
-export function turnSoon(day: Day, players: Player[], settings: Pick<Settings, "courtCount" | "courtNumbers" | "autoAssign" | "fixedCourt" | "lastRoundDate">): TurnSoon[] {
+export function turnSoon(day: Day, players: Player[], settings: Pick<Settings, "courtCount" | "courtNumbers" | "autoAssign" | "fixedCourt" | "strongGroup" | "lastRoundDate">): TurnSoon[] {
   // รอบสุดท้าย: ไม่มีคู่ต่อไปลงสนาม ไม่ต้องเตือนว่าใกล้ถึงคิว
   if (lastRoundOf(settings, day.date)) return [];
   const busy = new Set(day.games.filter((g) => !g.endedAt).map((g) => g.court));
@@ -37,7 +37,7 @@ export interface MyTurn {
   key: string;
 }
 
-export function myTurn(day: Day, players: Player[], settings: Pick<Settings, "courtCount" | "courtNumbers" | "autoAssign" | "fixedCourt" | "lastRoundDate">, playerId: string, now = Date.now()): MyTurn | null {
+export function myTurn(day: Day, players: Player[], settings: Pick<Settings, "courtCount" | "courtNumbers" | "autoAssign" | "fixedCourt" | "strongGroup" | "lastRoundDate">, playerId: string, now = Date.now()): MyTurn | null {
   // ถึงคิวลงสนามแล้ว: เกมที่เพิ่งเริ่ม (ไม่เกิน 3 นาที)
   const g = day.games.find((x) => !x.endedAt && x.playerIds.includes(playerId));
   if (g) return now - g.startedAt < 3 * 60 * 1000 ? { kind: "play", court: g.court, key: `play:${g.id}` } : null;

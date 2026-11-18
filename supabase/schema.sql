@@ -284,6 +284,7 @@ create table if not exists public.settings (
   fixed_court boolean default false not null,
   start_delay smallint default 20 not null check (start_delay between -1 and 600),
   last_round_date date,
+  strong_group jsonb default '{"on": true, "level": 4, "fromGame": 2, "waitMin": 10}'::jsonb not null,
   constraint settings_pkey PRIMARY KEY (id)
 );
 

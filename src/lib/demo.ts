@@ -1,4 +1,4 @@
-import { nextMatch } from "./matchmaking";
+import { nextMatch, strongRule } from "./matchmaking";
 import { prepare, reducer, today, type State } from "./state";
 import { DEFAULT_SETTINGS, type Level, type Player } from "./types";
 
@@ -85,7 +85,7 @@ export function demoState(): State {
   // จัดคนลงด้วยระบบจริง (nextMatch) ทุกเกม: ลงสนาม / จบเกมพร้อมผล ตามลำดับเวลา
   const dayOf = (d: string) => s.days.find((x) => x.date === d)!;
   const start = (d: string, court: number, at: number) => {
-    const four = nextMatch(dayOf(d), s.players);
+    const four = nextMatch(dayOf(d), s.players, 12, [], { strong: strongRule(s.settings), now: at });
     if (four) run({ type: "startGame", date: d, court, playerIds: four }, at);
   };
   const end = (d: string, court: number, winner: "A" | "B", shuttles: number, at: number) => {
@@ -95,7 +95,7 @@ export function demoState(): State {
     run({ type: "endGame", date: d, gameId: g.id, winner }, at);
   };
   const queue = (court: number, at: number) => {
-    const four = nextMatch(dayOf(date), s.players);
+    const four = nextMatch(dayOf(date), s.players, 12, [], { strong: strongRule(s.settings), now: at });
     if (four) run({ type: "queueGame", date, court, playerIds: four }, at);
   };
   const min = (m: number) => now - m * 60000;
