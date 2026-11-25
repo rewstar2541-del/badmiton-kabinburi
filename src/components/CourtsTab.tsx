@@ -557,15 +557,16 @@ export function CourtsTab() {
           </button>
         </div>
       )}
-      <div className="grid gap-3 sm:grid-cols-2">
+      {/* grid-cols-1 = minmax(0,1fr): การ์ดกว้างไม่เกินจอ (ไม่งั้นชื่อยาว/ตัวหนังสือใหญ่ดันการ์ดล้นขวา) */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {courts.map((c) => {
           const g = active.get(c);
           return (
             <Card key={c}>
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="font-display text-lg font-semibold">{t("สนาม {n}", { n: c })}</h3>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h3 className="min-w-0 font-display text-lg font-semibold">{t("สนาม {n}", { n: c })}</h3>
                 <span
-                  className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+                  className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${
                     g ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"
                   }`}
                 >
@@ -898,15 +899,16 @@ function PlayerCourts() {
       <MyRestCard />
 
       <SectionTitle right={t("ว่าง {n} สนาม", { n: courts.length - active.size })}>{t("สนามทั้งหมด")}</SectionTitle>
-      <div className="grid gap-3 sm:grid-cols-2">
+      {/* grid-cols-1 = minmax(0,1fr): การ์ดกว้างไม่เกินจอ (ไม่งั้นชื่อยาว/ตัวหนังสือใหญ่ดันการ์ดล้นขวา) */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {courts.map((c) => {
           const g = active.get(c);
           return (
             <Card key={c}>
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="font-display text-lg font-semibold">{t("สนาม {n}", { n: c })}</h3>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h3 className="min-w-0 font-display text-lg font-semibold">{t("สนาม {n}", { n: c })}</h3>
                 <span
-                  className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+                  className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${
                     g ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"
                   }`}
                 >

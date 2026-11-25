@@ -331,20 +331,21 @@ function Schedule({ t: tr, mine, dark, limit = 12 }: { t: Tourney; mine?: string
 function CourtsGrid({ t: tr, onPick, cols }: { t: Tourney; cols?: number; onPick?: (m: TMatch) => void }) {
   const on = onCourt(tr);
   if (cols) return <DarkCourts t={tr} cols={cols} />;
+  // grid-cols-1 = minmax(0,1fr): การ์ดกว้างไม่เกินจอ (ไม่งั้นชื่อยาว/ตัวหนังสือใหญ่ดันการ์ดล้นขวา)
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {Array.from({ length: tr.courts }, (_, i) => i + 1).map((c) => {
         const m = on.find((x) => x.court === c);
         const Box = onPick && m ? "button" : "div";
         const cur = m ? (m.games.length ? m.games[m.games.length - 1] : [0, 0]) : null;
         return (
           <Card key={c} className="text-zinc-900">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-display text-lg font-semibold">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className="min-w-0 font-display text-lg font-semibold">
                 {t("สนาม {n}", { n: c })}
                 {m && <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-bold">{divOf(tr, m.divId).code}</span>}
               </h3>
-              <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${m ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"}`}>
+              <span className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${m ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"}`}>
                 <span className={`size-1.5 rounded-full ${m ? "animate-pulse bg-emerald-500" : "bg-zinc-400"}`} />
                 {m ? (m.no ? t("แมตช์ {n}", { n: m.no }) : t("กำลังเล่น")) : t("ว่าง")}
               </span>
