@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { nextMatch } from "../matchmaking";
-import { activePairs, canSelfCheckIn, gameHistory, partnerStats, signupQueue, waitingPosition } from "../social";
+import { activePairs, canSelfCheckIn, gameHistory, headToHead, partnerStats, signupQueue, waitingPosition } from "../social";
 import { EMPTY_STATE, type State } from "../state";
 import type { Day, Player } from "../types";
 
@@ -43,6 +43,32 @@ describe("partner stats", () => {
     expect(s.partners[0]).toEqual({ id: "b", games: 2, wins: 2 });
     // y: เจอ 2 แพ้ 1, c: เจอ 1 แพ้ 1 (แพ้เท่ากัน คนที่เจอบ่อยกว่าขึ้นก่อน)
     expect(s.rivals.slice(0, 2)).toEqual([{ id: "y", games: 2, wins: 1 }, { id: "c", games: 1, wins: 0 }]);
+  });
+});
+
+describe("head to head", () => {
+  it("counts games, wins and losses with each partner and against each rival", () => {
+    const g = (i: number, ids: [string, string, string, string], extra: Record<string, unknown> = {}) => ({ id: "g" + i, court: 1, playerIds: ids, startedAt: i, shuttles: 1, endedAt: i + 1, ...extra });
+    const state: State = {
+      ...EMPTY_STATE,
+      days: [
+        { date: "2026-10-01", checkIns: [], drinks: [], games: [
+          g(1, ["me", "b", "x", "y"], { winner: "A" }),
+          g(2, ["x", "y", "me", "b"], { winner: "A" }),
+          g(3, ["me", "x", "b", "y"]), // จบไม่บันทึกผล: นับเกม ไม่นับชนะแพ้
+          g(4, ["me", "c", "x", "y"], { draw: true }),
+          { id: "g5", court: 2, playerIds: ["me", "b", "x", "y"], startedAt: 9, shuttles: 1 }, // ยังเล่นอยู่: ไม่นับ
+        ] },
+      ],
+    } as State;
+    const h = new Map(headToHead(state, "me").map((x) => [x.id, x]));
+    expect(h.get("b")).toEqual({ id: "b", with: { games: 2, wins: 1, losses: 1 }, vs: { games: 1, wins: 0, losses: 0 } });
+    expect(h.get("x")).toEqual({ id: "x", with: { games: 1, wins: 0, losses: 0 }, vs: { games: 3, wins: 1, losses: 1 } });
+    expect(h.get("c")?.with).toEqual({ games: 1, wins: 0, losses: 0 });
+    expect(h.has("me")).toBe(false);
+    // เล่นด้วยกันบ่อยสุดขึ้นก่อน
+    expect(headToHead(state, "me")[0].id).toBe("y");
+    expect(headToHead(state, "nobody")).toEqual([]);
   });
 });
 

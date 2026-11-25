@@ -145,23 +145,23 @@ function ActiveCourt({ game, byId, date, now, lastRound = false }: { game: Game;
         )}
         {auth.isAdmin && <div className="flex items-center gap-1 rounded-full bg-zinc-100 p-1">
           <button
-            className="grid size-8 place-items-center rounded-full bg-white shadow-sm active:scale-95"
+            className="grid size-11 place-items-center rounded-full bg-white shadow-sm active:scale-95 disabled:opacity-40"
             onClick={() => setShuttles(game.shuttles - 1)}
             disabled={game.shuttles <= minShuttles(game)}
             aria-label={t("ลดลูก")}
           >
-            <Icon.Minus width={16} height={16} />
+            <Icon.Minus width={20} height={20} />
           </button>
-          <span className="flex min-w-14 items-center justify-center gap-1 font-display font-semibold">
-            <Icon.Shuttle width={16} height={16} />
+          <span className="flex min-w-14 items-center justify-center gap-1 font-display text-lg font-semibold tabular-nums">
+            <Icon.Shuttle width={18} height={18} />
             {game.shuttles}
           </span>
           <button
-            className="grid size-8 place-items-center rounded-full bg-white shadow-sm active:scale-95"
+            className="grid size-11 place-items-center rounded-full bg-white shadow-sm active:scale-95 disabled:opacity-40"
             onClick={() => setShuttles(game.shuttles + 1)}
             aria-label={t("เพิ่มลูก")}
           >
-            <Icon.Plus width={16} height={16} />
+            <Icon.Plus width={20} height={20} />
           </button>
         </div>}
       </div>
@@ -181,12 +181,18 @@ function ActiveCourt({ game, byId, date, now, lastRound = false }: { game: Game;
         </Button>
       </div>
       {subbing && <SubPlayer game={game} onClose={() => setSubbing(false)} />}
-      <div className="flex justify-center gap-4 text-xs text-zinc-400">
-        <button className="underline-offset-2 active:underline" onClick={() => end()}>
+      {/* ปุ่มใหญ่พอให้แตะง่าย แต่ถามยืนยันก่อน กันแตะพลาดกลางเกม */}
+      <div className="grid grid-cols-2 gap-2 text-sm">
+        <button
+          className="min-h-11 rounded-full px-3 py-1.5 leading-tight font-medium text-zinc-600 ring-1 ring-zinc-200 active:scale-95 active:bg-zinc-100"
+          onClick={() => {
+            if (confirm(t("จบเกมสนาม {n} โดยไม่บันทึกผลแพ้ชนะ? ค่าลูกยังคิดตามปกติ", { n: game.court }))) end();
+          }}
+        >
           {t("จบไม่บันทึกผล")}
         </button>
         <button
-          className="text-red-500 underline-offset-2 active:underline"
+          className="min-h-11 rounded-full px-3 py-1.5 leading-tight font-medium text-red-600 ring-1 ring-zinc-200 active:scale-95 active:bg-red-50"
           onClick={() => {
             if (confirm(t("ยกเลิกเกมนี้? (ไม่คิดค่าลูก)"))) dispatch({ type: "cancelGame", date, gameId: game.id });
           }}

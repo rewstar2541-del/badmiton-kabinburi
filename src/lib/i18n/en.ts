@@ -1664,4 +1664,12 @@ export const en: Record<string, string> = {
   "มือตึง = ระดับนี้ขึ้นไป": "Strong = this level and up",
   "ลงด้วยกันตั้งแต่เกมที่": "Play together from game",
   "รอเกินนี้ ลงกับระดับต่ำลงมาได้": "Can drop a level after waiting",
+  "จบเกมสนาม {n} โดยไม่บันทึกผลแพ้ชนะ? ค่าลูกยังคิดตามปกติ": "End the game on court {n} without recording who won? Shuttles are still charged as usual.",
+  "ชนะ {n}": "Won {n}",
+  "แพ้ {n}": "Lost {n}",
+  "เจอกันกับใครบ้าง": "Head-to-head",
+  "{n} คน · นับจากเกมที่จบแล้ว ชนะ/แพ้นับเฉพาะเกมที่บันทึกผล": "{n} players · from finished games. Wins/losses only count games with a result.",
+  "ตีคู่กัน {n} เกม": "Partners in {n} games",
+  "เจอกัน {n} เกม": "Opponents in {n} games",
+  "ดูเพิ่ม ({n} คน)": "Show more ({n} players)",
 };

@@ -56,6 +56,51 @@ export function partnerStats(state: State, playerId: string): { partners: MateSt
   return { partners: [...partners.values()].sort(byWins), rivals: [...rivals.values()].sort(byLosses), decided };
 }
 
+export interface Record3 {
+  games: number;
+  wins: number;
+  losses: number;
+}
+
+export interface HeadToHead {
+  id: string;
+  /** ตีคู่กัน (ทีมเดียวกัน) */
+  with: Record3;
+  /** เจอกัน (อยู่คนละทีม) */
+  vs: Record3;
+}
+
+/**
+ * สถิติเจอกัน: คนนี้เคยตีคู่กับใคร/เจอใครกี่เกม ชนะแพ้เท่าไร
+ * นับเฉพาะเกมที่จบแล้ว (เกมที่ไม่ได้กดผล/เสมอ นับเป็นเกม แต่ไม่นับชนะแพ้)
+ * เรียงคนที่เล่นด้วยกันบ่อยสุดก่อน
+ */
+export function headToHead(state: State, playerId: string): HeadToHead[] {
+  const m = new Map<string, HeadToHead>();
+  const rec = (id: string) => {
+    let x = m.get(id);
+    if (!x) m.set(id, (x = { id, with: { games: 0, wins: 0, losses: 0 }, vs: { games: 0, wins: 0, losses: 0 } }));
+    return x;
+  };
+  const tally = (r: Record3, result: "win" | "loss" | null) => {
+    r.games++;
+    if (result === "win") r.wins++;
+    else if (result === "loss") r.losses++;
+  };
+  for (const d of state.days)
+    for (const g of d.games) {
+      const i = g.playerIds.indexOf(playerId);
+      if (i < 0 || !g.endedAt) continue;
+      const teamA = i < 2;
+      const result = g.winner ? ((g.winner === "A") === teamA ? "win" : "loss") : null;
+      const mate = g.playerIds[teamA ? 1 - i : 5 - i];
+      if (mate && mate !== playerId) tally(rec(mate).with, result);
+      for (const o of teamA ? g.playerIds.slice(2) : g.playerIds.slice(0, 2)) if (o && o !== playerId) tally(rec(o).vs, result);
+    }
+  const total = (x: HeadToHead) => x.with.games + x.vs.games;
+  return [...m.values()].sort((a, b) => total(b) - total(a) || b.vs.games - a.vs.games || a.id.localeCompare(b.id));
+}
+
 export type GameResult = "win" | "loss" | "draw" | "playing" | "unknown";
 
 export interface HistoryGame {
