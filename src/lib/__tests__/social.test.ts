@@ -62,9 +62,9 @@ describe("head to head", () => {
       ],
     } as State;
     const h = new Map(headToHead(state, "me").map((x) => [x.id, x]));
-    expect(h.get("b")).toEqual({ id: "b", with: { games: 2, wins: 1, losses: 1 }, vs: { games: 1, wins: 0, losses: 0 } });
-    expect(h.get("x")).toEqual({ id: "x", with: { games: 1, wins: 0, losses: 0 }, vs: { games: 3, wins: 1, losses: 1 } });
-    expect(h.get("c")?.with).toEqual({ games: 1, wins: 0, losses: 0 });
+    expect(h.get("b")).toEqual({ id: "b", with: { games: 2, wins: 1, losses: 1, draws: 0 }, vs: { games: 1, wins: 0, losses: 0, draws: 0 } });
+    expect(h.get("x")).toEqual({ id: "x", with: { games: 1, wins: 0, losses: 0, draws: 0 }, vs: { games: 3, wins: 1, losses: 1, draws: 1 } });
+    expect(h.get("c")?.with).toEqual({ games: 1, wins: 0, losses: 0, draws: 1 });
     expect(h.has("me")).toBe(false);
     // เล่นด้วยกันบ่อยสุดขึ้นก่อน
     expect(headToHead(state, "me")[0].id).toBe("y");

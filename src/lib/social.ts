@@ -60,6 +60,7 @@ export interface Record3 {
   games: number;
   wins: number;
   losses: number;
+  draws: number;
 }
 
 export interface HeadToHead {
@@ -72,27 +73,28 @@ export interface HeadToHead {
 
 /**
  * สถิติเจอกัน: คนนี้เคยตีคู่กับใคร/เจอใครกี่เกม ชนะแพ้เท่าไร
- * นับเฉพาะเกมที่จบแล้ว (เกมที่ไม่ได้กดผล/เสมอ นับเป็นเกม แต่ไม่นับชนะแพ้)
+ * นับเฉพาะเกมที่จบแล้ว (เกมที่ไม่ได้กดผล นับเป็นเกม แต่ไม่นับชนะแพ้เสมอ)
  * เรียงคนที่เล่นด้วยกันบ่อยสุดก่อน
  */
 export function headToHead(state: State, playerId: string): HeadToHead[] {
   const m = new Map<string, HeadToHead>();
   const rec = (id: string) => {
     let x = m.get(id);
-    if (!x) m.set(id, (x = { id, with: { games: 0, wins: 0, losses: 0 }, vs: { games: 0, wins: 0, losses: 0 } }));
+    if (!x) m.set(id, (x = { id, with: { games: 0, wins: 0, losses: 0, draws: 0 }, vs: { games: 0, wins: 0, losses: 0, draws: 0 } }));
     return x;
   };
-  const tally = (r: Record3, result: "win" | "loss" | null) => {
+  const tally = (r: Record3, result: "win" | "loss" | "draw" | null) => {
     r.games++;
     if (result === "win") r.wins++;
     else if (result === "loss") r.losses++;
+    else if (result === "draw") r.draws++;
   };
   for (const d of state.days)
     for (const g of d.games) {
       const i = g.playerIds.indexOf(playerId);
       if (i < 0 || !g.endedAt) continue;
       const teamA = i < 2;
-      const result = g.winner ? ((g.winner === "A") === teamA ? "win" : "loss") : null;
+      const result = g.winner ? ((g.winner === "A") === teamA ? "win" : "loss") : g.draw ? "draw" : null;
       const mate = g.playerIds[teamA ? 1 - i : 5 - i];
       if (mate && mate !== playerId) tally(rec(mate).with, result);
       for (const o of teamA ? g.playerIds.slice(2) : g.playerIds.slice(0, 2)) if (o && o !== playerId) tally(rec(o).vs, result);

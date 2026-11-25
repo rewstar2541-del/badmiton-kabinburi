@@ -1668,8 +1668,9 @@ export const en: Record<string, string> = {
   "ชนะ {n}": "Won {n}",
   "แพ้ {n}": "Lost {n}",
   "เจอกันกับใครบ้าง": "Head-to-head",
-  "{n} คน · นับจากเกมที่จบแล้ว ชนะ/แพ้นับเฉพาะเกมที่บันทึกผล": "{n} players · from finished games. Wins/losses only count games with a result.",
-  "ตีคู่กัน {n} เกม": "Partners in {n} games",
-  "เจอกัน {n} เกม": "Opponents in {n} games",
-  "ดูเพิ่ม ({n} คน)": "Show more ({n} players)",
+  "ตีคู่กัน {n} เกม": "As partners: {n}",
+  "เจอกัน {n} เกม": "As opponents: {n}",
+  "ดูเพิ่ม ({n} คน)": "Show {n} more",
+  "{n} คน · ชนะ/แพ้ คือผลของ {name}": "{n} players · wins/losses are {name}'s results",
+  "รวม {n} เกม": "{n} total",
 };

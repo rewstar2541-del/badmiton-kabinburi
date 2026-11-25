@@ -96,29 +96,39 @@ function HeadToHeadList({ player }: { player: Player }) {
   const list = headToHead(state, player.id);
   const byId = new Map(state.players.map((p) => [p.id, p]));
   if (list.length === 0) return null;
+  // ตัวเลข 0 เป็นสีเทา ไม่ให้ตาไปจับที่ 0
+  const num = (text: string, n: number, tone: string) => <span className={`font-semibold ${n ? tone : "text-zinc-500"}`}>{text}</span>;
   const line = (label: string, r: Record3) =>
     r.games > 0 && (
-      <div className="flex flex-wrap items-baseline gap-x-2 text-[13px] leading-snug">
+      <div className="flex flex-wrap items-baseline gap-x-2 text-sm leading-snug">
         <span className="text-zinc-600">{label}</span>
-        {r.wins + r.losses > 0 ? (
+        {r.wins + r.losses + r.draws > 0 ? (
           <span className="tabular-nums">
-            <span className="font-semibold text-emerald-700">{t("ชนะ {n}", { n: r.wins })}</span>
+            {num(t("ชนะ {n}", { n: r.wins }), r.wins, "text-emerald-700")}
             <span className="text-zinc-400"> · </span>
-            <span className="font-semibold text-red-600">{t("แพ้ {n}", { n: r.losses })}</span>
+            {num(t("แพ้ {n}", { n: r.losses }), r.losses, "text-red-600")}
+            {r.draws > 0 && (
+              <>
+                <span className="text-zinc-400"> · </span>
+                {num(t("เสมอ {n}", { n: r.draws }), r.draws, "text-zinc-700")}
+              </>
+            )}
           </span>
         ) : (
           <span className="text-zinc-500">{t("ไม่มีผล")}</span>
         )}
       </div>
     );
+  // เหลืออีกไม่กี่คนก็แสดงทั้งหมดเลย ไม่ต้องกดดูเพิ่ม
+  const visible = list.length <= shown + 3 ? list : list.slice(0, shown);
   return (
     <Card className="space-y-3">
       <div>
         <h4 className="text-sm font-semibold">{t("เจอกันกับใครบ้าง")}</h4>
-        <p className="text-xs text-zinc-500">{t("{n} คน · นับจากเกมที่จบแล้ว ชนะ/แพ้นับเฉพาะเกมที่บันทึกผล", { n: list.length })}</p>
+        <p className="text-xs text-zinc-500">{t("{n} คน · ชนะ/แพ้ คือผลของ {name}", { n: list.length, name: player.name })}</p>
       </div>
       <ul className="divide-y divide-zinc-100">
-        {list.slice(0, shown).map((x) => {
+        {visible.map((x) => {
           const p = byId.get(x.id);
           const nm = p?.name ?? t("ผู้เล่นที่ออกแล้ว");
           return (
@@ -127,7 +137,7 @@ function HeadToHeadList({ player }: { player: Player }) {
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
                   <span className="min-w-0 flex-1 truncate text-sm font-semibold">{nm}</span>
-                  <span className="shrink-0 text-xs text-zinc-500 tabular-nums">{t("{n} เกม", { n: x.with.games + x.vs.games })}</span>
+                  {x.with.games > 0 && x.vs.games > 0 && <span className="shrink-0 text-xs text-zinc-500 tabular-nums">{t("รวม {n} เกม", { n: x.with.games + x.vs.games })}</span>}
                 </div>
                 {line(t("ตีคู่กัน {n} เกม", { n: x.with.games }), x.with)}
                 {line(t("เจอกัน {n} เกม", { n: x.vs.games }), x.vs)}
@@ -136,7 +146,7 @@ function HeadToHeadList({ player }: { player: Player }) {
           );
         })}
       </ul>
-      {shown < list.length && (
+      {visible.length < list.length && (
         <Button onClick={() => setShown((n) => n + H2H_PAGE * 2)} className="w-full">
           {t("ดูเพิ่ม ({n} คน)", { n: list.length - shown })}
         </Button>

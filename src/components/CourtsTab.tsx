@@ -173,7 +173,7 @@ function ActiveCourt({ game, byId, date, now, lastRound = false }: { game: Game;
         <Button variant="accent" onClick={() => end("A")} className="flex items-center justify-center gap-1.5 !px-2">
           <Icon.Trophy width={16} height={16} /> {t("ทีม {team} ชนะ", { team: "A" })}
         </Button>
-        <Button onClick={() => end(undefined, true)} className="!bg-zinc-100 !px-4 text-zinc-700">
+        <Button onClick={() => end(undefined, true)} className="!px-4 text-zinc-700">
           {t("เสมอ")}
         </Button>
         <Button onClick={() => end("B")} className="flex items-center justify-center gap-1.5 !bg-sky-300 !px-2 text-ink">
