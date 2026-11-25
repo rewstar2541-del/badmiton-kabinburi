@@ -557,7 +557,8 @@ export function CourtsTab() {
           </button>
         </div>
       )}
-      <div className="grid gap-3 sm:grid-cols-2">
+      {/* grid-cols-1 = minmax(0,1fr): การ์ดกว้างไม่เกินจอ (ไม่งั้นชื่อยาว/ตัวหนังสือใหญ่ดันการ์ดล้นขวา) */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {courts.map((c) => {
           const g = active.get(c);
           return (
@@ -898,7 +899,8 @@ function PlayerCourts() {
       <MyRestCard />
 
       <SectionTitle right={t("ว่าง {n} สนาม", { n: courts.length - active.size })}>{t("สนามทั้งหมด")}</SectionTitle>
-      <div className="grid gap-3 sm:grid-cols-2">
+      {/* grid-cols-1 = minmax(0,1fr): การ์ดกว้างไม่เกินจอ (ไม่งั้นชื่อยาว/ตัวหนังสือใหญ่ดันการ์ดล้นขวา) */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {courts.map((c) => {
           const g = active.get(c);
           return (

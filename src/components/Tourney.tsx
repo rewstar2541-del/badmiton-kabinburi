@@ -331,8 +331,9 @@ function Schedule({ t: tr, mine, dark, limit = 12 }: { t: Tourney; mine?: string
 function CourtsGrid({ t: tr, onPick, cols }: { t: Tourney; cols?: number; onPick?: (m: TMatch) => void }) {
   const on = onCourt(tr);
   if (cols) return <DarkCourts t={tr} cols={cols} />;
+  // grid-cols-1 = minmax(0,1fr): การ์ดกว้างไม่เกินจอ (ไม่งั้นชื่อยาว/ตัวหนังสือใหญ่ดันการ์ดล้นขวา)
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {Array.from({ length: tr.courts }, (_, i) => i + 1).map((c) => {
         const m = on.find((x) => x.court === c);
         const Box = onPick && m ? "button" : "div";
