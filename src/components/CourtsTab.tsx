@@ -169,7 +169,7 @@ function ActiveCourt({ game, byId, date, now, lastRound = false }: { game: Game;
         <>
 
       {/* เสมออยู่ตรงกลางระหว่างทีม A กับทีม B */}
-      <div className="grid grid-cols-[1fr_auto_1fr] gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-2">
         <Button variant="accent" onClick={() => end("A")} className="flex items-center justify-center gap-1.5 !px-2">
           <Icon.Trophy width={16} height={16} /> {t("ทีม {team} ชนะ", { team: "A" })}
         </Button>
@@ -408,7 +408,7 @@ function EndSessionSheet({ games, byId, queued, onClose, onDone }: { games: Game
               <CourtSide ids={g.playerIds.slice(0, 2)} byId={byId} team="A" compact />
               <CourtSide ids={g.playerIds.slice(2)} byId={byId} team="B" compact />
             </div>
-            <div className="grid grid-cols-[1fr_auto_1fr] gap-2">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-2">
               {opt(g, "A", t("ทีม {team} ชนะ", { team: "A" }), "bg-lime text-ink", "bg-lime/35 text-ink")}
               {opt(g, "draw", t("เสมอ"), "bg-zinc-300 text-ink", "bg-zinc-100 text-zinc-700 ring-1 ring-zinc-300")}
               {opt(g, "B", t("ทีม {team} ชนะ", { team: "B" }), "bg-sky-300 text-ink", "bg-sky-300/35 text-ink")}
@@ -557,11 +557,12 @@ export function CourtsTab() {
           </button>
         </div>
       )}
-      <div className="grid gap-3 sm:grid-cols-2">
+      {/* grid-cols-1 = minmax(0,1fr): การ์ดสนามกว้างไม่เกินจอ แม้ชื่อยาว/อีโมจิ */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {courts.map((c) => {
           const g = active.get(c);
           return (
-            <Card key={c}>
+            <Card key={c} className="min-w-0">
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="font-display text-lg font-semibold">{t("สนาม {n}", { n: c })}</h3>
                 <span
@@ -751,14 +752,14 @@ function SelfReport({ game, playerId, onDone }: { game: Game; playerId: string; 
   return (
     <div className="space-y-2">
       <p className="text-center text-sm text-zinc-500">{busy ? t("กำลังบันทึก...") : t("เล่นจบแล้ว? กดผลได้เลย")}</p>
-      <div className="grid grid-cols-[1fr_auto_1fr] gap-3">
-        <Button variant="accent" disabled={busy} onClick={() => send("win")} className="flex items-center justify-center gap-1.5 !px-2 whitespace-nowrap">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-3">
+        <Button variant="accent" disabled={busy} onClick={() => send("win")} className="flex items-center justify-center gap-1.5 !px-2">
           <Icon.Trophy width={16} height={16} /> {label.win}
         </Button>
         <Button variant="secondary" disabled={busy} onClick={() => send("draw")} className="!px-4">
           {label.draw}
         </Button>
-        <Button variant="danger" disabled={busy} onClick={() => send("lose")} className="!px-2 whitespace-nowrap">
+        <Button variant="danger" disabled={busy} onClick={() => send("lose")} className="!px-2">
           {label.lose}
         </Button>
       </div>
@@ -898,11 +899,12 @@ function PlayerCourts() {
       <MyRestCard />
 
       <SectionTitle right={t("ว่าง {n} สนาม", { n: courts.length - active.size })}>{t("สนามทั้งหมด")}</SectionTitle>
-      <div className="grid gap-3 sm:grid-cols-2">
+      {/* grid-cols-1 = minmax(0,1fr): การ์ดสนามกว้างไม่เกินจอ แม้ชื่อยาว/อีโมจิ */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {courts.map((c) => {
           const g = active.get(c);
           return (
-            <Card key={c}>
+            <Card key={c} className="min-w-0">
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="font-display text-lg font-semibold">{t("สนาม {n}", { n: c })}</h3>
                 <span
