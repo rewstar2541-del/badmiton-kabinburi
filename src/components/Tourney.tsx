@@ -332,7 +332,7 @@ function CourtsGrid({ t: tr, onPick, cols }: { t: Tourney; cols?: number; onPick
   const on = onCourt(tr);
   if (cols) return <DarkCourts t={tr} cols={cols} />;
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 [&>*]:min-w-0">
       {Array.from({ length: tr.courts }, (_, i) => i + 1).map((c) => {
         const m = on.find((x) => x.court === c);
         const Box = onPick && m ? "button" : "div";
