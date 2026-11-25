@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { locale, t } from "@/lib/i18n";
-import { gameHistory, partnerStats, type GameResult, type HistoryGame, type MateStat } from "@/lib/social";
+import { gameHistory, headToHead, partnerStats, type GameResult, type HistoryGame, type MateStat, type Record3 } from "@/lib/social";
 import { useStore } from "@/lib/store";
 import type { Player } from "@/lib/types";
 import { Avatar, Button, Card, Icon } from "./ui";
@@ -56,6 +56,7 @@ function Mates({ player }: { player: Player }) {
   const partners = s.partners.filter((m) => m.wins > 0).slice(0, 3);
   const rivals = s.rivals.filter((m) => m.games > m.wins).slice(0, 3);
   return (
+    <div className="space-y-4">
     <Card className="space-y-3">
       {s.decided > 0 && <p className="text-xs text-zinc-500">{t("จาก {n} เกมที่บันทึกผล", { n: s.decided })}</p>}
       {s.decided === 0 ? (
@@ -79,6 +80,76 @@ function Mates({ player }: { player: Player }) {
             )}
           </div>
         </>
+      )}
+    </Card>
+    <HeadToHeadList player={player} />
+    </div>
+  );
+}
+
+const H2H_PAGE = 10;
+
+/** เจอกันทั้งหมด: ตีคู่กับใคร/เจอใครกี่เกม ชนะแพ้เท่าไร (จากประวัติเกมที่จบแล้ว) */
+function HeadToHeadList({ player }: { player: Player }) {
+  const { state } = useStore();
+  const [shown, setShown] = useState(H2H_PAGE);
+  const list = headToHead(state, player.id);
+  const byId = new Map(state.players.map((p) => [p.id, p]));
+  if (list.length === 0) return null;
+  // ตัวเลข 0 เป็นสีเทา ไม่ให้ตาไปจับที่ 0
+  const num = (text: string, n: number, tone: string) => <span className={`font-semibold ${n ? tone : "text-zinc-500"}`}>{text}</span>;
+  const line = (label: string, r: Record3) =>
+    r.games > 0 && (
+      <div className="flex flex-wrap items-baseline gap-x-2 text-sm leading-snug">
+        <span className="text-zinc-600">{label}</span>
+        {r.wins + r.losses + r.draws > 0 ? (
+          <span className="tabular-nums">
+            {num(t("ชนะ {n}", { n: r.wins }), r.wins, "text-emerald-700")}
+            <span className="text-zinc-400"> · </span>
+            {num(t("แพ้ {n}", { n: r.losses }), r.losses, "text-red-600")}
+            {r.draws > 0 && (
+              <>
+                <span className="text-zinc-400"> · </span>
+                {num(t("เสมอ {n}", { n: r.draws }), r.draws, "text-zinc-700")}
+              </>
+            )}
+          </span>
+        ) : (
+          <span className="text-zinc-500">{t("ไม่มีผล")}</span>
+        )}
+      </div>
+    );
+  // เหลืออีกไม่กี่คนก็แสดงทั้งหมดเลย ไม่ต้องกดดูเพิ่ม
+  const visible = list.length <= shown + 3 ? list : list.slice(0, shown);
+  return (
+    <Card className="space-y-3">
+      <div>
+        <h4 className="text-sm font-semibold">{t("เจอกันกับใครบ้าง")}</h4>
+        <p className="text-xs text-zinc-500">{t("{n} คน · ชนะ/แพ้ คือผลของ {name}", { n: list.length, name: player.name })}</p>
+      </div>
+      <ul className="divide-y divide-zinc-100">
+        {visible.map((x) => {
+          const p = byId.get(x.id);
+          const nm = p?.name ?? t("ผู้เล่นที่ออกแล้ว");
+          return (
+            <li key={x.id} className="flex items-start gap-2.5 py-2.5 first:pt-0 last:pb-0">
+              <Avatar name={nm} photo={p?.photo} size={32} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-2">
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold">{nm}</span>
+                  {x.with.games > 0 && x.vs.games > 0 && <span className="shrink-0 text-xs text-zinc-500 tabular-nums">{t("รวม {n} เกม", { n: x.with.games + x.vs.games })}</span>}
+                </div>
+                {line(t("ตีคู่กัน {n} เกม", { n: x.with.games }), x.with)}
+                {line(t("เจอกัน {n} เกม", { n: x.vs.games }), x.vs)}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {visible.length < list.length && (
+        <Button onClick={() => setShown((n) => n + H2H_PAGE * 2)} className="w-full">
+          {t("ดูเพิ่ม ({n} คน)", { n: list.length - shown })}
+        </Button>
       )}
     </Card>
   );
