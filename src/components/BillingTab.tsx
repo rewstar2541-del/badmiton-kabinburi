@@ -15,6 +15,7 @@ import { SlipReview } from "./Slips";
 import { Avatar, Button, Card, Icon, SectionTitle, Sheet, baht, inputClass } from "./ui";
 import { Auto } from "@/lib/autoTranslate";
 import { PlayerGameShuttles } from "./GameShuttles";
+import { DrinkMenuButtons } from "./DrinkMenu";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -191,6 +192,7 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
         {drinks.map((d) => (
           <DrinkRow key={d.id} drink={d} date={date} />
         ))}
+        <DrinkMenuButtons menu={s.drinkMenu ?? []} onPick={(d) => dispatch({ type: "addDrink", date, playerId: player.id, amount: d.price, note: d.name })} />
         <form
           className="flex gap-2"
           onSubmit={(e) => {

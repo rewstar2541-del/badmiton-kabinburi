@@ -17,6 +17,7 @@ import { Auto } from "@/lib/autoTranslate";
 import { Button, Card, Icon, baht, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
 import { MyGames } from "./GameShuttles";
+import { DrinkMenuButtons } from "./DrinkMenu";
 
 /** หน้าสำหรับผู้เล่น: เลือกชื่อตัวเอง แล้วดูยอดที่ต้องจ่ายวันนี้ */
 export function MyBillTab() {
@@ -96,14 +97,15 @@ export function MyBillTab() {
 
 /** ผู้เล่นเพิ่มค่าน้ำเอง (แก้/ลบได้เฉพาะแอดมิน) */
 function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean; drinks: { id: string; amount: number; note: string }[] }) {
-  const { addMyDrink, removeMyDrink } = useStore();
+  const { state, addMyDrink, removeMyDrink } = useStore();
+  const menu = state.settings.drinkMenu ?? [];
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const add = async (n: number) => {
+  const add = async (n: number, note = "") => {
     if (!n || n <= 0) return;
     setBusy(true);
-    const err = await addMyDrink(playerId, savedPin.get(), n, "");
+    const err = await addMyDrink(playerId, savedPin.get(), n, note);
     setBusy(false);
     setError(err ? t(err) : "");
     if (!err) setAmount("");
@@ -136,13 +138,18 @@ function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean;
           )}
         </div>
       ))}
-      <div className="grid grid-cols-4 gap-2">
-        {[10, 15, 20, 25].map((n) => (
-          <Button key={n} disabled={busy} onClick={() => void add(n)}>
-            +{n}
-          </Button>
-        ))}
-      </div>
+      {/* แอดมินตั้งรายการน้ำไว้: กดชื่อน้ำได้เลย ไม่งั้นใช้ปุ่มราคาแบบเดิม */}
+      {menu.length ? (
+        <DrinkMenuButtons menu={menu} disabled={busy} onPick={(d) => void add(d.price, d.name)} />
+      ) : (
+        <div className="grid grid-cols-4 gap-2">
+          {[10, 15, 20, 25].map((n) => (
+            <Button key={n} disabled={busy} onClick={() => void add(n)}>
+              +{n}
+            </Button>
+          ))}
+        </div>
+      )}
       <form
         className="flex gap-2"
         onSubmit={(e) => {

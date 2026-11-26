@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { billFor } from "../billing";
-import { mergePrivate, rowsToState, type Rows } from "../remote";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { mergePrivate, reportGame, rowsToState, type Rows } from "../remote";
 import { prepare, reducer, EMPTY_STATE } from "../state";
-import { DEFAULT_SETTINGS, lastRoundOf } from "../types";
+import { DEFAULT_SETTINGS, DRINK_MENU_MAX, drinkMenuOf, lastRoundOf } from "../types";
 
 describe("rowsToState", () => {
   const state = rowsToState({
@@ -131,5 +132,43 @@ describe("รอบสุดท้ายเก็บในฐานข้อม�
     expect(lastRoundOf(on.settings, "2026-11-17")).toBe(true);
     expect(lastRoundOf(on.settings, "2026-11-18")).toBe(false);
     expect(reducer(on, { type: "setLastRound", date: "2026-11-17", on: false }).settings.lastRoundDate).toBeNull();
+  });
+});
+
+describe("รายการน้ำตั้งราคาไว้", () => {
+  const base = { court_count: 2, court_fee: 40, first_shuttle_fee: 30, next_shuttle_fee: 25, monthly_fee: 150, promptpay_id: "" };
+  const load = (settings: Record<string, unknown>) => rowsToState({ players: [], checkins: [], games: [], drinks: [], monthly: [], announcements: [], closed: [], prices: [], slips: [], signups: [], settings: { ...base, ...settings } } as unknown as Rows).settings;
+  it("อ่านรายการ ตัดชื่อว่างและราคาผิดออก ไม่มีคอลัมน์ = ยังไม่รัน SQL", () => {
+    expect(load({ drink_menu: [{ name: " น้ำเปล่า ", price: 10 }, { name: "", price: 20 }, { name: "แพง", price: 999 }, { name: "เกลือแร่", price: "20" }] }).drinkMenu).toEqual([
+      { name: "น้ำเปล่า", price: 10 },
+      { name: "เกลือแร่", price: 20 },
+    ]);
+    expect(load({ drink_menu: null }).drinkMenu).toEqual([]);
+    expect(load({}).drinkMenu).toBeUndefined();
+    expect(drinkMenuOf(Array.from({ length: 20 }, (_, i) => ({ name: `น้ำ ${i}`, price: 10 })))).toHaveLength(DRINK_MENU_MAX);
+  });
+});
+
+describe("ผู้เล่นกดผลพร้อมจำนวนลูก", () => {
+  const fake = (fail: boolean) => {
+    const calls: Record<string, unknown>[] = [];
+    const db = {
+      rpc: async (_: string, args: Record<string, unknown>) => {
+        calls.push(args);
+        return fail && "p_shuttles" in args ? { data: null, error: { code: "PGRST202", message: "not found" } } : { data: null, error: null };
+      },
+    } as unknown as SupabaseClient;
+    return { db, calls };
+  };
+  it("ส่งจำนวนลูกไปกับผล", async () => {
+    const { db, calls } = fake(false);
+    expect(await reportGame(db, "a", "pin", "g", "win", undefined, 2)).toBeNull();
+    expect(calls).toEqual([expect.objectContaining({ p_result: "win", p_shuttles: 2 })]);
+  });
+  it("ยังไม่รัน SQL report_shuttles.sql: บันทึกผลไปก่อนโดยไม่มีจำนวนลูก", async () => {
+    const { db, calls } = fake(true);
+    expect(await reportGame(db, "a", "pin", "g", "lose", undefined, 3)).toBeNull();
+    expect(calls).toHaveLength(2);
+    expect(calls[1]).not.toHaveProperty("p_shuttles");
   });
 });

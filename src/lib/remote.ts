@@ -2,7 +2,7 @@ import { isDemo } from "./demo";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Action, SelfAction, State } from "./state";
 import { endOf, startOf, type ClearKind } from "./clear";
-import { DEFAULT_SETTINGS, strongGroupOf, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Notice, type Gender, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Package, type Plan, type Player, type Settings, type Sub } from "./types";
+import { DEFAULT_SETTINGS, drinkMenuOf, strongGroupOf, type Day, type Expense, type Game, type PairStatus, type Poll, type BoardKind, type BoardPost, type Notice, type Gender, type Level, type AnnualPayment, type AnnualRule, type MonthlyPayments, type Package, type Plan, type Player, type Settings, type Sub } from "./types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -100,6 +100,7 @@ export interface Rows {
         start_delay?: number | null;
         last_round_date?: string | null;
         strong_group?: { on?: boolean; level?: number; fromGame?: number; waitMin?: number } | null;
+        drink_menu?: unknown;
       }
     | null;
 }
@@ -221,6 +222,8 @@ export function rowsToState(r: Rows): State {
         ...(s.last_round_date !== undefined ? { lastRoundDate: s.last_round_date ?? null } : {}),
         // ไม่มีคอลัมน์ = ยังไม่รัน SQL strong_group.sql (undefined) มือตึงล้วนใช้ค่าเริ่มต้น
         ...(s.strong_group !== undefined ? { strongGroup: strongGroupOf(s.strong_group) } : {}),
+        // ไม่มีคอลัมน์ = ยังไม่รัน SQL drink_menu.sql (undefined) ผู้เล่นใช้ปุ่มราคาแบบเดิม
+        ...(s.drink_menu !== undefined ? { drinkMenu: drinkMenuOf(s.drink_menu) } : {}),
       }
     : DEFAULT_SETTINGS;
 
@@ -367,8 +370,9 @@ export async function loadRows(db: SupabaseClient, isAdmin: boolean, keys?: Iter
       // สวิตช์ช่องทางรับเงินมาหลังรัน SQL payment_switches.sql ยังไม่รันให้โหลดแบบเดิม
       // เบอร์สนามมาหลังรัน SQL court_numbers.sql ยังไม่รันให้โหลดแบบเดิม
       // โหมดจัดคนลงอัตโนมัติมาหลังรัน SQL auto_assign.sql, โหมดรอสนามเดิมมาหลังรัน SQL fixed_court.sql, เวลาก่อนลงสนามมาหลังรัน SQL start_delay.sql
-      // รอบสุดท้ายมาหลังรัน SQL last_round.sql, มือตึงล้วนมาหลังรัน SQL strong_group.sql
-      const r = await all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign,fixed_court,start_delay,last_round_date,strong_group`).eq("id", 1))
+      // รอบสุดท้ายมาหลังรัน SQL last_round.sql, มือตึงล้วนมาหลังรัน SQL strong_group.sql, รายการน้ำมาหลังรัน SQL drink_menu.sql
+      const r = await all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign,fixed_court,start_delay,last_round_date,strong_group,drink_menu`).eq("id", 1))
+        .catch(() => all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign,fixed_court,start_delay,last_round_date,strong_group`).eq("id", 1)))
         .catch(() => all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign,fixed_court,start_delay,last_round_date`).eq("id", 1)))
         .catch(() => all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign,fixed_court,start_delay,strong_group`).eq("id", 1)))
         .catch(() => all(() => db.from("settings").select(`${cols},festival,promptpay_on,bank_on,court_numbers,auto_assign,fixed_court,start_delay`).eq("id", 1)))
@@ -713,10 +717,11 @@ export async function persist(db: SupabaseClient, a: Action, players: Player[] =
         ...(s.fixedCourt !== undefined ? { fixed_court: s.fixedCourt } : {}),
         ...(s.startDelay !== undefined ? { start_delay: s.startDelay } : {}),
         ...(s.strongGroup !== undefined ? { strong_group: s.strongGroup } : {}),
+        ...(s.drinkMenu !== undefined ? { drink_menu: s.drinkMenu } : {}),
       };
       let res = await db.from("settings").upsert(full);
       // ขาดหลายคอลัมน์ได้ (error บอกทีละคอลัมน์) ตัดคอลัมน์ที่ error พูดถึงออกไปเรื่อยๆ จนบันทึกได้
-      const late = ["strong_group", "start_delay", "fixed_court", "auto_assign", "court_numbers"];
+      const late = ["drink_menu", "strong_group", "start_delay", "fixed_court", "auto_assign", "court_numbers"];
       for (let col; res.error && (col = late.find((c) => c in full && res.error!.message.includes(c))); ) {
         full = Object.fromEntries(Object.entries(full).filter(([k]) => k !== col));
         res = await db.from("settings").upsert(full);
@@ -924,8 +929,11 @@ export async function selfService(db: SupabaseClient, action: SelfAction, player
 }
 
 /** ผู้เล่นในสนามกดผลเกมเอง แล้วให้คู่ถัดไปลงต่อ (ถ้าส่ง next มา) คืนข้อความผิดพลาด หรือ null */
-export async function reportGame(db: SupabaseClient, playerId: string, pin: string, gameId: string, result: "win" | "draw" | "lose", next?: { playerIds: string[]; queuedId?: string }) {
-  const { data, error } = await db.rpc("report_game", { p_player: playerId, p_pin: pin, p_game: gameId, p_result: result, p_next: next?.playerIds ?? null, p_queued: next?.queuedId ?? null });
+export async function reportGame(db: SupabaseClient, playerId: string, pin: string, gameId: string, result: "win" | "draw" | "lose", next?: { playerIds: string[]; queuedId?: string }, shuttles?: number) {
+  const args = { p_player: playerId, p_pin: pin, p_game: gameId, p_result: result, p_next: next?.playerIds ?? null, p_queued: next?.queuedId ?? null };
+  let { data, error } = await db.rpc("report_game", shuttles ? { ...args, p_shuttles: shuttles } : args);
+  // ยังไม่ได้รัน SQL report_shuttles.sql: บันทึกผลไปก่อน (จำนวนลูกยังเป็นตามที่แอดมินกดไว้)
+  if (error?.code === "PGRST202" && shuttles) ({ data, error } = await db.rpc("report_game", args));
   if (error) return error.code === "PGRST202" ? "ยังกดผลเองไม่ได้ ให้แอดมินช่วยก่อน" : "บันทึกไม่สำเร็จ เช็กเน็ตแล้วลองใหม่";
   return (data as string | null) ?? null;
 }

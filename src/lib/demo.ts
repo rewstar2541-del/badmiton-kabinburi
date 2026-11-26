@@ -65,7 +65,7 @@ export function demoState(): State {
   const now = Date.now();
   let s: State = {
     players: [],
-    settings: { ...DEFAULT_SETTINGS, promptPayId: "0812345678", promptPayOn: true, bankOn: true, ...DEMO_COURTS },
+    settings: { ...DEFAULT_SETTINGS, promptPayId: "0812345678", promptPayOn: true, bankOn: true, ...DEMO_COURTS, drinkMenu: [{ name: "น้ำเปล่า", price: 10 }, { name: "น้ำเกลือแร่", price: 20 }, { name: "น้ำอัดลม", price: 15 }] },
     days: [],
     monthly: {},
     closed: {},

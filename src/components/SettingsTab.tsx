@@ -20,6 +20,7 @@ import { RentTodayCard } from "./RentHours";
 import { EventPhotos } from "./EventPhotos";
 import { LoginTab } from "./LoginTab";
 import { Button, Card, SectionTitle, inputClass } from "./ui";
+import { DrinkMenuEditor } from "./DrinkMenu";
 import { courtList } from "@/lib/types";
 import { TourneySetup } from "./Tourney";
 import { PushAdminCard } from "./PushAlerts";
@@ -119,7 +120,7 @@ export function SettingsTab() {
                 if (!ppOk && s.promptPayOn !== false) return;
                 const old = state.settings;
                 // ค่ารายเดือนและค่าสนามรายวันมาจากแพ็กเกจ ไม่ทับด้วยค่าในฟอร์มนี้
-                const next = { ...(packagesReady ? { ...s, monthlyFee: old.monthlyFee, courtFee: old.courtFee } : s), festival: old.festival, courtCount: old.courtCount, courtNumbers: old.courtNumbers, autoAssign: old.autoAssign, fixedCourt: old.fixedCourt, startDelay: old.startDelay, lastRoundDate: old.lastRoundDate, strongGroup: old.strongGroup };
+                const next = { ...(packagesReady ? { ...s, monthlyFee: old.monthlyFee, courtFee: old.courtFee } : s), festival: old.festival, courtCount: old.courtCount, courtNumbers: old.courtNumbers, autoAssign: old.autoAssign, fixedCourt: old.fixedCourt, startDelay: old.startDelay, lastRoundDate: old.lastRoundDate, strongGroup: old.strongGroup, drinkMenu: old.drinkMenu };
                 const changed =
                   old.courtFee !== next.courtFee || old.firstShuttleFee !== next.firstShuttleFee || old.nextShuttleFee !== next.nextShuttleFee;
                 // ราคาใหม่ใช้ตั้งแต่วันนี้ เก็บราคาเดิมไว้กับวันก่อนๆ บิลเก่าจะได้ไม่เปลี่ยน
@@ -218,6 +219,9 @@ export function SettingsTab() {
               </Button>
             </form>
           </Card>
+      </Section>
+      <Section id="drinks" icon="🥤" title={t("รายการน้ำ")} hint={t("น้ำเปล่า เกลือแร่ ตั้งราคาไว้ กดเพิ่มในบิลได้เลย")}>
+        <DrinkMenuEditor />
       </Section>
       {packagesReady && (
         <Section id="packages" icon="🎫" title={t("แพ็กเกจสมาชิก")} hint={t("รายวัน รายเดือน รายปี ตั้งชื่อ ราคา วันหมดอายุ")}>
