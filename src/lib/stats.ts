@@ -1,4 +1,5 @@
 import { dayAmount } from "./billing";
+import { ratings } from "./club";
 import { monthlyAmount, today as todayDate, type State } from "./state";
 import { monthOf, type Player } from "./types";
 
@@ -94,7 +95,8 @@ export function lifetime(state: State, playerId: string) {
   }
   const monthlyMonths = Object.values(state.monthly).filter((m) => m[playerId]).length;
   const { current: attendStreak, best: bestAttend } = attendance(state, playerId);
-  return { visits, games, bestDay, bestStreak, monthlyMonths, attendStreak, bestAttend };
+  const upsets = ratings(state).upsets.get(playerId) ?? 0;
+  return { visits, games, bestDay, bestStreak, monthlyMonths, attendStreak, bestAttend, upsets };
 }
 
 /** มาเล่นติดกันกี่ครั้ง นับเฉพาะวันที่ก๊วนเปิดจริง (มีคนเช็คอิน) วันที่ไม่มาตัดสถิติ วันนี้ที่ยังไม่มาไม่ตัด */
@@ -115,6 +117,7 @@ const BADGES: { id: string; name: string; how: string; target: number; stat: key
   { id: "regular", name: "ขาประจำ", how: "มาเล่นครบ {n} ครั้ง", target: 10, stat: "visits" },
   { id: "core", name: "ตัวจริงของก๊วน", how: "มาเล่นครบ {n} ครั้ง", target: 50, stat: "visits" },
   { id: "streak", name: "ไฟลุก", how: "ชนะติดกัน {n} เกม", target: 5, stat: "bestStreak" },
+  { id: "giant", name: "ล้มยักษ์", how: "ชนะตอนโอกาสชนะต่ำกว่า 35%", target: 1, stat: "upsets" },
   { id: "marathon", name: "มาราธอน", how: "เล่น {n} เกมในวันเดียว", target: 10, stat: "bestDay" },
   { id: "hundred", name: "ร้อยเกม", how: "เล่นครบ {n} เกม", target: 100, stat: "games" },
   { id: "attend5", name: "มาติดกัน", how: "มาเล่นติดกัน {n} ครั้ง", target: 5, stat: "bestAttend" },
