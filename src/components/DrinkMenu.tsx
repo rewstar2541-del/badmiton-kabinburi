@@ -7,25 +7,75 @@ import { DRINK_MENU_MAX, DRINK_PRICE_MAX, drinkMenuOf, type DrinkItem } from "@/
 import { Auto } from "@/lib/autoTranslate";
 import { Button, Card, baht, inputClass } from "./ui";
 
-/** ปุ่มน้ำตามรายการที่แอดมินตั้งไว้ กดแล้วเพิ่มในบิลเลย (ชื่อ + ราคา) */
-export function DrinkMenuButtons({ menu, disabled, onPick }: { menu: DrinkItem[]; disabled?: boolean; onPick: (item: DrinkItem) => void }) {
+/** จำนวนขวดสูงสุดต่อครั้ง (ยอดรวมต้องไม่เกินที่ฐานข้อมูลรับ) */
+export function maxQty(price: number) {
+  return Math.max(1, Math.min(10, Math.floor(DRINK_PRICE_MAX / price)));
+}
+
+/** ชื่อรายการในบิล: "น้ำเปล่า" หรือ "น้ำเปล่า ×2" */
+export function drinkNote(name: string, qty: number) {
+  return qty > 1 ? `${name} ×${qty}` : name;
+}
+
+/** เลือกน้ำจากรายการที่แอดมินตั้งไว้ แล้วเลือกจำนวน ก่อนกดเพิ่มในบิล */
+export function DrinkMenuButtons({ menu, disabled, onPick }: { menu: DrinkItem[]; disabled?: boolean; onPick: (item: DrinkItem, qty: number) => void }) {
+  const [sel, setSel] = useState<number | null>(null);
+  const [qty, setQty] = useState(1);
   if (!menu.length) return null;
+  const item = sel !== null ? menu[sel] : undefined;
+  const max = item ? maxQty(item.price) : 1;
   return (
-    <div className="grid grid-cols-2 gap-2">
-      {menu.map((d, i) => (
-        <button
-          key={`${d.name}-${i}`}
-          type="button"
-          disabled={disabled}
-          onClick={() => onPick(d)}
-          className="flex min-h-12 flex-col items-start justify-center rounded-2xl bg-zinc-100 px-3 py-2 text-left text-sm font-semibold text-ink active:scale-95 disabled:opacity-50"
-        >
-          <span className="w-full break-words leading-tight">
-            + <Auto text={d.name} />
-          </span>
-          <span className="text-sm font-medium tabular-nums text-zinc-600">{baht(d.price)}</span>
-        </button>
-      ))}
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-2" role="group" aria-label={t("เลือกน้ำ")}>
+        {menu.map((d, i) => (
+          <button
+            key={`${d.name}-${i}`}
+            type="button"
+            disabled={disabled}
+            aria-pressed={sel === i}
+            onClick={() => {
+              setSel(sel === i ? null : i);
+              setQty(1);
+            }}
+            className={`flex min-h-12 flex-col items-start justify-center rounded-2xl px-3 py-2 text-left text-sm font-semibold text-ink active:scale-95 disabled:opacity-50 ${sel === i ? "bg-lime/30 ring-2 ring-ink" : "bg-zinc-100"}`}
+          >
+            <span className="w-full break-words leading-tight">
+              <Auto text={d.name} />
+            </span>
+            <span className="text-sm font-medium tabular-nums text-zinc-600">{baht(d.price)}</span>
+          </button>
+        ))}
+      </div>
+      {item ? (
+        <div className="space-y-2 rounded-2xl bg-zinc-50 p-2">
+          <div className="flex items-center gap-2">
+            <span className="flex-1 text-sm font-medium">{t("จำนวน")}</span>
+            <button type="button" aria-label={t("ลดจำนวน")} disabled={disabled || qty <= 1} onClick={() => setQty(qty - 1)} className="grid size-11 place-items-center rounded-xl bg-white text-xl font-bold ring-1 ring-zinc-200 disabled:opacity-40">
+              −
+            </button>
+            <span className="w-8 text-center font-display text-xl font-semibold tabular-nums" aria-live="polite">
+              {qty}
+            </span>
+            <button type="button" aria-label={t("เพิ่มจำนวน")} disabled={disabled || qty >= max} onClick={() => setQty(qty + 1)} className="grid size-11 place-items-center rounded-xl bg-white text-xl font-bold ring-1 ring-zinc-200 disabled:opacity-40">
+              +
+            </button>
+          </div>
+          <Button
+            variant="primary"
+            className="w-full"
+            disabled={disabled}
+            onClick={() => {
+              onPick(item, qty);
+              setSel(null);
+              setQty(1);
+            }}
+          >
+            {t("เพิ่ม")} <Auto text={item.name} /> ×{qty} · {baht(item.price * qty)}
+          </Button>
+        </div>
+      ) : (
+        <p className="text-xs text-zinc-500">{t("แตะเลือกน้ำ แล้วเลือกจำนวน")}</p>
+      )}
     </div>
   );
 }

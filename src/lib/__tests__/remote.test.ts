@@ -1,3 +1,4 @@
+import { drinkNote, maxQty } from "../../components/DrinkMenu";
 import { describe, expect, it } from "vitest";
 import { billFor } from "../billing";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -170,5 +171,15 @@ describe("ผู้เล่นกดผลพร้อมจำนวนลู�
     expect(await reportGame(db, "a", "pin", "g", "lose", undefined, 3)).toBe(SHUTTLES_NOT_SAVED);
     expect(calls).toHaveLength(2);
     expect(calls[1]).not.toHaveProperty("p_shuttles");
+  });
+});
+
+describe("เลือกจำนวนน้ำ", () => {
+  it("จำนวนสูงสุดไม่ให้ยอดเกิน 200 บาท และชื่อในบิลบอกจำนวน", () => {
+    expect(maxQty(10)).toBe(10);
+    expect(maxQty(25)).toBe(8);
+    expect(maxQty(200)).toBe(1);
+    expect(drinkNote("น้ำเปล่า", 1)).toBe("น้ำเปล่า");
+    expect(drinkNote("น้ำเปล่า", 3)).toBe("น้ำเปล่า ×3");
   });
 });

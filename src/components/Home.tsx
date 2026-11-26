@@ -1,5 +1,6 @@
 "use client";
 
+import { DisputeBanner } from "./CourtsTab";
 import { PushPrompt } from "./PushAlerts";
 
 import { birthdays } from "@/lib/club";
@@ -352,6 +353,8 @@ export function PlayerHome() {
         }
         news={<NewsCarousel />}
       />
+      {/* อีกทีมกดผลไว้: ขึ้นเป็นสิ่งที่ต้องทำบนหน้าแรก กด "ไม่ตรง" ได้เลยไม่ต้องไปหน้าสนาม */}
+      <DisputeBanner playerId={player.id} title={t("ต้องทำ")} />
       <Shortcuts
         items={[
           { icon: Icon.Pause, label: t("ขอพัก"), onClick: () => open("rest"), disabled: here ? undefined : t("เช็คอินที่สนามก่อน ถึงจะขอพักได้") },

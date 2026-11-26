@@ -1695,4 +1695,10 @@ export const en: Record<string, string> = {
   "ตั้งชื่อกับราคาน้ำ": "Set drink names and prices",
   "ชื่อน้ำ": "Drink name",
   "ยังเปิดใช้ไม่ได้ ต้องอัปเดตฐานข้อมูลก่อน (SQL drink_menu.sql)": "Not available yet. Update the database first (SQL drink_menu.sql)",
+  "เลือกน้ำ": "Choose a drink",
+  "จำนวน": "Quantity",
+  "ลดจำนวน": "Decrease quantity",
+  "เพิ่มจำนวน": "Increase quantity",
+  "แตะเลือกน้ำ แล้วเลือกจำนวน": "Tap a drink, then choose how many",
+  "ต้องทำ": "To do",
 };

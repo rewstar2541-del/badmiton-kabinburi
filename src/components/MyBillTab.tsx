@@ -17,7 +17,7 @@ import { Auto } from "@/lib/autoTranslate";
 import { Button, Card, Icon, baht, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
 import { MyGames } from "./GameShuttles";
-import { DrinkMenuButtons } from "./DrinkMenu";
+import { DrinkMenuButtons, drinkNote } from "./DrinkMenu";
 
 /** หน้าสำหรับผู้เล่น: เลือกชื่อตัวเอง แล้วดูยอดที่ต้องจ่ายวันนี้ */
 export function MyBillTab() {
@@ -140,7 +140,7 @@ function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean;
       ))}
       {/* แอดมินตั้งรายการน้ำไว้: กดชื่อน้ำได้เลย ไม่งั้นใช้ปุ่มราคาแบบเดิม */}
       {menu.length ? (
-        <DrinkMenuButtons menu={menu} disabled={busy} onPick={(d) => void add(d.price, d.name)} />
+        <DrinkMenuButtons menu={menu} disabled={busy} onPick={(d, qty) => void add(d.price * qty, drinkNote(d.name, qty))} />
       ) : (
         <div className="grid grid-cols-4 gap-2">
           {[10, 15, 20, 25].map((n) => (
@@ -150,18 +150,21 @@ function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean;
           ))}
         </div>
       )}
-      <form
-        className="flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void add(Number(amount));
-        }}
-      >
-        <input className={`${inputClass} min-w-0 flex-1`} inputMode="numeric" placeholder={t("บาท")} value={amount} onChange={(e) => setAmount(e.target.value)} />
-        <Button type="submit" disabled={busy}>
-          {t("เพิ่ม")}
-        </Button>
-      </form>
+      {/* มีรายการน้ำแล้ว: เลือกจากรายการอย่างเดียว ไม่ต้องพิมพ์ราคาเอง */}
+      {!menu.length && (
+        <form
+          className="flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void add(Number(amount));
+          }}
+        >
+          <input className={`${inputClass} min-w-0 flex-1`} inputMode="numeric" placeholder={t("บาท")} value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <Button type="submit" disabled={busy}>
+            {t("เพิ่ม")}
+          </Button>
+        </form>
+      )}
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
       <p className="text-xs text-zinc-500">{paid ? t("จ่ายแล้ว ลงผิด บอกแอดมินให้แก้") : t("ลงผิด กดลบได้ก่อนจ่าย")}</p>
     </Card>

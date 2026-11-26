@@ -802,7 +802,7 @@ function SelfReport({ game, playerId, onDone }: { game: Game; playerId: string; 
 }
 
 /** อีกทีมกดผลไว้ ให้เวลา 2 นาทีกด "ไม่ตรง" (แจ้งแอดมินมาแก้ ไม่หยุดคิว) */
-function DisputeBanner({ playerId }: { playerId: string }) {
+export function DisputeBanner({ playerId, title }: { playerId: string; /** หัวข้อเหนือป้าย (หน้าแรก: "ต้องทำ") แสดงเฉพาะตอนมีป้าย */ title?: string }) {
   const { state, dispute } = useStore();
   const { day } = useToday();
   const now = useNow(1000);
@@ -814,12 +814,21 @@ function DisputeBanner({ playerId }: { playerId: string }) {
     return () => clearTimeout(id);
   }, [msg]);
   const g = disputable(day, playerId, now);
-  if (!g) return msg ? <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800" role="status">{msg}</p> : null;
+  const head = title ? <SectionTitle>{title}</SectionTitle> : null;
+  if (!g)
+    return msg ? (
+      <>
+        {head}
+        <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800" role="status">{msg}</p>
+      </>
+    ) : null;
   const name = (id?: string) => state.players.find((p) => p.id === id)?.name ?? "?";
   // บอกเทียบกับทีมของคนที่ดู จะได้เห็นทันทีว่าผิดไหม
   const result = g.draw ? t("เสมอ") : !g.winner ? t("ไม่นับผล") : g.winner === teamOf(g, playerId) ? t("ทีมคุณชนะ") : t("ทีมคุณแพ้");
   const left = Math.max(0, Math.ceil((DISPUTE_MS - (now - (g.endedAt ?? now))) / 1000));
   return (
+    <>
+    {head}
     <div className="flex items-center gap-3 rounded-2xl border-2 border-amber-400 bg-amber-50 px-4 py-3 text-sm text-amber-800">
       <div className="min-w-0 flex-1">
         <div>{t("{name} กดผลสนาม {n}", { name: name(g.reportedBy), n: g.court })}</div>
@@ -843,6 +852,7 @@ function DisputeBanner({ playerId }: { playerId: string }) {
         {t("ไม่ตรง")}
       </Button>
     </div>
+    </>
   );
 }
 
