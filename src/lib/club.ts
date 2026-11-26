@@ -11,6 +11,62 @@ const decided = (days: Day[]) =>
     .flatMap((d) => d.games.filter((g) => g.endedAt && g.winner).map((g) => ({ g, date: d.date })))
     .sort((a, b) => (a.g.endedAt ?? 0) - (b.g.endedAt ?? 0));
 
+/** โอกาสชนะของทีม A (0 ถึง 1) จากแต้มเฉลี่ยของสองทีม (สูตร Elo) */
+export const expectedA = (ra: number, rb: number) => 1 / (1 + 10 ** ((rb - ra) / 400));
+
+/** ชนะตอนโอกาสชนะต่ำกว่านี้ = ล้มยักษ์ */
+export const UPSET = 0.35;
+
+/** ชนะติดกันวันนี้ตั้งแต่กี่เกมถึงขึ้น 🔥 */
+export const HOT_STREAK = 3;
+
+/**
+ * เล่นผลทุกเกมที่บันทึกแพ้ชนะตามลำดับเวลา ได้แต้มปัจจุบันของทุกคน
+ * และจำนวนครั้งที่ล้มยักษ์ (ชนะทั้งที่โอกาสชนะตอนนั้นต่ำกว่า 35%)
+ */
+let cache: { days: Day[]; players: Player[]; out: ReturnType<typeof computeRatings> } | undefined;
+
+/** แต้มปัจจุบันของทุกคน (จำผลล่าสุดไว้ หลายสนามเรียกพร้อมกันคำนวณครั้งเดียว) */
+export function ratings(state: Pick<State, "days" | "players">) {
+  if (cache?.days !== state.days || cache.players !== state.players) cache = { days: state.days, players: state.players, out: computeRatings(state) };
+  return cache.out;
+}
+
+function computeRatings(state: Pick<State, "days" | "players">) {
+  const byId = new Map(state.players.map((p) => [p.id, p]));
+  const rating = new Map<string, number>();
+  const r = (id: string) => rating.get(id) ?? startRating(byId.get(id));
+  const upsets = new Map<string, number>();
+  for (const { g } of decided(state.days)) {
+    // ผลที่อีกทีมกด "ไม่ตรง" ยังไม่นับ รอแอดมินยืนยันก่อน
+    if (g.disputedBy) continue;
+    const [a1, a2, b1, b2] = g.playerIds;
+    const expectA = expectedA((r(a1) + r(a2)) / 2, (r(b1) + r(b2)) / 2);
+    const change = K * ((g.winner === "A" ? 1 : 0) - expectA);
+    const winnerChance = g.winner === "A" ? expectA : 1 - expectA;
+    g.playerIds.forEach((id, i) => {
+      rating.set(id, r(id) + (i < 2 ? change : -change));
+      if (winnerChance < UPSET && (g.winner === "A") === i < 2) upsets.set(id, (upsets.get(id) ?? 0) + 1);
+    });
+  }
+  return { rating: r, upsets };
+}
+
+/** โอกาสชนะเป็น % ของทีม A และทีม B (รวมกันได้ 100) */
+export function winChance(rating: (id: string) => number, playerIds: readonly string[]): [number, number] {
+  const [a1, a2, b1, b2] = playerIds;
+  const a = Math.round(expectedA((rating(a1) + rating(a2)) / 2, (rating(b1) + rating(b2)) / 2) * 100);
+  return [a, 100 - a];
+}
+
+/** ชนะติดกันกี่เกมในวันนี้ (นับถึงเกมล่าสุด) แพ้แล้วเริ่มใหม่ เกมเสมอ/ไม่บันทึกผลไม่ตัด */
+export function dayStreaks(day: Pick<Day, "games">): Map<string, number> {
+  const streak = new Map<string, number>();
+  const ended = day.games.filter((g) => g.endedAt && g.winner && !g.disputedBy).sort((a, b) => (a.endedAt ?? 0) - (b.endedAt ?? 0));
+  for (const g of ended) g.playerIds.forEach((id, i) => streak.set(id, (g.winner === "A") === i < 2 ? (streak.get(id) ?? 0) + 1 : 0));
+  return streak;
+}
+
 export interface RankRow {
   id: string;
   /** แต้มรวมตอนจบช่วงที่ดู */
@@ -35,7 +91,7 @@ export function monthRanking(state: Pick<State, "days" | "players">, month: stri
     const [a1, a2, b1, b2] = g.playerIds;
     const ra = (r(a1) + r(a2)) / 2;
     const rb = (r(b1) + r(b2)) / 2;
-    const expectA = 1 / (1 + 10 ** ((rb - ra) / 400));
+    const expectA = expectedA(ra, rb);
     const scoreA = g.winner === "A" ? 1 : 0;
     const change = K * (scoreA - expectA);
     g.playerIds.forEach((id, i) => {

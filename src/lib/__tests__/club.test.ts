@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { birthdays, monthRanking, yearSummary } from "../club";
+import { birthdays, dayStreaks, monthRanking, ratings, winChance, yearSummary } from "../club";
 import { EMPTY_STATE, type State } from "../state";
-import { attendance } from "../stats";
+import { attendance, badgesFor } from "../stats";
 import type { Day, Game, Player } from "../types";
 
 const P = (id: string, level = 3, extra: Partial<Player> = {}): Player => ({ id, name: id, level, ...extra }) as Player;
@@ -57,5 +57,58 @@ describe("birthdays and year summary", () => {
     expect(s.games).toBe(3);
     expect(s.bestDuo?.ids).toEqual(["a", "b"]);
     expect(s.topWinners[0]).toMatchObject({ n: 3, games: 3 });
+  });
+});
+
+describe("โอกาสชนะ % ชนะติดกัน และล้มยักษ์", () => {
+  it("ทีมแต้มเท่ากัน 50/50 ทีมมือดีกว่าได้โอกาสมากกว่า รวมกัน 100", () => {
+    const players = [P("a", 3), P("b", 3), P("c", 3), P("d", 3), P("x", 5), P("y", 5)];
+    const { rating } = ratings({ players, days: [] });
+    expect(winChance(rating, ["a", "b", "c", "d"])).toEqual([50, 50]);
+    const [strong, weak] = winChance(rating, ["x", "y", "c", "d"]);
+    expect(strong).toBeGreaterThan(50);
+    expect(strong + weak).toBe(100);
+  });
+
+  it("ชนะแล้วโอกาสชนะครั้งต่อไปสูงขึ้น", () => {
+    const players = ["a", "b", "c", "d"].map((id) => P(id));
+    const days = [D("2026-10-01", ["a", "b", "c", "d"], [G(["a", "b", "c", "d"], "A", 1)])];
+    expect(winChance(ratings({ players, days }).rating, ["a", "b", "c", "d"])[0]).toBeGreaterThan(50);
+  });
+
+  it("นับชนะติดกันวันนี้ แพ้แล้วเริ่มใหม่ เกมไม่บันทึกผลไม่ตัด", () => {
+    const noResult: Game = { ...G(["a", "b", "c", "d"], "A", 3), winner: undefined };
+    const day = D("2026-10-01", ["a", "b", "c", "d"], [
+      G(["a", "b", "c", "d"], "A", 1),
+      G(["a", "c", "b", "d"], "A", 2),
+      noResult,
+      G(["a", "d", "b", "c"], "A", 4),
+      G(["a", "b", "c", "d"], "A", 5),
+    ]);
+    const s = dayStreaks(day);
+    expect(s.get("a")).toBe(4);
+    expect(s.get("b")).toBe(1);
+    expect(s.get("d")).toBe(0);
+  });
+
+  it("ชนะทีมที่เก่งกว่ามาก (โอกาสชนะต่ำกว่า 35%) ได้ป้ายล้มยักษ์", () => {
+    const players = [P("a", 1), P("b", 1), P("x", 5), P("y", 5)];
+    const upset = D("2026-10-01", ["a", "b", "x", "y"], [G(["a", "b", "x", "y"], "A", 1)]);
+    const { upsets } = ratings({ players, days: [upset] });
+    expect(upsets.get("a")).toBe(1);
+    expect(upsets.get("x")).toBeUndefined();
+    const state: State = { ...EMPTY_STATE, players, days: [upset] };
+    expect(badgesFor(state, "a").find((b) => b.id === "giant")?.earned).toBe(true);
+    // ทีมเต็งชนะ ไม่นับ
+    const fav = D("2026-10-01", ["a", "b", "x", "y"], [G(["a", "b", "x", "y"], "B", 1)]);
+    expect(ratings({ players, days: [fav] }).upsets.size).toBe(0);
+  });
+
+  it("ผลที่อีกทีมกดไม่ตรง ยังไม่นับแต้ม ล้มยักษ์ และ 🔥", () => {
+    const players = [P("a", 1), P("b", 1), P("x", 5), P("y", 5)];
+    const disputed: Game = { ...G(["a", "b", "x", "y"], "A", 1), disputedBy: "x" };
+    const day = D("2026-10-01", ["a", "b", "x", "y"], [disputed]);
+    expect(ratings({ players, days: [day] }).upsets.size).toBe(0);
+    expect(dayStreaks(day).size).toBe(0);
   });
 });

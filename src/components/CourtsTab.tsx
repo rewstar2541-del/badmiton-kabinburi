@@ -9,6 +9,8 @@ import { courtList, courtsOfDay, minShuttles, undoLastSub, type Game, type Playe
 import { MatchBuilder } from "./MatchBuilder";
 import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, Sheet } from "./ui";
 import { t } from "@/lib/i18n";
+import { dayStreaks, HOT_STREAK, ratings, winChance } from "@/lib/club";
+import { useHistory } from "./Ranking";
 import { AutoAssignSwitch, FixedCourtSwitch, SwitchKnob } from "./AutoAssign";
 import { MyRestCard } from "./RestButton";
 import { PendingNotice, PickMe, savedPin, useMe } from "./PickMe";
@@ -31,23 +33,75 @@ function minutes(ms: number) {
   return Math.max(0, Math.floor(ms / 60000));
 }
 
-function CourtSide({ ids, byId, team, compact, blocked }: { ids: string[]; byId: Map<string, Player>; team: Team; compact?: boolean; blocked?: Set<string> }) {
+/** 🔥 ชนะติดกันวันนี้ตั้งแต่ 3 เกม: ป้ายเล็กเกาะมุมรูปโปรไฟล์ ไม่กินที่ชื่อ (ห่อรูปด้วย relative) */
+export function HotStreak({ n, className = "text-[10px] leading-4 -right-2 -bottom-1.5" }: { n?: number; className?: string }) {
+  if (!n || n < HOT_STREAK) return null;
+  const label = t("ชนะติดกัน {n} เกมวันนี้", { n });
+  return (
+    <span
+      className={`absolute rounded-full bg-orange-600 px-1 font-bold whitespace-nowrap text-white tabular-nums shadow ring-1 ring-white ${className}`}
+      title={label}
+      aria-label={label}
+      role="img"
+    >
+      🔥{n}
+    </span>
+  );
+}
+
+/** บอกความหมาย 🔥 ใต้สนามที่มีคนชนะติดกัน (แตะป้ายบนมือถือไม่ขึ้นคำอธิบาย) */
+function HotLegend({ ids, streaks }: { ids: readonly string[]; streaks: Map<string, number> }) {
+  if (!ids.some((id) => (streaks.get(id) ?? 0) >= HOT_STREAK)) return null;
+  return <p className="-mt-1 text-center text-sm text-zinc-600">{t("🔥 = ชนะติดกันวันนี้ (กี่เกม)")}</p>;
+}
+
+export interface CourtOdds {
+  /** แต้มอันดับปัจจุบัน (null = ประวัติเกมยังโหลดไม่เสร็จ ยังไม่โชว์ %) */
+  rating: ((id: string) => number) | null;
+  streaks: Map<string, number>;
+}
+
+/**
+ * แต้มอันดับปัจจุบันของทุกคน และชนะติดกันวันนี้ ใช้โชว์โอกาสชนะ % และ 🔥 บนสนาม
+ * คิดจากประวัติเต็มแบบหน้าอันดับ (ผู้เล่นทั่วไปโหลดเพิ่มครั้งเดียว) ทุกเครื่องจึงเห็น % ตรงกัน เรียกครั้งเดียวต่อหน้าแล้วส่งลงแต่ละสนาม
+ */
+export function useCourtOdds(): CourtOdds {
+  const { day } = useToday();
+  const { data } = useHistory("2000-01-01");
+  const rating = useMemo(() => (data ? ratings(data).rating : null), [data]);
+  const streaks = useMemo(() => dayStreaks(day), [day]);
+  return { rating, streaks };
+}
+
+const chances = (odds: CourtOdds, ids: readonly string[]): [number?, number?] => (odds.rating ? winChance(odds.rating, ids) : []);
+
+function CourtSide({ ids, byId, team, compact, blocked, chance, streaks }: { ids: string[]; byId: Map<string, Player>; team: Team; compact?: boolean; blocked?: Set<string>; chance?: number; streaks?: Map<string, number> }) {
   return (
     // basis-0 + min-w-0: แต่ละฝั่งกว้างครึ่งสนามพอดี ชื่อยาวไม่ล้นข้ามเส้นกลาง
     <div className={`flex min-w-0 flex-1 basis-0 flex-col items-center justify-center ${compact ? "gap-1.5 py-2" : "gap-2 py-3"}`}>
-      <span
-        className={`rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide ${
-          team === "A" ? "bg-lime text-ink" : "bg-sky-300 text-ink"
-        }`}
-      >
-        {t("ทีม {team}", { team })}
-      </span>
+      <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1">
+        <span
+          className={`rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide ${
+            team === "A" ? "bg-lime text-ink" : "bg-sky-300 text-ink"
+          }`}
+        >
+          {t("ทีม {team}", { team })}
+        </span>
+        {chance !== undefined && (
+          <span className="rounded-full bg-black/35 px-2 py-0.5 text-xs font-bold whitespace-nowrap text-white tabular-nums">
+            {t("โอกาสชนะ {n}%", { n: chance })}
+          </span>
+        )}
+      </div>
       {ids.map((id) => {
         const p = byId.get(id);
         const out = blocked?.has(id);
         return (
           <div key={id} className={`flex w-full items-center gap-2 rounded-2xl px-2 ${compact ? "py-1" : "py-1.5"} backdrop-blur-sm ${out ? "bg-red-600/70" : "bg-black/20"}`}>
-            <Avatar name={p?.name ?? "?"} photo={p?.photo} size={compact ? 24 : 28} ring />
+            <span className="relative shrink-0">
+              <Avatar name={p?.name ?? "?"} photo={p?.photo} size={compact ? 24 : 28} ring />
+              <HotStreak n={streaks?.get(id)} />
+            </span>
             <span
               className={`line-clamp-2 min-w-0 flex-1 text-sm leading-tight font-semibold [overflow-wrap:anywhere] text-white ${out ? "line-through" : ""}`}
               title={p?.name}
@@ -66,7 +120,7 @@ function CourtSide({ ids, byId, team, compact, blocked }: { ids: string[]; byId:
   );
 }
 
-function ActiveCourt({ game, byId, date, now, lastRound = false }: { game: Game; byId: Map<string, Player>; date: string; now: number; lastRound?: boolean }) {
+function ActiveCourt({ game, byId, date, now, odds, lastRound = false }: { game: Game; byId: Map<string, Player>; date: string; now: number; odds: CourtOdds; lastRound?: boolean }) {
   const { dispatch, auth } = useStore();
   const { state } = useStore();
   const { day } = useToday();
@@ -105,6 +159,8 @@ function ActiveCourt({ game, byId, date, now, lastRound = false }: { game: Game;
     dispatch({ type: "subPlayer", date, gameId: game.id, ...undo, rest: [{ playerId: last.out, resting: false }] });
   };
   const [subbing, setSubbing] = useState(false);
+  const { streaks } = odds;
+  const [chanceA, chanceB] = chances(odds, game.playerIds);
 
   return (
     <div className="space-y-3">
@@ -117,9 +173,10 @@ function ActiveCourt({ game, byId, date, now, lastRound = false }: { game: Game;
             setSubbing(true);
           } } : {})}
       >
-        <CourtSide ids={game.playerIds.slice(0, 2)} byId={byId} team="A" />
-        <CourtSide ids={game.playerIds.slice(2)} byId={byId} team="B" />
+        <CourtSide ids={game.playerIds.slice(0, 2)} byId={byId} team="A" chance={chanceA} streaks={streaks} />
+        <CourtSide ids={game.playerIds.slice(2)} byId={byId} team="B" chance={chanceB} streaks={streaks} />
       </div>
+      <HotLegend ids={game.playerIds} streaks={streaks} />
       {auth.isAdmin && <p className="-mt-1 flex items-center justify-center gap-1.5 text-center text-sm font-medium text-zinc-600"><Icon.Swap width={16} height={16} /> {t("แตะที่สนามเพื่อเปลี่ยนคน / สลับฝั่ง")}</p>}
       {game.subs?.length ? (
         <div className="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-1">
@@ -450,6 +507,7 @@ export function CourtsTab() {
   const { date, day } = useToday();
   const [building, setBuilding] = useState<{ court: number; queue: boolean; initial?: string[]; editId?: string } | null>(null);
   const now = useNow();
+  const odds = useCourtOdds();
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const queue = waitingQueue(day, state.players);
   const courts = courtsOfDay(state.settings, day);
@@ -493,7 +551,7 @@ export function CourtsTab() {
   if (!auth.isAdmin)
     return (
       <div className="space-y-4">
-        <PlayerCourts />
+        <PlayerCourts odds={odds} />
       </div>
     );
 
@@ -582,7 +640,7 @@ export function CourtsTab() {
                 </span>
               </div>
               {g ? (
-                <ActiveCourt game={g} byId={byId} date={date} now={now} lastRound={lastRound} />
+                <ActiveCourt game={g} byId={byId} date={date} now={now} odds={odds} lastRound={lastRound} />
               ) : !auth.isAdmin ? (
                 <div className="court-surface flex h-24 items-center justify-center rounded-2xl text-sm font-semibold text-white/80">
                   {t("ว่าง")}
@@ -857,7 +915,7 @@ export function DisputeBanner({ playerId, title }: { playerId: string; /** ห�
 }
 
 /** หน้าสนามของผู้เล่น: สนามและคิวของตัวเองด้านบน แล้วทุกสนามและคิวแบบเดียวกับแอดมิน (ดูอย่างเดียว เหมือนจอทีวี) */
-function PlayerCourts() {
+function PlayerCourts({ odds }: { odds: CourtOdds }) {
   const { state, auth } = useStore();
   const { date, day } = useToday();
   // รอบสุดท้าย: ไม่มีคู่ใหม่ลงสนาม ไม่บอกผู้เล่นว่าใกล้ถึงคิว (ไม่ประกาศอะไรเพิ่ม)
@@ -909,9 +967,17 @@ function PlayerCourts() {
             </span>
           </div>
           <div className="court-surface flex gap-1 rounded-2xl px-2">
-            <CourtSide ids={myGame.playerIds.slice(0, 2)} byId={byId} team="A" />
-            <CourtSide ids={myGame.playerIds.slice(2)} byId={byId} team="B" />
+            {(() => {
+              const [a, b] = chances(odds, myGame.playerIds);
+              return (
+                <>
+                  <CourtSide ids={myGame.playerIds.slice(0, 2)} byId={byId} team="A" chance={a} streaks={odds.streaks} />
+                  <CourtSide ids={myGame.playerIds.slice(2)} byId={byId} team="B" chance={b} streaks={odds.streaks} />
+                </>
+              );
+            })()}
           </div>
+          <HotLegend ids={myGame.playerIds} streaks={odds.streaks} />
           <SelfReport key={myGame.id} game={myGame} playerId={player.id} onDone={setReported} />
         </Card>
       ) : (
@@ -962,7 +1028,7 @@ function PlayerCourts() {
                 </span>
               </div>
               {g ? (
-                <ActiveCourt game={g} byId={byId} date={day.date} now={now} />
+                <ActiveCourt game={g} byId={byId} date={day.date} now={now} odds={odds} />
               ) : (
                 <div className="court-surface flex h-24 items-center justify-center rounded-2xl text-sm font-semibold text-white/80">
                   {t("ว่าง")}
