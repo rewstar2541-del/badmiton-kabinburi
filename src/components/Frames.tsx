@@ -38,6 +38,7 @@ export function FramePicker({ player }: { player: Player }) {
   return (
     <div className="space-y-3">
       <p className="text-sm text-zinc-600">{t("กรอบระดับมือเปลี่ยนตามระดับของเรา กรอบเทศกาลได้จากการมาเล่นช่วงเทศกาล หรือซื้อกับแอดมิน")}</p>
+      <p className="text-sm text-zinc-600">{t("ทุกคนเห็นกรอบที่เราใส่ ที่รูปของเราทุกหน้า รวมถึงจอทีวี")}</p>
       {msg && (
         <p role="status" className={`rounded-xl px-3 py-2 text-sm font-medium ${msg.ok ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-600"}`}>
           {msg.text}

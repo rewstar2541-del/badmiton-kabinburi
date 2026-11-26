@@ -25,7 +25,7 @@ export function AttendeeStrip({ day, dark }: { day: Day; dark?: boolean }) {
       >
         <span className="flex shrink-0 -space-x-1.5">
           {faces.map((id) => (
-            <FramedAvatar key={id} player={byId.get(id)} size={28} compact ring />
+            <FramedAvatar key={id} player={byId.get(id)} size={28} compact stack />
           ))}
           {more > 0 && (
             <span className={`grid size-7 place-items-center rounded-full text-[11px] font-bold ring-2 ring-white bg-zinc-200 text-zinc-700`}>

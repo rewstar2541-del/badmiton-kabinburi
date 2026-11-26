@@ -41,7 +41,7 @@ export function NewsCarousel() {
           emoji: (
             <span className="flex -space-x-3">
               {bdays.slice(0, 3).map((p) => (
-                <FramedAvatar key={p.id} player={p} size={bdays.length > 1 ? 36 : 48} compact ring />
+                <FramedAvatar key={p.id} player={p} size={bdays.length > 1 ? 36 : 48} compact stack />
               ))}
             </span>
           ),

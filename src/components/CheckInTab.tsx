@@ -134,7 +134,7 @@ function PlayerTile({ p, on, signed, visits }: { p: Player; on: boolean; signed:
           <span className="block truncate text-sm font-semibold">{p.name}</span>
           <span className={`flex flex-wrap items-center gap-x-1.5 text-xs ${on ? "text-zinc-700" : "text-zinc-500"}`}>
             <LevelBadge level={p.level} />
-                        {p.guestOf && <span className={`font-medium ${on ? "text-amber-800" : "text-amber-600"}`}>{t("แขก")}</span>}
+            {p.guestOf && <span className={`font-medium ${on ? "text-amber-800" : "text-amber-600"}`}>{t("แขก")}</span>}
             {signed && !on && <span className="font-medium text-sky-600">{t("ลงชื่อ")}</span>}
             {isMonthlyPaid(state.monthly, date, p.id) && <span className={`font-medium ${on ? "text-emerald-800" : "text-emerald-600"}`}>{t("รายเดือน")}</span>}
           </span>

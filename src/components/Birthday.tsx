@@ -21,7 +21,7 @@ export function BirthdayBanner({ tv }: { tv?: boolean }) {
       </span>
       <div className="flex shrink-0 -space-x-2">
         {list.slice(0, 3).map((p) => (
-          <FramedAvatar key={p.id} player={p} size={tv ? 44 : list.length > 1 ? 40 : 56} compact ring />
+          <FramedAvatar key={p.id} player={p} size={tv ? 44 : list.length > 1 ? 40 : 56} compact stack />
         ))}
       </div>
       <div className="min-w-0">
