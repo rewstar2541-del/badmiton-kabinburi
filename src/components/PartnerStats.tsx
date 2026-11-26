@@ -5,7 +5,8 @@ import { locale, t } from "@/lib/i18n";
 import { gameHistory, headToHead, partnerStats, type GameResult, type HistoryGame, type MateStat, type Record3 } from "@/lib/social";
 import { useStore } from "@/lib/store";
 import type { Player } from "@/lib/types";
-import { Avatar, Button, Card, Icon } from "./ui";
+import { Button, Card, Icon } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 import { EditGamePlayers, lockPaid } from "./GameShuttles";
 import { canEditPlayers } from "@/lib/state";
 
@@ -47,7 +48,7 @@ function Mates({ player }: { player: Player }) {
     const p = byId.get(m.id);
     return (
       <li key={m.id} className="flex items-center gap-2.5">
-        <Avatar name={p?.name ?? "?"} photo={p?.photo} size={30} />
+        <FramedAvatar player={p} size={30} compact />
         <span className="min-w-0 flex-1 truncate text-sm font-semibold">{p?.name ?? "?"}</span>
         <span className="shrink-0 text-xs text-zinc-500 tabular-nums">{text}</span>
       </li>
@@ -133,7 +134,7 @@ function HeadToHeadList({ player }: { player: Player }) {
           const nm = p?.name ?? t("ผู้เล่นที่ออกแล้ว");
           return (
             <li key={x.id} className="flex items-start gap-2.5 py-2.5 first:pt-0 last:pb-0">
-              <Avatar name={nm} photo={p?.photo} size={32} />
+              <FramedAvatar player={p} name={nm} size={32} compact />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
                   <span className="min-w-0 flex-1 truncate text-sm font-semibold">{nm}</span>
@@ -270,7 +271,7 @@ function History({ player, admin }: { player: Player; admin: boolean }) {
                   <div className="min-w-0 flex-1 text-sm">
                     <div className="flex min-w-0 items-center gap-1.5">
                       <span className="shrink-0 text-zinc-500">{t("คู่")}</span>
-                      <Avatar name={name(h.mate)} photo={mate?.photo} size={22} />
+                      <FramedAvatar player={mate} name={name(h.mate)} size={22} compact />
                       <span className="truncate font-semibold">{name(h.mate)}</span>
                     </div>
                     <div className="break-words text-[13px] text-zinc-500">{t("เจอ {a} + {b}", { a: name(h.opponents[0]), b: name(h.opponents[1]) })}</div>

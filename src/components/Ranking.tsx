@@ -278,7 +278,7 @@ export function PromotionList({ quarter, data: given, admin: isAdmin }: { quarte
           if (!p) return null;
           return (
             <li key={c.id} className="flex items-center gap-2">
-              <Avatar name={p.name} photo={p.photo} size={30} />
+              <FramedAvatar player={p} size={30} compact />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold">{p.name}</span>
                 <span className="flex flex-wrap items-center gap-1 text-xs text-zinc-600">
@@ -305,7 +305,7 @@ export function PromotionList({ quarter, data: given, admin: isAdmin }: { quarte
           const p = byId.get(id)!;
           return (
             <li key={id} className="flex items-center gap-2 text-sm text-zinc-600">
-              <Avatar name={p.name} photo={p.photo} size={30} />
+              <FramedAvatar player={p} size={30} compact />
               <span className="min-w-0 flex-1 truncate">{p.name}</span>
               <span className="font-semibold text-emerald-700">✓ {t("เลื่อนเป็น {level} แล้ว", { level: levelCode(p.level) })}</span>
             </li>

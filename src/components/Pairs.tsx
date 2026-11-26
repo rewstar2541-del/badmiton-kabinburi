@@ -5,7 +5,8 @@ import { t } from "@/lib/i18n";
 import { activePairs, myPair } from "@/lib/social";
 import { useStore, useToday } from "@/lib/store";
 import { savedPin, useMe } from "./PickMe";
-import { Avatar, Button, Card } from "./ui";
+import { Button, Card } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 
 /** ผู้เล่นขอคู่กับเพื่อนที่เช็คอินวันนี้ในเกมถัดไป เพื่อนต้องกดตอบรับ */
 export function PairCard() {
@@ -78,7 +79,7 @@ export function PairCard() {
                     onClick={() => run({ kind: "requestPair", to: p!.id })}
                     className="flex items-center gap-1.5 rounded-full bg-zinc-100 py-1 pr-3 pl-1 text-sm font-semibold"
                   >
-                    <Avatar name={p!.name} photo={p!.photo} size={26} />
+                    <FramedAvatar player={p!} size={26} compact />
                     {p!.name}
                   </button>
                 </li>

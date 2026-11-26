@@ -7,7 +7,8 @@ import { useStore, useToday } from "@/lib/store";
 import { monthOf } from "@/lib/types";
 import { shiftMonth } from "./Members";
 import { slipStatus } from "./SlipHistory";
-import { Avatar, Icon, baht } from "./ui";
+import { Icon, baht } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 
 /** วันที่แบบสั้น เช่น 28 ต.ค. */
 export function shortDate(date: string, withYear = false) {
@@ -72,7 +73,7 @@ export function OwedList() {
           const last = r.dates[r.dates.length - 1];
           return (
             <li key={r.player.id} className="flex items-center gap-3 rounded-3xl bg-white px-4 py-3 border border-zinc-200">
-              <Avatar name={r.player.name} photo={r.player.photo} size={40} />
+              <FramedAvatar player={r.player} size={40} compact />
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold">{r.player.name}</span>
                 <span className="block text-sm leading-snug text-zinc-500">{r.dates.map((x) => shortDate(x, x.slice(0, 4) !== date.slice(0, 4))).join(" · ")}</span>

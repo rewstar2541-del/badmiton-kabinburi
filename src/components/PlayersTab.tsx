@@ -6,6 +6,7 @@ import { resizeToSquare } from "@/lib/image";
 import { today, useStore } from "@/lib/store";
 import { DEFAULT_LEVEL, LEVELS, isAnnualMember, isMonthlyPaid, type Gender, type Level, type Player } from "@/lib/types";
 import { Avatar, Button, Card, Icon, LevelBadge, SearchInput, SectionTitle, Sheet, inputClass } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 import { cameSince, daysBefore, rosterCompare, visibleRoster, visitCounts } from "@/lib/roster";
 import { LevelGroups, RosterSortSwitch, useRosterSort } from "./RosterSort";
 import { t } from "@/lib/i18n";
@@ -222,7 +223,7 @@ export function PlayersTab() {
                 // ชื่ออยู่แถวบน ปุ่มอยู่แถวล่าง จอมือถือแคบจะได้ไม่บีบชื่อจนหาย
                 <div>
                 <button type="button" className="flex w-full items-center gap-3 text-left" aria-expanded={openId === p.id} onClick={() => { setOpenId(openId === p.id ? null : p.id); setPlanFor(null); }}>
-                  <Avatar name={p.name} photo={p.photo} size={36} />
+                  <FramedAvatar player={p} size={36} compact />
                   <span className="min-w-0 flex-1">
                     <span className="flex min-w-0 items-center gap-1.5">
                       <span className="min-w-0 truncate text-sm font-semibold">{p.name}</span>
@@ -397,7 +398,7 @@ function PendingList({ players }: { players: Player[] }) {
             <li key={p.id}>
               <Card className="space-y-3 ring-2 ring-amber-300">
                 <div className="flex items-center gap-3">
-                  <Avatar name={p.name} photo={p.photo} size={48} />
+                  <FramedAvatar player={p} size={48} compact />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-semibold">{p.name}</span>
                     <span className="block text-xs text-zinc-500">
@@ -446,7 +447,7 @@ function LevelRequests() {
       <SectionTitle right={t("{n} คน", { n: list.length })}>{t("ขอเปลี่ยนระดับมือ")}</SectionTitle>
       {list.map((p) => (
         <Card key={p.id} className="flex items-center gap-3">
-          <Avatar name={p.name} photo={p.photo} size={40} />
+          <FramedAvatar player={p} size={40} compact />
           <span className="min-w-0 flex-1">
             <span className="block truncate font-semibold">{p.name}</span>
             <span className="flex items-center gap-1.5 text-xs text-zinc-500">
@@ -527,7 +528,7 @@ function UnlinkedLines({ linked, onLinked }: { linked: Map<string, string>; onLi
                   className="flex min-h-12 w-full items-center gap-3 rounded-2xl bg-zinc-50 px-3 py-2 text-left active:bg-zinc-100"
                   onClick={() => confirm(t("ผูก \"{line}\" กับ {name}?", { line: pick.line_name ?? "?", name: p.name })) && link(p)}
                 >
-                  <Avatar name={p.name} photo={p.photo} size={36} />
+                  <FramedAvatar player={p} size={36} compact />
                   <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
                 </button>
               </li>
@@ -587,7 +588,7 @@ function LineClaims() {
                   <span className="min-w-0 flex-1 text-sm">
                     {t("LINE \"{line}\" บอกว่าเป็น {name}", { line: c.line_name ?? "?", name: p?.name ?? "?" })}
                   </span>
-                  {p && <Avatar name={p.name} photo={p.photo} size={44} />}
+                  {p && <FramedAvatar player={p} size={44} compact />}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Button variant="accent" disabled={busy} onClick={() => resolve(c, true)}>

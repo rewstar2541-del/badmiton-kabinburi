@@ -7,7 +7,8 @@ import { locale, t } from "@/lib/i18n";
 import { useStore } from "@/lib/store";
 import type { BoardKind, BoardPost } from "@/lib/types";
 import { savedPin, useMe } from "./PickMe";
-import { Avatar, Button, Card, Icon, baht, inputClass } from "./ui";
+import { Button, Card, Icon, baht, inputClass } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 
 const KINDS: { value: BoardKind; label: string; done: string; tone: string }[] = [
   { value: "lost", label: "ของหาย", done: "ได้คืนแล้ว", tone: "bg-amber-100 text-amber-900" },
@@ -125,7 +126,7 @@ export function BoardCard() {
             </p>
           )}
           <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-            <Avatar name={p?.name ?? "?"} photo={p?.photo} size={18} />
+            <FramedAvatar player={p} size={18} compact />
             {p?.name ?? "?"} · {new Date(b.at).toLocaleDateString(locale(), { day: "numeric", month: "short" })}
           </div>
         </div>

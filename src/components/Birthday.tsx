@@ -6,7 +6,7 @@ import { locale, t } from "@/lib/i18n";
 import { today, useStore } from "@/lib/store";
 import type { Player } from "@/lib/types";
 import { savedPin } from "./PickMe";
-import { Avatar } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 
 /** แถบอวยพรวันเกิดของคนที่เกิดวันนี้ (ทุกคนเห็น) */
 export function BirthdayBanner({ tv }: { tv?: boolean }) {
@@ -21,7 +21,7 @@ export function BirthdayBanner({ tv }: { tv?: boolean }) {
       </span>
       <div className="flex shrink-0 -space-x-2">
         {list.slice(0, 3).map((p) => (
-          <Avatar key={p.id} name={p.name} photo={p.photo} size={tv ? 44 : list.length > 1 ? 40 : 56} ring />
+          <FramedAvatar key={p.id} player={p} size={tv ? 44 : list.length > 1 ? 40 : 56} compact stack />
         ))}
       </div>
       <div className="min-w-0">

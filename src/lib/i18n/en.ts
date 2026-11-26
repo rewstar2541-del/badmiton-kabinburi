@@ -1391,6 +1391,7 @@ export const en: Record<string, string> = {
   "เอากรอบ{frame}คืนจาก {name} และลบค่ากรอบ {amount} ออกจากบิลวันนี้ใช่ไหม?": "Take the {frame} frame back from {name} and remove the {amount} charge from today's bill?",
   "กรอบเทศกาล แจก/ขาย": "Festival frames · give/sell",
   "กรอบระดับมือเปลี่ยนตามระดับของเรา กรอบเทศกาลได้จากการมาเล่นช่วงเทศกาล หรือซื้อกับแอดมิน": "Your level frame follows your level. Festival frames come from playing during a festival, or buy one from the admin.",
+  "ทุกคนเห็นกรอบที่เราใส่ ที่รูปของเราทุกหน้า รวมถึงจอทีวี": "Everyone sees the frame you wear on your photo across the app, including the TV screen",
   "ชื่อเล่น รูป กรอบรูป วันเกิด ระดับมือ เลื่อนขั้น": "Nickname, photo, frame, birthday, level, promotion",
   "แตะแล้วเปลี่ยนทันที ไม่ต้องกดบันทึก": "Tap to change right away, no need to press Save",
   "จัดคิวสนาม {n} ให้แล้ว": "You’re queued for court {n}",

@@ -12,7 +12,8 @@ import { SlipHistory } from "./SlipHistory";
 import { CourtSplit } from "./CourtSplit";
 import { RentHoursSheet } from "./RentHours";
 import { SlipReview } from "./Slips";
-import { Avatar, Button, Card, Icon, SectionTitle, Sheet, baht, inputClass } from "./ui";
+import { Button, Card, Icon, SectionTitle, Sheet, baht, inputClass } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 import { Auto } from "@/lib/autoTranslate";
 import { PlayerGameShuttles } from "./GameShuttles";
 
@@ -156,7 +157,7 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
       onClose={onClose}
       title={
         <div className="flex items-center gap-3">
-          <Avatar name={player.name} photo={player.photo} size={44} />
+          <FramedAvatar player={player} size={44} compact />
           <div>
             <h3 className="font-display text-lg font-semibold">{player.name}</h3>
             <p className="text-xs text-zinc-500">{bill.monthlyMember ? t("สมาชิกรายเดือน") : t("จ่ายรายวัน")}</p>
@@ -302,7 +303,7 @@ function DailyView() {
               onClick={() => setOpen(player.id)}
               className="flex w-full items-center gap-3 rounded-3xl bg-white px-4 py-3 text-left border border-zinc-200 active:scale-[0.99]"
             >
-              <Avatar name={player.name} photo={player.photo} size={40} />
+              <FramedAvatar player={player} size={40} compact />
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold">{player.name}</span>
                 <span className="block text-xs text-zinc-500">

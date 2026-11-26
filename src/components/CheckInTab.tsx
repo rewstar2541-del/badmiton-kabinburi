@@ -8,7 +8,8 @@ import { useStore, useToday } from "@/lib/store";
 import { inGame, isMonthlyPaid, type Player } from "@/lib/types";
 import { AdminAddGuest } from "./Guests";
 import { PlayerForm } from "./PlayersTab";
-import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, inputClass } from "./ui";
+import { Button, Card, Icon, LevelBadge, SectionTitle, inputClass } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 import { t } from "@/lib/i18n";
 import { daysBefore, nameMatch, rosterCompare, visitCounts } from "@/lib/roster";
 import { LevelGroups, RosterSortSwitch, useRosterSort } from "./RosterSort";
@@ -128,12 +129,12 @@ function PlayerTile({ p, on, signed, visits }: { p: Player; on: boolean; signed:
           on ? "border-lime-dark bg-lime text-ink" : "border-zinc-300 bg-white"
         }`}
       >
-        <Avatar name={p.name} photo={p.photo} size={36} />
+        <FramedAvatar player={p} size={36} compact />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold">{p.name}</span>
           <span className={`flex flex-wrap items-center gap-x-1.5 text-xs ${on ? "text-zinc-700" : "text-zinc-500"}`}>
             <LevelBadge level={p.level} />
-                        {p.guestOf && <span className={`font-medium ${on ? "text-amber-800" : "text-amber-600"}`}>{t("แขก")}</span>}
+            {p.guestOf && <span className={`font-medium ${on ? "text-amber-800" : "text-amber-600"}`}>{t("แขก")}</span>}
             {signed && !on && <span className="font-medium text-sky-600">{t("ลงชื่อ")}</span>}
             {isMonthlyPaid(state.monthly, date, p.id) && <span className={`font-medium ${on ? "text-emerald-800" : "text-emerald-600"}`}>{t("รายเดือน")}</span>}
           </span>
@@ -169,7 +170,7 @@ export function FutureSignups({ day }: { day: Day }) {
             const w = q.waiting.indexOf(id);
             return (
               <li key={id} className={`flex items-center gap-1.5 rounded-full py-1 pr-3 pl-1 text-sm font-medium ${w >= 0 ? "bg-amber-50 text-amber-900" : "bg-sky-50 text-sky-800"}`}>
-                <Avatar name={p?.name ?? "?"} photo={p?.photo} size={22} />
+                <FramedAvatar player={p} size={22} compact />
                 {p?.name ?? "?"}
                 {w >= 0 && <span className="text-[11px] font-semibold">{t("สำรอง {n}", { n: w + 1 })}</span>}
               </li>
@@ -237,7 +238,7 @@ export function SignupList({ bare }: { bare?: boolean }) {
                     on ? "bg-emerald-50 text-emerald-700" : waiting.has(s.playerId) ? "bg-amber-50 text-amber-900" : "bg-sky-50 text-sky-800"
                   }`}
                 >
-                  <Avatar name={p?.name ?? "?"} photo={p?.photo} size={22} />
+                  <FramedAvatar player={p} size={22} compact />
                   {p?.name ?? "?"}
                   {waiting.has(s.playerId) && <span className="text-[11px] font-semibold">{t("สำรอง {n}", { n: q.waiting.indexOf(s.playerId) + 1 })}</span>}
                   {on && <Icon.Check width={14} height={14} strokeWidth={3} />}

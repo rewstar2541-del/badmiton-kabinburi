@@ -5,7 +5,8 @@ import { t } from "@/lib/i18n";
 import { useStore, useToday } from "@/lib/store";
 import { isAnnualMember, isMonthlyPaid, type Player } from "@/lib/types";
 import { splitByHour, type Span } from "@/lib/courtSplit";
-import { Avatar, Button, Sheet, baht, inputClass } from "./ui";
+import { Button, Sheet, baht, inputClass } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 
 const KEY = "court-split";
 const HOURS = Array.from({ length: 19 }, (_, i) => i + 6); // 06:00 - 24:00
@@ -117,7 +118,7 @@ export function CourtSplit({ onClose }: { onClose: () => void }) {
           return (
             <li key={c.playerId} className="space-y-2 rounded-2xl bg-white p-3 border border-zinc-200">
               <div className="flex items-center gap-2">
-                <Avatar name={p.name} photo={p.photo} size={32} />
+                <FramedAvatar player={p} size={32} compact />
                 <span className="min-w-0 flex-1 truncate font-semibold">{p.name}</span>
                 {(isAnnualMember(p, day.date) || isMonthlyPaid(state.monthly, day.date, p.id)) && (
                   <span className="shrink-0 rounded-full bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-700">{t("สมาชิก")}</span>

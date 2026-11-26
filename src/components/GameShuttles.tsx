@@ -4,7 +4,8 @@ import { useDeferredValue, useMemo, useState } from "react";
 import { useStore, useToday } from "@/lib/store";
 import { inGame, lineupWith, minShuttles, shuttlesInGame, type Day, type Game, type Player } from "@/lib/types";
 import { canEditPlayers, validLineup, type Intent, type State } from "@/lib/state";
-import { Avatar, Card, Icon, SearchInput, SectionTitle, Sheet, inputClass } from "./ui";
+import { Card, Icon, SearchInput, SectionTitle, Sheet, inputClass } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 import { locale, t } from "@/lib/i18n";
 import { pricesFor, shuttleCountFor, shuttleFee } from "@/lib/billing";
 
@@ -218,7 +219,7 @@ export function EditGamePlayers({ game, day, onClose }: { game: Game; day: Day; 
         aria-pressed={selected === i}
         className={`flex min-h-12 min-w-0 items-center gap-2 rounded-xl px-2 text-left text-sm font-semibold active:scale-95 ${selected === i ? "bg-lime text-ink ring-2 ring-ink" : moved ? "bg-amber-50 text-amber-900 ring-1 ring-amber-300" : "bg-white text-ink ring-1 ring-zinc-200"}`}
       >
-        <Avatar name={name(id)} photo={byId.get(id)?.photo} size={26} />
+        <FramedAvatar player={byId.get(id)} name={name(id)} size={26} compact />
         <span className="min-w-0 flex-1 truncate">{name(id)}</span>
       </button>
     );
