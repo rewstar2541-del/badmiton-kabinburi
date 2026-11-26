@@ -191,10 +191,12 @@ export function SignupList({ bare }: { bare?: boolean }) {
   const list = [...q.confirmed, ...q.waiting].map((playerId) => ({ playerId }));
   // หน้าเช็คอิน: คนที่มาแล้วอยู่ในตารางเช็คอินข้างล่างอยู่แล้ว โชว์เฉพาะคนที่ยังไม่มา (กดดูทั้งหมดได้)
   const [showAll, setShowAll] = useState(false);
+  // คนที่เพิ่งแตะเช็คอินในรอบนี้ ค้างไว้เป็นสีเขียว ชื่ออื่นจะได้ไม่เลื่อนมาใต้นิ้ว
+  const [tapped, setTapped] = useState<string[]>([]);
   if (!list.length && !bare) return null;
   const arrived = list.filter((s) => checked.has(s.playerId)).length;
   const compact = !bare && !showAll;
-  const shown = compact ? list.filter((s) => !checked.has(s.playerId)) : list;
+  const shown = compact ? list.filter((s) => !checked.has(s.playerId) || tapped.includes(s.playerId)) : list;
   // ลงชื่อค้างจากประกาศที่ถูกยกเลิก (แอพเวอร์ชันเก่าไม่ได้ล้างให้) ไม่ใช่วันจัดก๊วน ให้แอดมินล้างทิ้ง
   if (list.length && day.announcement === undefined) {
     const stale = (
@@ -231,7 +233,7 @@ export function SignupList({ bare }: { bare?: boolean }) {
           <Icon.Check width={16} height={16} /> {t("คนที่ลงชื่อมาครบแล้ว")}
         </p>
       ) : (
-        <ul className="flex flex-wrap gap-1.5">
+        <ul className="flex flex-wrap gap-2">
           {shown.map((s) => {
             const p = byId.get(s.playerId);
             const on = checked.has(s.playerId);
@@ -239,9 +241,12 @@ export function SignupList({ bare }: { bare?: boolean }) {
               <li key={s.playerId}>
                 <button
                   disabled={on}
-                  onClick={() => dispatch({ type: "checkIn", date, playerId: s.playerId })}
+                  onClick={() => {
+                    setTapped((l) => [...l, s.playerId]);
+                    dispatch({ type: "checkIn", date, playerId: s.playerId });
+                  }}
                   title={on ? t("มาแล้ว") : t("แตะเพื่อเช็คอิน")}
-                  className={`flex items-center gap-1.5 rounded-full py-1 pr-3 pl-1 text-sm font-medium ${
+                  className={`flex min-h-11 items-center gap-1.5 rounded-full py-1 pr-3 pl-1.5 text-sm font-medium ${
                     on ? "bg-emerald-50 text-emerald-700" : waiting.has(s.playerId) ? "bg-amber-50 text-amber-900" : "bg-sky-50 text-sky-800"
                   }`}
                 >
@@ -257,8 +262,8 @@ export function SignupList({ bare }: { bare?: boolean }) {
       )}
       {list.some((s) => !checked.has(s.playerId)) && <p className="text-xs text-zinc-500">{t("แตะชื่อเพื่อเช็คอินให้")}</p>}
       {!bare && arrived > 0 && (
-        <button type="button" onClick={() => setShowAll(!showAll)} aria-expanded={showAll} className="min-h-11 text-sm font-semibold text-zinc-600 underline">
-          {showAll ? t("ซ่อนคนที่มาแล้ว") : t("ดูทั้งหมด (มาแล้ว {n} คน)", { n: arrived })}
+        <button type="button" onClick={() => setShowAll(!showAll)} aria-expanded={showAll} className="min-h-11 w-full rounded-2xl bg-zinc-100 px-3 text-sm font-semibold text-zinc-700">
+          {showAll ? t("ซ่อนคนที่มาแล้ว") : t("ดูทั้งหมด")}
         </button>
       )}
     </>

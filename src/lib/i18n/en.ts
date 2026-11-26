@@ -1713,6 +1713,7 @@ export const en: Record<string, string> = {
   "จ่ายครบทุกคนแล้ว": "Everyone has paid",
   "คนที่ลงชื่อมาครบแล้ว": "Everyone who signed up is here",
   "ซ่อนคนที่มาแล้ว": "Hide arrived",
-  "ดูทั้งหมด (มาแล้ว {n} คน)": "Show all ({n} arrived)",
+  "ดูทั้งหมด": "Show all",
+  "กำลังเล่น สนาม {n}": "Playing on court {n}",
   "+ เพิ่มน้ำ": "+ Add drink",
 };

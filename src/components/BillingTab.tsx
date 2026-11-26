@@ -262,6 +262,8 @@ function DailyView() {
   const [split, setSplit] = useState(false);
   // ค่าเริ่มต้นโชว์เฉพาะคนที่ยังไม่จ่าย รายการจะสั้นลงเรื่อยๆ ตอนท้ายวัน
   const [filter, setFilter] = useState<"unpaid" | "all">("unpaid");
+  // คนที่เปิดบิลดูในรอบนี้ ค้างไว้ในรายการแม้จ่ายแล้ว (กดรับเงินผิดคน จะได้เห็นและแก้ได้ทันที)
+  const [opened, setOpened] = useState<string[]>([]);
   const byId = new Map(state.players.map((p) => [p.id, p]));
 
   const rows = day.checkIns
@@ -279,8 +281,10 @@ function DailyView() {
   const shuttlesUsed = day.games.reduce((s, g) => s + g.shuttles, 0);
   const openRow = rows.find((r) => r.player.id === open);
   const withSlip = new Set(day.slips?.map((s) => s.playerId));
-  const unpaid = rows.filter((r) => !r.bill.paid);
-  const shown = filter === "unpaid" ? unpaid : rows;
+  // ต้องตามเก็บเงิน: ยังไม่จ่าย มียอด และไม่ใช่แขก (แขกรวมในบิลคนพามา)
+  const owes = (r: (typeof rows)[number]) => !r.bill.paid && r.bill.total > 0 && !r.player.guestOf;
+  const unpaid = rows.filter(owes);
+  const shown = filter === "unpaid" ? rows.filter((r) => owes(r) || opened.includes(r.player.id)) : rows;
 
   return (
     <>
@@ -303,7 +307,8 @@ function DailyView() {
       )}
 
       {rows.length > 0 && (
-        <div className="grid grid-cols-2 gap-1 rounded-2xl border border-zinc-200 bg-white p-1" role="group" aria-label={t("แสดง")}>
+        <div className="flex items-center gap-2" role="group" aria-label={t("แสดง")}>
+          <span className="shrink-0 text-sm text-zinc-500">{t("แสดง")}</span>
           {(
             [
               ["unpaid", t("ยังไม่จ่าย {n} คน", { n: unpaid.length })],
@@ -315,7 +320,7 @@ function DailyView() {
               type="button"
               aria-pressed={filter === k}
               onClick={() => setFilter(k)}
-              className={`min-h-11 rounded-xl px-2 text-sm font-semibold ${filter === k ? "bg-lime text-ink" : "text-zinc-600"}`}
+              className={`min-h-11 flex-1 rounded-full border px-2 text-sm font-semibold ${filter === k ? "border-ink bg-ink text-white" : "border-zinc-200 bg-white text-zinc-600"}`}
             >
               {label}
             </button>
@@ -327,7 +332,10 @@ function DailyView() {
         {shown.map(({ player, bill }) => (
           <li key={player.id}>
             <button
-              onClick={() => setOpen(player.id)}
+              onClick={() => {
+                setOpen(player.id);
+                setOpened((l) => (l.includes(player.id) ? l : [...l, player.id]));
+              }}
               className="flex w-full items-center gap-3 rounded-3xl bg-white px-4 py-2.5 text-left border border-zinc-200 active:scale-[0.99]"
             >
               <Avatar name={player.name} photo={player.photo} size={36} />
@@ -348,7 +356,7 @@ function DailyView() {
               {bill.paid ? (
                 <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">{t("จ่ายแล้ว")}</span>
               ) : player.guestOf ? (
-                <span className="text-xs text-zinc-400">{t("รวมในบิลคนพามา")}</span>
+                <span className="shrink-0 text-xs text-zinc-400">{t("รวมในบิลคนพามา")}</span>
               ) : (
                 <span className="font-display text-lg font-semibold">{bill.total}฿</span>
               )}
@@ -357,9 +365,11 @@ function DailyView() {
         ))}
         {rows.length === 0 && <Card className="py-10 text-center text-sm text-zinc-500">{t("ยังไม่มีคนเช็คอินวันนี้")}</Card>}
         {rows.length > 0 && shown.length === 0 && (
-          <Card className="flex items-center justify-center gap-2 py-6 font-semibold text-emerald-700">
-            <Icon.Check width={18} height={18} /> {t("จ่ายครบทุกคนแล้ว")}
-          </Card>
+          <li>
+            <Card className="flex items-center justify-center gap-2 py-6 font-semibold text-emerald-700">
+              <Icon.Check width={18} height={18} /> {t("จ่ายครบทุกคนแล้ว")}
+            </Card>
+          </li>
         )}
       </ul>
 

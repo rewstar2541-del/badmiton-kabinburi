@@ -493,11 +493,16 @@ export function MyGames({ playerId }: { playerId: string }) {
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const name = (id: string) => byId.get(id)?.name ?? "?";
   const total = games.reduce((s, g) => s + shuttlesInGame(g, playerId), 0);
+  const playing = games.find((g) => !g.endedAt && g.playerIds.includes(playerId));
   return (
-    <Card className="p-0 overflow-hidden">
+    <Card className="!p-0 overflow-hidden">
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-h-14 w-full items-center gap-2 px-4 py-3 text-left active:bg-zinc-50">
         <h3 className="flex-1 font-semibold">{t("เกมของฉันวันนี้")}</h3>
-        <span className="text-sm text-zinc-600">{t("{n} เกม · {m} ลูก", { n: games.length, m: total })}</span>
+        <span className="text-right text-sm text-zinc-600">
+          {t("{n} เกม · {m} ลูก", { n: games.length, m: total })}
+          {/* เกมที่เล่นอยู่: บอกสนามบนบรรทัดหัวเลย ไม่ต้องกางดู */}
+          {playing && <span className="block text-xs font-semibold text-emerald-700">{t("กำลังเล่น สนาม {n}", { n: playing.court })}</span>}
+        </span>
         <Icon.ChevronRight width={18} height={18} className={`shrink-0 text-zinc-500 transition-transform ${open ? "rotate-90" : ""}`} />
       </button>
       {open && (

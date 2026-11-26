@@ -117,6 +117,7 @@ function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean;
   const remove = async (id: string, amount: number) => {
     if (!confirm(t("ลบค่าน้ำ {amount}?", { amount: baht(amount) }))) return;
     setBusy(true);
+    setDone("");
     const err = await removeMyDrink(playerId, savedPin.get(), id);
     setBusy(false);
     setError(err ? t(err) : "");
@@ -139,7 +140,16 @@ function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean;
     <>
       <div className="grid grid-cols-4 gap-2">
         {[10, 15, 20, 25].map((n) => (
-          <Button key={n} disabled={busy} onClick={() => void add(n)}>
+          <Button
+            key={n}
+            disabled={busy}
+            onClick={async () => {
+              if (await add(n)) {
+                setAdding(false);
+                setDone(baht(n));
+              }
+            }}
+          >
             +{n}
           </Button>
         ))}
@@ -148,7 +158,13 @@ function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean;
         className="flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();
-          void add(Number(amount));
+          const n = Number(amount);
+          void add(n).then((ok) => {
+            if (ok) {
+              setAdding(false);
+              setDone(baht(n));
+            }
+          });
         }}
       >
         <input className={`${inputClass} min-w-0 flex-1`} inputMode="numeric" placeholder={t("บาท")} value={amount} onChange={(e) => setAmount(e.target.value)} />
@@ -163,7 +179,7 @@ function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean;
       <div className="flex items-center gap-2">
         <div className="flex-1 text-sm font-semibold">{t("ค่าน้ำ")}</div>
         {!paid && (
-          <button
+          <Button
             type="button"
             aria-expanded={adding}
             onClick={() => {
@@ -171,10 +187,10 @@ function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean;
               setDone("");
               setError("");
             }}
-            className={`min-h-11 shrink-0 rounded-xl px-3 text-sm font-semibold ${adding ? "bg-zinc-100 text-zinc-700" : "bg-lime text-ink"}`}
+            className="min-h-11 shrink-0 !py-2"
           >
             {adding ? t("ปิด") : t("+ เพิ่มน้ำ")}
-          </button>
+          </Button>
         )}
       </div>
       {drinks.map((d) => (
@@ -194,7 +210,7 @@ function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean;
           )}
         </div>
       ))}
-      {done && (
+      {done && !paid && (
         <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700" role="status">
           ✓ {t("เพิ่มแล้ว")}: <Auto text={done} />
         </p>
