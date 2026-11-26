@@ -189,8 +189,12 @@ export function SignupList({ bare }: { bare?: boolean }) {
   const q = signupQueue(day);
   const waiting = new Set(q.waiting);
   const list = [...q.confirmed, ...q.waiting].map((playerId) => ({ playerId }));
+  // หน้าเช็คอิน: คนที่มาแล้วอยู่ในตารางเช็คอินข้างล่างอยู่แล้ว โชว์เฉพาะคนที่ยังไม่มา (กดดูทั้งหมดได้)
+  const [showAll, setShowAll] = useState(false);
   if (!list.length && !bare) return null;
   const arrived = list.filter((s) => checked.has(s.playerId)).length;
+  const compact = !bare && !showAll;
+  const shown = compact ? list.filter((s) => !checked.has(s.playerId)) : list;
   // ลงชื่อค้างจากประกาศที่ถูกยกเลิก (แอพเวอร์ชันเก่าไม่ได้ล้างให้) ไม่ใช่วันจัดก๊วน ให้แอดมินล้างทิ้ง
   if (list.length && day.announcement === undefined) {
     const stale = (
@@ -222,9 +226,13 @@ export function SignupList({ bare }: { bare?: boolean }) {
       </div>
       {list.length === 0 ? (
         <p className="text-sm text-zinc-500">{t("ยังไม่มีใครลงชื่อ")}</p>
+      ) : shown.length === 0 ? (
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
+          <Icon.Check width={16} height={16} /> {t("คนที่ลงชื่อมาครบแล้ว")}
+        </p>
       ) : (
         <ul className="flex flex-wrap gap-1.5">
-          {list.map((s) => {
+          {shown.map((s) => {
             const p = byId.get(s.playerId);
             const on = checked.has(s.playerId);
             return (
@@ -248,6 +256,11 @@ export function SignupList({ bare }: { bare?: boolean }) {
         </ul>
       )}
       {list.some((s) => !checked.has(s.playerId)) && <p className="text-xs text-zinc-500">{t("แตะชื่อเพื่อเช็คอินให้")}</p>}
+      {!bare && arrived > 0 && (
+        <button type="button" onClick={() => setShowAll(!showAll)} aria-expanded={showAll} className="min-h-11 text-sm font-semibold text-zinc-600 underline">
+          {showAll ? t("ซ่อนคนที่มาแล้ว") : t("ดูทั้งหมด (มาแล้ว {n} คน)", { n: arrived })}
+        </button>
+      )}
     </>
   );
   return bare ? <div className="space-y-3">{body}</div> : <Card className="space-y-3">{body}</Card>;

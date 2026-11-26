@@ -1707,4 +1707,12 @@ export const en: Record<string, string> = {
   "เพิ่มแล้ว": "Added",
   "จ่ายแล้ว ซื้อน้ำเพิ่มหรือลงผิด บอกแอดมิน": "Already paid. To buy more or fix a mistake, tell an admin",
   "จ่ายแล้ว เพิ่มค่าน้ำไม่ได้ บอกแอดมิน": "Already paid. Can't add drinks, tell an admin",
+  "แสดง": "Show",
+  "ยังไม่จ่าย {n} คน": "Unpaid ({n})",
+  "ทั้งหมด {n} คน": "All ({n})",
+  "จ่ายครบทุกคนแล้ว": "Everyone has paid",
+  "คนที่ลงชื่อมาครบแล้ว": "Everyone who signed up is here",
+  "ซ่อนคนที่มาแล้ว": "Hide arrived",
+  "ดูทั้งหมด (มาแล้ว {n} คน)": "Show all ({n} arrived)",
+  "+ เพิ่มน้ำ": "+ Add drink",
 };

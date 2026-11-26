@@ -486,6 +486,8 @@ export function PlayerGameShuttles({ playerId, adjusted }: { playerId: string; a
 export function MyGames({ playerId }: { playerId: string }) {
   const { state } = useStore();
   const { day } = useToday();
+  // พับไว้เป็นบรรทัดเดียว หน้ายอดจะได้ไม่ยาว (ปุ่มจ่ายเงินอยู่ใกล้ขึ้น) แตะเพื่อดูทีละเกม
+  const [open, setOpen] = useState(false);
   const games = day.games.filter((g) => inGame(g, playerId)).sort((a, b) => a.startedAt - b.startedAt);
   if (games.length === 0) return null;
   const byId = new Map(state.players.map((p) => [p.id, p]));
@@ -493,11 +495,14 @@ export function MyGames({ playerId }: { playerId: string }) {
   const total = games.reduce((s, g) => s + shuttlesInGame(g, playerId), 0);
   return (
     <Card className="p-0 overflow-hidden">
-      <div className="flex items-baseline justify-between px-4 pt-4 pb-2">
-        <h3 className="font-semibold">{t("เกมของฉันวันนี้")}</h3>
-        <span className="text-xs text-zinc-500">{t("{n} เกม · {m} ลูก", { n: games.length, m: total })}</span>
-      </div>
-      <ol className="divide-y divide-zinc-100">
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-h-14 w-full items-center gap-2 px-4 py-3 text-left active:bg-zinc-50">
+        <h3 className="flex-1 font-semibold">{t("เกมของฉันวันนี้")}</h3>
+        <span className="text-sm text-zinc-600">{t("{n} เกม · {m} ลูก", { n: games.length, m: total })}</span>
+        <Icon.ChevronRight width={18} height={18} className={`shrink-0 text-zinc-500 transition-transform ${open ? "rotate-90" : ""}`} />
+      </button>
+      {open && (
+      <>
+      <ol className="divide-y divide-zinc-100 border-t border-zinc-100">
         {games.map((g, i) => {
           // ถูกเปลี่ยนตัวออก: ดูคู่/คู่แข่งตอนที่ยังเล่นอยู่ ไม่นับแพ้ชนะ
           const left = !g.playerIds.includes(playerId);
@@ -532,6 +537,8 @@ export function MyGames({ playerId }: { playerId: string }) {
         })}
       </ol>
       <p className="border-t border-zinc-100 px-4 py-3 text-xs text-zinc-500">{t("จำนวนลูกไม่ตรง หรือมีเกมที่ไม่ได้เล่น แจ้งแอดมินให้แก้ได้")}</p>
+      </>
+      )}
     </Card>
   );
 }

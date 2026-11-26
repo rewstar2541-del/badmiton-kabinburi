@@ -102,6 +102,8 @@ function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean;
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [done, setDone] = useState("");
   const add = async (n: number, note = "") => {
     if (!n || n <= 0) return false;
     setBusy(true);
@@ -119,9 +121,62 @@ function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean;
     setBusy(false);
     setError(err ? t(err) : "");
   };
+  // ปุ่มเพิ่มน้ำพับไว้ใต้ "+ เพิ่มน้ำ" หน้ายอดจะได้ไม่ยาว
+  const picker = paid ? null : menu.length ? (
+    <DrinkMenuButtons
+      menu={menu}
+      disabled={busy}
+      onPick={async (d, qty) => {
+        const ok = await add(d.price * qty, drinkNote(d.name, qty));
+        if (ok) {
+          setAdding(false);
+          setDone(`${drinkNote(d.name, qty)} · ${baht(d.price * qty)}`);
+        }
+        return ok;
+      }}
+    />
+  ) : (
+    <>
+      <div className="grid grid-cols-4 gap-2">
+        {[10, 15, 20, 25].map((n) => (
+          <Button key={n} disabled={busy} onClick={() => void add(n)}>
+            +{n}
+          </Button>
+        ))}
+      </div>
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void add(Number(amount));
+        }}
+      >
+        <input className={`${inputClass} min-w-0 flex-1`} inputMode="numeric" placeholder={t("บาท")} value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <Button type="submit" disabled={busy}>
+          {t("เพิ่ม")}
+        </Button>
+      </form>
+    </>
+  );
   return (
     <Card className="space-y-2">
-      <div className="text-sm font-semibold">{t("ค่าน้ำ")}</div>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 text-sm font-semibold">{t("ค่าน้ำ")}</div>
+        {!paid && (
+          <button
+            type="button"
+            aria-expanded={adding}
+            onClick={() => {
+              setAdding(!adding);
+              setDone("");
+              setError("");
+            }}
+            className={`min-h-11 shrink-0 rounded-xl px-3 text-sm font-semibold ${adding ? "bg-zinc-100 text-zinc-700" : "bg-lime text-ink"}`}
+          >
+            {adding ? t("ปิด") : t("+ เพิ่มน้ำ")}
+          </button>
+        )}
+      </div>
       {drinks.map((d) => (
         <div key={d.id} className="flex items-center gap-2 text-sm text-zinc-700">
           <span className="min-w-0 flex-1 break-words">
@@ -139,35 +194,18 @@ function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean;
           )}
         </div>
       ))}
-      {/* จ่ายแล้ว: เพิ่มค่าน้ำเองไม่ได้ (บิลปิดแล้ว) บอกแอดมินแทน */}
-      {paid ? null : menu.length ? (
-        <DrinkMenuButtons menu={menu} disabled={busy} onPick={(d, qty) => add(d.price * qty, drinkNote(d.name, qty))} />
-      ) : (
-        <div className="grid grid-cols-4 gap-2">
-          {[10, 15, 20, 25].map((n) => (
-            <Button key={n} disabled={busy} onClick={() => void add(n)}>
-              +{n}
-            </Button>
-          ))}
-        </div>
+      {done && (
+        <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700" role="status">
+          ✓ {t("เพิ่มแล้ว")}: <Auto text={done} />
+        </p>
       )}
-      {/* มีรายการน้ำแล้ว: เลือกจากรายการอย่างเดียว ไม่ต้องพิมพ์ราคาเอง */}
-      {!paid && !menu.length && (
-        <form
-          className="flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void add(Number(amount));
-          }}
-        >
-          <input className={`${inputClass} min-w-0 flex-1`} inputMode="numeric" placeholder={t("บาท")} value={amount} onChange={(e) => setAmount(e.target.value)} />
-          <Button type="submit" disabled={busy}>
-            {t("เพิ่ม")}
-          </Button>
-        </form>
-      )}
+      {adding && picker}
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
-      <p className="text-xs text-zinc-500">{paid ? t("จ่ายแล้ว ซื้อน้ำเพิ่มหรือลงผิด บอกแอดมิน") : t("ลงผิด กดลบได้ก่อนจ่าย")}</p>
+      {paid ? (
+        <p className="text-xs text-zinc-500">{t("จ่ายแล้ว ซื้อน้ำเพิ่มหรือลงผิด บอกแอดมิน")}</p>
+      ) : (
+        drinks.length > 0 && <p className="text-xs text-zinc-500">{t("ลงผิด กดลบได้ก่อนจ่าย")}</p>
+      )}
     </Card>
   );
 }
