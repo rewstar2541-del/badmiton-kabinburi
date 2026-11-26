@@ -103,4 +103,12 @@ describe("โอกาสชนะ % ชนะติดกัน และล้
     const fav = D("2026-10-01", ["a", "b", "x", "y"], [G(["a", "b", "x", "y"], "B", 1)]);
     expect(ratings({ players, days: [fav] }).upsets.size).toBe(0);
   });
+
+  it("ผลที่อีกทีมกดไม่ตรง ยังไม่นับแต้ม ล้มยักษ์ และ 🔥", () => {
+    const players = [P("a", 1), P("b", 1), P("x", 5), P("y", 5)];
+    const disputed: Game = { ...G(["a", "b", "x", "y"], "A", 1), disputedBy: "x" };
+    const day = D("2026-10-01", ["a", "b", "x", "y"], [disputed]);
+    expect(ratings({ players, days: [day] }).upsets.size).toBe(0);
+    expect(dayStreaks(day).size).toBe(0);
+  });
 });

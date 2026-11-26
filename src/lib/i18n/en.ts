@@ -1674,7 +1674,8 @@ export const en: Record<string, string> = {
   "{n} คน · ชนะ/แพ้ คือผลของ {name}": "{n} players · wins/losses are {name}'s results",
   "รวม {n} เกม": "{n} total",
   "ล้มยักษ์": "Giant slayer",
-  "ชนะตอนโอกาสชนะต่ำกว่า 35%": "Win with under 35% chance to win",
+  "ชนะทีมที่เก่งกว่ามาก (โอกาสชนะต่ำกว่า 35%)": "Beat a much stronger team (under 35% chance to win)",
+  "🔥 = ชนะติดกันวันนี้ (กี่เกม)": "🔥 = wins in a row today (number of games)",
   "โอกาสชนะ {n}%": "{n}% to win",
   "ชนะติดกัน {n} เกมวันนี้": "{n} wins in a row today",
 };

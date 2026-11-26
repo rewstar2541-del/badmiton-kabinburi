@@ -3,7 +3,7 @@
 import { NoticeBanners } from "./Notices";
 import { eventStyle } from "@/lib/eventKinds";
 import { BirthdayBanner } from "./Birthday";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { appName } from "@/lib/brand";
 import { locale, t, useLang } from "@/lib/i18n";
 import { clubPlan, courtQueue, presence, waitingQueue } from "@/lib/matchmaking";
@@ -11,8 +11,8 @@ import { useStore, useToday } from "@/lib/store";
 import { courtsOfDay, type Player } from "@/lib/types";
 import { Avatar, Icon, LevelBadge } from "./ui";
 import { Auto } from "@/lib/autoTranslate";
-import { dayStreaks, ratings, winChance } from "@/lib/club";
-import { HotStreak } from "./CourtsTab";
+import { winChance } from "@/lib/club";
+import { HotStreak, useCourtOdds } from "./CourtsTab";
 
 function useClock() {
   const [now, setNow] = useState(() => Date.now());
@@ -28,7 +28,7 @@ function Name({ p, big, streak }: { p?: Player; big?: boolean; streak?: number }
     <div className="flex min-w-0 items-center gap-2">
       <span className="relative shrink-0">
         <Avatar name={p?.name ?? "?"} photo={p?.photo} size={big ? 40 : 32} ring />
-        <HotStreak n={streak} className="-right-3 -bottom-2 text-sm leading-5" />
+        <HotStreak n={streak} className="-right-2 -bottom-1 text-xs leading-4" />
       </span>
       <span className={`line-clamp-2 min-w-0 flex-1 leading-tight font-semibold [overflow-wrap:anywhere] ${big ? "text-2xl" : "text-xl"}`}>{p?.name ?? "?"}</span>
       {p && (
@@ -64,9 +64,7 @@ export function TvView() {
   const now = useClock();
   useLang();
   const byId = new Map(state.players.map((p) => [p.id, p]));
-  const { days, players } = state;
-  const rating = useMemo(() => ratings({ days, players }).rating, [days, players]);
-  const streaks = dayStreaks(day);
+  const { rating, streaks } = useCourtOdds();
   const queue = waitingQueue(day, state.players);
   const plan = clubPlan(day, state.players, state.settings);
   const games = new Map(day.games.filter((g) => !g.endedAt).map((g) => [g.court, g]));
@@ -181,9 +179,11 @@ export function TvView() {
                   <div className="court-surface grid grid-cols-2 gap-2 rounded-2xl p-3">
                     {[g.playerIds.slice(0, 2), g.playerIds.slice(2)].map((team, i) => (
                       <div key={i} className="flex min-w-0 flex-col gap-2">
-                        <span className="self-start rounded-full bg-black/35 px-3 py-0.5 text-base font-semibold text-white tabular-nums">
-                          {t("โอกาสชนะ {n}%", { n: winChance(rating, g.playerIds)[i] })}
-                        </span>
+                        {rating && (
+                          <span className="self-start rounded-full bg-black/35 px-3 py-0.5 text-base font-semibold text-white tabular-nums">
+                            {t("โอกาสชนะ {n}%", { n: winChance(rating, g.playerIds)[i] })}
+                          </span>
+                        )}
                         {team.map((id) => (
                           <Name key={id} p={byId.get(id)} streak={streaks.get(id)} />
                         ))}

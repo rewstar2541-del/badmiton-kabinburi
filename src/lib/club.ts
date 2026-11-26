@@ -24,12 +24,22 @@ export const HOT_STREAK = 3;
  * เล่นผลทุกเกมที่บันทึกแพ้ชนะตามลำดับเวลา ได้แต้มปัจจุบันของทุกคน
  * และจำนวนครั้งที่ล้มยักษ์ (ชนะทั้งที่โอกาสชนะตอนนั้นต่ำกว่า 35%)
  */
+let cache: { days: Day[]; players: Player[]; out: ReturnType<typeof computeRatings> } | undefined;
+
+/** แต้มปัจจุบันของทุกคน (จำผลล่าสุดไว้ หลายสนามเรียกพร้อมกันคำนวณครั้งเดียว) */
 export function ratings(state: Pick<State, "days" | "players">) {
+  if (cache?.days !== state.days || cache.players !== state.players) cache = { days: state.days, players: state.players, out: computeRatings(state) };
+  return cache.out;
+}
+
+function computeRatings(state: Pick<State, "days" | "players">) {
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const rating = new Map<string, number>();
   const r = (id: string) => rating.get(id) ?? startRating(byId.get(id));
   const upsets = new Map<string, number>();
   for (const { g } of decided(state.days)) {
+    // ผลที่อีกทีมกด "ไม่ตรง" ยังไม่นับ รอแอดมินยืนยันก่อน
+    if (g.disputedBy) continue;
     const [a1, a2, b1, b2] = g.playerIds;
     const expectA = expectedA((r(a1) + r(a2)) / 2, (r(b1) + r(b2)) / 2);
     const change = K * ((g.winner === "A" ? 1 : 0) - expectA);
@@ -52,7 +62,7 @@ export function winChance(rating: (id: string) => number, playerIds: readonly st
 /** ชนะติดกันกี่เกมในวันนี้ (นับถึงเกมล่าสุด) แพ้แล้วเริ่มใหม่ เกมเสมอ/ไม่บันทึกผลไม่ตัด */
 export function dayStreaks(day: Pick<Day, "games">): Map<string, number> {
   const streak = new Map<string, number>();
-  const ended = day.games.filter((g) => g.endedAt && g.winner).sort((a, b) => (a.endedAt ?? 0) - (b.endedAt ?? 0));
+  const ended = day.games.filter((g) => g.endedAt && g.winner && !g.disputedBy).sort((a, b) => (a.endedAt ?? 0) - (b.endedAt ?? 0));
   for (const g of ended) g.playerIds.forEach((id, i) => streak.set(id, (g.winner === "A") === i < 2 ? (streak.get(id) ?? 0) + 1 : 0));
   return streak;
 }

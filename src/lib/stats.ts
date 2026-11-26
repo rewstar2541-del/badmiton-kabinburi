@@ -117,7 +117,7 @@ const BADGES: { id: string; name: string; how: string; target: number; stat: key
   { id: "regular", name: "ขาประจำ", how: "มาเล่นครบ {n} ครั้ง", target: 10, stat: "visits" },
   { id: "core", name: "ตัวจริงของก๊วน", how: "มาเล่นครบ {n} ครั้ง", target: 50, stat: "visits" },
   { id: "streak", name: "ไฟลุก", how: "ชนะติดกัน {n} เกม", target: 5, stat: "bestStreak" },
-  { id: "giant", name: "ล้มยักษ์", how: "ชนะตอนโอกาสชนะต่ำกว่า 35%", target: 1, stat: "upsets" },
+  { id: "giant", name: "ล้มยักษ์", how: "ชนะทีมที่เก่งกว่ามาก (โอกาสชนะต่ำกว่า 35%)", target: 1, stat: "upsets" },
   { id: "marathon", name: "มาราธอน", how: "เล่น {n} เกมในวันเดียว", target: 10, stat: "bestDay" },
   { id: "hundred", name: "ร้อยเกม", how: "เล่นครบ {n} เกม", target: 100, stat: "games" },
   { id: "attend5", name: "มาติดกัน", how: "มาเล่นติดกัน {n} ครั้ง", target: 5, stat: "bestAttend" },
