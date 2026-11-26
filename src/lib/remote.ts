@@ -929,11 +929,19 @@ export async function selfService(db: SupabaseClient, action: SelfAction, player
 }
 
 /** ผู้เล่นในสนามกดผลเกมเอง แล้วให้คู่ถัดไปลงต่อ (ถ้าส่ง next มา) คืนข้อความผิดพลาด หรือ null */
+/** ผลบันทึกแล้ว แต่จำนวนลูกยังไม่ถูกเก็บ (ยังไม่รัน SQL report_shuttles.sql) */
+export const SHUTTLES_NOT_SAVED = "จำนวนลูกยังไม่ถูกบันทึก แจ้งแอดมินให้แก้ลูก";
+
 export async function reportGame(db: SupabaseClient, playerId: string, pin: string, gameId: string, result: "win" | "draw" | "lose", next?: { playerIds: string[]; queuedId?: string }, shuttles?: number) {
   const args = { p_player: playerId, p_pin: pin, p_game: gameId, p_result: result, p_next: next?.playerIds ?? null, p_queued: next?.queuedId ?? null };
   let { data, error } = await db.rpc("report_game", shuttles ? { ...args, p_shuttles: shuttles } : args);
   // ยังไม่ได้รัน SQL report_shuttles.sql: บันทึกผลไปก่อน (จำนวนลูกยังเป็นตามที่แอดมินกดไว้)
-  if (error?.code === "PGRST202" && shuttles) ({ data, error } = await db.rpc("report_game", args));
+  if (error?.code === "PGRST202" && shuttles) {
+    ({ data, error } = await db.rpc("report_game", args));
+    if (!error && !data) return SHUTTLES_NOT_SAVED;
+  }
+  // มี report_game สองฉบับ (รัน SQL เก่าซ้ำหลัง report_shuttles.sql) ฐานข้อมูลเลือกฉบับไม่ได้
+  if (error?.code === "PGRST203") return "กดผลเองไม่ได้ชั่วคราว ให้แอดมินรัน SQL report_shuttles.sql อีกครั้ง";
   if (error) return error.code === "PGRST202" ? "ยังกดผลเองไม่ได้ ให้แอดมินช่วยก่อน" : "บันทึกไม่สำเร็จ เช็กเน็ตแล้วลองใหม่";
   return (data as string | null) ?? null;
 }

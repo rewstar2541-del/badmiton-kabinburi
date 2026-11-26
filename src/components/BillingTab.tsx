@@ -192,7 +192,7 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
         {drinks.map((d) => (
           <DrinkRow key={d.id} drink={d} date={date} />
         ))}
-        <DrinkMenuButtons menu={s.drinkMenu ?? []} onPick={(d) => dispatch({ type: "addDrink", date, playerId: player.id, amount: d.price, note: d.name })} />
+        <DrinkMenuButtons menu={s.drinkMenu ?? []} disabled={bill.paid} onPick={(d) => dispatch({ type: "addDrink", date, playerId: player.id, amount: d.price, note: d.name })} />
         <form
           className="flex gap-2"
           onSubmit={(e) => {

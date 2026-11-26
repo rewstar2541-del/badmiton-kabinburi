@@ -309,7 +309,8 @@ function ResultEditor({ game, day, byId }: { game: Game; day: Day; byId: Map<str
       {(game.reportedBy || game.disputedBy) && (
         <p className={`text-xs ${game.disputedBy ? "font-semibold text-red-700" : "text-zinc-500"}`}>
           {game.reportedBy && t("{name} กดผลเอง", { name: name(game.reportedBy) })}
-          {game.disputedBy && ` · ${t("{name} แจ้งว่าไม่ตรง", { name: name(game.disputedBy) })}`}
+          {game.reportedBy && ` · ${t("ใช้ลูก {n} ลูก", { n: game.shuttles })}`}
+          {game.disputedBy && ` · ${t("{name} แจ้งว่าผลหรือจำนวนลูกไม่ตรง", { name: name(game.disputedBy) })}`}
         </p>
       )}
       <div className="grid grid-cols-2 gap-2">
@@ -329,7 +330,7 @@ function ResultEditor({ game, day, byId }: { game: Game; day: Day; byId: Map<str
           className="min-h-11 w-full rounded-xl bg-white text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200 active:scale-95"
           onClick={() => dispatch({ type: "setResult", date: day.date, gameId: game.id, winner: game.winner, draw: game.draw })}
         >
-          {t("ผลเดิมถูกแล้ว (เอาป้ายออก)")}
+          {t("ผลและจำนวนลูกถูกแล้ว (เอาป้ายออก)")}
         </button>
       )}
     </div>
@@ -350,7 +351,7 @@ export function FinishedGames({ byId }: { byId: Map<string, Player> }) {
   return (
     <>
       <SectionTitle right={<span className="whitespace-nowrap">{t("{n} เกม · {m} ลูก", { n: done.length, m: total })}</span>}>{t("เกมที่จบแล้ววันนี้")}</SectionTitle>
-      {disputed > 0 && <p className="rounded-2xl bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700" role="status">⚠ {t("ผู้เล่นแจ้งว่าผลไม่ตรง {n} เกม กดเกมที่มีป้ายเพื่อแก้ผล", { n: disputed })}</p>}
+      {disputed > 0 && <p className="rounded-2xl bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700" role="status">⚠ {t("ผู้เล่นแจ้งว่าผลหรือจำนวนลูกไม่ตรง {n} เกม กดเกมที่มีป้ายเพื่อแก้", { n: disputed })}</p>}
       {open ? (
         <Card className="p-0 overflow-hidden">
           <ul className="divide-y divide-zinc-100">

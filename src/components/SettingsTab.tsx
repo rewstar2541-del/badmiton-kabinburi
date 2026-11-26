@@ -220,7 +220,7 @@ export function SettingsTab() {
             </form>
           </Card>
       </Section>
-      <Section id="drinks" icon="🥤" title={t("รายการน้ำ")} hint={t("น้ำเปล่า เกลือแร่ ตั้งราคาไว้ กดเพิ่มในบิลได้เลย")}>
+      <Section id="drinks" icon="🥤" title={t("รายการน้ำ")} hint={t("ตั้งชื่อกับราคาน้ำ")}>
         <DrinkMenuEditor />
       </Section>
       {packagesReady && (

@@ -1687,4 +1687,12 @@ export const en: Record<string, string> = {
   "ชื่อ เช่น น้ำเปล่า": "Name, e.g. Water",
   "น้ำเปล่า เกลือแร่ ตั้งราคาไว้ กดเพิ่มในบิลได้เลย": "Water, sports drinks: set prices, tap to add to bills",
   "จำนวนลูกไม่ถูกต้อง": "Invalid shuttle count",
+  "จำนวนลูกยังไม่ถูกบันทึก แจ้งแอดมินให้แก้ลูก": "Shuttle count not saved yet. Ask an admin to fix it",
+  "กดผลเองไม่ได้ชั่วคราว ให้แอดมินรัน SQL report_shuttles.sql อีกครั้ง": "Self-reporting is unavailable. Ask an admin to run SQL report_shuttles.sql again",
+  "{name} แจ้งว่าผลหรือจำนวนลูกไม่ตรง": "{name} says the result or shuttle count is wrong",
+  "ผลและจำนวนลูกถูกแล้ว (เอาป้ายออก)": "Result and shuttles are correct (remove flag)",
+  "ผู้เล่นแจ้งว่าผลหรือจำนวนลูกไม่ตรง {n} เกม กดเกมที่มีป้ายเพื่อแก้": "Players flagged the result or shuttle count in {n} games. Tap a flagged game to fix it",
+  "ตั้งชื่อกับราคาน้ำ": "Set drink names and prices",
+  "ชื่อน้ำ": "Drink name",
+  "ยังเปิดใช้ไม่ได้ ต้องอัปเดตฐานข้อมูลก่อน (SQL drink_menu.sql)": "Not available yet. Update the database first (SQL drink_menu.sql)",
 };

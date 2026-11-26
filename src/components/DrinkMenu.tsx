@@ -23,7 +23,7 @@ export function DrinkMenuButtons({ menu, disabled, onPick }: { menu: DrinkItem[]
           <span className="w-full break-words leading-tight">
             + <Auto text={d.name} />
           </span>
-          <span className="text-xs font-medium tabular-nums text-zinc-600">{baht(d.price)}</span>
+          <span className="text-sm font-medium tabular-nums text-zinc-600">{baht(d.price)}</span>
         </button>
       ))}
     </div>
@@ -44,17 +44,16 @@ export function DrinkMenuEditor() {
 
   return (
     <Card className="space-y-3">
-      <h2 className="font-display font-semibold">{t("รายการน้ำ")}</h2>
       <p className="text-xs text-zinc-500">{t("ตั้งชื่อกับราคาไว้ครั้งเดียว แอดมินและผู้เล่นกดเพิ่มในบิลได้เลย")}</p>
       {!ready ? (
-        <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">{t("ใช้ได้หลังรัน SQL drink_menu.sql")}</p>
+        <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">{t("ยังเปิดใช้ไม่ได้ ต้องอัปเดตฐานข้อมูลก่อน (SQL drink_menu.sql)")}</p>
       ) : (
         <>
           {menu.length === 0 && <p className="text-sm text-zinc-500">{t("ยังไม่มีรายการน้ำ ผู้เล่นจะเห็นปุ่ม +10 +15 +20 +25 บาทแทน")}</p>}
           <ul className="space-y-1.5">
             {menu.map((d, i) => (
               <li key={`${d.name}-${i}`} className="flex items-center gap-2 rounded-2xl bg-zinc-100 px-3 py-1.5 text-sm">
-                <span className="min-w-0 flex-1 truncate font-medium">{d.name}</span>
+                <span className="min-w-0 flex-1 break-words font-medium">{d.name}</span>
                 <span className="shrink-0 tabular-nums">{baht(d.price)}</span>
                 <button
                   type="button"
@@ -84,7 +83,7 @@ export function DrinkMenuEditor() {
                 setError("");
               }}
             >
-              <input className={`${inputClass} min-w-0 flex-[2]`} placeholder={t("ชื่อ เช่น น้ำเปล่า")} maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />
+              <input className={`${inputClass} min-w-0 flex-[2]`} placeholder={t("ชื่อน้ำ")} maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />
               <input className={`${inputClass} min-w-0 flex-1`} inputMode="numeric" placeholder={t("บาท")} value={price} onChange={(e) => setPrice(e.target.value)} />
               <Button type="submit">{t("เพิ่ม")}</Button>
             </form>

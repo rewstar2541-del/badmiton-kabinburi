@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { billFor } from "../billing";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { mergePrivate, reportGame, rowsToState, type Rows } from "../remote";
+import { SHUTTLES_NOT_SAVED, mergePrivate, reportGame, rowsToState, type Rows } from "../remote";
 import { prepare, reducer, EMPTY_STATE } from "../state";
 import { DEFAULT_SETTINGS, DRINK_MENU_MAX, drinkMenuOf, lastRoundOf } from "../types";
 
@@ -167,7 +167,7 @@ describe("ผู้เล่นกดผลพร้อมจำนวนลู�
   });
   it("ยังไม่รัน SQL report_shuttles.sql: บันทึกผลไปก่อนโดยไม่มีจำนวนลูก", async () => {
     const { db, calls } = fake(true);
-    expect(await reportGame(db, "a", "pin", "g", "lose", undefined, 3)).toBeNull();
+    expect(await reportGame(db, "a", "pin", "g", "lose", undefined, 3)).toBe(SHUTTLES_NOT_SAVED);
     expect(calls).toHaveLength(2);
     expect(calls[1]).not.toHaveProperty("p_shuttles");
   });
