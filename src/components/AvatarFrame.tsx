@@ -15,13 +15,13 @@ const LEVEL_LOOK: Record<Level, Omit<Look, "label" | "name">> = {
   2: { colors: ["#5eead4", "#14b8a6"], glow: 10, icon: "✦" },
   6: { colors: ["#bef264", "#84cc16"], glow: 12, icon: "✦" },
   3: { colors: ["#fde047", "#f59e0b"], glow: 16, icon: "⚡", orbit: true },
-  4: { colors: ["#fb923c", "#f43f5e"], glow: 22, icon: "🔥", orbit: true, dots: true },
+  4: { colors: ["#fb923c", "#f43f5e"], glow: 22, icon: "💥", orbit: true, dots: true },
   5: { colors: ["#c084fc", "#22d3ee", "#f472b6", "#fde047"], glow: 30, icon: "👑", orbit: true, dots: true },
 };
 
 function lookOf(f: Frame, small = false): Look {
   if (f.kind === "level") {
-    const code = LEVELS.find((l) => l.value === f.level)!.code;
+    const code = LEVELS.find((l) => l.value === f.level)?.code ?? "";
     return { ...LEVEL_LOOK[f.level], label: code, name: code };
   }
   const x = FESTIVAL_FRAMES.find((y) => y.id === f.id)!;
@@ -37,16 +37,47 @@ type FramePlayer = Pick<Player, "name" | "photo" | "level" | "frame" | "frames" 
  * compact = วงแหวนเรืองแสงอย่างเดียว (ใช้ในรายชื่อ) ไม่งั้นมีไอคอนมุมบนและป้ายระดับใต้รูป
  * levelShown = ข้างๆ มีป้ายระดับมืออยู่แล้ว ไม่ต้องโชว์ป้ายระดับใต้รูปซ้ำ (กรอบเทศกาลยังโชว์ชื่อกรอบตามเดิม)
  */
-export function FramedAvatar({ player, size = 40, compact, ring: plainRing, frame: forced, levelShown }: { player: FramePlayer; size?: number; compact?: boolean; ring?: boolean; frame?: Frame | null; levelShown?: boolean }) {
+export function FramedAvatar({
+  player,
+  name,
+  size = 40,
+  compact,
+  ring: plainRing,
+  stack,
+  frame: forced,
+  levelShown,
+}: {
+  /** ไม่มีผู้เล่น (เช่น ออกจากชมรมแล้ว) = รูปเปล่าตามชื่อ name */
+  player?: FramePlayer | null;
+  name?: string;
+  size?: number;
+  compact?: boolean;
+  ring?: boolean;
+  /** รูปที่เรียงซ้อนกัน (-space-x): ขอบขาวคั่น ไม่มีไอคอนมุม (จะไปทับรูปถัดไป) */
+  stack?: boolean;
+  frame?: Frame | null;
+  levelShown?: boolean;
+}) {
+  if (!player) return <Avatar name={name ?? "?"} size={size} ring={plainRing} />;
   const frame = forced === undefined ? frameOf(player) : forced;
-  if (!frame) return <Avatar name={player.name} photo={player.photo} size={size} ring={plainRing} />;
+  if (!frame) return <Avatar name={name ?? player.name} photo={player.photo} size={size} ring={plainRing} />;
   // รูปเล็ก: ป้ายชื่อย่อ และไม่มีวงโคจร/จุดแสง (รายชื่อยาวๆ จะได้ไม่หน่วง)
   const small = size < 96;
   const look = { ...lookOf(frame, small), ...(size < 64 ? { orbit: false, dots: false } : {}) };
   const glowColor = `${look.colors[1]}aa`;
+  const who = name ?? player.name;
+  const label = `${who} · ${look.name}`;
+  // รูปจิ๋ว (ป้ายเล็กๆ ในแถว): วงแหวนเป็นเส้นรอบนอก รูปไม่หดจนอ่านตัวอักษรไม่ออก
+  if (size < 24 || (compact && size < 28))
+    return (
+      <span className="inline-grid shrink-0 rounded-full" style={{ boxShadow: `0 0 0 1.5px ${look.colors[0]}, 0 0 4px 1px ${glowColor}` }} role="img" aria-label={label}>
+        <Avatar name={who} photo={player.photo} size={size} />
+      </span>
+    );
   const tiny = size < 28;
-  const ring = tiny ? 1.5 : Math.max(2, Math.round(size * (compact ? 0.06 : 0.045)));
-  const gap = tiny ? 0 : compact ? 1 : Math.max(2, Math.round(size * 0.025));
+  // แบบย่อ: วงแหวนบาง ไม่มีช่องว่าง รูป/ตัวอักษรย่อจะได้ไม่เล็กลงมาก
+  const ring = tiny ? 1.5 : compact ? (size < 40 ? 2 : 3) : Math.max(2, Math.round(size * 0.045));
+  const gap = tiny || compact ? 0 : Math.max(2, Math.round(size * 0.025));
   const inner = size - (ring + gap) * 2;
   const disc = (
     <span
@@ -57,15 +88,32 @@ export function FramedAvatar({ player, size = 40, compact, ring: plainRing, fram
         padding: ring,
         background: ringBg(look.colors),
         // ในรายชื่อใช้แสงเบาๆ (หลายคนพร้อมกันจะได้ไม่หน่วง)
-        boxShadow: compact ? `0 0 ${Math.min(6, look.glow / 4)}px ${glowColor}` : `0 0 ${(look.glow * size) / 120}px ${(look.glow * size) / 480}px ${glowColor}`,
+        boxShadow: compact ? `${stack || plainRing ? "0 0 0 2px #fff, " : ""}0 0 ${Math.min(6, look.glow / 4)}px ${glowColor}` : `0 0 ${(look.glow * size) / 120}px ${(look.glow * size) / 480}px ${glowColor}`,
       }}
     >
-      <span className="grid size-full place-items-center rounded-full bg-[#0b1220]" style={{ padding: gap }}>
-        <Avatar name={player.name} photo={player.photo} size={inner} />
+      {/* ช่องระหว่างวงแหวนกับรูป: แบบย่อใช้สีพื้นตามธีม (การ์ดสว่างจะได้ไม่มีวงดำ) */}
+      <span className={`grid size-full place-items-center rounded-full ${compact ? "bg-white dark:bg-[#0b1220]" : "bg-[#0b1220]"}`} style={{ padding: gap }}>
+        <Avatar name={who} photo={player.photo} size={inner} />
       </span>
     </span>
   );
-  if (compact) return disc;
+  if (compact) {
+    // รูปขนาดกลางในรายชื่อ/สนาม/จอทีวี: มีไอคอนกรอบเล็กๆ มุมขวาบน ให้คนอื่นเห็นว่าใส่กรอบอะไร (ไม่กินที่เพิ่ม)
+    if (size < 28 || !look.icon || stack) return <span className="inline-grid shrink-0" role="img" aria-label={label}>{disc}</span>;
+    const c = Math.max(16, Math.round(size * 0.42));
+    return (
+      <span className="relative inline-grid shrink-0" role="img" aria-label={label} title={look.name}>
+        {disc}
+        <span
+          className="absolute grid place-items-center rounded-full bg-[#0b1220] leading-none"
+          style={{ width: c, height: c, right: -c * 0.2, top: -c * 0.25, border: `1.5px solid ${look.colors[0]}`, color: look.colors[0], fontSize: c * 0.58 }}
+          aria-hidden
+        >
+          {look.icon}
+        </span>
+      </span>
+    );
+  }
 
   const pad = Math.round(size * 0.12);
   const chip = Math.round(size * 0.3);
@@ -73,7 +121,7 @@ export function FramedAvatar({ player, size = 40, compact, ring: plainRing, fram
   const showLabel = !(levelShown && frame.kind === "level");
   const below = showLabel ? font * 0.6 : 0;
   return (
-    <span className="relative inline-block shrink-0" style={{ padding: pad, paddingBottom: pad + below }} role="img" aria-label={look.name}>
+    <span className="relative inline-block shrink-0" style={{ padding: pad, paddingBottom: pad + below }} role="img" aria-label={label}>
       {look.orbit && (
         <span className="absolute rounded-full border-[1.5px] border-dashed opacity-65" style={{ inset: pad - size * 0.075, bottom: pad + below - size * 0.075, borderColor: look.colors[0] }} />
       )}

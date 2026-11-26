@@ -6,7 +6,8 @@ import { nameMatch } from "@/lib/roster";
 import { readSession, writeSession } from "@/lib/session";
 import { useStore } from "@/lib/store";
 import { AdminsCard, useAdmins } from "./AdminsCard";
-import { Avatar, Button, Card, SearchInput, SectionTitle } from "./ui";
+import { Button, Card, SearchInput, SectionTitle } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 import { t } from "@/lib/i18n";
 
 /** บัญชีของแอดมิน (เข้าด้วย LINE) ในหน้าตั้งค่า: ออกจากระบบ และรายชื่อแอดมิน */
@@ -61,7 +62,7 @@ function LinkMyLine() {
     return (
       <Card className="space-y-2">
         <div className="flex items-center gap-3">
-          <Avatar name={mine.name} photo={mine.photo} size={40} />
+          <FramedAvatar player={mine} size={40} compact />
           <p className="min-w-0 flex-1 text-sm">{t("LINE ของคุณผูกกับชื่อ {name} แล้ว", { name: mine.name })}</p>
           {!here && (
             <Button className="shrink-0 px-3 py-1.5 text-xs" disabled={busy} onClick={() => link(mine.id)}>
@@ -87,7 +88,7 @@ function LinkMyLine() {
       <ul className="space-y-1.5">
         {list.map((p) => (
           <li key={p.id} className="flex items-center gap-2.5 rounded-2xl bg-zinc-50 px-3 py-2">
-            <Avatar name={p.name} photo={p.photo} size={32} />
+            <FramedAvatar player={p} size={32} compact />
             <span className="min-w-0 flex-1 truncate text-sm font-semibold">{p.name}</span>
             {picked === p.id ? (
               <Button variant="accent" className="px-3 py-1.5 text-xs" disabled={busy} onClick={() => link(p.id)}>

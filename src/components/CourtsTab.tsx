@@ -7,7 +7,8 @@ import { autoNext, clubPlan, courtPlan, courtQueue, pendingStart, plannedCourt, 
 import { useStore, useToday } from "@/lib/store";
 import { courtList, courtsOfDay, minShuttles, undoLastSub, type Game, type Player, type QueuedGame, type Team } from "@/lib/types";
 import { MatchBuilder } from "./MatchBuilder";
-import { Avatar, Button, Card, Icon, LevelBadge, SectionTitle, Sheet } from "./ui";
+import { Button, Card, Icon, LevelBadge, SectionTitle, Sheet } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 import { t } from "@/lib/i18n";
 import { dayStreaks, HOT_STREAK, ratings, winChance } from "@/lib/club";
 import { useHistory } from "./Ranking";
@@ -99,7 +100,7 @@ function CourtSide({ ids, byId, team, compact, blocked, chance, streaks }: { ids
         return (
           <div key={id} className={`flex w-full items-center gap-2 rounded-2xl px-2 ${compact ? "py-1" : "py-1.5"} backdrop-blur-sm ${out ? "bg-red-600/70" : "bg-black/20"}`}>
             <span className="relative shrink-0">
-              <Avatar name={p?.name ?? "?"} photo={p?.photo} size={compact ? 24 : 28} ring />
+              <FramedAvatar player={p} size={compact ? 24 : 28} compact ring />
               <HotStreak n={streaks?.get(id)} />
             </span>
             <span
@@ -274,7 +275,7 @@ function QueuedTeams({ q, byId, blocked }: { q: Pick<QueuedGame, "playerIds">; b
         return (
           <div key={id} className="flex min-w-0 items-center gap-1.5">
             <span className={`h-5 w-1 shrink-0 rounded-full ${team === "A" ? "bg-lime" : "bg-sky-300"}`} />
-            <Avatar name={p?.name ?? "?"} photo={p?.photo} size={22} />
+            <FramedAvatar player={p} size={22} compact />
             <span className={`min-w-0 flex-1 truncate text-sm font-medium ${out ? "text-red-500 line-through" : ""}`} title={p?.name}>
               {p?.name ?? "?"}
             </span>
@@ -704,7 +705,7 @@ export function CourtsTab() {
               >
                 {i + 1}
               </span>
-              <Avatar name={e.player.name} photo={e.player.photo} size={32} />
+              <FramedAvatar player={e.player} size={32} compact />
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate font-medium">{e.player.name}</span>
                 {courtOf.get(e.player.id) && (
@@ -742,7 +743,7 @@ export function CourtsTab() {
             <ul>
               {resting.map((p) => (
                 <li key={p.id} className="flex items-center gap-3 rounded-2xl px-2 py-2 opacity-80">
-                  <Avatar name={p.name} photo={p.photo} size={32} />
+                  <FramedAvatar player={p} size={32} compact />
                   <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
                   <LevelBadge level={p.level} />
                   {auth.isAdmin && (
@@ -1052,7 +1053,7 @@ function PlayerCourts({ odds }: { odds: CourtOdds }) {
               >
                 {i + 1}
               </span>
-              <Avatar name={e.player.name} photo={e.player.photo} size={32} />
+              <FramedAvatar player={e.player} size={32} compact />
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate font-medium">{e.player.name}</span>
                 {courtOf.get(e.player.id) && (

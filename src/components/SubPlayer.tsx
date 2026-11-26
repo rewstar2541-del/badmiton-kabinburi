@@ -4,7 +4,8 @@ import { useState } from "react";
 import { formToday, FORM_MARK, presence, queuedSpot, skillOf, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
 import { shuttlesInGame, strength, withSub, type Game, type Player } from "@/lib/types";
-import { Avatar, Button, LevelBadge, Sheet } from "./ui";
+import { Button, LevelBadge, Sheet } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 import { FormMark } from "./MatchBuilder";
 import { t } from "@/lib/i18n";
 
@@ -111,7 +112,7 @@ export function SubPlayer({ game, onClose }: { game: Game; onClose: () => void }
                     on ? "bg-white text-ink ring-2 ring-lime" : out ? "bg-black/30 text-white ring-1 ring-white/60" : "bg-black/20 text-white backdrop-blur-sm"
                   }`}
                 >
-                  <Avatar name={p?.name ?? "?"} photo={p?.photo} size={28} ring />
+                  <FramedAvatar player={p} size={28} compact ring />
                   <span className="min-w-0 flex-1 truncate text-sm font-semibold">{p?.name ?? "?"}</span>
                   {!on && <FormMark value={form.get(id)} />}
                   {p && (on ? <span className="font-bold" aria-hidden>↕</span> : <LevelBadge level={p.level} />)}

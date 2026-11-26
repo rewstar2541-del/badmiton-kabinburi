@@ -15,7 +15,8 @@ import type { SelfAction } from "@/lib/state";
 import { inGame, type Day } from "@/lib/types";
 import { ClosedBanner, ClubCalendar } from "./Calendar";
 import { PendingNotice, PickMe, savedPin, useMe } from "./PickMe";
-import { Avatar, Button, Card, Icon, LevelBadge, baht } from "./ui";
+import { Button, Card, Icon, LevelBadge, baht } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 import { locale, t } from "@/lib/i18n";
 import { RestButton } from "./RestButton";
 import { Auto } from "@/lib/autoTranslate";
@@ -339,7 +340,7 @@ export function TodayTab({ home, top, news }: { home?: boolean; top?: ReactNode;
         <AttendeeStrip day={day} dark={home} />
         {!home && (
         <div className="flex items-center gap-3">
-          <Avatar name={player.name} photo={player.photo} size={52} />
+          <FramedAvatar player={player} size={52} compact />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <span className="truncate font-display text-lg font-semibold">{player.name}</span>

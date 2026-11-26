@@ -4,7 +4,8 @@ import { useState } from "react";
 import { FORM_MARK, formToday, hasAvoid, nextMatch, skillOf, strongRule, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
 import { strength, type Game, type Player } from "@/lib/types";
-import { Avatar, Button, Icon, LevelBadge, Sheet } from "./ui";
+import { Button, Icon, LevelBadge, Sheet } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 import { t } from "@/lib/i18n";
 
 type Slots = (string | null)[];
@@ -124,7 +125,7 @@ export function MatchBuilder({
         >
           {p ? (
             <>
-              <Avatar name={p.name} photo={p.photo} size={28} ring />
+              <FramedAvatar player={p} size={28} compact ring />
               <span className="min-w-0 flex-1 truncate text-sm font-semibold">{p.name}</span>
               {!on && <FormMark value={form.get(p.id)} />}
               {on ? <span className="w-8" /> : <LevelBadge level={p.level} />}
