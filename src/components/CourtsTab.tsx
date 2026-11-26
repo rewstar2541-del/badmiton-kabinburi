@@ -1,6 +1,7 @@
 "use client";
 
 import { PairRequests } from "./Pairs";
+import { SHUTTLES_NOT_SAVED } from "@/lib/remote";
 import { useEffect, useMemo, useState } from "react";
 import { autoNext, clubPlan, courtPlan, courtQueue, pendingStart, plannedCourt, queueByCourt, presence, queueBlockers, queuedSpot, START_GRACE_MS, strongRule, waitingQueue, type CourtNext } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
@@ -797,6 +798,12 @@ function SelfReport({ game, playerId, onDone }: { game: Game; playerId: string; 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const label: Record<GameReport, string> = { win: t("ทีมเราชนะ"), draw: t("เสมอ"), lose: t("ทีมเราแพ้") };
+  // จำนวนลูกที่ใช้ เลือกก่อนกดผล (เริ่มที่จำนวนที่แอดมินกดไว้) แอดมินไม่ต้องไปกด +/− ลูกเอง
+  const [picked, setPicked] = useState<number | null>(null);
+  // ไม่ต่ำกว่าลูกที่ใช้ไปแล้วตอนเปลี่ยนตัว (แบบเดียวกับปุ่ม −/+ ของแอดมิน) และอย่างน้อย 1 ลูก
+  const floor = Math.max(1, minShuttles(game));
+  const shuttles = picked ?? Math.max(game.shuttles, floor);
+  const options = [...new Set([1, 2, 3, game.shuttles])].filter((n) => n >= floor).sort((a, b) => a - b);
   const send = async (r: GameReport) => {
     // คู่ถัดไปของสนามนี้ คิดแบบเดียวกับตอนแอดมินกดจบเกม (ปิดจัดอัตโนมัติ + ไม่มีคู่ที่แอดมินจัดไว้ = ไม่มีคู่ต่อ)
     // รอบสุดท้าย (แอดมินเปิดไว้): ไม่ส่งคู่ต่อไป ฐานข้อมูลก็เช็คซ้ำอีกชั้น
@@ -804,20 +811,39 @@ function SelfReport({ game, playerId, onDone }: { game: Game; playerId: string; 
     const next = last ? undefined : clubPlan(day, state.players, state.settings, game.court).get(game.court);
     const delayed = (state.settings.startDelay ?? 0) !== 0;
     const ask = last ? t("บันทึกผล: {r}?", { r: label[r] }) : next ? t(delayed ? "บันทึกผล: {r}? คู่ต่อไปจะขึ้นเตรียมลงสนามก่อน" : "บันทึกผล: {r}? คู่ต่อไปจะลงสนามทันที", { r: label[r] }) : t("บันทึกผล: {r}? แอดมินจะจัดคู่ต่อไปเอง", { r: label[r] });
-    if (!confirm(ask)) return;
+    if (!confirm(`${ask}\n${t("ใช้ลูก {n} ลูก", { n: shuttles })}`)) return;
     const ok = next && courtList(state.settings).includes(game.court) && queueBlockers(day, next, game.id).length === 0;
     setBusy(true);
     setError("");
-    const err = await report(playerId, savedPin.get(), game, r, ok ? { playerIds: next.playerIds, queuedId: next.queuedId, hold: delayed } : undefined);
+    const err = await report(playerId, savedPin.get(), game, r, ok ? { playerIds: next.playerIds, queuedId: next.queuedId, hold: delayed } : undefined, shuttles !== game.shuttles ? shuttles : undefined);
     setBusy(false);
-    if (err) setError(t(err));
+    // ผลบันทึกแล้ว แต่ฐานข้อมูลยังไม่รับจำนวนลูก (ยังไม่รัน SQL) บอกให้แอดมินแก้ลูก
+    if (err === SHUTTLES_NOT_SAVED) onDone(`${t("บันทึกผลแล้ว: {r}", { r: label[r] })} · ${t(err)}`);
+    else if (err) setError(t(err));
     else if (last) onDone(t("บันทึกผลแล้ว: {r}", { r: label[r] }));
     else onDone(`${t("บันทึกผลแล้ว: {r}", { r: label[r] })} · ${ok ? (delayed ? ((state.settings.startDelay ?? 0) < 0 ? t("คู่ต่อไปเตรียมลงสนาม รอแอดมินกดลงสนาม") : t("คู่ต่อไปเตรียมลงสนาม เริ่มเองใน {n} วินาที", { n: state.settings.startDelay ?? 0 })) : t("คู่ต่อไปลงสนามแล้ว")) : t("คู่ต่อไปยังลงไม่ได้ รอแอดมินจัด")}`);
   };
   return (
     <div className="space-y-2">
-      <p className="text-center text-sm text-zinc-500">{busy ? t("กำลังบันทึก...") : t("เล่นจบแล้ว? กดผลได้เลย")}</p>
-      <div className="grid grid-cols-[1fr_auto_1fr] gap-3">
+      <p className="text-center text-sm text-zinc-500">{busy ? t("กำลังบันทึก...") : t("เล่นจบแล้ว? เลือกจำนวนลูก แล้วกดผลได้เลย")}</p>
+      <div className="flex items-center gap-2" role="group" aria-label={t("ใช้ลูกกี่ลูก")}>
+        <span className="shrink-0 text-sm font-medium">{t("ใช้ลูกกี่ลูก")}</span>
+        <div className="grid flex-1 gap-1.5" style={{ gridTemplateColumns: `repeat(${Math.max(options.length, 3)}, minmax(0, 1fr))` }}>
+          {options.map((n) => (
+            <button
+              key={n}
+              type="button"
+              disabled={busy}
+              aria-pressed={shuttles === n}
+              onClick={() => setPicked(n)}
+              className={`min-h-11 rounded-xl text-base font-bold tabular-nums active:scale-95 ${shuttles === n ? "bg-lime/30 text-ink ring-2 ring-ink" : "bg-white text-zinc-600 ring-1 ring-zinc-200"}`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-3 pt-2">
         <Button variant="accent" disabled={busy} onClick={() => send("win")} className="flex items-center justify-center gap-1.5 !px-2 whitespace-nowrap">
           <Icon.Trophy width={16} height={16} /> {label.win}
         </Button>
@@ -829,13 +855,13 @@ function SelfReport({ game, playerId, onDone }: { game: Game; playerId: string; 
         </Button>
       </div>
       {error && <p className="text-center text-sm text-red-600" role="alert">{error}</p>}
-      <p className="text-center text-sm text-zinc-500">{t("คนใดคนหนึ่งใน 4 คนกดก็พอ ถ้าผิด อีกทีมกด \"ไม่ตรง\" ได้")}</p>
+      <p className="text-center text-sm text-zinc-500">{t("คนใดคนหนึ่งใน 4 คนกดก็พอ ผลหรือจำนวนลูกผิด อีกทีมกด \"ไม่ตรง\" ได้")}</p>
     </div>
   );
 }
 
 /** อีกทีมกดผลไว้ ให้เวลา 2 นาทีกด "ไม่ตรง" (แจ้งแอดมินมาแก้ ไม่หยุดคิว) */
-function DisputeBanner({ playerId }: { playerId: string }) {
+export function DisputeBanner({ playerId, title }: { playerId: string; /** หัวข้อเหนือป้าย (หน้าแรก: "ต้องทำ") แสดงเฉพาะตอนมีป้าย */ title?: string }) {
   const { state, dispute } = useStore();
   const { day } = useToday();
   const now = useNow(1000);
@@ -847,16 +873,27 @@ function DisputeBanner({ playerId }: { playerId: string }) {
     return () => clearTimeout(id);
   }, [msg]);
   const g = disputable(day, playerId, now);
-  if (!g) return msg ? <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800" role="status">{msg}</p> : null;
+  const head = title ? <SectionTitle>{title}</SectionTitle> : null;
+  if (!g)
+    return msg ? (
+      <>
+        <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800" role="status">{msg}</p>
+      </>
+    ) : null;
   const name = (id?: string) => state.players.find((p) => p.id === id)?.name ?? "?";
   // บอกเทียบกับทีมของคนที่ดู จะได้เห็นทันทีว่าผิดไหม
   const result = g.draw ? t("เสมอ") : !g.winner ? t("ไม่นับผล") : g.winner === teamOf(g, playerId) ? t("ทีมคุณชนะ") : t("ทีมคุณแพ้");
   const left = Math.max(0, Math.ceil((DISPUTE_MS - (now - (g.endedAt ?? now))) / 1000));
   return (
+    <>
+    {head}
     <div className="flex items-center gap-3 rounded-2xl border-2 border-amber-400 bg-amber-50 px-4 py-3 text-sm text-amber-800">
       <div className="min-w-0 flex-1">
         <div>{t("{name} กดผลสนาม {n}", { name: name(g.reportedBy), n: g.court })}</div>
-        <div className="text-base font-bold">{result}</div>
+        <div className="text-base font-bold">
+          {result}
+          {g.shuttles > 0 && ` · ${t("ใช้ลูก {n} ลูก", { n: g.shuttles })}`}
+        </div>
         <div className="font-semibold">{t("ถ้าไม่ตรง กดได้อีก {m}:{s} นาที", { m: Math.floor(left / 60), s: String(left % 60).padStart(2, "0") })}</div>
       </div>
       <Button
@@ -864,6 +901,7 @@ function DisputeBanner({ playerId }: { playerId: string }) {
         className="min-h-11 shrink-0 !bg-white !px-3"
         disabled={busy}
         onClick={async () => {
+          if (!confirm(t("แจ้งแอดมินว่าผลหรือจำนวนลูกสนาม {n} ไม่ตรง?", { n: g.court }))) return;
           setBusy(true);
           const err = await dispute(playerId, savedPin.get(), g.id);
           setBusy(false);
@@ -873,6 +911,7 @@ function DisputeBanner({ playerId }: { playerId: string }) {
         {t("ไม่ตรง")}
       </Button>
     </div>
+    </>
   );
 }
 
@@ -940,7 +979,7 @@ function PlayerCourts({ odds }: { odds: CourtOdds }) {
             })()}
           </div>
           <HotLegend ids={myGame.playerIds} streaks={odds.streaks} />
-          <SelfReport game={myGame} playerId={player.id} onDone={setReported} />
+          <SelfReport key={myGame.id} game={myGame} playerId={player.id} onDone={setReported} />
         </Card>
       ) : (
         <Card className="py-6 text-center">

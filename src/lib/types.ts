@@ -176,6 +176,31 @@ export interface Settings {
    * ไม่มี = ยังไม่รัน SQL strong_group.sql ใช้ค่าเริ่มต้น (เปิด, S ขึ้นไป, เกมที่ 2, 10 นาที)
    */
   strongGroup?: { on: boolean; level: Level; fromGame: number; waitMin: number };
+  /**
+   * รายการน้ำที่ขาย ตั้งชื่อกับราคาไว้ครั้งเดียว แอดมินและผู้เล่นกดเพิ่มในบิลได้เลย
+   * ไม่มี = ยังไม่รัน SQL drink_menu.sql (ผู้เล่นใช้ปุ่ม +10/+15/+20/+25 แบบเดิม)
+   */
+  drinkMenu?: DrinkItem[];
+}
+
+/** น้ำหนึ่งรายการในเมนู เช่น น้ำเปล่า 10 บาท */
+export interface DrinkItem {
+  name: string;
+  price: number;
+}
+
+/** ราคาน้ำที่ตั้งได้ (ฐานข้อมูลรับค่าน้ำที่ผู้เล่นลงเองได้ 1-200 บาท) */
+export const DRINK_PRICE_MAX = 200;
+/** จำนวนรายการน้ำสูงสุด (ปุ่มไม่ล้นจอ) */
+export const DRINK_MENU_MAX = 8;
+
+/** เมนูน้ำจากฐานข้อมูล ตัดรายการที่ชื่อว่างหรือราคาผิดออก */
+export function drinkMenuOf(raw: unknown): DrinkItem[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((x) => ({ name: String((x as DrinkItem)?.name ?? "").trim().slice(0, 40), price: Math.round(Number((x as DrinkItem)?.price)) }))
+    .filter((x) => x.name && x.price >= 1 && x.price <= DRINK_PRICE_MAX)
+    .slice(0, DRINK_MENU_MAX);
 }
 
 /** ค่าเริ่มต้นมือตึงล้วน: เปิด, S ขึ้นไป, ตั้งแต่เกมที่ 2, รอเกิน 10 นาทีลงกับระดับต่ำลงมาได้ */

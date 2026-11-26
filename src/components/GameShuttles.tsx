@@ -310,7 +310,8 @@ function ResultEditor({ game, day, byId }: { game: Game; day: Day; byId: Map<str
       {(game.reportedBy || game.disputedBy) && (
         <p className={`text-xs ${game.disputedBy ? "font-semibold text-red-700" : "text-zinc-500"}`}>
           {game.reportedBy && t("{name} กดผลเอง", { name: name(game.reportedBy) })}
-          {game.disputedBy && ` · ${t("{name} แจ้งว่าไม่ตรง", { name: name(game.disputedBy) })}`}
+          {game.reportedBy && ` · ${t("ใช้ลูก {n} ลูก", { n: game.shuttles })}`}
+          {game.disputedBy && ` · ${t("{name} แจ้งว่าผลหรือจำนวนลูกไม่ตรง", { name: name(game.disputedBy) })}`}
         </p>
       )}
       <div className="grid grid-cols-2 gap-2">
@@ -330,7 +331,7 @@ function ResultEditor({ game, day, byId }: { game: Game; day: Day; byId: Map<str
           className="min-h-11 w-full rounded-xl bg-white text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200 active:scale-95"
           onClick={() => dispatch({ type: "setResult", date: day.date, gameId: game.id, winner: game.winner, draw: game.draw })}
         >
-          {t("ผลเดิมถูกแล้ว (เอาป้ายออก)")}
+          {t("ผลและจำนวนลูกถูกแล้ว (เอาป้ายออก)")}
         </button>
       )}
     </div>
@@ -351,7 +352,7 @@ export function FinishedGames({ byId }: { byId: Map<string, Player> }) {
   return (
     <>
       <SectionTitle right={<span className="whitespace-nowrap">{t("{n} เกม · {m} ลูก", { n: done.length, m: total })}</span>}>{t("เกมที่จบแล้ววันนี้")}</SectionTitle>
-      {disputed > 0 && <p className="rounded-2xl bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700" role="status">⚠ {t("ผู้เล่นแจ้งว่าผลไม่ตรง {n} เกม กดเกมที่มีป้ายเพื่อแก้ผล", { n: disputed })}</p>}
+      {disputed > 0 && <p className="rounded-2xl bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700" role="status">⚠ {t("ผู้เล่นแจ้งว่าผลหรือจำนวนลูกไม่ตรง {n} เกม กดเกมที่มีป้ายเพื่อแก้", { n: disputed })}</p>}
       {open ? (
         <Card className="p-0 overflow-hidden">
           <ul className="divide-y divide-zinc-100">
@@ -486,18 +487,28 @@ export function PlayerGameShuttles({ playerId, adjusted }: { playerId: string; a
 export function MyGames({ playerId }: { playerId: string }) {
   const { state } = useStore();
   const { day } = useToday();
+  // พับไว้เป็นบรรทัดเดียว หน้ายอดจะได้ไม่ยาว (ปุ่มจ่ายเงินอยู่ใกล้ขึ้น) แตะเพื่อดูทีละเกม
+  const [open, setOpen] = useState(false);
   const games = day.games.filter((g) => inGame(g, playerId)).sort((a, b) => a.startedAt - b.startedAt);
   if (games.length === 0) return null;
   const byId = new Map(state.players.map((p) => [p.id, p]));
   const name = (id: string) => byId.get(id)?.name ?? "?";
   const total = games.reduce((s, g) => s + shuttlesInGame(g, playerId), 0);
+  const playing = games.find((g) => !g.endedAt && g.playerIds.includes(playerId));
   return (
-    <Card className="p-0 overflow-hidden">
-      <div className="flex items-baseline justify-between px-4 pt-4 pb-2">
-        <h3 className="font-semibold">{t("เกมของฉันวันนี้")}</h3>
-        <span className="text-xs text-zinc-500">{t("{n} เกม · {m} ลูก", { n: games.length, m: total })}</span>
-      </div>
-      <ol className="divide-y divide-zinc-100">
+    <Card className="!p-0 overflow-hidden">
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-h-14 w-full items-center gap-2 px-4 py-3 text-left active:bg-zinc-50">
+        <h3 className="flex-1 font-semibold">{t("เกมของฉันวันนี้")}</h3>
+        <span className="text-right text-sm text-zinc-600">
+          {t("{n} เกม · {m} ลูก", { n: games.length, m: total })}
+          {/* เกมที่เล่นอยู่: บอกสนามบนบรรทัดหัวเลย ไม่ต้องกางดู */}
+          {playing && <span className="block text-xs font-semibold text-emerald-700">{t("กำลังเล่น สนาม {n}", { n: playing.court })}</span>}
+        </span>
+        <Icon.ChevronRight width={18} height={18} className={`shrink-0 text-zinc-500 transition-transform ${open ? "rotate-90" : ""}`} />
+      </button>
+      {open && (
+      <>
+      <ol className="divide-y divide-zinc-100 border-t border-zinc-100">
         {games.map((g, i) => {
           // ถูกเปลี่ยนตัวออก: ดูคู่/คู่แข่งตอนที่ยังเล่นอยู่ ไม่นับแพ้ชนะ
           const left = !g.playerIds.includes(playerId);
@@ -532,6 +543,8 @@ export function MyGames({ playerId }: { playerId: string }) {
         })}
       </ol>
       <p className="border-t border-zinc-100 px-4 py-3 text-xs text-zinc-500">{t("จำนวนลูกไม่ตรง หรือมีเกมที่ไม่ได้เล่น แจ้งแอดมินให้แก้ได้")}</p>
+      </>
+      )}
     </Card>
   );
 }

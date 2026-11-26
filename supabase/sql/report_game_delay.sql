@@ -1,3 +1,4 @@
+-- ⚠ ฟังก์ชัน report_game ฉบับล่าสุดอยู่ที่ report_shuttles.sql: ถ้ารันไฟล์นี้ซ้ำ ให้รัน report_shuttles.sql ต่อทันที (ไม่งั้นผู้เล่นกดผลเองไม่ได้)
 -- ผู้เล่นกดผลเองแล้วเคารพ "เวลาก่อนลงสนาม" (settings.start_delay): ตั้งไว้แล้ว คู่ต่อไปขึ้นคิวเตรียมลงสนามแทนการลงทันที
 -- ต้องรัน supabase/sql/start_delay.sql และ self_report.sql ก่อน แล้วรันไฟล์นี้ (รันซ้ำได้)
 create or replace function public.report_game(p_player text, p_pin text, p_game text, p_result text, p_next text[] default null, p_queued text default null)

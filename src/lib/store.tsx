@@ -77,7 +77,7 @@ interface Ctx {
   /** ผู้เล่นส่งรูปสลิปโอนเงิน คืนข้อความผิดพลาด หรือ null */
   sendSlip: (playerId: string, pin: string, amount: number, image: string, packageId?: string) => Promise<string | null>;
   /** ผู้เล่นในสนามกดผลเกมเอง (next = คู่ที่ลงต่อ) คืนข้อความผิดพลาด หรือ null */
-  report: (playerId: string, pin: string, game: Game, result: GameReport, next?: { playerIds: Game["playerIds"]; queuedId?: string; /** ตั้งเวลาก่อนลงสนามไว้: ขึ้นคิวเตรียมลงสนามแทนลงทันที (ของจริงฐานข้อมูลตัดสินเองจากตั้งค่า) */ hold?: boolean }) => Promise<string | null>;
+  report: (playerId: string, pin: string, game: Game, result: GameReport, next?: { playerIds: Game["playerIds"]; queuedId?: string; /** ตั้งเวลาก่อนลงสนามไว้: ขึ้นคิวเตรียมลงสนามแทนลงทันที (ของจริงฐานข้อมูลตัดสินเองจากตั้งค่า) */ hold?: boolean }, /** จำนวนลูกที่ใช้ในเกมนี้ (ผู้เล่นเลือกตอนกดผล) */ shuttles?: number) => Promise<string | null>;
   /** อีกทีมแจ้งว่าผลที่กดไว้ "ไม่ตรง" */
   dispute: (playerId: string, pin: string, gameId: string) => Promise<string | null>;
   /** ผู้เล่นเพิ่มค่าน้ำของตัวเองวันนี้ */
@@ -257,8 +257,9 @@ function LocalProvider({ children }: { children: ReactNode }) {
     return null;
   }, []);
   const getSlip = useCallback(async (id: string) => images.current.get(id) ?? null, []);
-  const reportLocal = useCallback(async (playerId: string, _pin: string, game: Game, result: GameReport, next?: { playerIds: Game["playerIds"]; queuedId?: string; hold?: boolean }) => {
+  const reportLocal = useCallback(async (playerId: string, _pin: string, game: Game, result: GameReport, next?: { playerIds: Game["playerIds"]; queuedId?: string; hold?: boolean }, shuttles?: number) => {
     const date = today();
+    if (shuttles && shuttles !== game.shuttles) apply(prepare({ type: "setShuttles", date, gameId: game.id, shuttles }));
     apply(prepare({ type: "endGame", date, gameId: game.id, ...resultOf(game, playerId, result), reportedBy: playerId }));
     if (next?.hold) {
       if (!next.queuedId) apply(prepare({ type: "queueGame", date, court: game.court, playerIds: next.playerIds }));
@@ -501,8 +502,8 @@ function RemoteProvider({ children }: { children: ReactNode }) {
   );
 
   const reportRemote = useCallback(
-    async (playerId: string, pin: string, game: Game, result: GameReport, next?: { playerIds: Game["playerIds"]; queuedId?: string; hold?: boolean }) => {
-      const err = await reportGame(db, playerId, pin, game.id, result, next);
+    async (playerId: string, pin: string, game: Game, result: GameReport, next?: { playerIds: Game["playerIds"]; queuedId?: string; hold?: boolean }, shuttles?: number) => {
+      const err = await reportGame(db, playerId, pin, game.id, result, next, shuttles);
       if (!err) pokePush();
       await reload();
       return err;

@@ -17,6 +17,7 @@ import { Auto } from "@/lib/autoTranslate";
 import { Button, Card, Icon, baht, inputClass } from "./ui";
 import { t } from "@/lib/i18n";
 import { MyGames } from "./GameShuttles";
+import { DrinkMenuButtons, drinkNote } from "./DrinkMenu";
 
 /** หน้าสำหรับผู้เล่น: เลือกชื่อตัวเอง แล้วดูยอดที่ต้องจ่ายวันนี้ */
 export function MyBillTab() {
@@ -96,32 +97,105 @@ export function MyBillTab() {
 
 /** ผู้เล่นเพิ่มค่าน้ำเอง (แก้/ลบได้เฉพาะแอดมิน) */
 function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean; drinks: { id: string; amount: number; note: string }[] }) {
-  const { addMyDrink, removeMyDrink } = useStore();
+  const { state, addMyDrink, removeMyDrink } = useStore();
+  const menu = state.settings.drinkMenu ?? [];
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const add = async (n: number) => {
-    if (!n || n <= 0) return;
+  const [adding, setAdding] = useState(false);
+  const [done, setDone] = useState("");
+  const add = async (n: number, note = "") => {
+    if (!n || n <= 0) return false;
     setBusy(true);
-    const err = await addMyDrink(playerId, savedPin.get(), n, "");
+    const err = await addMyDrink(playerId, savedPin.get(), n, note);
     setBusy(false);
     setError(err ? t(err) : "");
     if (!err) setAmount("");
+    return !err;
   };
   // ลงผิด ลบเองได้ (ก่อนจ่าย)
   const remove = async (id: string, amount: number) => {
     if (!confirm(t("ลบค่าน้ำ {amount}?", { amount: baht(amount) }))) return;
     setBusy(true);
+    setDone("");
     const err = await removeMyDrink(playerId, savedPin.get(), id);
     setBusy(false);
     setError(err ? t(err) : "");
   };
+  // ปุ่มเพิ่มน้ำพับไว้ใต้ "+ เพิ่มน้ำ" หน้ายอดจะได้ไม่ยาว
+  const picker = paid ? null : menu.length ? (
+    <DrinkMenuButtons
+      menu={menu}
+      disabled={busy}
+      onPick={async (d, qty) => {
+        const ok = await add(d.price * qty, drinkNote(d.name, qty));
+        if (ok) {
+          setAdding(false);
+          setDone(`${drinkNote(d.name, qty)} · ${baht(d.price * qty)}`);
+        }
+        return ok;
+      }}
+    />
+  ) : (
+    <>
+      <div className="grid grid-cols-4 gap-2">
+        {[10, 15, 20, 25].map((n) => (
+          <Button
+            key={n}
+            disabled={busy}
+            onClick={async () => {
+              if (await add(n)) {
+                setAdding(false);
+                setDone(baht(n));
+              }
+            }}
+          >
+            +{n}
+          </Button>
+        ))}
+      </div>
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const n = Number(amount);
+          void add(n).then((ok) => {
+            if (ok) {
+              setAdding(false);
+              setDone(baht(n));
+            }
+          });
+        }}
+      >
+        <input className={`${inputClass} min-w-0 flex-1`} inputMode="numeric" placeholder={t("บาท")} value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <Button type="submit" disabled={busy}>
+          {t("เพิ่ม")}
+        </Button>
+      </form>
+    </>
+  );
   return (
     <Card className="space-y-2">
-      <div className="text-sm font-semibold">{t("ค่าน้ำ")}</div>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 text-sm font-semibold">{t("ค่าน้ำ")}</div>
+        {!paid && (
+          <Button
+            type="button"
+            aria-expanded={adding}
+            onClick={() => {
+              setAdding(!adding);
+              setDone("");
+              setError("");
+            }}
+            className="min-h-11 shrink-0 !py-2"
+          >
+            {adding ? t("ปิด") : t("+ เพิ่มน้ำ")}
+          </Button>
+        )}
+      </div>
       {drinks.map((d) => (
         <div key={d.id} className="flex items-center gap-2 text-sm text-zinc-700">
-          <span className="min-w-0 flex-1 truncate">
+          <span className="min-w-0 flex-1 break-words">
             <Auto text={d.note} />
           </span>
           <span>{baht(d.amount)}</span>
@@ -136,27 +210,18 @@ function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean;
           )}
         </div>
       ))}
-      <div className="grid grid-cols-4 gap-2">
-        {[10, 15, 20, 25].map((n) => (
-          <Button key={n} disabled={busy} onClick={() => void add(n)}>
-            +{n}
-          </Button>
-        ))}
-      </div>
-      <form
-        className="flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void add(Number(amount));
-        }}
-      >
-        <input className={`${inputClass} min-w-0 flex-1`} inputMode="numeric" placeholder={t("บาท")} value={amount} onChange={(e) => setAmount(e.target.value)} />
-        <Button type="submit" disabled={busy}>
-          {t("เพิ่ม")}
-        </Button>
-      </form>
+      {done && !paid && (
+        <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700" role="status">
+          ✓ {t("เพิ่มแล้ว")}: <Auto text={done} />
+        </p>
+      )}
+      {adding && picker}
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
-      <p className="text-xs text-zinc-500">{paid ? t("จ่ายแล้ว ลงผิด บอกแอดมินให้แก้") : t("ลงผิด กดลบได้ก่อนจ่าย")}</p>
+      {paid ? (
+        <p className="text-xs text-zinc-500">{t("จ่ายแล้ว ซื้อน้ำเพิ่มหรือลงผิด บอกแอดมิน")}</p>
+      ) : (
+        drinks.length > 0 && <p className="text-xs text-zinc-500">{t("ลงผิด กดลบได้ก่อนจ่าย")}</p>
+      )}
     </Card>
   );
 }
