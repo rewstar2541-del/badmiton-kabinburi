@@ -9,7 +9,8 @@ import { locale, t, useLang } from "@/lib/i18n";
 import { clubPlan, courtQueue, presence, waitingQueue } from "@/lib/matchmaking";
 import { useStore, useToday } from "@/lib/store";
 import { courtsOfDay, type Player } from "@/lib/types";
-import { Avatar, Icon, LevelBadge } from "./ui";
+import { Icon, LevelBadge } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 import { Auto } from "@/lib/autoTranslate";
 import { winChance } from "@/lib/club";
 import { HotStreak, useCourtOdds } from "./CourtsTab";
@@ -27,7 +28,7 @@ function Name({ p, big, streak }: { p?: Player; big?: boolean; streak?: number }
   return (
     <div className="flex min-w-0 items-center gap-2">
       <span className="relative shrink-0">
-        <Avatar name={p?.name ?? "?"} photo={p?.photo} size={big ? 40 : 32} ring />
+        <FramedAvatar player={p} size={big ? 40 : 32} compact ring />
         <HotStreak n={streak} className="-right-2 -bottom-1 text-xs leading-4" />
       </span>
       <span className={`line-clamp-2 min-w-0 flex-1 leading-tight font-semibold [overflow-wrap:anywhere] ${big ? "text-2xl" : "text-xl"}`}>{p?.name ?? "?"}</span>

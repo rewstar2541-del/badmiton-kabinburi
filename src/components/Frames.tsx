@@ -8,7 +8,7 @@ import { useStore, useToday } from "@/lib/store";
 import type { Player } from "@/lib/types";
 import { FramedAvatar } from "./AvatarFrame";
 import { savedPin } from "./PickMe";
-import { Avatar, Button, SearchInput, baht, inputClass } from "./ui";
+import { Button, SearchInput, baht, inputClass } from "./ui";
 
 const asFrame = (p: Player, value: string | null): Frame | null =>
   value === null ? null : value === "level" ? { kind: "level", level: p.level } : { kind: "festival", id: value as FestivalFrameId };
@@ -181,7 +181,7 @@ export function FrameGrant() {
             const has = p.frames?.includes(fid);
             return (
               <li key={p.id} className="flex items-center gap-3 py-2">
-                <Avatar name={p.name} photo={p.photo} size={36} />
+                <FramedAvatar player={p} size={36} compact />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-semibold">{p.name}</span>
                   <span className="block text-sm text-zinc-600">{has ? `✓ ${t("มีกรอบนี้แล้ว")}` : here.has(p.id) ? t("มาวันนี้") : t("วันนี้ไม่ได้มา")}</span>

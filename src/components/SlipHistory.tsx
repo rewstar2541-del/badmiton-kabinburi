@@ -8,7 +8,8 @@ import { annualStatus, monthOf, type Package, type Player } from "@/lib/types";
 import type { State } from "@/lib/state";
 import { monthLabel, shiftMonth } from "./Members";
 import { applyPackage, fmtDate, packageDone, packageUntil, slipPackage } from "./Packages";
-import { Avatar, Button, Card, SearchInput, baht } from "./ui";
+import { Button, Card, SearchInput, baht } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 
 type Owed =
   | { kind: "day"; amount: number; payer: Player }
@@ -141,7 +142,7 @@ export function SlipHistory({ initialMonth }: { initialMonth?: string } = {}) {
     return (
     <li key={s.id} className="space-y-2 rounded-3xl bg-white px-4 py-3 border border-zinc-200">
       <div className="flex items-center gap-3">
-        <Avatar name={s.player?.name ?? "?"} photo={s.player?.photo} size={40} />
+        <FramedAvatar player={s.player} size={40} compact />
         <span className="min-w-0 flex-1">
           <span className="block truncate font-semibold">{s.player?.name ?? t("ผู้เล่นที่ถูกลบ")}</span>
           <span className="block text-sm text-zinc-600">{when(s.at)}</span>

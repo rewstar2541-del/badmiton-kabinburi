@@ -7,6 +7,7 @@ import type { Player } from "@/lib/types";
 import { useStore } from "@/lib/store";
 import { PlayerForm } from "./PlayersTab";
 import { Avatar, Button, Card, Icon, SearchInput, SectionTitle } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 import { t } from "@/lib/i18n";
 import { visibleRoster } from "@/lib/roster";
 
@@ -71,7 +72,7 @@ export function PickMe({ onPick, hint }: { onPick: (id: string) => void; hint: s
                 onClick={() => setPicked(p.id)}
                 className="flex w-full items-center gap-3 rounded-2xl bg-white px-3 py-2 text-left border border-zinc-200 active:scale-[0.99]"
               >
-                <Avatar name={p.name} photo={p.photo} size={32} />
+                <FramedAvatar player={p} size={32} compact />
                 <span className="min-w-0 flex-1 truncate font-semibold">{p.name}</span>
                 <span className="text-xs text-zinc-400">{t("นี่คือฉัน")}</span>
               </button>
@@ -204,7 +205,7 @@ function ClaimName({ player, onDone, onCancel }: { player: Player; onDone: () =>
   return (
     <Card className="space-y-4">
       <div className="flex items-center gap-3">
-        <Avatar name={player.name} photo={player.photo} size={52} />
+        <FramedAvatar player={player} size={52} compact />
         <div className="min-w-0 flex-1">
           <div className="truncate font-display text-lg font-semibold">{player.name}</div>
           <div className="text-xs text-zinc-500">

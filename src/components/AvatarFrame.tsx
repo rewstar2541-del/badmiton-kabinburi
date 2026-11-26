@@ -37,9 +37,27 @@ type FramePlayer = Pick<Player, "name" | "photo" | "level" | "frame" | "frames" 
  * compact = วงแหวนเรืองแสงอย่างเดียว (ใช้ในรายชื่อ) ไม่งั้นมีไอคอนมุมบนและป้ายระดับใต้รูป
  * levelShown = ข้างๆ มีป้ายระดับมืออยู่แล้ว ไม่ต้องโชว์ป้ายระดับใต้รูปซ้ำ (กรอบเทศกาลยังโชว์ชื่อกรอบตามเดิม)
  */
-export function FramedAvatar({ player, size = 40, compact, ring: plainRing, frame: forced, levelShown }: { player: FramePlayer; size?: number; compact?: boolean; ring?: boolean; frame?: Frame | null; levelShown?: boolean }) {
+export function FramedAvatar({
+  player,
+  name,
+  size = 40,
+  compact,
+  ring: plainRing,
+  frame: forced,
+  levelShown,
+}: {
+  /** ไม่มีผู้เล่น (เช่น ออกจากชมรมแล้ว) = รูปเปล่าตามชื่อ name */
+  player?: FramePlayer | null;
+  name?: string;
+  size?: number;
+  compact?: boolean;
+  ring?: boolean;
+  frame?: Frame | null;
+  levelShown?: boolean;
+}) {
+  if (!player) return <Avatar name={name ?? "?"} size={size} ring={plainRing} />;
   const frame = forced === undefined ? frameOf(player) : forced;
-  if (!frame) return <Avatar name={player.name} photo={player.photo} size={size} ring={plainRing} />;
+  if (!frame) return <Avatar name={name ?? player.name} photo={player.photo} size={size} ring={plainRing} />;
   // รูปเล็ก: ป้ายชื่อย่อ และไม่มีวงโคจร/จุดแสง (รายชื่อยาวๆ จะได้ไม่หน่วง)
   const small = size < 96;
   const look = { ...lookOf(frame, small), ...(size < 64 ? { orbit: false, dots: false } : {}) };
@@ -65,7 +83,23 @@ export function FramedAvatar({ player, size = 40, compact, ring: plainRing, fram
       </span>
     </span>
   );
-  if (compact) return disc;
+  if (compact) {
+    // รูปขนาดกลางในรายชื่อ/สนาม/จอทีวี: มีไอคอนกรอบเล็กๆ มุมขวาบน ให้คนอื่นเห็นว่าใส่กรอบอะไร (ไม่กินที่เพิ่ม)
+    if (size < 28 || !look.icon) return disc;
+    const c = Math.max(13, Math.round(size * 0.4));
+    return (
+      <span className="relative inline-grid shrink-0" role="img" aria-label={look.name}>
+        {disc}
+        <span
+          className="absolute grid place-items-center rounded-full bg-[#0b1220] leading-none"
+          style={{ width: c, height: c, right: -c * 0.3, top: -c * 0.3, border: `1.5px solid ${look.colors[0]}`, color: look.colors[0], fontSize: c * 0.58 }}
+          aria-hidden
+        >
+          {look.icon}
+        </span>
+      </span>
+    );
+  }
 
   const pad = Math.round(size * 0.12);
   const chip = Math.round(size * 0.3);

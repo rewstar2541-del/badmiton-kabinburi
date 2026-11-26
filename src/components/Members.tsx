@@ -10,7 +10,8 @@ import { ExportReport } from "./ExportReport";
 import { Ledger } from "./Ledger";
 import { PayQr } from "./PayQr";
 import { SlipReview } from "./Slips";
-import { Avatar, Button, Card, SearchInput, Sheet, baht } from "./ui";
+import { Button, Card, SearchInput, Sheet, baht } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 
 export function shiftMonth(month: string, delta: number): string {
   const [y, m] = month.split("-").map(Number);
@@ -73,7 +74,7 @@ export function MembersView() {
 
   const row = ({ p, s }: { p: Player; s: Status }) => (
     <li key={p.id} className="flex items-center gap-3 rounded-3xl bg-white px-4 py-3 border border-zinc-200">
-      <Avatar name={p.name} photo={p.photo} size={40} />
+      <FramedAvatar player={p} size={40} compact />
       <span className="min-w-0 flex-1">
         <span className="block truncate font-semibold">{p.name}</span>
         <span className={`mt-0.5 inline-block rounded-2xl px-2.5 py-0.5 text-sm font-semibold leading-snug ${TONE[s.tone]}`}>{s.text}</span>

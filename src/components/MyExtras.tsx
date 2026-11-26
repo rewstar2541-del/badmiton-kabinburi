@@ -7,7 +7,8 @@ import { useStore, useToday } from "@/lib/store";
 import { badgesFor, monthSummary } from "@/lib/stats";
 import { monthOf, type Player } from "@/lib/types";
 import { savedPin } from "./PickMe";
-import { Avatar, Button, Card, Icon, SearchInput, SectionTitle, baht } from "./ui";
+import { Button, Card, Icon, SearchInput, SectionTitle, baht } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 import { nameMatch } from "@/lib/roster";
 
 const MAX = 5;
@@ -92,7 +93,7 @@ export function PartnerPrefs({ player }: { player: Player }) {
                 const pref = prefOf(p.id);
                 return (
                   <li key={p.id} className="flex items-center gap-2 rounded-2xl bg-zinc-100 px-2 py-1.5 text-sm">
-                    <Avatar name={p.name} photo={p.photo} size={24} />
+                    <FramedAvatar player={p} size={24} compact />
                     <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
                     <button
                       onClick={() => toggle(p.id, "prefer")}

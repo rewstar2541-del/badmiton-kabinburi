@@ -6,7 +6,8 @@ import { clock, courtsAt, normalizeCourts, rentAt, rentShares, rentSpan, rentTot
 import { dayAmount } from "@/lib/billing";
 import { useStore, useToday } from "@/lib/store";
 import type { Day, DayRent, Player } from "@/lib/types";
-import { Avatar, Button, Card, Sheet, baht, inputClass } from "./ui";
+import { Button, Card, Sheet, baht, inputClass } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 
 const hh = clock;
 /** ช่วงชั่วโมงตามนาฬิกา: ชั่วโมงแรก/สุดท้ายอาจไม่เต็ม (เริ่ม 19:01 → 19:01-20:00) คืนค่าเวลาเริ่มของแต่ละช่วง */
@@ -274,7 +275,7 @@ export function RentHoursSheet({ rent, onClose }: { rent: DayRent; onClose: () =
           return (
             <li key={c.playerId} className="space-y-2 rounded-2xl bg-white p-3 ring-1 ring-zinc-100">
               <div className="flex items-center gap-2">
-                <Avatar name={p.name} photo={p.photo} size={32} />
+                <FramedAvatar player={p} size={32} compact />
                 <span className="min-w-0 flex-1 truncate font-semibold">{p.name}</span>
                 {c.courtFee !== undefined ? (
                   <span className="shrink-0 rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-600">{t("แก้ยอดเอง {amount}", { amount: baht(c.courtFee) })}</span>

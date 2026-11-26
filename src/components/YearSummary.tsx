@@ -8,7 +8,8 @@ import { today } from "@/lib/store";
 import { useHistory, yearLabel } from "./Ranking";
 import { yearImage } from "@/lib/shareImage";
 import { useShareImage } from "./ShareImage";
-import { Avatar, Button } from "./ui";
+import { Button } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 
 const dayLabel = (d: string) => new Date(d + "T00:00:00").toLocaleDateString(locale(), { day: "numeric", month: "long" });
 
@@ -95,7 +96,7 @@ export function YearSummaryView({ year: initial, onClose }: { year?: string; onC
           {list.map((x, i) => (
             <li key={x.id} className="flex items-center gap-2.5">
               <span className="w-5 text-center font-display font-semibold text-amber-600">{i + 1}</span>
-              <Avatar name={name(x.id)} photo={byId.get(x.id)?.photo} size={30} />
+              <FramedAvatar player={byId.get(x.id)} name={name(x.id)} size={30} compact />
               <span className="min-w-0 flex-1 truncate font-medium">{name(x.id)}</span>
               <span className="shrink-0 text-sm text-zinc-500 tabular-nums">{t(unit, { n: x.n })}</span>
             </li>
@@ -152,8 +153,8 @@ export function YearSummaryView({ year: initial, onClose }: { year?: string; onC
             <section className="space-y-2">
               <h3 className="font-display font-semibold">{t("คู่หูยอดเยี่ยม")}</h3>
               <div className="flex items-center gap-2.5 rounded-2xl bg-lime/30 p-3">
-                <Avatar name={name(s.bestDuo.ids[0])} photo={byId.get(s.bestDuo.ids[0])?.photo} size={34} />
-                <Avatar name={name(s.bestDuo.ids[1])} photo={byId.get(s.bestDuo.ids[1])?.photo} size={34} />
+                <FramedAvatar player={byId.get(s.bestDuo.ids[0])} name={name(s.bestDuo.ids[0])} size={34} compact />
+                <FramedAvatar player={byId.get(s.bestDuo.ids[1])} name={name(s.bestDuo.ids[1])} size={34} compact />
                 <span className="min-w-0 flex-1 font-semibold">
                   {name(s.bestDuo.ids[0])} + {name(s.bestDuo.ids[1])}
                 </span>

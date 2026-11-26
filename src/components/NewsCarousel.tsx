@@ -12,7 +12,8 @@ import { BirthdayBanner } from "./Birthday";
 import { FestivalBanner } from "./FestivalDecor";
 import { NoticeBanners, activeNotices } from "./Notices";
 import { dayLabel } from "./Tourney";
-import { Avatar, Icon, Sheet } from "./ui";
+import { Icon, Sheet } from "./ui";
+import { FramedAvatar } from "./AvatarFrame";
 
 type Item = { key: string; emoji: ReactNode; title: string; sub?: string; tone: string; onClick: () => void; auto?: boolean };
 
@@ -40,7 +41,7 @@ export function NewsCarousel() {
           emoji: (
             <span className="flex -space-x-3">
               {bdays.slice(0, 3).map((p) => (
-                <Avatar key={p.id} name={p.name} photo={p.photo} size={bdays.length > 1 ? 36 : 48} ring />
+                <FramedAvatar key={p.id} player={p} size={bdays.length > 1 ? 36 : 48} compact ring />
               ))}
             </span>
           ),
