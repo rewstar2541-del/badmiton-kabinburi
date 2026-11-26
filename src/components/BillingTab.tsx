@@ -192,7 +192,7 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
         {drinks.map((d) => (
           <DrinkRow key={d.id} drink={d} date={date} />
         ))}
-        <DrinkMenuButtons menu={s.drinkMenu ?? []} disabled={bill.paid} onPick={(d, qty) => dispatch({ type: "addDrink", date, playerId: player.id, amount: d.price * qty, note: drinkNote(d.name, qty) })} />
+        <DrinkMenuButtons menu={s.drinkMenu ?? []} disabled={bill.paid} onPick={(d, qty) => (dispatch({ type: "addDrink", date, playerId: player.id, amount: d.price * qty, note: drinkNote(d.name, qty) }), true)} />
         <form
           className="flex gap-2"
           onSubmit={(e) => {
@@ -211,8 +211,9 @@ function BillDetail({ player, bill, onClose }: { player: Player; bill: Bill; onC
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
           />
-          <Button type="submit">{t("เพิ่ม")}</Button>
+          <Button type="submit" disabled={bill.paid}>{t("เพิ่ม")}</Button>
         </form>
+        {bill.paid && <p className="text-xs text-zinc-500">{t("จ่ายแล้ว ยกเลิกสถานะจ่ายแล้วก่อนถึงจะเพิ่มค่าน้ำได้")}</p>}
       </div>
       )}
 

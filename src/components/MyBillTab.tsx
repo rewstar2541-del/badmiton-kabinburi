@@ -103,12 +103,13 @@ function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const add = async (n: number, note = "") => {
-    if (!n || n <= 0) return;
+    if (!n || n <= 0) return false;
     setBusy(true);
     const err = await addMyDrink(playerId, savedPin.get(), n, note);
     setBusy(false);
     setError(err ? t(err) : "");
     if (!err) setAmount("");
+    return !err;
   };
   // ลงผิด ลบเองได้ (ก่อนจ่าย)
   const remove = async (id: string, amount: number) => {
@@ -123,7 +124,7 @@ function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean;
       <div className="text-sm font-semibold">{t("ค่าน้ำ")}</div>
       {drinks.map((d) => (
         <div key={d.id} className="flex items-center gap-2 text-sm text-zinc-700">
-          <span className="min-w-0 flex-1 truncate">
+          <span className="min-w-0 flex-1 break-words">
             <Auto text={d.note} />
           </span>
           <span>{baht(d.amount)}</span>
@@ -138,9 +139,9 @@ function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean;
           )}
         </div>
       ))}
-      {/* แอดมินตั้งรายการน้ำไว้: กดชื่อน้ำได้เลย ไม่งั้นใช้ปุ่มราคาแบบเดิม */}
-      {menu.length ? (
-        <DrinkMenuButtons menu={menu} disabled={busy} onPick={(d, qty) => void add(d.price * qty, drinkNote(d.name, qty))} />
+      {/* จ่ายแล้ว: เพิ่มค่าน้ำเองไม่ได้ (บิลปิดแล้ว) บอกแอดมินแทน */}
+      {paid ? null : menu.length ? (
+        <DrinkMenuButtons menu={menu} disabled={busy} onPick={(d, qty) => add(d.price * qty, drinkNote(d.name, qty))} />
       ) : (
         <div className="grid grid-cols-4 gap-2">
           {[10, 15, 20, 25].map((n) => (
@@ -151,7 +152,7 @@ function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean;
         </div>
       )}
       {/* มีรายการน้ำแล้ว: เลือกจากรายการอย่างเดียว ไม่ต้องพิมพ์ราคาเอง */}
-      {!menu.length && (
+      {!paid && !menu.length && (
         <form
           className="flex gap-2"
           onSubmit={(e) => {
@@ -166,7 +167,7 @@ function MyDrinks({ playerId, paid, drinks }: { playerId: string; paid: boolean;
         </form>
       )}
       {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
-      <p className="text-xs text-zinc-500">{paid ? t("จ่ายแล้ว ลงผิด บอกแอดมินให้แก้") : t("ลงผิด กดลบได้ก่อนจ่าย")}</p>
+      <p className="text-xs text-zinc-500">{paid ? t("จ่ายแล้ว ซื้อน้ำเพิ่มหรือลงผิด บอกแอดมิน") : t("ลงผิด กดลบได้ก่อนจ่าย")}</p>
     </Card>
   );
 }

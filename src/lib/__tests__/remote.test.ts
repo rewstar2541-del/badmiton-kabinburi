@@ -181,5 +181,6 @@ describe("เลือกจำนวนน้ำ", () => {
     expect(maxQty(200)).toBe(1);
     expect(drinkNote("น้ำเปล่า", 1)).toBe("น้ำเปล่า");
     expect(drinkNote("น้ำเปล่า", 3)).toBe("น้ำเปล่า ×3");
+    expect(drinkNote("ก".repeat(40), 3)).toBe("ก".repeat(37) + " ×3");
   });
 });

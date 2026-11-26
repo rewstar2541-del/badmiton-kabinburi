@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "@/lib/i18n";
 import { useStore } from "@/lib/store";
 import { DRINK_MENU_MAX, DRINK_PRICE_MAX, drinkMenuOf, type DrinkItem } from "@/lib/types";
@@ -14,15 +14,25 @@ export function maxQty(price: number) {
 
 /** ชื่อรายการในบิล: "น้ำเปล่า" หรือ "น้ำเปล่า ×2" */
 export function drinkNote(name: string, qty: number) {
-  return qty > 1 ? `${name} ×${qty}` : name;
+  if (qty <= 1) return name;
+  // ฐานข้อมูลเก็บชื่อได้ 40 ตัว ตัดชื่อก่อน จำนวนขวดจะได้ไม่หาย
+  const suffix = ` ×${qty}`;
+  return name.slice(0, 40 - suffix.length) + suffix;
 }
 
 /** เลือกน้ำจากรายการที่แอดมินตั้งไว้ แล้วเลือกจำนวน ก่อนกดเพิ่มในบิล */
-export function DrinkMenuButtons({ menu, disabled, onPick }: { menu: DrinkItem[]; disabled?: boolean; onPick: (item: DrinkItem, qty: number) => void }) {
-  const [sel, setSel] = useState<number | null>(null);
+export function DrinkMenuButtons({ menu, disabled, onPick }: { menu: DrinkItem[]; disabled?: boolean; onPick: (item: DrinkItem, qty: number) => Promise<boolean> | boolean }) {
+  // จำชื่อน้ำที่เลือก (ไม่ใช่ลำดับ) แอดมินแก้รายการระหว่างนั้นจะได้ไม่ชี้ผิดตัว
+  const [sel, setSel] = useState<string | null>(null);
   const [qty, setQty] = useState(1);
+  const [done, setDone] = useState("");
+  useEffect(() => {
+    if (!done) return;
+    const id = setTimeout(() => setDone(""), 4000);
+    return () => clearTimeout(id);
+  }, [done]);
   if (!menu.length) return null;
-  const item = sel !== null ? menu[sel] : undefined;
+  const item = menu.find((d) => d.name === sel);
   const max = item ? maxQty(item.price) : 1;
   return (
     <div className="space-y-2">
@@ -32,12 +42,13 @@ export function DrinkMenuButtons({ menu, disabled, onPick }: { menu: DrinkItem[]
             key={`${d.name}-${i}`}
             type="button"
             disabled={disabled}
-            aria-pressed={sel === i}
+            aria-pressed={sel === d.name}
             onClick={() => {
-              setSel(sel === i ? null : i);
+              setSel(sel === d.name ? null : d.name);
               setQty(1);
+              setDone("");
             }}
-            className={`flex min-h-12 flex-col items-start justify-center rounded-2xl px-3 py-2 text-left text-sm font-semibold text-ink active:scale-95 disabled:opacity-50 ${sel === i ? "bg-lime/30 ring-2 ring-ink" : "bg-zinc-100"}`}
+            className={`flex min-h-12 flex-col items-start justify-center rounded-2xl px-3 py-2 text-left text-sm font-semibold text-ink active:scale-95 disabled:opacity-50 ${sel === d.name ? "bg-lime/30 ring-2 ring-ink" : "bg-zinc-100"}`}
           >
             <span className="w-full break-words leading-tight">
               <Auto text={d.name} />
@@ -60,21 +71,32 @@ export function DrinkMenuButtons({ menu, disabled, onPick }: { menu: DrinkItem[]
               +
             </button>
           </div>
+          {qty >= max && max > 1 && <p className="text-xs text-zinc-500">{t("ครั้งละไม่เกิน {n} ขวด", { n: max })}</p>}
           <Button
             variant="primary"
-            className="w-full"
+            className="w-full break-words"
             disabled={disabled}
-            onClick={() => {
-              onPick(item, qty);
+            onClick={async () => {
+              // ล้างที่เลือกเฉพาะตอนบันทึกได้ ไม่สำเร็จจะได้กดใหม่ได้เลย
+              if (!(await onPick(item, qty))) return;
+              setDone(`${drinkNote(item.name, qty)} · ${baht(item.price * qty)}`);
               setSel(null);
               setQty(1);
             }}
           >
-            {t("เพิ่ม")} <Auto text={item.name} /> ×{qty} · {baht(item.price * qty)}
+            {disabled ? t("กำลังบันทึก...") : (
+              <>
+                {t("เพิ่ม")} <Auto text={item.name} /> ×{qty} · {baht(item.price * qty)}
+              </>
+            )}
           </Button>
         </div>
+      ) : done ? (
+        <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700" role="status">
+          ✓ {t("เพิ่มแล้ว")}: <Auto text={done} />
+        </p>
       ) : (
-        <p className="text-xs text-zinc-500">{t("แตะเลือกน้ำ แล้วเลือกจำนวน")}</p>
+        <p className="text-sm text-zinc-500">{t("แตะเลือกน้ำ แล้วเลือกจำนวน")}</p>
       )}
     </div>
   );

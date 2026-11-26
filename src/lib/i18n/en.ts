@@ -1701,4 +1701,10 @@ export const en: Record<string, string> = {
   "เพิ่มจำนวน": "Increase quantity",
   "แตะเลือกน้ำ แล้วเลือกจำนวน": "Tap a drink, then choose how many",
   "ต้องทำ": "To do",
+  "จ่ายแล้ว ยกเลิกสถานะจ่ายแล้วก่อนถึงจะเพิ่มค่าน้ำได้": "Already paid. Undo paid status before adding drinks",
+  "แจ้งแอดมินว่าผลหรือจำนวนลูกสนาม {n} ไม่ตรง?": "Tell the admin the result or shuttle count for court {n} is wrong?",
+  "ครั้งละไม่เกิน {n} ขวด": "Up to {n} at a time",
+  "เพิ่มแล้ว": "Added",
+  "จ่ายแล้ว ซื้อน้ำเพิ่มหรือลงผิด บอกแอดมิน": "Already paid. To buy more or fix a mistake, tell an admin",
+  "จ่ายแล้ว เพิ่มค่าน้ำไม่ได้ บอกแอดมิน": "Already paid. Can't add drinks, tell an admin",
 };

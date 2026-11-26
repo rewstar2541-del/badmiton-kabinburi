@@ -818,7 +818,6 @@ export function DisputeBanner({ playerId, title }: { playerId: string; /** ห�
   if (!g)
     return msg ? (
       <>
-        {head}
         <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800" role="status">{msg}</p>
       </>
     ) : null;
@@ -843,6 +842,7 @@ export function DisputeBanner({ playerId, title }: { playerId: string; /** ห�
         className="min-h-11 shrink-0 !bg-white !px-3"
         disabled={busy}
         onClick={async () => {
+          if (!confirm(t("แจ้งแอดมินว่าผลหรือจำนวนลูกสนาม {n} ไม่ตรง?", { n: g.court }))) return;
           setBusy(true);
           const err = await dispute(playerId, savedPin.get(), g.id);
           setBusy(false);
